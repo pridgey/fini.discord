@@ -23,12 +23,12 @@ client.once("disconnect", () => {
 });
 
 let lastUpdate = Date.now();
-client.on("typingStart", async (message) => {
+client.on("typingStart", async (channel) => {
   const current = Date.now();
   if (current - lastUpdate >= 3600000) {
     // If it's been more than an hour since last update
     lastUpdate = current;
-    message.channel.send(
+    channel.send(
       "Reminder to relax your shoulders, unclench your jaw and drink some water. :D"
     );
   }
