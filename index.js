@@ -22,6 +22,23 @@ client.once("disconnect", () => {
   console.log("Peace, I'm out");
 });
 
+let lastUpdate = Date.now();
+client.on("typingStart", async (message) => {
+  const current = Date.now();
+  if (current - lastUpdate >= 3600000) {
+    // If it's been more than an hour since last update
+    lastUpdate = current;
+    message.channel.send(
+      "Reminder to relax your shoulders, unclench your jaw and drink some water. :D"
+    );
+  }
+});
+
+// Loop
+setInterval(() => {
+  client.m;
+});
+
 // The magic
 client.on("message", async (message) => {
   // Prefix
