@@ -22,7 +22,7 @@ client.once("disconnect", () => {
   console.log("Peace, I'm out");
 });
 
-let lastUpdate = Date.now();
+let lastUpdate = 0;
 client.on("typingStart", async (channel) => {
   const current = Date.now();
   const hoursToWait = 4;
