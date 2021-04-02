@@ -25,11 +25,29 @@ client.once("disconnect", () => {
 let lastUpdate = Date.now();
 client.on("typingStart", async (channel) => {
   const current = Date.now();
-  if (current - lastUpdate >= 3600000) {
+  const hoursToWait = 4;
+  if (current - lastUpdate >= 1000 * 60 * 60 * hoursToWait) {
+    const messages = [
+      "relax your shoulders",
+      "unclench your jaw",
+      "check your posture",
+      "release your tongue from the top of your mouth",
+      "stare at something (not a screen) 20 feet away for 20 seconds",
+      "tilt your head back and groan like chewbacca! It helps I swear",
+      "stretch your arms and legs",
+      "maybe do 10 jumping jacks",
+      "take 3 deep breaths out of both nostrils",
+      "drink water",
+      "pester Josh",
+      "call your mother",
+      "say 'good bot'",
+    ];
     // If it's been more than an hour since last update
     lastUpdate = current;
     channel.send(
-      "Reminder to relax your shoulders, unclench your jaw and drink some water. :D"
+      `Friendly reminder to ${
+        messages[Math.round(Math.random() * messages.length)]
+      } :D`
     );
   }
 });
