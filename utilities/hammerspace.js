@@ -2,6 +2,90 @@ const { base } = require("./airtable");
 const seedrandom = require("seedrandom");
 const { escapeString } = require("./escapeString");
 
+// #region Config Queries
+
+const getHealthySubscriptionWhitelist = () => {
+  return base("Config")
+    .select({
+      fields: ["Value"],
+      filterByFormula: `Key = 'HealthySubscriptionWhitelist'`,
+    })
+    .all()
+    .then((results) => {
+      const records = results.map((result) => result.fields);
+      // Should only be one
+      return records[0].Value;
+    });
+};
+
+const addHealthyChannel = (channelID) => {
+  // first grab the config
+  return base("Config")
+    .select({
+      fields: ["Value"],
+      filterByFormula: `Key = 'HealthySubscriptionWhitelist'`,
+    })
+    .all()
+    .then((results) => {
+      const recordID = results[0].id;
+      const records = results.map((result) => result.fields);
+      const channelList = JSON.parse(records[0].Value);
+
+      // Now update the thing
+      if (!channelList.channels.includes(channelID)) {
+        // Channel not in here
+        // Push channel into list
+        channelList.channels.push(channelID);
+
+        // Update config
+        base("Config").update([
+          {
+            id: recordID,
+            fields: {
+              Value: JSON.stringify(channelList),
+            },
+          },
+        ]);
+      }
+    });
+};
+
+const removeHealthyChannel = (channelID) => {
+  // first grab the config
+  return base("Config")
+    .select({
+      fields: ["Value"],
+      filterByFormula: `Key = 'HealthySubscriptionWhitelist'`,
+    })
+    .all()
+    .then((results) => {
+      const recordID = results[0].id;
+      const records = results.map((result) => result.fields);
+      const channelList = JSON.parse(records[0].Value);
+
+      // Now update the thing
+      if (channelList.channels.includes(channelID)) {
+        // Channel is in here
+
+        channelList.channels.splice(
+          channelList.channels.findIndex((x) => x === channelID),
+          1
+        );
+
+        base("Config").update([
+          {
+            id: recordID,
+            fields: {
+              Value: JSON.stringify(channelList),
+            },
+          },
+        ]);
+      }
+    });
+};
+
+// //#endregion Config Queries
+
 const getRandomCollection = () => {
   return base("Collections")
     .select()
@@ -194,4 +278,7 @@ module.exports = {
   addGekinzukuItem,
   searchGekinzukuItems,
   updateGekinStat,
+  addHealthyChannel,
+  getHealthySubscriptionWhitelist,
+  removeHealthyChannel,
 };
