@@ -32,8 +32,16 @@ const healthPing = (channel) => {
           "take 3 deep breaths out of both nostrils",
           "drink water",
           "pester Josh",
-          "call your mother",
+          "call a loved one",
           "say 'good bot'",
+          "roll and stretch your neck",
+          "c̵̊͂ŏ̸͗n̵̓͠s̵̒̚ů̶͂m̷̈́̿e̴͂̆",
+          "have a small snack",
+          "not fall for any MLM schemes",
+          "just take a break",
+          "go for a short walk",
+          "water your plants",
+          "streeeeeeetch",
         ];
 
         // Update channel id's last update time
