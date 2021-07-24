@@ -1,5 +1,5 @@
 import Discord, { Channel, Message } from "discord.js";
-import { callAndResponse } from "./modules";
+import { callAndResponse, commands } from "./modules";
 import dotenv from "dotenv";
 
 // Run config to get our environment variables
@@ -45,7 +45,9 @@ disClient.on("message", async (message: Message) => {
     const args: string[] = messageParts.slice(1);
 
     // Run the command
-    // doThings();
+    commands(command, args, message.guild).then((commandResult) => {
+      message.channel.send(`Test: ${commandResult}`);
+    });
   } else {
     // No command here. But someone is engaging the server. Let's reward them :)
     // giveUserMoney();
