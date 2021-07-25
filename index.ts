@@ -45,8 +45,8 @@ disClient.on("message", async (message: Message) => {
     const args: string[] = messageParts.slice(1);
 
     // Run the command
-    commands(command, args, message.guild).then((commandResult) => {
-      message.channel.send(`Test: ${commandResult}`);
+    commands(command, args, message).then((commandResult) => {
+      message.channel.send(commandResult);
     });
   } else {
     // No command here. But someone is engaging the server. Let's reward them :)

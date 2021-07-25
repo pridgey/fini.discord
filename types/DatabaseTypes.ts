@@ -1,5 +1,5 @@
 interface DatabaseItem {
-  ID: number;
+  ID?: number;
   Item: string;
   User: string;
   DateCreated: number;
@@ -24,3 +24,15 @@ export interface SettingsRecord {
   Value: string;
   Server: string;
 }
+
+export type DatabaseTables =
+  | "Bank"
+  | "Hammerspace"
+  | "Phrase"
+  | "Sentences"
+  | "Settings";
+
+export type FieldValuePair = {
+  Field: string;
+  Value: string | number;
+};

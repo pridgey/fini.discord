@@ -1,4 +1,4 @@
-import { Guild } from "discord.js";
+import { Message } from "discord.js";
 import {
   runSlap,
   runBlame,
@@ -10,15 +10,15 @@ import {
 export const commands = (
   command: string,
   args: string[],
-  server: Guild
+  message: Message
 ): Promise<string> => {
   // Dictionary of commands and their corresponding funtions
-  const commandDict: { [key: string]: (args: string[]) => string } = {
-    add: runAdd,
-    blame: runBlame,
-    slap: runSlap(server),
-    spout: runSpout,
-    subscribe: runSubscribe,
+  const commandDict: { [key: string]: (args: string[]) => Promise<string> } = {
+    add: runAdd(message),
+    blame: runBlame(message),
+    slap: runSlap(message),
+    spout: runSpout(message),
+    // subscribe: runSubscribe,
   };
 
   // Return a promise we can use to use on the index to reply with a message
