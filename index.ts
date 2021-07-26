@@ -1,5 +1,5 @@
 import Discord, { Channel, Message } from "discord.js";
-import { callAndResponse, commands } from "./modules";
+import { callAndResponse, commands, generateFiniBucks } from "./modules";
 import dotenv from "dotenv";
 
 // Run config to get our environment variables
@@ -50,7 +50,7 @@ disClient.on("message", async (message: Message) => {
     });
   } else {
     // No command here. But someone is engaging the server. Let's reward them :)
-    // giveUserMoney();
+    generateFiniBucks(message);
 
     // Check if this was some sort of call and response message
     // First check for any simple call-and-response's

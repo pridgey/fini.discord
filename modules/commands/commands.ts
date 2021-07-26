@@ -2,6 +2,8 @@ import { Message } from "discord.js";
 import {
   runSlap,
   runBlame,
+  runBalance,
+  runEvenOdd,
   runSpout,
   runSubscribe,
   runAdd,
@@ -15,7 +17,9 @@ export const commands = (
   // Dictionary of commands and their corresponding funtions
   const commandDict: { [key: string]: (args: string[]) => Promise<string> } = {
     add: runAdd(message),
+    balance: runBalance(message),
     blame: runBlame(message),
+    evenodd: runEvenOdd(message),
     slap: runSlap(message),
     spout: runSpout(message),
     // subscribe: runSubscribe,

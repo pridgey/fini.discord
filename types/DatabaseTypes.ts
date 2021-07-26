@@ -13,13 +13,14 @@ export interface SentenceItem extends DatabaseItem {}
 export interface HammerspaceItem extends DatabaseItem {}
 
 export interface BankRecord {
-  ID: number;
+  ID?: number;
   User: string;
   Balance: number;
+  Server: string;
 }
 
 export interface SettingsRecord {
-  ID: number;
+  ID?: number;
   Key: string;
   Value: string;
   Server: string;
