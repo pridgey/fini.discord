@@ -1,5 +1,5 @@
 import sqlite3 from "sqlite3";
-import { select, update, insert } from "./dbActions";
+import { select, update, insert, remove } from "./dbActions";
 
 export const db = () => {
   // connect to database
@@ -8,7 +8,7 @@ export const db = () => {
   return {
     insert: insert(db),
     update: update(db),
-    delete: () => undefined,
+    remove: remove(db),
     select: select(db),
   };
 };

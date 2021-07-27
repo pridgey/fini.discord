@@ -22,7 +22,7 @@ export const commands = (
     evenodd: runEvenOdd(message),
     slap: runSlap(message),
     spout: runSpout(message),
-    // subscribe: runSubscribe,
+    subscribe: runSubscribe(message),
   };
 
   // Return a promise we can use to use on the index to reply with a message

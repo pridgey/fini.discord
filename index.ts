@@ -17,11 +17,11 @@ disClient.once("ready", () => {
 
 // Now for the actual meat of the operation
 //   First check for typing indicators to send out health reminder pings
-disClient.on("typingStart", async (channel: Channel) => {
-  // Do the Health Ping
-  // healthyTime();
-  console.log("channel:", channel);
-});
+// disClient.on("typingStart", async (channel: Channel) => {
+//   // Do the Health Ping
+//   // healthyTime();
+//   console.log("channel:", channel);
+// });
 
 const commandPrefix = "fini ";
 
@@ -45,9 +45,11 @@ disClient.on("message", async (message: Message) => {
     const args: string[] = messageParts.slice(1);
 
     // Run the command
-    commands(command, args, message).then((commandResult) => {
-      message.channel.send(commandResult);
-    });
+    commands(command, args, message)
+      .then((commandResult) => {
+        message.channel.send(commandResult);
+      })
+      .catch((err) => console.error(err));
   } else {
     // No command here. But someone is engaging the server. Let's reward them :)
     generateFiniBucks(message);
