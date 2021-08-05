@@ -27,7 +27,7 @@ export const generateFiniBucks = (message: Message) => {
       "Bank",
       {
         Field: "User",
-        Value: message.author.username,
+        Value: message.author.id,
       },
       message.guild.id
     )
@@ -40,7 +40,7 @@ export const generateFiniBucks = (message: Message) => {
         // There is no bank record for this user, let's make one.
         userLedger = {
           Balance: 0,
-          User: message.author.username,
+          User: message.author.id,
           Server: message.guild.id,
         };
         // insert it
@@ -52,7 +52,7 @@ export const generateFiniBucks = (message: Message) => {
                 "Bank",
                 {
                   Field: "User",
-                  Value: message.author.username,
+                  Value: message.author.id,
                 },
                 message.guild.id
               )

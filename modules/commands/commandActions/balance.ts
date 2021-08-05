@@ -6,7 +6,7 @@ export const runBalance = (message: Message) => () =>
   db()
     .select<BankRecord>(
       "Bank",
-      { Field: "User", Value: message.author.username },
+      { Field: "User", Value: message.author.id },
       message.guild.id
     )
     .then((result) => {

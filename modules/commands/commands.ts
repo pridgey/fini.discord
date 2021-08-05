@@ -7,6 +7,7 @@ import {
   runSpout,
   runSubscribe,
   runAdd,
+  runWager,
 } from "./commandActions";
 
 export const commands = (
@@ -19,10 +20,11 @@ export const commands = (
     add: runAdd(message),
     balance: runBalance(message),
     blame: runBlame(message),
-    evenodd: runEvenOdd(message),
+    evenodd: runEvenOdd(),
     slap: runSlap(message),
     spout: runSpout(message),
     subscribe: runSubscribe(message),
+    wager: runWager(message),
   };
 
   // Return a promise we can use to use on the index to reply with a message
