@@ -56,7 +56,7 @@ export const runWager = (message: Message) => (args: string[]) => {
                   currentBalance + wagerNum * multiplier
                 ).then(() =>
                   checkBalance(message.author.id, message.guild.id).then(
-                    (resultBalance) => `Your new balance: ${resultBalance}`
+                    (resultBalance) => `Your new balance: $${resultBalance}`
                   )
                 );
               });
