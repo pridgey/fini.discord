@@ -19,68 +19,78 @@ export const runWager = (message: Message) => (args: string[]) => {
   const wagerNum = Number(wagerAmount);
   const game = AvailableGames[wagerGame];
 
-  if (game) {
-    // Check game validation
-    if (game.Validation(gameArgs)) {
-      // Check user funds to ensure they can play
-      return checkBalance(message.author.id, message.guild.id).then(
-        (balance: number) => {
-          let currentBalance = balance;
-          if (currentBalance >= wagerNum) {
-            // Deduct the wager from their funds so they can't cheat the system
-            return modifyFunds(
-              message.author.id,
-              message.guild.id,
-              balance - wagerNum
-            ).then(() => {
-              currentBalance -= wagerNum;
-              // Play the game
-              return game.Run(gameArgs, message).then(({ multiplier, win }) => {
-                if (win) {
-                  game.Win(message);
-                  // check for jackpot
-                } else {
-                  game.Lose(message);
-                  checkBalance("Fini", message.guild.id).then((finiBalance) =>
-                    modifyFunds(
-                      "Fini",
-                      message.guild.id,
-                      finiBalance + wagerNum
-                    )
-                  );
-                }
+  if (wagerNum > 0) {
+    if (game) {
+      // Check game validation
+      if (game.Validation(gameArgs)) {
+        // Check user funds to ensure they can play
+        return checkBalance(message.author.id, message.guild.id).then(
+          (balance: number) => {
+            let currentBalance = balance;
+            if (currentBalance >= wagerNum) {
+              // Deduct the wager from their funds so they can't cheat the system
+              return modifyFunds(
+                message.author.id,
+                message.guild.id,
+                balance - wagerNum
+              ).then(() => {
+                currentBalance -= wagerNum;
+                // Play the game
+                return game
+                  .Run(gameArgs, message)
+                  .then(({ multiplier, win }) => {
+                    if (win) {
+                      game.Win(message);
+                      // check for jackpot
+                    } else {
+                      game.Lose(message);
+                      checkBalance("Fini", message.guild.id).then(
+                        (finiBalance) =>
+                          modifyFunds(
+                            "Fini",
+                            message.guild.id,
+                            finiBalance + wagerNum
+                          )
+                      );
+                    }
 
-                return modifyFunds(
-                  message.author.id,
-                  message.guild.id,
-                  currentBalance + wagerNum * multiplier
-                ).then(() =>
-                  checkBalance(message.author.id, message.guild.id).then(
-                    (resultBalance) => `Your new balance: $${resultBalance}`
-                  )
-                );
+                    return modifyFunds(
+                      message.author.id,
+                      message.guild.id,
+                      currentBalance + wagerNum * multiplier
+                    ).then(() =>
+                      checkBalance(message.author.id, message.guild.id).then(
+                        (resultBalance) => `Your new balance: $${resultBalance}`
+                      )
+                    );
+                  });
               });
-            });
-          } else {
-            // They don't have the money
-            return stringReturn(
-              `You lack the proper funds with which to play this game.\nBy that I mean you wagered: ${wagerAmount}, and you have ${balance} in your account`
-            );
+            } else {
+              // They don't have the money
+              return stringReturn(
+                `You lack the proper funds with which to play this game.\nBy that I mean you wagered: ${wagerAmount}, and you have ${balance} in your account`
+              );
+            }
           }
-        }
-      );
+        );
+      } else {
+        // Invalid game commands
+        return stringReturn(
+          `That doesn't look like the correct arguments for this game.`
+        );
+      }
     } else {
-      // Invalid game commands
+      // They put in something we don't have
       return stringReturn(
-        `That doesn't look like the correct arguments for this game.`
+        `Unable to find a game with the name ${wagerGame}. Available games are: \n-${Object.keys(
+          AvailableGames
+        ).join("\n-")}`
       );
     }
   } else {
-    // They put in something we don't have
+    // Wager less than 0
     return stringReturn(
-      `Unable to find a game with the name ${wagerGame}. Available games are: \n-${Object.keys(
-        AvailableGames
-      ).join("\n-")}`
+      `You have to wager a positive amount. Are you trying to break me? :(`
     );
   }
 };
