@@ -38,12 +38,6 @@ export const EvenOdd: Game = {
 
         const updatedNum = outcome === "even" ? numOfEvens + 1 : numOfOdds + 1;
 
-        console.log("Nums:", {
-          numOfEvens,
-          numOfOdds,
-          updatedNum,
-        });
-
         updateStats(
           "evenodd",
           message.guild.id,
