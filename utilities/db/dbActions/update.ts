@@ -6,7 +6,8 @@ export const update =
   <T>(
     UpdatableItem: DatabaseTables,
     CurrentValue: FieldValuePair,
-    NewValue: FieldValuePair
+    NewValue: FieldValuePair,
+    Server: string
   ): Promise<T[]> =>
     new Promise((resolve, reject) => {
       db.run(
@@ -14,7 +15,7 @@ export const update =
           NewValue.Value
         )} WHERE ${CurrentValue.Field} = "${encodeURIComponent(
           CurrentValue.Value
-        )}"`,
+        )}" AND Server IN ("All", "${Server}")`,
         (result, error) => {
           if (error) reject(error);
           resolve(result);

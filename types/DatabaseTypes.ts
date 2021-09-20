@@ -26,12 +26,21 @@ export interface SettingsRecord {
   Server: string;
 }
 
+export interface StatsRecord {
+  ID?: number;
+  Collection: string;
+  Field: string;
+  Value: string;
+  Server: string;
+}
+
 export type DatabaseTables =
   | "Bank"
   | "Hammerspace"
   | "Phrase"
   | "Sentences"
-  | "Settings";
+  | "Settings"
+  | "Stats";
 
 export type FieldValuePair = {
   Field: string;

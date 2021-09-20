@@ -8,6 +8,8 @@ import {
   runSubscribe,
   runAdd,
   runWager,
+  runStats,
+  runJackpot,
 } from "./commandActions";
 
 export const commands = (
@@ -25,11 +27,16 @@ export const commands = (
     spout: runSpout(message),
     subscribe: runSubscribe(message),
     wager: runWager(message),
+    stats: runStats(message),
+    jackpot: runJackpot(message),
   };
 
   // Return a promise we can use to use on the index to reply with a message
   return new Promise((resolve, reject) => {
     if (command in commandDict) {
+      if (!require.main.path.includes("home/pi")) {
+        message.channel.send("~Debug Mode~");
+      }
       resolve(commandDict[command](args));
     } else {
       reject();

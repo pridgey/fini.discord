@@ -21,6 +21,29 @@ import { db } from "./../../utilities/db";
 import { BankRecord } from "./../../types";
 import seedrandom from "seedrandom";
 
+export const modifyFunds = (
+  UserID: string,
+  ServerID: string,
+  newBalance: number
+) =>
+  db().update<BankRecord>(
+    "Bank",
+    {
+      Field: "User",
+      Value: UserID,
+    },
+    {
+      Field: "Balance",
+      Value: newBalance,
+    },
+    ServerID
+  );
+
+export const checkBalance = (UserID: string, ServerID: string) =>
+  db()
+    .select<BankRecord>("Bank", { Field: "User", Value: UserID }, ServerID)
+    .then((results) => results[0]?.Balance ?? 0);
+
 export const generateFiniBucks = (message: Message) => {
   db()
     .select<BankRecord>(
@@ -74,7 +97,8 @@ export const generateFiniBucks = (message: Message) => {
         {
           Field: "Balance",
           Value: Math.round(userLedger.Balance + amountToAward),
-        }
+        },
+        message.guild.id
       );
     });
 };

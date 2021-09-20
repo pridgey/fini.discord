@@ -32,7 +32,8 @@ export const runSlap = (message: Message) => (args: string[]) => {
           {
             Field: "TimesUsed",
             Value: results[0].TimesUsed + 1,
-          }
+          },
+          message.guild.id
         )
         .catch((err) => console.error(err));
       return slapMessage;

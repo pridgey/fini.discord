@@ -39,7 +39,11 @@ export const runSpout = (message: Message) => () => {
                 db().update(
                   "Hammerspace",
                   { Field: "ID", Value: hammerspaceRecord.ID },
-                  { Field: "TimesUsed", Value: hammerspaceRecord.TimesUsed + 1 }
+                  {
+                    Field: "TimesUsed",
+                    Value: hammerspaceRecord.TimesUsed + 1,
+                  },
+                  message.guild.id
                 );
               });
             }
@@ -52,7 +56,8 @@ export const runSpout = (message: Message) => () => {
                 db().update(
                   "Phrase",
                   { Field: "ID", Value: phraseRecord.ID },
-                  { Field: "TimesUsed", Value: phraseRecord.TimesUsed + 1 }
+                  { Field: "TimesUsed", Value: phraseRecord.TimesUsed + 1 },
+                  message.guild.id
                 );
               });
             }
