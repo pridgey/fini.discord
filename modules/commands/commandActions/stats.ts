@@ -10,7 +10,7 @@ export const runStats = (message: Message) => (args: string[]) => {
   if (statsCollection.length) {
     return getStatistics(statsCollection, message.guild.id).then((stats) => {
       if (stats.length) {
-        let reply = `Statistics for _${statsCollection}_:\n`;
+        let reply = `**Statistics for ${statsCollection}:**\n`;
         stats.forEach(
           (stat) => (reply += `**${stat.Field}**: ${stat.Value}\n`)
         );

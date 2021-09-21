@@ -162,7 +162,9 @@ export const Horsey: Game = {
                     message.channel.send(
                       `Your horsey came in ${rankings[guessIndex] + 1}${
                         RankSuffix[rankings[guessIndex]]
-                      } place! ${multiplier > 0 && `You win ${multiplier}x!`}`
+                      } place! ${
+                        multiplier > 0 ? `You win ${multiplier}x!` : ""
+                      }`
                     );
 
                     resolve({
