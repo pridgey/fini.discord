@@ -18,9 +18,14 @@ export const select =
             if (error) {
               reject(error);
             } else {
-              if (rows.length && "Item" in rows[0]) {
-                rows.forEach((row) => {
-                  row.Item = decodeURIComponent(row.Item);
+              if (rows.length) {
+                rows.forEach((record) => {
+                  // One item of the results
+                  const values: any[] = Object.values(record);
+                  Object.keys(record).forEach(
+                    (key, index) =>
+                      (record[key] = decodeURIComponent(values[index]))
+                  );
                 });
               }
               resolve(rows);
@@ -35,8 +40,11 @@ export const select =
             if (error) {
               reject(error);
             } else {
-              if (!!row && "Item" in row) {
-                row.Item = decodeURIComponent(row.Item);
+              if (!!row) {
+                const values: any[] = Object.values(row);
+                Object.keys(row).forEach(
+                  (key, index) => (row[key] = decodeURIComponent(values[index]))
+                );
               }
               resolve([row]);
             }
@@ -54,8 +62,11 @@ export const select =
             if (error) {
               reject(error);
             } else {
-              if (!!row && "Item" in row) {
-                row.Item = decodeURIComponent(row.Item);
+              if (!!row) {
+                const values: any[] = Object.values(row);
+                Object.keys(row).forEach(
+                  (key, index) => (row[key] = decodeURIComponent(values[index]))
+                );
               }
               resolve([row]);
             }

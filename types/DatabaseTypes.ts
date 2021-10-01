@@ -34,13 +34,22 @@ export interface StatsRecord {
   Server: string;
 }
 
+export interface FeedsRecord {
+  ID?: number;
+  URL: string;
+  Items: number;
+  User: string;
+  Server: string;
+}
+
 export type DatabaseTables =
   | "Bank"
   | "Hammerspace"
   | "Phrase"
   | "Sentences"
   | "Settings"
-  | "Stats";
+  | "Stats"
+  | "Feeds";
 
 export type FieldValuePair = {
   Field: string;

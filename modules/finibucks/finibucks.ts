@@ -55,6 +55,7 @@ export const generateFiniBucks = (message: Message) => {
       message.guild.id
     )
     .then((results) => {
+      console.log("Bank Results:", results);
       let userLedger: BankRecord;
       if (results[0]) {
         // Grab the results
@@ -96,7 +97,7 @@ export const generateFiniBucks = (message: Message) => {
         { Field: "ID", Value: userLedger.ID },
         {
           Field: "Balance",
-          Value: Math.round(userLedger.Balance + amountToAward),
+          Value: Math.round(Number(userLedger.Balance) + Number(amountToAward)),
         },
         message.guild.id
       );

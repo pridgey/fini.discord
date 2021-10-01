@@ -10,6 +10,7 @@ import {
   runWager,
   runStats,
   runJackpot,
+  runFeed,
 } from "./commandActions";
 
 export const commands = (
@@ -29,6 +30,7 @@ export const commands = (
     wager: runWager(message),
     stats: runStats(message),
     jackpot: runJackpot(message),
+    feed: runFeed(message),
   };
 
   // Return a promise we can use to use on the index to reply with a message

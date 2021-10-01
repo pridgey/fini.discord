@@ -1,4 +1,4 @@
-import Discord, { Channel, Message } from "discord.js";
+import Discord, { Intents, Message } from "discord.js";
 import { callAndResponse, commands, generateFiniBucks } from "./modules";
 import dotenv from "dotenv";
 
@@ -6,7 +6,9 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Create Discord client and login to Discord API
-const disClient = new Discord.Client();
+const disClient = new Discord.Client({
+  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
+});
 disClient.login(process.env.FINI_TOKEN);
 
 // Once ready, let me know in the console so I can jump out
@@ -26,7 +28,7 @@ disClient.once("ready", () => {
 const commandPrefix = "fini ";
 
 //  Now handling full on messages
-disClient.on("message", async (message: Message) => {
+disClient.on("messageCreate", async (message: Message) => {
   // We don't care about bots. Sad but true.
   if (message.author.bot) return;
 
