@@ -9,6 +9,7 @@
     "outDir": "./dist",
     "target": "es5",
     "esModuleInterop": true,
+    "resolveJsonModule": true,
     "baseUrl": "./",
   },
   "exclude": ["node_modules"]

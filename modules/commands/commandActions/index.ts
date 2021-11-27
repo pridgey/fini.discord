@@ -9,3 +9,4 @@ export * from "./wager";
 export * from "./stats";
 export * from "./jackpot";
 export * from "./feed";
+export * from "./translate";

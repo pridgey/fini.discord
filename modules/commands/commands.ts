@@ -11,6 +11,7 @@ import {
   runStats,
   runJackpot,
   runFeed,
+  runTranslate,
 } from "./commandActions";
 
 export const commands = (
@@ -31,6 +32,7 @@ export const commands = (
     stats: runStats(message),
     jackpot: runJackpot(message),
     feed: runFeed(message),
+    translate: runTranslate(),
   };
 
   // Return a promise we can use to use on the index to reply with a message
