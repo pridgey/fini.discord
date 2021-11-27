@@ -70,7 +70,7 @@ client.on("message", async (message) => {
         break;
       case "minecraft":
         message.channel.send(
-          "The minecraft server is on mc.pridgey.dev and is currently using Vanilla 1.17.1"
+          "The minecraft server is on mc.pridgey.dev and is currently using mc eternal 1.3.7.1.\r\nMods you must remove: `RandomPatches (Forge)`\r\nMods you can remove if you need performance: `JourneyMap`, `JEI`"
         );
         break;
     }
