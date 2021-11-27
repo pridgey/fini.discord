@@ -55,7 +55,6 @@ export const generateFiniBucks = (message: Message) => {
       message.guild.id
     )
     .then((results) => {
-      console.log("Bank Results:", results);
       let userLedger: BankRecord;
       if (results[0]) {
         // Grab the results

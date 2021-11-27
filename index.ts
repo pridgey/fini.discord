@@ -1,4 +1,9 @@
-import Discord, { Intents, Message } from "discord.js";
+import Discord, {
+  Intents,
+  Interaction,
+  Message,
+  MessageEmbed,
+} from "discord.js";
 import { callAndResponse, commands, generateFiniBucks } from "./modules";
 import dotenv from "dotenv";
 
@@ -27,10 +32,70 @@ disClient.once("ready", () => {
 
 const commandPrefix = "fini ";
 
+disClient.on("interactionCreate", async (interaction: Interaction) => {
+  if (!interaction.isCommand()) return;
+
+  const test = interaction.options.getString("wager");
+  const embed = new MessageEmbed()
+    .setColor("#0099ff")
+    .setTitle("Haha you silly bitch")
+    .setDescription(test);
+  await interaction.reply({ embeds: [embed] });
+});
+
 //  Now handling full on messages
 disClient.on("messageCreate", async (message: Message) => {
   // We don't care about bots. Sad but true.
   if (message.author.bot) return;
+
+  message.guild.commands.create({
+    description: "A test of discord's command system",
+    name: "fini-test-2",
+    options: [
+      {
+        description: "option one",
+        name: "wager",
+        type: "STRING",
+        required: true,
+      },
+      {
+        description: "a int option",
+        name: "int",
+        type: "INTEGER",
+        required: true,
+      },
+      {
+        description: "a num option",
+        name: "num",
+        type: "NUMBER",
+        required: true,
+      },
+      {
+        description: "a bool option",
+        name: "bool",
+        type: "BOOLEAN",
+        required: true,
+      },
+      {
+        description: "a user option",
+        name: "user",
+        type: "USER",
+        required: true,
+      },
+      {
+        description: "a role option",
+        name: "role",
+        type: "ROLE",
+        required: true,
+      },
+      {
+        description: "a mention option",
+        name: "mention",
+        type: "MENTIONABLE",
+        required: true,
+      },
+    ],
+  });
 
   // Lowercase makes comparisons way easier
   const messageText = message.content.toLowerCase();
