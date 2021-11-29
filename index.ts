@@ -6,6 +6,7 @@ import Discord, {
 } from "discord.js";
 import { callAndResponse, commands, generateFiniBucks } from "./modules";
 import dotenv from "dotenv";
+import { db } from "./utilities";
 
 // Run config to get our environment variables
 dotenv.config();
@@ -120,6 +121,11 @@ disClient.on("messageCreate", async (message: Message) => {
   } else {
     // No command here. But someone is engaging the server. Let's reward them :)
     generateFiniBucks(message);
+
+    // Add message to db for training later
+    db()
+      .insert("ChatLog", { Content: message.content })
+      .then(() => console.log("Added"));
 
     // Check if this was some sort of call and response message
     // First check for any simple call-and-response's

@@ -42,6 +42,11 @@ export interface FeedsRecord {
   Server: string;
 }
 
+export interface ChatLogRecord {
+  ID?: number;
+  Content: string;
+}
+
 export type DatabaseTables =
   | "Bank"
   | "Hammerspace"
@@ -49,7 +54,8 @@ export type DatabaseTables =
   | "Sentences"
   | "Settings"
   | "Stats"
-  | "Feeds";
+  | "Feeds"
+  | "ChatLog";
 
 export type FieldValuePair = {
   Field: string;
