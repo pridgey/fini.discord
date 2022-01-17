@@ -7,10 +7,11 @@
     "moduleResolution": "node",
     "noImplicitAny": false,
     "outDir": "./dist",
-    "target": "es5",
+    "target": "esnext", // targeting es5 to convert import into require
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "baseUrl": "./",
+    "module": "esnext"
   },
   "exclude": ["node_modules", "ml-models"]
 }
