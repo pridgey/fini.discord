@@ -1,6 +1,9 @@
 import { Client, ClientOptions, Collection, Intents } from "discord.js";
 import dotenv from "dotenv";
 import glob from "glob";
+import { Command } from "./types";
+import { REST } from "@discordjs/rest";
+import { Routes } from "discord-api-types/v9";
 import { db } from "./utilities";
 
 // Run config to get our environment variables
@@ -33,17 +36,22 @@ glob("**/commands/**/*.command.js", (err: Error, files: string[]) => {
   } else {
     console.log("Files:", files);
     for (const file of files) {
-      console.log("File:", file);
-      import(`./${file.replace("dist/", "")}`).then((val) =>
-        console.log("File:", val.default())
-      );
+      import(`./${file.replace("dist/", "")}`).then((cmd: any) => {
+        console.log("Command:", cmd);
+        // Pass in the command, named by the file and value set to the function to run
+        client.commands.set(cmd.data.name, cmd);
+      });
     }
   }
 });
 
 // WE READY
 client.once("ready", () => {
+  // const rest = new REST({ version: "9" }).setToken(process.env.FINI_TOKEN);
   console.log("Ready!");
+  client.commands.forEach((cmd) => {
+    console.log("Cmd:", cmd);
+  });
 });
 
 // If we get a slash command, run the slash command.

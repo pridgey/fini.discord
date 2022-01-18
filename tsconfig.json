@@ -4,14 +4,15 @@
     "allowSyntheticDefaultImports": true,
     "noUnusedParameters": true,
     "strictNullChecks": false,
-    "moduleResolution": "node",
+    "moduleResolution": "Node",
     "noImplicitAny": false,
     "outDir": "./dist",
-    "target": "esnext", // targeting es5 to convert import into require
+    "target": "esnext",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "baseUrl": "./",
-    "module": "esnext"
+    "module": "NodeNext",
+    "inlineSourceMap": true,
   },
   "exclude": ["node_modules", "ml-models"]
 }
