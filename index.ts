@@ -21,7 +21,13 @@ export class FiniClient extends Client {
 }
 
 // Initialize our discord client
-const client = new FiniClient({ intents: [Intents.FLAGS.GUILDS] });
+const client = new FiniClient({
+  intents: [
+    Intents.FLAGS.GUILDS,
+    Intents.FLAGS.GUILD_MESSAGES,
+    Intents.FLAGS.GUILD_MESSAGE_TYPING,
+  ],
+});
 
 // Create a collection for our commands
 client.commands = new Collection();
@@ -37,7 +43,6 @@ glob("**/commands/**/*.command.js", (err: Error, files: string[]) => {
     console.log("Files:", files);
     for (const file of files) {
       import(`./${file.replace("dist/", "")}`).then((cmd: any) => {
-        console.log("Command:", cmd);
         // Pass in the command, named by the file and value set to the function to run
         client.commands.set(cmd.data.name, cmd);
       });
@@ -45,21 +50,45 @@ glob("**/commands/**/*.command.js", (err: Error, files: string[]) => {
   }
 });
 
+client.once("typingStart", (ev) => {
+  // Using discord's REST library
+  const rest = new REST({ version: "9" }).setToken(process.env.FINI_TOKEN);
+
+  // We have an array that we will shove command's json into
+  const commandsToRegister = [];
+  // Generate the json
+  client.commands.forEach((cmd) => {
+    console.log("Command JSON:", cmd.data.toJSON());
+    commandsToRegister.push(cmd.data.toJSON());
+  });
+
+  // send the commands and register them
+  rest
+    .put(
+      Routes.applicationGuildCommands(process.env.FINI_CLIENTID, ev.guild.id),
+      {
+        body: commandsToRegister,
+      }
+    )
+    .then(() => console.log("Successfully registered application commands."))
+    .catch(console.error);
+});
+
 // WE READY
 client.once("ready", () => {
-  // const rest = new REST({ version: "9" }).setToken(process.env.FINI_TOKEN);
-  console.log("Ready!");
-  client.commands.forEach((cmd) => {
-    console.log("Cmd:", cmd);
-  });
+  console.log("Connected");
 });
+
+client.on("messageCreate", () => {});
 
 // If we get a slash command, run the slash command.
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isCommand()) return;
 
+  // grab the command name
   const command = client.commands.get(interaction.commandName);
 
+  // No command, no run
   if (!command) return;
 
   try {

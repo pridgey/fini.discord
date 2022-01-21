@@ -11,15 +11,15 @@ export const data = new SlashCommandBuilder()
   )
   .addStringOption((option) =>
     option
-      .setName("Slap Target")
-      .setDescription("What you are slapping")
+      .setName("target")
+      .setDescription("what you are slapping")
       .setRequired(true)
   );
 
 export const execute = async (interaction: CommandInteraction) => {
   // Determine target from the args, or use the author if empty
   const slapTarget =
-    interaction.options.getString("Slap Target") || interaction.user.username;
+    interaction.options.getString("target") || interaction.user.username;
 
   // This the template for the slap
   let slapMessage = "**Fini slaps {0}{1} with {2}**";

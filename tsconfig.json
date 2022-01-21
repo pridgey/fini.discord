@@ -7,11 +7,11 @@
     "moduleResolution": "Node",
     "noImplicitAny": false,
     "outDir": "./dist",
-    "target": "esnext",
+    "target": "ESNext",
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "baseUrl": "./",
-    "module": "NodeNext",
+    "module": "CommonJS",
     "inlineSourceMap": true,
   },
   "exclude": ["node_modules", "ml-models"]
