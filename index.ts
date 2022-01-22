@@ -40,7 +40,6 @@ glob("**/commands/**/*.command.js", (err: Error, files: string[]) => {
     console.error(err.stack);
     console.error(" ");
   } else {
-    console.log("Files:", files);
     for (const file of files) {
       import(`./${file.replace("dist/", "")}`).then((cmd: any) => {
         // Pass in the command, named by the file and value set to the function to run
