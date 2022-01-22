@@ -13,12 +13,16 @@ export const execute = async (interaction: CommandInteraction) => {
   const query = interaction.options.getString("query");
 
   grabGif(query).then((url) => {
-    const embed = new MessageEmbed().setImage(url).setFooter({
-      text: query,
-    });
+    if (url) {
+      const embed = new MessageEmbed().setImage(url).setFooter({
+        text: query,
+      });
 
-    interaction.reply({
-      embeds: [embed],
-    });
+      interaction.reply({
+        embeds: [embed],
+      });
+    } else {
+      interaction.reply(`I couldn't find a gif for ${query}`);
+    }
   });
 };
