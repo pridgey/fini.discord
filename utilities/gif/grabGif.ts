@@ -11,7 +11,8 @@ export const grabGif = (query: string) => {
     .then((results) => results.json())
     .then(({ results }) => {
       const gifIndex = Math.round(Math.random() * results.length);
-      const { url } = results[gifIndex];
+      const gifData = results[gifIndex];
+      const { url } = gifData?.media[0]?.mediumgif ?? { url: null };
       return url;
     });
 };

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import { grabGif } from "./../utilities";
 
 export const data = new SlashCommandBuilder()
@@ -10,9 +10,15 @@ export const data = new SlashCommandBuilder()
   );
 
 export const execute = async (interaction: CommandInteraction) => {
-  grabGif(interaction.options.getString("query")).then((url) => {
+  const query = interaction.options.getString("query");
+
+  grabGif(query).then((url) => {
+    const embed = new MessageEmbed().setImage(url).setFooter({
+      text: query,
+    });
+
     interaction.reply({
-      content: url,
+      embeds: [embed],
     });
   });
 };
