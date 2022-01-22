@@ -5,8 +5,8 @@ export const update =
   (db: Database) =>
   <T>(
     UpdatableItem: DatabaseTables,
-    CurrentValue: FieldValuePair,
-    NewValue: FieldValuePair,
+    CurrentValue: FieldValuePair<T>,
+    NewValue: FieldValuePair<T>,
     Server: string
   ): Promise<T[]> =>
     new Promise((resolve, reject) => {

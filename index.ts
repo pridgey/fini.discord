@@ -58,7 +58,6 @@ client.once("typingStart", (ev) => {
   const commandsToRegister = [];
   // Generate the json
   client.commands.forEach((cmd) => {
-    console.log("Command JSON:", cmd.data.toJSON());
     commandsToRegister.push(cmd.data.toJSON());
   });
 
@@ -96,7 +95,7 @@ client.on("interactionCreate", async (interaction) => {
   } catch (error) {
     console.error(error);
     return interaction.reply({
-      content: "I fucked up D=",
+      content: "I fucked up D:",
       ephemeral: true,
     });
   }

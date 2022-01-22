@@ -57,7 +57,7 @@ export type DatabaseTables =
   | "Feeds"
   | "ChatLog";
 
-export type FieldValuePair = {
-  Field: string;
+export type FieldValuePair<T> = {
+  Field: keyof T;
   Value: string | number;
 };

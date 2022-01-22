@@ -1,17 +1,28 @@
-import { db } from "./../../../utilities/db";
-import { HammerspaceItem, SentenceItem, PhraseItem } from "./../../../types";
-import { Message } from "discord.js";
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { CommandInteraction } from "discord.js";
+import { LogHammerspaceItem } from "./../utilities/logHammerspaceItem";
+import { db } from "./../utilities/db";
+import { HammerspaceItem, SentenceItem, PhraseItem } from "./../types";
 import brain from "brain.js";
-import * as spoutModel from "./../../../ml-models/spout-model.json";
+import * as spoutModel from "./../ml-models/spout-model.json";
 
-export const runSpout = (message: Message) => (args: string[]) => {
-  if (args.includes("-ai")) {
+export const data = new SlashCommandBuilder()
+  .setName("spout")
+  .setDescription("I'll spout off a random sentence for you")
+  .addBooleanOption((opt) =>
+    opt.setName("ai").setDescription("Use AI Spout Model")
+  );
+
+export const execute = async (interaction: CommandInteraction) => {
+  const useAI = interaction.options.getBoolean("ai");
+
+  if (useAI) {
     // Run ml version
     const net = new brain.recurrent.LSTM();
     net.fromJSON(spoutModel as unknown as brain.INeuralNetworkJSON);
 
-    return db()
-      .select<HammerspaceItem>("Hammerspace", "Random", message.guild.id)
+    db()
+      .select<HammerspaceItem>("Hammerspace", "Random", interaction.guildId)
       .then((results) => {
         if (results[0]) {
           // The item
@@ -19,9 +30,9 @@ export const runSpout = (message: Message) => (args: string[]) => {
 
           const result = net.run(item).toString().toLowerCase();
 
-          return (
+          interaction.reply(
             `${result.substring(0, 1).toUpperCase()}${result.substring(1)}` ||
-            "I had a spout issue with my model, run `fini spout` for the default fini spout"
+              "I had a spout issue with my model, run `fini spout` for the default fini spout"
           );
         }
       });
@@ -29,7 +40,7 @@ export const runSpout = (message: Message) => (args: string[]) => {
     // Run old version
     // First we get a Setence to plug stuff into
     return db()
-      .select<SentenceItem>("Sentences", "Random", message.guild.id)
+      .select<SentenceItem>("Sentences", "Random", interaction.guildId)
       .then((results) => {
         if (results[0]) {
           // The sentence to spout
@@ -42,32 +53,28 @@ export const runSpout = (message: Message) => (args: string[]) => {
           const getNouns = db().select<HammerspaceItem>(
             "Hammerspace",
             "Random",
-            message.guild.id,
+            interaction.guildId,
             numOfNouns || 1
           );
           const getPhrases = db().select<PhraseItem>(
             "Phrase",
             "Random",
-            message.guild.id,
+            interaction.guildId,
             numOfPhrases || 1
           );
 
           // Run both SQL statements before proceeding
-          return Promise.all([getNouns, getPhrases]).then(
+          Promise.all([getNouns, getPhrases]).then(
             ([HammerspaceRecords, PhraseRecords]) => {
               if (numOfNouns > 0) {
                 HammerspaceRecords.forEach((hammerspaceRecord) => {
                   // Replace the occurence of {n} tags in the sentence
                   sentence = sentence.replace("{n}", hammerspaceRecord.Item);
                   // Update the number of times used for this hammerspace item
-                  db().update(
-                    "Hammerspace",
-                    { Field: "ID", Value: hammerspaceRecord.ID },
-                    {
-                      Field: "TimesUsed",
-                      Value: hammerspaceRecord.TimesUsed + 1,
-                    },
-                    message.guild.id
+                  LogHammerspaceItem(
+                    hammerspaceRecord.ID,
+                    hammerspaceRecord.TimesUsed + 1,
+                    interaction.guildId
                   );
                 });
               }
@@ -81,23 +88,21 @@ export const runSpout = (message: Message) => (args: string[]) => {
                     "Phrase",
                     { Field: "ID", Value: phraseRecord.ID },
                     { Field: "TimesUsed", Value: phraseRecord.TimesUsed + 1 },
-                    message.guild.id
+                    interaction.guildId
                   );
                 });
               }
 
-              return `*${sentence}*`;
+              interaction.reply(`*${sentence}*`);
             }
           );
         } else {
           // Nada
-          return new Promise<string>((resolve) =>
-            resolve("I couldn't find a sentence to spout it on out")
-          );
+          interaction.reply("I couldn't find a sentence to spout it on out");
         }
       })
       .catch((err) => {
-        return `I fucked up: ${err}`;
+        interaction.reply(`I fucked up: ${err}`);
       });
   }
 };

@@ -5,7 +5,7 @@ export const remove =
   (db: Database) =>
   <T>(
     UpdatableItem: DatabaseTables,
-    WhereCondition: FieldValuePair
+    WhereCondition: FieldValuePair<T>
   ): Promise<T[]> =>
     new Promise((resolve, reject) => {
       db.run(

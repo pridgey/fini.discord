@@ -5,7 +5,7 @@ export const select =
   (db: Database) =>
   <T>(
     SelectableItem: DatabaseTables,
-    Count: "All" | "Random" | FieldValuePair = "All",
+    Count: "All" | "Random" | FieldValuePair<T> = "All",
     Server: string,
     Limit: number = 1
   ): Promise<T[]> =>
