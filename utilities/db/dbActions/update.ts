@@ -10,15 +10,15 @@ export const update =
     Server: string
   ): Promise<T[]> =>
     new Promise((resolve, reject) => {
-      db.run(
-        `UPDATE ${UpdatableItem} SET ${NewValue.Field} = ${encodeURIComponent(
-          NewValue.Value
-        )} WHERE ${CurrentValue.Field} = "${encodeURIComponent(
-          CurrentValue.Value
-        )}" AND Server IN ("All", "${Server}")`,
-        (result, error) => {
-          if (error) reject(error);
-          resolve(result);
-        }
-      );
+      const command = `UPDATE ${UpdatableItem} SET ${
+        NewValue.Field
+      } = ${encodeURIComponent(NewValue.Value)} WHERE ${
+        CurrentValue.Field
+      } = "${encodeURIComponent(
+        CurrentValue.Value
+      )}" AND Server IN ("All", "${Server}");`;
+      db.run(command, (result, error) => {
+        if (error) reject(error);
+        resolve(result);
+      });
     });
