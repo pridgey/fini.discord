@@ -5,6 +5,7 @@ import { Command } from "./types";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
 import { db } from "./utilities";
+const { exec } = require("child_process");
 
 // Run config to get our environment variables
 dotenv.config();
@@ -82,6 +83,18 @@ client.on("messageCreate", () => {});
 // If we get a slash command, run the slash command.
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isCommand()) return;
+
+  // Let people know this isn't a final version
+  exec("git rev-parse --abbrev-ref HEAD", (err, stdout) => {
+    if (err) {
+      console.error("Error:", err);
+    }
+    if (typeof stdout === "string" && stdout.trim() !== "main") {
+      interaction.channel.send(
+        "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*"
+      );
+    }
+  });
 
   // grab the command name
   const command = client.commands.get(interaction.commandName);
