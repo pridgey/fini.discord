@@ -5,10 +5,8 @@ import { grabGif, commafyNumber } from "./../utilities";
 import seedrandom from "seedrandom";
 
 export const data = new SlashCommandBuilder()
-  .setName("evenodd")
-  .setDescription(
-    "A simple game, you wager Finicoin and guess if the result is even, or odd"
-  )
+  .setName("rps")
+  .setDescription("Place some Rock Paper Scissors")
   .addNumberOption((opt) =>
     opt
       .setName("bet")
@@ -19,10 +17,11 @@ export const data = new SlashCommandBuilder()
   .addStringOption((opt) =>
     opt
       .setName("option")
-      .setDescription("Is it Even or Odd?")
+      .setDescription("Rock? Paper? Or Scissors?")
       .setRequired(true)
-      .addChoice("Even", "Even")
-      .addChoice("Odd", "Odd")
+      .addChoice("Rock", "Rock")
+      .addChoice("Paper", "Paper")
+      .addChoice("Scissors", "Scissors")
   );
 
 export const execute = async (interaction: CommandInteraction) => {
@@ -41,20 +40,30 @@ export const execute = async (interaction: CommandInteraction) => {
     } else {
       // Randomly generate winning option
       const rng = seedrandom(interaction.token);
-      const randomNumber = Math.round(rng() * 9);
-      const outcome = randomNumber % 2 === 0 ? "Even" : "Odd";
+      const randomNumber = Math.round(rng() * 2);
+      const outcome = ["Rock", "Paper", "Scissors"][randomNumber];
+
+      const winningDictionary = {
+        Rock: "Scissors",
+        Paper: "Rock",
+        Scissors: "Paper",
+      };
 
       // Did they win?
-      const win = outcome === option;
-      rewardWager(win, win ? 2 : 1).then(({ balance, betAmount }) => {
-        grabGif(win ? "winner" : "loser").then((url) => {
+      const win = [option, winningDictionary[option]].includes(outcome);
+      const prizeMultiplier = win && outcome !== option ? 2 : 1;
+
+      rewardWager(win, prizeMultiplier).then(({ balance, betAmount }) => {
+        grabGif(outcome).then((url) => {
           const embed = new MessageEmbed()
-            .setTitle("Even / Odd")
+            .setTitle("Rock, Paper, Scissors")
             .setColor("#ffea00")
             .addField("Your Bet", commafyNumber(betAmount), true)
             .addField(
               "Your Winnings",
-              commafyNumber(win ? betAmount * 2 : 0),
+              commafyNumber(
+                betAmount * (win ? (outcome !== option ? 2 : 1) : 0)
+              ),
               true
             )
             .addField("Your Balance", commafyNumber(balance), true)

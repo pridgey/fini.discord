@@ -27,7 +27,10 @@ export const runGame = async (
   // Create command to run when game is over
   const rewardWager = (win: boolean, multiplier: number) =>
     addCoin(win ? userID : "fini", guildID, multiplier * betAmount).then(
-      ({ balance }) => ({ balance, betAmount })
+      ({ balance }) => ({
+        balance: win ? balance : userBalance - betAmount,
+        betAmount,
+      })
     );
 
   // return whether the user has funds, and the resulting function
