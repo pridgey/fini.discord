@@ -75,3 +75,8 @@ export const addCoin = (userID: string, guildID: string, amount: number) =>
         balance: 0,
       };
     });
+
+export const getUserBalance = (userID: string, guildID: string) =>
+  db()
+    .select<BankRecord>("Bank", { Field: "User", Value: userID }, guildID)
+    .then((results: BankRecord[]) => results[0].Balance);

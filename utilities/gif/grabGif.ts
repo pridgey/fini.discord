@@ -10,7 +10,9 @@ export const grabGif = (query: string) => {
   )
     .then((results) => results.json())
     .then(({ results }) => {
-      const gifIndex = Math.round(Math.random() * results.length);
+      const gifIndex = Math.round(
+        Math.random() * results.length > 3 ? 3 : results.length
+      );
       const gifData = results[gifIndex];
       const { url } = gifData?.media[0]?.mediumgif ?? { url: null };
       return url;

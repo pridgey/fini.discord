@@ -67,8 +67,8 @@ export const execute = async (interaction: CommandInteraction) => {
               true
             )
             .addField("Your Balance", commafyNumber(balance), true)
-            .addField("Result", outcome, true)
-            .addField("Your Guess", option, true)
+            .addField("I chose", outcome, true)
+            .addField("You chose", option, true)
             .setImage(url)
             .setFooter({
               text: win

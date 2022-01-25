@@ -10,12 +10,12 @@ export const data = new SlashCommandBuilder()
   );
 
 export const execute = async (interaction: CommandInteraction) => {
-  const query = interaction.options.getString("query");
+  const query = interaction.options.getString("query").trim();
 
   grabGif(query).then((url) => {
     if (url) {
       const embed = new MessageEmbed().setImage(url).setFooter({
-        text: query,
+        text: query ?? "Random",
       });
 
       interaction.reply({
