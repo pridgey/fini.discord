@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { CommandInteraction, MessageEmbed } from "discord.js";
 import { DateTime } from "ts-luxon";
 
 const hours = [
@@ -55,28 +55,43 @@ export const execute = async (interaction: CommandInteraction) => {
   const timezone = interaction.options.getString("timezone");
 
   const date = DateTime.fromISO(
-    `${DateTime.now().year}-01-01T${hours}:${minutes}:00`,
+    `${DateTime.now().year}-01-15T${hours}:${minutes}:00`,
     { zone: timezone }
   );
   const results = [];
 
   acceptedTimeZones.forEach((tz) => {
     const tzdate = date.setZone(tz);
+    console.log({
+      tz: tzdate.day,
+      da: date.day,
+    });
     const dayDiff = tzdate.day - date.day;
     const addPlus = dayDiff >= 0;
     let appendText = "";
-    if (dayDiff > 0) {
+    if (dayDiff !== 0) {
       if (addPlus) {
         appendText += "+";
       }
       appendText += `${dayDiff} day${dayDiff > 1 ? "s" : ""}`;
     }
-    results.push(
-      `**${tz.split("/")[1].replace("_", " ")}**: ${tzdate.toFormat(
-        "HH:mm"
-      )} ${appendText}`
-    );
+    results.push({
+      place: tz.split("/")[1].replace("_", " "),
+      time: tzdate.toFormat("HH:mm"),
+      append: appendText,
+    });
   });
 
-  interaction.reply(results.join("\n"));
+  interaction.reply({
+    embeds: results.map((r) => {
+      const embed = new MessageEmbed();
+      embed.addField(r.place, r.time);
+      if (r.append) {
+        embed.setFooter({
+          text: r.append,
+        });
+      }
+      return embed;
+    }),
+  });
 };
