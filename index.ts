@@ -1,6 +1,13 @@
-import { Client, ClientOptions, Collection, Intents } from "discord.js";
+import {
+  Client,
+  ClientOptions,
+  Collection,
+  Intents,
+  Message,
+} from "discord.js";
 import dotenv from "dotenv";
 import glob from "glob";
+import { chatWithUser } from "./modules/openai";
 import { Command } from "./types";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
@@ -78,7 +85,19 @@ client.once("ready", () => {
   console.log("Connected");
 });
 
-client.on("messageCreate", () => {});
+client.on("messageCreate", (message: Message) => {
+  // We don't care about bots. Sad but true.
+  if (message.author.bot) return;
+
+  // Lowercase makes comparisons way easier
+  const messageText = message.content.toLowerCase();
+
+  if (messageText.startsWith("hey fini ")) {
+    chatWithUser(messageText.replace("hey fini", "")).then((reply: string) =>
+      message.channel.send(reply)
+    );
+  }
+});
 
 // If we get a slash command, run the slash command.
 client.on("interactionCreate", async (interaction) => {
