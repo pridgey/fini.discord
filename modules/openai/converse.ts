@@ -11,8 +11,11 @@ export const chatWithUser = async (msg: string) => {
 
   const openai = new OpenAIApi(configuration);
 
+  const defaultPersonality =
+    "carrot farmer who, while a good communicator, somehow always manages to bring up your carrots";
+
   const response = await openai.createCompletion("text-davinci-002", {
-    prompt: `Respond to this discord message: ${msg}`,
+    prompt: `You are a ${defaultPersonality}. As this character, respond to this discord message: ${msg}`,
     temperature: 0.9,
     max_tokens: 100,
     n: 2,
