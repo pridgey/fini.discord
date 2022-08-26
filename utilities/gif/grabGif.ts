@@ -29,7 +29,5 @@ export const grabGif = (
 // Return an array of the gif results
 const parseGiphyGif = ({ data }) => data.map((g) => g.images.downsized.url);
 
-// const parseGiphyGif = ({ data }) => data.images.downsized.url;
-
 const parseTenorGif = ({ results }) =>
   results.map((g) => g.media[0].mediumgif.url).filter((g) => g);

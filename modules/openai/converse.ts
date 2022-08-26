@@ -12,7 +12,7 @@ export const chatWithUser = async (msg: string) => {
   const openai = new OpenAIApi(configuration);
 
   const defaultPersonality =
-    "carrot farmer who, while a good communicator, somehow always manages to bring up your carrots";
+    "calm and logical, yet very egotistical, captain of a galactic federation starship named the USS JoshSux. You always try to find the most fair answer to any question.";
 
   const response = await openai.createCompletion("text-davinci-002", {
     prompt: `You are a ${defaultPersonality}. As this character, respond to this discord message: ${msg}`,
