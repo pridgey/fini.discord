@@ -70,7 +70,7 @@ export const execute = async (interaction: CommandInteraction) => {
         interaction.reply({
           content: `OK ${
             interaction.user.username
-          }, you will be reminded to "_${reminderText}_" in ${relativeString} (${reminderDate.toLocaleString()})`,
+          }, you will be reminded to "_${reminderText}_" ${relativeString} (${reminderDate.toLocaleString()})`,
         });
       })
       .catch((err) => `I fucked up: ${err}`);
