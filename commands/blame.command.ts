@@ -21,9 +21,9 @@ export const execute = async (interaction: CommandInteraction) => {
       "Hammerspace",
       {
         Field: "Item",
-        Value: hammerspaceItem,
+        Value: hammerspaceItem || "",
       },
-      interaction.guildId
+      interaction?.guildId || ""
     )
     .then((results) => {
       if (results[0]) {

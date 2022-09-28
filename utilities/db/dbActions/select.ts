@@ -6,14 +6,16 @@ export const select =
   <T>(
     SelectableItem: DatabaseTables,
     Count: "All" | "Random" | FieldValuePair<T> = "All",
-    Server: string,
+    Server?: string,
     Limit: number = 1
   ): Promise<T[]> =>
     new Promise((resolve, reject) => {
       // Select All of the records
       if (Count === "All") {
         db.all(
-          `SELECT * FROM ("${SelectableItem}") WHERE Server IN ("All", "${Server}")`,
+          `SELECT * FROM ("${SelectableItem}") ${
+            Server ? ` WHERE Server IN ("All", "${Server}")` : ""
+          }`,
           (error, rows) => {
             if (error) {
               reject(error);
@@ -53,9 +55,9 @@ export const select =
         // Select a specific record
       } else {
         db.get(
-          `SELECT * FROM ("${SelectableItem}") WHERE ${
+          `SELECT * FROM ("${SelectableItem}") WHERE ${String(
             Count.Field
-          } LIKE "%${encodeURIComponent(
+          )} LIKE "%${encodeURIComponent(
             Count.Value.toString()
           )}%" AND Server IN ("All", "${Server}")`,
           (error, row) => {

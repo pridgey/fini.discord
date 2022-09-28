@@ -22,7 +22,7 @@ const handleSubscription =
         .insert<SettingsRecord>("Settings", {
           Key: `${subscriptionType}_channels`,
           Value: encodeURIComponent(JSON.stringify(message.channel.id)),
-          Server: message.guild.id,
+          Server: message?.guild?.id || "",
         })
         .then(
           () =>

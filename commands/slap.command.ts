@@ -35,15 +35,19 @@ export const execute = async (interaction: CommandInteraction) => {
 
   // Grab the item from the hammerspace
   return db()
-    .select<HammerspaceItem>("Hammerspace", "Random", interaction.guildId)
+    .select<HammerspaceItem>(
+      "Hammerspace",
+      "Random",
+      interaction?.guildId || ""
+    )
     .then((results) => {
       // Add the item to the sentence
       slapMessage = slapMessage.replace("{2}", results[0].Item);
       // Update the database with this hammerspace usage
       LogHammerspaceItem(
-        results[0].ID,
+        results[0]?.ID || 0,
         results[0].TimesUsed + 1,
-        interaction.guildId
+        interaction?.guildId || ""
       );
 
       return interaction.reply({

@@ -22,44 +22,52 @@ export const data = new SlashCommandBuilder()
 
 export const execute = async (interaction: CommandInteraction) => {
   const luckyFuck = interaction.options.getUser("who");
-  const amount = Math.abs(Math.round(interaction.options.getNumber("amount")));
+  const amount = Math.abs(
+    Math.round(interaction?.options?.getNumber("amount") || 0)
+  );
 
-  getUserBalance(interaction.user.id, interaction.guildId).then((balance) => {
-    if (balance < amount) {
-      interaction.reply(
-        `You don't have enough Finicoin to give away ${commafyNumber(
-          amount
-        )}. You only have ${commafyNumber(balance)} Finicoins`
-      );
-    } else {
-      // Everything should be good
-      removeCoin(interaction.user.id, interaction.guildId, amount).then(() => {
-        addCoin(luckyFuck.id, interaction.guildId, amount).then(
-          ({ balance: addedBalance }) => {
-            const embed = new MessageEmbed()
-              .setTitle("Finicoin Transaction")
-              .setDescription(
-                `${interaction.user.username} gave ${
-                  luckyFuck.username
-                } ${commafyNumber(amount)} Finicoin`
-              )
-              .addField(
-                `${interaction.user.username} Balance`,
-                commafyNumber(balance - amount),
-                true
-              )
-              .addField(
-                `${luckyFuck.username} Balance`,
-                commafyNumber(addedBalance),
-                true
-              );
+  getUserBalance(interaction.user.id, interaction?.guildId || "").then(
+    (balance) => {
+      if (balance < amount) {
+        interaction.reply(
+          `You don't have enough Finicoin to give away ${commafyNumber(
+            amount
+          )}. You only have ${commafyNumber(balance)} Finicoins`
+        );
+      } else {
+        // Everything should be good
+        removeCoin(interaction.user.id, interaction.guildId, amount).then(
+          () => {
+            addCoin(
+              luckyFuck?.id || "",
+              interaction?.guildId || "",
+              amount
+            ).then(({ balance: addedBalance }) => {
+              const embed = new MessageEmbed()
+                .setTitle("Finicoin Transaction")
+                .setDescription(
+                  `${interaction.user.username} gave ${
+                    luckyFuck?.username || ""
+                  } ${commafyNumber(amount)} Finicoin`
+                )
+                .addField(
+                  `${interaction.user.username} Balance`,
+                  commafyNumber(balance - amount),
+                  true
+                )
+                .addField(
+                  `${luckyFuck?.username} Balance`,
+                  commafyNumber(addedBalance),
+                  true
+                );
 
-            interaction.reply({
-              embeds: [embed],
+              interaction.reply({
+                embeds: [embed],
+              });
             });
           }
         );
-      });
+      }
     }
-  });
+  );
 };

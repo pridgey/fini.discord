@@ -52,7 +52,7 @@ export const generateFiniBucks = (message: Message) => {
         Field: "User",
         Value: message.author.id,
       },
-      message.guild.id
+      message?.guild?.id || ""
     )
     .then((results) => {
       let userLedger: BankRecord;
@@ -64,7 +64,7 @@ export const generateFiniBucks = (message: Message) => {
         userLedger = {
           Balance: 0,
           User: message.author.id,
-          Server: message.guild.id,
+          Server: message?.guild?.id || "",
         };
         // insert it
         db()
@@ -77,7 +77,7 @@ export const generateFiniBucks = (message: Message) => {
                   Field: "User",
                   Value: message.author.id,
                 },
-                message.guild.id
+                message?.guild?.id || ""
               )
               .then((newRecord) => {
                 userLedger = newRecord[0];
@@ -93,12 +93,12 @@ export const generateFiniBucks = (message: Message) => {
 
       db().update<BankRecord>(
         "Bank",
-        { Field: "ID", Value: userLedger.ID },
+        { Field: "ID", Value: userLedger?.ID || "" },
         {
           Field: "Balance",
           Value: Math.round(Number(userLedger.Balance) + Number(amountToAward)),
         },
-        message.guild.id
+        message?.guild?.id || ""
       );
     });
 };

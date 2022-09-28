@@ -22,7 +22,11 @@ export const execute = async (interaction: CommandInteraction) => {
     net.fromJSON(spoutModel as unknown as brain.INeuralNetworkJSON);
 
     db()
-      .select<HammerspaceItem>("Hammerspace", "Random", interaction.guildId)
+      .select<HammerspaceItem>(
+        "Hammerspace",
+        "Random",
+        interaction?.guildId || ""
+      )
       .then((results) => {
         if (results[0]) {
           // The item
@@ -40,7 +44,7 @@ export const execute = async (interaction: CommandInteraction) => {
     // Run old version
     // First we get a Setence to plug stuff into
     return db()
-      .select<SentenceItem>("Sentences", "Random", interaction.guildId)
+      .select<SentenceItem>("Sentences", "Random", interaction?.guildId || "")
       .then((results) => {
         if (results[0]) {
           // The sentence to spout
@@ -53,13 +57,13 @@ export const execute = async (interaction: CommandInteraction) => {
           const getNouns = db().select<HammerspaceItem>(
             "Hammerspace",
             "Random",
-            interaction.guildId,
+            interaction?.guildId || "",
             numOfNouns || 1
           );
           const getPhrases = db().select<PhraseItem>(
             "Phrase",
             "Random",
-            interaction.guildId,
+            interaction?.guildId || "",
             numOfPhrases || 1
           );
 
@@ -72,9 +76,9 @@ export const execute = async (interaction: CommandInteraction) => {
                   sentence = sentence.replace("{n}", hammerspaceRecord.Item);
                   // Update the number of times used for this hammerspace item
                   LogHammerspaceItem(
-                    hammerspaceRecord.ID,
+                    hammerspaceRecord?.ID || 0,
                     hammerspaceRecord.TimesUsed + 1,
-                    interaction.guildId
+                    interaction?.guildId || ""
                   );
                 });
               }
@@ -86,9 +90,9 @@ export const execute = async (interaction: CommandInteraction) => {
                   // Update the number of times used for this phrase item
                   db().update(
                     "Phrase",
-                    { Field: "ID", Value: phraseRecord.ID },
+                    { Field: "ID", Value: phraseRecord?.ID || "" },
                     { Field: "TimesUsed", Value: phraseRecord.TimesUsed + 1 },
-                    interaction.guildId
+                    interaction?.guildId || ""
                   );
                 });
               }

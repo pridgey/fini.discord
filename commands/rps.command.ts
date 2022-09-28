@@ -25,10 +25,10 @@ export const data = new SlashCommandBuilder()
   );
 
 export const execute = async (interaction: CommandInteraction) => {
-  const bet = Math.abs(interaction.options.getNumber("bet"));
+  const bet = Math.abs(interaction?.options?.getNumber("bet") || 0);
   const option = interaction.options.getString("option");
 
-  runGame(interaction.user.id, interaction.guildId, bet).then((game) => {
+  runGame(interaction.user.id, interaction?.guildId || "", bet).then((game) => {
     const { userHasFunds, userBalance, rewardWager } = game;
 
     if (!userHasFunds) {
@@ -50,7 +50,7 @@ export const execute = async (interaction: CommandInteraction) => {
       };
 
       // Did they win?
-      const win = [option, winningDictionary[option]].includes(outcome);
+      const win = [option, winningDictionary[option || 0]].includes(outcome);
       const prizeMultiplier = win && outcome !== option ? 2 : 1;
 
       rewardWager(win, prizeMultiplier).then(({ balance, betAmount }) => {
@@ -68,7 +68,7 @@ export const execute = async (interaction: CommandInteraction) => {
             )
             .addField("Your Balance", commafyNumber(balance), true)
             .addField("I chose", outcome, true)
-            .addField("You chose", option, true)
+            .addField("You chose", option || "", true)
             .setImage(url)
             .setFooter({
               text: win

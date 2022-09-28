@@ -18,7 +18,7 @@ export const data = new SlashCommandBuilder()
   );
 
 export const execute = async (interaction: CommandInteraction) => {
-  const query = interaction.options.getString("query").trim();
+  const query = interaction?.options?.getString("query")?.trim() || "";
   grabGif(query, "giphy", "r").then((gifList) => {
     if (gifList) {
       const previousButton = new MessageButton()
@@ -48,8 +48,8 @@ export const execute = async (interaction: CommandInteraction) => {
         });
 
       // Test
-      const collector = interaction.channel.createMessageComponentCollector();
-      collector.on("collect", async (i) => {
+      const collector = interaction?.channel?.createMessageComponentCollector();
+      collector?.on("collect", async (i) => {
         if (i.customId === "next") {
           if (gifIndex === gifList.length - 1) {
             // We've reached the end
@@ -77,7 +77,7 @@ export const execute = async (interaction: CommandInteraction) => {
             content: "You did it!",
             components: [],
           });
-          i.channel.send({
+          i?.channel?.send({
             embeds: [embed],
           });
         }

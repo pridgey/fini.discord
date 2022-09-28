@@ -6,9 +6,9 @@ export const insert =
   <T>(InsertableItem: DatabaseTables, Record: T): Promise<string> =>
     new Promise((resolve, reject) => {
       db.run(
-        `INSERT INTO ${InsertableItem} (${Object.keys(Record).join(
+        `INSERT INTO ${InsertableItem} (${Object.keys(Record as Object).join(
           ", "
-        )}) VALUES ("${Object.values(Record)
+        )}) VALUES ("${Object.values(Record as Object)
           .map((value) => encodeURIComponent(value).trim())
           .join(`", "`)}")`,
         (result, error) => {

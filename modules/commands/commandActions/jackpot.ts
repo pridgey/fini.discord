@@ -7,7 +7,7 @@ export const runJackpot = (message: Message) => () =>
     .select<BankRecord>(
       "Bank",
       { Field: "User", Value: "Fini" },
-      message.guild.id
+      message?.guild?.id || ""
     )
     .then((result) => {
       if (result[0]) {

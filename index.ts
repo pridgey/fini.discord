@@ -8,6 +8,7 @@ import {
 import dotenv from "dotenv";
 import glob from "glob";
 import { chatWithUser } from "./modules/openai";
+import { runPollTasks } from "./modules";
 import { Command } from "./types";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
@@ -42,7 +43,7 @@ client.commands = new Collection();
 
 // Read everything in our commands directory
 // Might be able to do this better with a glob?
-glob("**/commands/**/*.command.js", (err: Error, files: string[]) => {
+glob("**/commands/**/*.command.js", (err, files) => {
   if (err) {
     console.error(`${Date.now()}: ${err.message}`);
     console.error(err.stack);
@@ -59,10 +60,12 @@ glob("**/commands/**/*.command.js", (err: Error, files: string[]) => {
 
 client.once("typingStart", (ev) => {
   // Using discord's REST library
-  const rest = new REST({ version: "9" }).setToken(process.env.FINI_TOKEN);
+  const rest = new REST({ version: "9" }).setToken(
+    process?.env.FINI_TOKEN || ""
+  );
 
   // We have an array that we will shove command's json into
-  const commandsToRegister = [];
+  const commandsToRegister: any[] = [];
   // Generate the json
   client.commands.forEach((cmd) => {
     commandsToRegister.push(cmd.data.toJSON());
@@ -71,7 +74,10 @@ client.once("typingStart", (ev) => {
   // send the commands and register them
   rest
     .put(
-      Routes.applicationGuildCommands(process.env.FINI_CLIENTID, ev.guild.id),
+      Routes.applicationGuildCommands(
+        process?.env.FINI_CLIENTID || "",
+        ev?.guild?.id || ""
+      ),
       {
         body: commandsToRegister,
       }
@@ -80,9 +86,19 @@ client.once("typingStart", (ev) => {
     .catch(console.error);
 });
 
+let pollingInterval;
+
 // WE READY
-client.once("ready", () => {
+client.once("ready", (cl) => {
   console.log("Connected");
+
+  // Set interval for periodic things
+  if (!pollingInterval) {
+    console.log("Creating Poll Interval...");
+    pollingInterval = setInterval(() => {
+      runPollTasks(cl);
+    }, 60_000);
+  }
 });
 
 client.on("messageCreate", (message: Message) => {
@@ -93,8 +109,8 @@ client.on("messageCreate", (message: Message) => {
   const messageText = message.content.toLowerCase();
 
   if (messageText.startsWith("hey fini ")) {
-    chatWithUser(messageText.replace("hey fini", "")).then((reply: string) =>
-      message.channel.send(reply)
+    chatWithUser(messageText.replace("hey fini", "")).then((reply) =>
+      message.channel.send(reply || "")
     );
   }
 });
@@ -109,7 +125,7 @@ client.on("interactionCreate", async (interaction) => {
       console.error("Error:", err);
     }
     if (typeof stdout === "string" && stdout.trim() !== "main") {
-      interaction.channel.send(
+      interaction?.channel?.send(
         "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*"
       );
     }

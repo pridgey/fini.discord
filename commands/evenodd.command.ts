@@ -26,10 +26,10 @@ export const data = new SlashCommandBuilder()
   );
 
 export const execute = async (interaction: CommandInteraction) => {
-  const bet = Math.abs(interaction.options.getNumber("bet"));
+  const bet = Math.abs(interaction?.options?.getNumber("bet") || 0);
   const option = interaction.options.getString("option");
 
-  runGame(interaction.user.id, interaction.guildId, bet).then((game) => {
+  runGame(interaction.user.id, interaction?.guildId || "", bet).then((game) => {
     const { userHasFunds, userBalance, rewardWager } = game;
 
     if (!userHasFunds) {
@@ -59,7 +59,7 @@ export const execute = async (interaction: CommandInteraction) => {
             )
             .addField("Your Balance", commafyNumber(balance), true)
             .addField("Result", outcome, true)
-            .addField("Your Guess", option, true)
+            .addField("Your Guess", option || "", true)
             .setImage(url)
             .setFooter({
               text: win

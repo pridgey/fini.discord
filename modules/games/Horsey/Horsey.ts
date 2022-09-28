@@ -95,7 +95,7 @@ export const Horsey: Game = {
       const rankings = horseyValue.map((x) => rank.get(x));
 
       // Update stats
-      getStatistics("horsey", message.guild.id).then((horseyStats) => {
+      getStatistics("horsey", message?.guild?.id || "").then((horseyStats) => {
         const horseyWins = {
           1: Number(
             horseyStats?.find((stat) => stat.Field === "1")?.Value ?? "0"
@@ -121,7 +121,12 @@ export const Horsey: Game = {
         });
 
         Object.keys(horseyWins).forEach((horsey) => {
-          updateStats("horsey", message.guild.id, horsey, horseyWins[horsey]);
+          updateStats(
+            "horsey",
+            message?.guild?.id || "",
+            horsey,
+            horseyWins[horsey]
+          );
         });
       });
 
@@ -157,12 +162,13 @@ export const Horsey: Game = {
                     clearInterval(interv);
 
                     // Get the winning multipler amount
-                    const multiplier = WinningMultiplier[rankings[guessIndex]];
+                    const multiplier =
+                      WinningMultiplier[rankings[guessIndex || 0] || 0];
 
                     message.channel.send(
-                      `Your horsey came in ${rankings[guessIndex] + 1}${
-                        RankSuffix[rankings[guessIndex]]
-                      } place! ${
+                      `Your horsey came in ${
+                        rankings[guessIndex || 0] || 0 + 1
+                      }${RankSuffix[rankings[guessIndex || 0] || 0]} place! ${
                         multiplier > 0 ? `You win ${multiplier}x!` : ""
                       }`
                     );

@@ -35,13 +35,13 @@ export const chatWithUser = async (msg: string) => {
     return replies[rand];
   };
 
-  if (choices.some((c) => c.finish_reason === "stop")) {
+  if (choices?.some((c) => c.finish_reason === "stop")) {
     // We have a stop
     const fullReplies = choices.filter((c) => c.finish_reason === "stop");
     // Randomly pick a reply
     return randomlyPickReply(fullReplies).text;
   } else {
     // No full stops
-    return `${randomlyPickReply(choices).text}... I could go on and on lol`;
+    return `${randomlyPickReply(choices!)?.text}... I could go on and on lol`;
   }
 };

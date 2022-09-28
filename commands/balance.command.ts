@@ -12,7 +12,7 @@ export const execute = async (interaction: CommandInteraction) => {
     .select<BankRecord>(
       "Bank",
       { Field: "User", Value: interaction.user.id },
-      interaction.guildId
+      interaction?.guildId || ""
     )
     .then((result) => {
       if (result[0]) {

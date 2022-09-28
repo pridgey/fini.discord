@@ -47,6 +47,15 @@ export interface ChatLogRecord {
   Content: string;
 }
 
+export interface ReminderRecord {
+  id?: number;
+  Time: number;
+  Reminder: string;
+  Server: string;
+  User: string;
+  Channel: string;
+}
+
 export type DatabaseTables =
   | "Bank"
   | "Hammerspace"
@@ -55,6 +64,7 @@ export type DatabaseTables =
   | "Settings"
   | "Stats"
   | "Feeds"
+  | "Reminder"
   | "ChatLog";
 
 export type FieldValuePair<T> = {

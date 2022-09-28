@@ -24,14 +24,14 @@ export const runWager = (message: Message) => (args: string[]) => {
       // Check game validation
       if (game.Validation(gameArgs)) {
         // Check user funds to ensure they can play
-        return checkBalance(message.author.id, message.guild.id).then(
+        return checkBalance(message.author.id, message?.guild?.id || "").then(
           (balance: number) => {
             let currentBalance = balance;
             if (currentBalance >= wagerNum) {
               // Deduct the wager from their funds so they can't cheat the system
               return modifyFunds(
                 message.author.id,
-                message.guild.id,
+                message?.guild?.id || "",
                 balance - wagerNum
               ).then(() => {
                 currentBalance -= wagerNum;
@@ -44,11 +44,11 @@ export const runWager = (message: Message) => (args: string[]) => {
                       // check for jackpot
                     } else {
                       game.Lose(message);
-                      checkBalance("Fini", message.guild.id).then(
+                      checkBalance("Fini", message?.guild?.id || "").then(
                         (finiBalance) =>
                           modifyFunds(
                             "Fini",
-                            message.guild.id,
+                            message?.guild?.id || "",
                             finiBalance + wagerNum
                           )
                       );
@@ -56,10 +56,13 @@ export const runWager = (message: Message) => (args: string[]) => {
 
                     return modifyFunds(
                       message.author.id,
-                      message.guild.id,
+                      message?.guild?.id || "",
                       currentBalance + wagerNum * multiplier
                     ).then(() =>
-                      checkBalance(message.author.id, message.guild.id).then(
+                      checkBalance(
+                        message.author.id,
+                        message?.guild?.id || ""
+                      ).then(
                         (resultBalance) => `Your new balance: $${resultBalance}`
                       )
                     );

@@ -9,9 +9,9 @@ export const remove =
   ): Promise<T[]> =>
     new Promise((resolve, reject) => {
       db.run(
-        `DELETE FROM ${UpdatableItem} WHERE ${
+        `DELETE FROM ${UpdatableItem} WHERE ${String(
           WhereCondition.Field
-        } = "${encodeURIComponent(WhereCondition.Value)}"`,
+        )} = "${encodeURIComponent(WhereCondition.Value)}"`,
         (result, error) => {
           if (error) {
             reject(error);

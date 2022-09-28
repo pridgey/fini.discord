@@ -21,7 +21,7 @@ export const execute = async (interaction: CommandInteraction) => {
   const net = new brain.recurrent.LSTM();
   net.fromJSON(translateModel as unknown as brain.INeuralNetworkJSON);
 
-  const result = net.run(textToTranslate).toLowerCase();
+  const result = (net?.run(textToTranslate) as string)?.toLowerCase();
 
   interaction.reply(
     `${result.substring(0, 1).toUpperCase()}${result.substring(1)}` ||

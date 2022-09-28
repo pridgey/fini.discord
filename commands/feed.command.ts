@@ -64,7 +64,7 @@ const add = (interaction: CommandInteraction) => {
   const numItems = interaction.options.getNumber("number");
 
   db()
-    .select<FeedsRecord>("Feeds", "All", interaction.guildId)
+    .select<FeedsRecord>("Feeds", "All", interaction?.guildId || "")
     .then((results) => {
       // Look through the results and see if we have this one already
       if (
@@ -83,10 +83,10 @@ const add = (interaction: CommandInteraction) => {
         // Brand new
         db()
           .insert<FeedsRecord>("Feeds", {
-            Items: numItems,
-            Server: interaction.guildId,
-            URL: feedUrl,
-            User: interaction.user.id,
+            Items: numItems || 0,
+            Server: interaction.guildId || "",
+            URL: feedUrl || "",
+            User: interaction.user.id || "",
           })
           .then(() =>
             interaction.reply(
@@ -99,7 +99,7 @@ const add = (interaction: CommandInteraction) => {
 
 const list = (interaction: CommandInteraction) => {
   db()
-    .select<FeedsRecord>("Feeds", "All", interaction.guildId)
+    .select<FeedsRecord>("Feeds", "All", interaction?.guildId || "")
     .then((results: FeedsRecord[]) => {
       const userFeeds = results.filter(
         (feed) => feed.User === interaction.user.id
@@ -124,7 +124,7 @@ const remove = (interaction: CommandInteraction) => {
   const urlToDelete = interaction.options.getString("rss-url");
 
   db()
-    .select<FeedsRecord>("Feeds", "All", interaction.guildId)
+    .select<FeedsRecord>("Feeds", "All", interaction?.guildId || "")
     .then((results: FeedsRecord[]) => {
       const feedToDelete = results.filter(
         (feed) => feed.URL === urlToDelete && feed.User === interaction.user.id
@@ -138,7 +138,7 @@ const remove = (interaction: CommandInteraction) => {
         db()
           .remove<FeedsRecord>("Feeds", {
             Field: "ID",
-            Value: feedToDelete.ID,
+            Value: feedToDelete.ID || "",
           })
           .then(() => {
             interaction.reply(
@@ -151,7 +151,7 @@ const remove = (interaction: CommandInteraction) => {
 
 const run = (interaction: CommandInteraction) => {
   db()
-    .select<FeedsRecord>("Feeds", "All", interaction.guildId)
+    .select<FeedsRecord>("Feeds", "All", interaction?.guildId || "")
     .then((feeds) => {
       // Extract the current user's feeds
       const userFeeds = feeds.filter(
@@ -159,13 +159,13 @@ const run = (interaction: CommandInteraction) => {
       );
 
       const parser = new Parser();
-      const feedCollection = [];
+      const feedCollection: any[] = [];
       userFeeds.forEach((userFeed) =>
         feedCollection.push(parser.parseURL(userFeed.URL))
       );
 
       Promise.all(feedCollection).then((feedResults) => {
-        const resultingURLs = [];
+        const resultingURLs: any[] = [];
 
         feedResults.forEach((feed, index) => {
           // Only grab the number of items we specified
@@ -173,16 +173,16 @@ const run = (interaction: CommandInteraction) => {
             Object.values(feed.items[i]).forEach((val) => {
               // Grab anything that looks like a URL
               if (
-                val.toString().includes("http") &&
+                val?.toString().includes("http") &&
                 !val.toString().includes(" ")
               ) {
-                resultingURLs.push(val);
+                resultingURLs.push(val || "");
               }
             });
           }
         });
 
-        if (interaction.channel.type === "GUILD_TEXT") {
+        if (interaction?.channel?.type === "GUILD_TEXT") {
           (interaction.channel as TextChannel).threads
             .create({
               name: `${interaction.user.username}-feed`,

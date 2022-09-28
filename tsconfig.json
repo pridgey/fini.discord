@@ -3,7 +3,7 @@
     "strict": true,
     "allowSyntheticDefaultImports": true,
     "noUnusedParameters": true,
-    "strictNullChecks": false,
+    "strictNullChecks": true,
     "moduleResolution": "Node",
     "noImplicitAny": false,
     "outDir": "./dist",
@@ -12,7 +12,7 @@
     "resolveJsonModule": true,
     "baseUrl": "./",
     "module": "CommonJS",
-    "inlineSourceMap": true,
+    "inlineSourceMap": true
   },
   "exclude": ["node_modules", "ml-models"]
 }

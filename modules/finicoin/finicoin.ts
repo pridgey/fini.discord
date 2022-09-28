@@ -58,7 +58,7 @@ export const addCoin = (userID: string, guildID: string, amount: number) =>
     .then((userAccount) => {
       db().update<BankRecord>(
         "Bank",
-        { Field: "ID", Value: userAccount.ID },
+        { Field: "ID", Value: userAccount?.ID || "" },
         {
           Field: "Balance",
           Value: Number(userAccount.Balance) + Number(amount),

@@ -16,19 +16,19 @@ export const data = new SlashCommandBuilder()
 export const execute = async (interaction: CommandInteraction) => {
   const itemToAdd = interaction.options.getString("item");
 
-  if (itemToAdd.length) {
+  if (itemToAdd?.length) {
     if (itemToAdd?.length < 100) {
       return db()
         .insert<HammerspaceItem>("Hammerspace", {
           DateCreated: Date.now(),
           Item: itemToAdd,
-          Server: interaction.guildId,
+          Server: interaction.guildId || "",
           TimesUsed: 0,
           User: interaction.user.id,
         })
         .then(() => {
           interaction.reply({
-            content: `I've added _${itemToAdd}_ to the ${interaction.guild.name} Hammerspace`,
+            content: `I've added _${itemToAdd}_ to the ${interaction?.guild?.name} Hammerspace`,
           });
         })
         .catch((err) => `I fucked up: ${err}`);

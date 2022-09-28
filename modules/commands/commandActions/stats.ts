@@ -8,20 +8,22 @@ export const runStats = (message: Message) => (args: string[]) => {
   const statsCollection: string = args.join(" ");
 
   if (statsCollection.length) {
-    return getStatistics(statsCollection, message.guild.id).then((stats) => {
-      if (stats.length) {
-        let reply = `**Statistics for ${statsCollection}:**\n`;
-        stats.forEach(
-          (stat) => (reply += `**${stat.Field}**: ${stat.Value}\n`)
-        );
-        return reply;
-      } else {
-        return `I couldn't find any stats matching _${statsCollection}_`;
+    return getStatistics(statsCollection, message?.guild?.id || "").then(
+      (stats) => {
+        if (stats.length) {
+          let reply = `**Statistics for ${statsCollection}:**\n`;
+          stats.forEach(
+            (stat) => (reply += `**${stat.Field}**: ${stat.Value}\n`)
+          );
+          return reply;
+        } else {
+          return `I couldn't find any stats matching _${statsCollection}_`;
+        }
       }
-    });
+    );
   } else {
     return db()
-      .select<StatsRecord>("Stats", "All", message.guild.id)
+      .select<StatsRecord>("Stats", "All", message?.guild?.id || "")
       .then((results) => results.map((stat) => stat.Collection))
       .then((collections) => {
         let reply = `Available Statistics:\n`;

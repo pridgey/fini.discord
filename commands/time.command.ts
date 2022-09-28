@@ -56,9 +56,9 @@ export const execute = async (interaction: CommandInteraction) => {
 
   const date = DateTime.fromISO(
     `${DateTime.now().year}-01-15T${hours}:${minutes}:00`,
-    { zone: timezone }
+    { zone: timezone || "" }
   );
-  const results = [];
+  const results: any[] = [];
 
   acceptedTimeZones.forEach((tz) => {
     const tzdate = date.setZone(tz);
@@ -76,9 +76,9 @@ export const execute = async (interaction: CommandInteraction) => {
       appendText += `${dayDiff} day${dayDiff > 1 ? "s" : ""}`;
     }
     results.push({
-      place: tz.split("/")[1].replace("_", " "),
-      time: tzdate.toFormat("HH:mm"),
-      append: appendText,
+      place: tz?.split("/")?.[1]?.replace("_", " ") || "",
+      time: tzdate?.toFormat("HH:mm") || "",
+      append: appendText || "",
     });
   });
 

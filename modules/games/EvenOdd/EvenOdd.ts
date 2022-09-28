@@ -28,23 +28,26 @@ export const EvenOdd: Game = {
       const outcome = Math.round(rng()) % 2 === 0 ? "even" : "odd";
 
       // Update statistics
-      getStatistics("evenodd", message.guild.id).then((evenOddStats) => {
-        let numOfEvens = Number(
-          evenOddStats?.find((stat) => stat.Field === "even")?.Value ?? "0"
-        );
-        let numOfOdds = Number(
-          evenOddStats?.find((stat) => stat.Field === "odd")?.Value ?? "0"
-        );
+      getStatistics("evenodd", message?.guild?.id || "").then(
+        (evenOddStats) => {
+          let numOfEvens = Number(
+            evenOddStats?.find((stat) => stat.Field === "even")?.Value ?? "0"
+          );
+          let numOfOdds = Number(
+            evenOddStats?.find((stat) => stat.Field === "odd")?.Value ?? "0"
+          );
 
-        const updatedNum = outcome === "even" ? numOfEvens + 1 : numOfOdds + 1;
+          const updatedNum =
+            outcome === "even" ? numOfEvens + 1 : numOfOdds + 1;
 
-        updateStats(
-          "evenodd",
-          message.guild.id,
-          outcome,
-          updatedNum.toString()
-        );
-      });
+          updateStats(
+            "evenodd",
+            message?.guild?.id || "",
+            outcome,
+            updatedNum.toString()
+          );
+        }
+      );
 
       // Did they win?
       const win = outcome === userGuess;
