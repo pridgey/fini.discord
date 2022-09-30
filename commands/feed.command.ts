@@ -1,5 +1,12 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction, MessageEmbed, TextChannel } from "discord.js";
+import {
+  Channel,
+  Client,
+  CommandInteraction,
+  MessageEmbed,
+  TextChannel,
+  User,
+} from "discord.js";
 import { db } from "./../utilities";
 import { FeedsRecord } from "./../types";
 import Parser from "rss-parser";
@@ -87,6 +94,7 @@ const add = (interaction: CommandInteraction) => {
             Server: interaction.guildId || "",
             URL: feedUrl || "",
             User: interaction.user.id || "",
+            Channel: interaction.channelId || "",
           })
           .then(() =>
             interaction.reply(
@@ -149,53 +157,103 @@ const remove = (interaction: CommandInteraction) => {
     });
 };
 
-const run = (interaction: CommandInteraction) => {
+export const run = (
+  interaction?: CommandInteraction,
+  discordClient?: Client
+) => {
   db()
-    .select<FeedsRecord>("Feeds", "All", interaction?.guildId || "")
+    .select<FeedsRecord>("Feeds", "All")
     .then((feeds) => {
-      // Extract the current user's feeds
-      const userFeeds = feeds.filter(
-        (feed) => feed.User === interaction.user.id
-      );
+      const parseAndPostFeeds = (
+        feeds: FeedsRecord[],
+        channel: Channel,
+        user: User
+      ) => {
+        const parser = new Parser();
+        const feedCollection: Promise<any>[] = [];
 
-      const parser = new Parser();
-      const feedCollection: any[] = [];
-      userFeeds.forEach((userFeed) =>
-        feedCollection.push(parser.parseURL(userFeed.URL))
-      );
+        // Parse each feed in this collection and add it to our array
+        feeds.forEach((feed) => feedCollection.push(parser.parseURL(feed.URL)));
 
-      Promise.all(feedCollection).then((feedResults) => {
-        const resultingURLs: any[] = [];
+        // Grab all feeds at the same time
+        Promise.all(feedCollection).then((feedResults) => {
+          const resultingURLs: any[] = [];
 
-        feedResults.forEach((feed, index) => {
-          // Only grab the number of items we specified
-          for (let i = 0; i < userFeeds[index].Items; i++) {
-            Object.values(feed.items[i]).forEach((val) => {
-              // Grab anything that looks like a URL
-              if (
-                val?.toString().includes("http") &&
-                !val.toString().includes(" ")
-              ) {
-                resultingURLs.push(val || "");
-              }
-            });
+          feedResults.forEach((feed, index) => {
+            // Only grab the number of items we specified
+            for (let i = 0; i < feeds[index].Items; i++) {
+              Object.values(feed.items[i]).forEach((val) => {
+                // Grab anything that looks like a URL
+                if (
+                  val?.toString().includes("http") &&
+                  !val.toString().includes(" ")
+                ) {
+                  resultingURLs.push(val || "");
+                }
+              });
+            }
+          });
+
+          // Create Feed thread title text
+          const todayText = new Intl.DateTimeFormat("en", {
+            weekday: "long",
+            month: "short",
+            day: "numeric",
+          }).format(new Date());
+
+          // Make sure channel is a text type, so it can accept messages
+          if (channel?.type === "GUILD_TEXT") {
+            // Create a new thread for the feed
+            (channel as TextChannel).threads
+              .create({
+                name: `${user.username}'s feed for ${todayText}`,
+                autoArchiveDuration: 60,
+              })
+              .then((feed) => {
+                // De-dup the array and pump shit out
+                Array.from(new Set([...resultingURLs])).forEach((url) =>
+                  setTimeout(() => feed.send(url), 1500)
+                );
+              });
           }
         });
+      };
 
-        if (interaction?.channel?.type === "GUILD_TEXT") {
-          (interaction.channel as TextChannel).threads
-            .create({
-              name: `${interaction.user.username}-feed`,
-              autoArchiveDuration: 60,
-            })
-            .then((feed) => {
-              // De-dup the array and pump shit out
-              Array.from(new Set([...resultingURLs])).forEach((url) =>
-                setTimeout(() => feed.send(url), 1500)
-              );
-              interaction.reply("Making the feed thread...");
-            });
-        }
-      });
+      if (interaction) {
+        // We are running feeds for a particular user
+        const userFeeds = feeds.filter(
+          (feed) => feed.User === interaction.user.id
+        );
+        // Run the feeds
+        parseAndPostFeeds(
+          userFeeds,
+          interaction.channel as Channel,
+          interaction.user
+        );
+        interaction.reply("Generating the Feeds for you");
+      } else if (discordClient) {
+        // We are running all feeds, grouped by user
+        const users = Array.from(new Set(feeds.map((feed) => feed.User)));
+
+        // Loop through users and generate feeds for everyone
+        users.forEach((user) => {
+          // Get user's feeds
+          const usersFeeds = feeds.filter((feed) => feed.User === user);
+
+          // We need the channel to use
+          const channelID = usersFeeds[0]?.Channel || "";
+          // UserID
+          const userID = user || "";
+
+          // Setup promises to get the user and channel objects attached to the feed record
+          const getChannel = discordClient.channels.fetch(channelID);
+          const getUser = discordClient.users.fetch(userID);
+
+          // Fetch channel and user and then generate feeds
+          Promise.all([getChannel, getUser]).then(([channel, user]) => {
+            parseAndPostFeeds(usersFeeds, channel as Channel, user);
+          });
+        });
+      }
     });
 };

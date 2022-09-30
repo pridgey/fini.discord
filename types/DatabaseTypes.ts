@@ -40,6 +40,7 @@ export interface FeedsRecord {
   Items: number;
   User: string;
   Server: string;
+  Channel: string;
 }
 
 export interface ChatLogRecord {
