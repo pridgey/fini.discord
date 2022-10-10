@@ -203,6 +203,15 @@ export const run = (
 
           // Make sure channel is a text type, so it can accept messages
           if (channel?.type === "GUILD_TEXT") {
+            // Archive old feeds
+            (channel as TextChannel).threads
+              .fetchActive()
+              .then((activeThreads) => {
+                // Grab all active threads
+                activeThreads.threads.forEach((at) => {
+                  at.setArchived(true);
+                });
+              });
             // Create a new thread for the feed
             (channel as TextChannel).threads
               .create({
