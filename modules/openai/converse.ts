@@ -17,8 +17,10 @@ export const chatWithUser = async (msg: string) => {
   let personality = defaultPersonality;
   let chat = msg;
 
-  if (msg.startsWith("as") && msg.includes(":")) {
-    const msgParts = msg.split(":");
+  const convertedMsg = msg.toLowerCase().trim();
+
+  if (convertedMsg.startsWith("as") && convertedMsg.includes(":")) {
+    const msgParts = convertedMsg.split(":");
     personality = msgParts[0].replace("as", "").trim();
     chat = msgParts[1].trim();
   }
@@ -29,8 +31,6 @@ export const chatWithUser = async (msg: string) => {
     max_tokens: 100,
     n: 2,
   });
-
-  console.log("other responses", response.data.choices);
 
   // Grab any with "stop" finish reason, randomly select from them
   // If there are no "stop" reasons, go with any response
