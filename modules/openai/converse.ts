@@ -12,10 +12,19 @@ export const chatWithUser = async (msg: string) => {
   const openai = new OpenAIApi(configuration);
 
   const defaultPersonality =
-    "calm and logical, yet very egotistical, captain of a galactic federation starship named the USS JoshSux. You always try to find the most fair answer to any question.";
+    "a calm and logical, yet very egotistical, captain of a galactic federation starship named the USS JoshSux. You always try to find the most fair answer to any question.";
+
+  let personality = defaultPersonality;
+  let chat = msg;
+
+  if (msg.startsWith("as") && msg.includes(":")) {
+    const msgParts = msg.split(":");
+    personality = msgParts[0].replace("as", "").trim();
+    chat = msgParts[1].trim();
+  }
 
   const response = await openai.createCompletion("text-davinci-002", {
-    prompt: `You are a ${defaultPersonality}. As this character, respond to this discord message: ${msg}`,
+    prompt: `You are ${personality}. As this character, respond to this discord message: ${chat}`,
     temperature: 0.9,
     max_tokens: 100,
     n: 2,
