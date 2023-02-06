@@ -43,6 +43,14 @@ export interface FeedsRecord {
   Channel: string;
 }
 
+export interface FeedItemRecord {
+  ID?: number;
+  URL: string;
+  User: string;
+  Title: string;
+  DateCreated: string;
+}
+
 export interface ChatLogRecord {
   ID?: number;
   Content: string;
@@ -65,6 +73,7 @@ export type DatabaseTables =
   | "Settings"
   | "Stats"
   | "Feeds"
+  | "FeedItem"
   | "Reminder"
   | "ChatLog";
 
