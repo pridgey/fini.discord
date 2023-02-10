@@ -108,7 +108,7 @@ client.on("messageCreate", (message: Message) => {
   // Lowercase makes comparisons way easier
   const messageText = message.content.toLowerCase();
 
-  if (messageText.startsWith("hey fini ")) {
+  if (messageText.startsWith("hey fini")) {
     chatWithUser(messageText.replace("hey fini", "")).then((reply) =>
       message.channel.send(reply || "")
     );
