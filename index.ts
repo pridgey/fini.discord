@@ -12,7 +12,7 @@ import { runPollTasks } from "./modules";
 import { Command } from "./types";
 import { REST } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v9";
-import { db } from "./utilities";
+import { splitBigString } from "./utilities";
 const { exec } = require("child_process");
 
 // Run config to get our environment variables
@@ -101,7 +101,7 @@ client.once("ready", (cl) => {
   }
 });
 
-client.on("messageCreate", (message: Message) => {
+client.on("messageCreate", async (message: Message) => {
   // We don't care about bots. Sad but true.
   if (message.author.bot) return;
 
@@ -110,9 +110,18 @@ client.on("messageCreate", (message: Message) => {
   const messageUser = message.author.username;
 
   if (messageText.startsWith("hey fini")) {
-    chatWithUser(messageUser, messageText.replace("hey fini", "")).then(
-      (reply) => message.channel.send(reply || "")
+    // Send temporary typing message
+    await message.channel.sendTyping();
+    // Contact openai api
+    const response = await chatWithUser(
+      messageUser,
+      messageText.replace("hey fini", "")
     );
+    // Split response to discord-sizable chunks
+    const replyArray = splitBigString(response);
+
+    // Send replies
+    replyArray.forEach(async (str) => await message.channel.send(str));
   }
 });
 
