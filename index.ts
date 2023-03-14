@@ -107,10 +107,11 @@ client.on("messageCreate", (message: Message) => {
 
   // Lowercase makes comparisons way easier
   const messageText = message.content.toLowerCase();
+  const messageUser = message.author.username;
 
   if (messageText.startsWith("hey fini")) {
-    chatWithUser(messageText.replace("hey fini", "")).then((reply) =>
-      message.channel.send(reply || "")
+    chatWithUser(messageUser, messageText.replace("hey fini", "")).then(
+      (reply) => message.channel.send(reply || "")
     );
   }
 });

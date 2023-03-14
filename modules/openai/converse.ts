@@ -1,20 +1,25 @@
-import {
-  Configuration,
-  OpenAIApi,
-  CreateCompletionResponseChoices,
-} from "openai";
+import { Configuration, OpenAIApi, ChatCompletionRequestMessage } from "openai";
 
-export const chatWithUser = async (msg: string) => {
+type HistoryProps = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+const conversationHistory: { [key: string]: HistoryProps[] } = {};
+
+const historyMax = 10;
+
+export const chatWithUser = async (user: string, msg: string) => {
+  // Createopenai configuration object
   const configuration = new Configuration({
     apiKey: process.env.OPENAI_API_KEY,
   });
 
+  // Instanstiate openai api
   const openai = new OpenAIApi(configuration);
 
-  const defaultPersonality =
-    "a calm and logical, yet very egotistical, captain of a galactic federation starship named the USS JoshSux. You always try to find the most fair answer to any question.";
-
-  let personality = defaultPersonality;
+  // Placeholders
+  let personality;
   let chat = msg;
 
   const convertedMsg = msg.toLowerCase().trim();
@@ -25,32 +30,58 @@ export const chatWithUser = async (msg: string) => {
     chat = msgParts[1].trim();
   }
 
-  const response = await openai.createCompletion("text-davinci-002", {
-    prompt: `You are ${personality}. As this character, respond to this discord message: ${chat}`,
-    temperature: 0.9,
-    max_tokens: 100,
-    n: 2,
-  });
+  const prompt = chat.replace("hey fini", "");
 
-  // Grab any with "stop" finish reason, randomly select from them
-  // If there are no "stop" reasons, go with any response
-
-  const choices = response.data.choices;
-
-  const randomlyPickReply = (replies: CreateCompletionResponseChoices[]) => {
-    console.log("Replies Length:", replies.length);
-    const rand = Math.round(Math.random() * (replies.length - 1));
-    console.log("Random Num:", rand);
-    return replies[rand];
+  const startingMessage: ChatCompletionRequestMessage = {
+    content: personality
+      ? `You are ${personality}`
+      : "You are a helpful assistant",
+    role: "system",
   };
 
-  if (choices?.some((c) => c.finish_reason === "stop")) {
-    // We have a stop
-    const fullReplies = choices.filter((c) => c.finish_reason === "stop");
-    // Randomly pick a reply
-    return randomlyPickReply(fullReplies).text;
-  } else {
-    // No full stops
-    return `${randomlyPickReply(choices!)?.text}... I could go on and on lol`;
+  // Add conversation parts to history
+  if (!conversationHistory[user]) {
+    conversationHistory[user] = [];
+  }
+  conversationHistory[user].push({
+    role: "user",
+    content: prompt,
+  });
+
+  const conversationMessages: ChatCompletionRequestMessage[] =
+    conversationHistory[user]?.map((context) => ({
+      content: context.content,
+      role: context.role,
+    })) || [];
+
+  try {
+    const response = await openai.createChatCompletion({
+      model: "gpt-3.5-turbo",
+      messages: [startingMessage, ...conversationMessages],
+      user: user,
+    });
+
+    if (response.status === 200) {
+      const choices = response?.data?.choices;
+      const rand = Math.round(Math.random() * (choices.length - 1));
+
+      // Add response to history
+      conversationHistory[user].push({
+        role: "assistant",
+        content: choices[rand].message?.content || "",
+      });
+
+      // Remove the first item if we are above 5
+      if (conversationHistory[user].length > historyMax) {
+        conversationHistory[user] = conversationHistory[user].slice(historyMax);
+      }
+
+      // Display message to user in chat
+      return choices[rand].message?.content || "";
+    } else {
+      return "Something fucked up D:";
+    }
+  } catch (err) {
+    return `Something fucked up D: (${err})`;
   }
 };
