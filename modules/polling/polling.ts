@@ -61,8 +61,8 @@ const checkHealthPings = async (cl: Client) => {
   const today = new Date();
 
   // Check at these times
-  const hourToCheck = [10, 13, 16, 20];
-  const minuteToCheck = 15;
+  const hourToCheck = [10, 13, 16, 20, 22];
+  const minuteToCheck = 40;
 
   const currentHour = today.getHours();
   const currentMinute = today.getMinutes();
@@ -79,20 +79,19 @@ const checkHealthPings = async (cl: Client) => {
       const activityJSON = JSON.parse(healthMessage);
 
       // We have our health message
-      const channels = await db().select<SettingsRecord>("Settings", {
-        Field: "Key",
-        Value: HEALTH_KEY,
-      });
+      const channels = await db().select<SettingsRecord>("Settings", "All");
+      const filteredChannels = channels.filter((c) => c.Key === HEALTH_KEY);
 
-      channels.forEach(async (ch) => {
-        const healthChannel = await cl.channels.fetch(ch.Value);
+      filteredChannels.forEach(async (ch) => {
+        console.log("Looping through channels", { filteredChannels, ch });
+        const healthChannel = await cl.channels.fetch(ch?.Value);
         (healthChannel as TextChannel).send(
           `Friendly reminder to do something healthy!`
         );
         (healthChannel as TextChannel).send(
           `**${activityJSON.activity_name}**`
         );
-        (healthChannel as TextChannel).send(activityJSON.acitivity_description);
+        (healthChannel as TextChannel).send(activityJSON.activity_description);
       });
     } catch (err) {
       console.error("Error parsing openai response", {
