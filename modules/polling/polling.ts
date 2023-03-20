@@ -61,8 +61,8 @@ const checkHealthPings = async (cl: Client) => {
   const today = new Date();
 
   // Check at these times
-  const hourToCheck = [10, 13, 16, 20, 22];
-  const minuteToCheck = 40;
+  const hourToCheck = [10, 13, 16, 20];
+  const minuteToCheck = 15;
 
   const currentHour = today.getHours();
   const currentMinute = today.getMinutes();
