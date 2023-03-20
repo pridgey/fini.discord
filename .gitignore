@@ -12,6 +12,7 @@ yarn-error.log*
 
 # database
 fini.db
+fini.db.sqlite
 chat.json
 ml-models/model.js
 
