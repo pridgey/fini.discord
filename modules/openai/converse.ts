@@ -1,4 +1,6 @@
 import { Configuration, OpenAIApi, ChatCompletionRequestMessage } from "openai";
+import type { CreateChatCompletionResponse } from "openai";
+import type { AxiosResponse } from "axios";
 
 type HistoryProps = {
   role: "user" | "assistant";
@@ -59,43 +61,34 @@ export const chatWithUser = async (user: string, msg: string) => {
     })) || [];
 
   // Hit the api
+  // try {
+  // Combine the personality, conversation history, and latest prompt into one array
+  const combinedMessages = [startingMessage, ...conversationMessages];
+
   try {
-    // Combine the personality, conversation history, and latest prompt into one array
-    const combinedMessages = [startingMessage, ...conversationMessages];
-
     // Call api and wait for response
-    let response = await getChatResponse(combinedMessages, openai, "gpt-4");
+    const gpt4response = await getChatResponse(
+      combinedMessages,
+      openai,
+      "gpt-4"
+    );
 
-    if (response.status === 429) {
-      // We got rate limited, try again with 3.5
-      response = await getChatResponse(combinedMessages, openai, "gpt-3.5");
-    }
-
-    if (response.status === 200) {
-      // Everything is good, let's grab a random response
-      const choices = response?.data?.choices;
-      const rand = Math.round(Math.random() * (choices.length - 1));
-
-      // Add response to history
-      conversationHistory[user].push({
-        role: "assistant",
-        content: choices[rand].message?.content || "",
-      });
-
-      // Remove the first item if we are above 5
-      if (conversationHistory[user].length > historyMax) {
-        conversationHistory[user] = conversationHistory[user].slice(historyMax);
-      }
-
-      // Display message to user in chat
-      return choices[rand].message?.content || "";
-    } else {
-      // Something went wrong
-      return "Something fucked up D:";
-    }
+    return parseChatResponse(user, gpt4response);
   } catch (err) {
-    // Something went very wrong
-    return `Something fucked up D: (${err})`;
+    console.log("gpt-4 api call failure:", { err });
+    // Try 3.5 instead
+    try {
+      const gpt35response = await getChatResponse(
+        combinedMessages,
+        openai,
+        "gpt-3.5"
+      );
+
+      return parseChatResponse(user, gpt35response);
+    } catch (err) {
+      console.log("gpt-3.5 api call failure:", { err });
+      return "Error calling api. D:";
+    }
   }
 };
 
@@ -112,4 +105,34 @@ const getChatResponse = async (
   });
 
   return response;
+};
+
+// helper function to parse response from api
+const parseChatResponse = (
+  user: string,
+  response: AxiosResponse<CreateChatCompletionResponse, any>
+) => {
+  if (response.status === 200) {
+    // Everything is good, let's grab a random response
+    console.log("Response:", { response });
+    const choices = response?.data?.choices;
+    const rand = Math.round(Math.random() * (choices.length - 1));
+
+    // Add response to history
+    conversationHistory[user].push({
+      role: "assistant",
+      content: choices[rand].message?.content || "",
+    });
+
+    // Remove the first item if we are above 5
+    if (conversationHistory[user].length > historyMax) {
+      conversationHistory[user] = conversationHistory[user].slice(historyMax);
+    }
+
+    // Display message to user in chat
+    return choices[rand].message?.content || "";
+  } else {
+    // Something went wrong
+    return "Something fucked up D:";
+  }
 };

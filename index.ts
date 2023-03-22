@@ -110,13 +110,21 @@ client.on("messageCreate", async (message: Message) => {
   const messageUser = message.author.username;
 
   if (messageText.startsWith("hey fini")) {
-    // Send temporary typing message
+    // Send temporary typing message, loop until we are done
+    const typingLoop = setInterval(() => {
+      message.channel.sendTyping();
+    }, 1000 * 11);
+
     await message.channel.sendTyping();
     // Contact openai api
     const response = await chatWithUser(
       messageUser,
       messageText.replace("hey fini", "")
     );
+
+    // Clear typing loop
+    clearInterval(typingLoop);
+
     // Split response to discord-sizable chunks
     const replyArray = splitBigString(response);
 
