@@ -68,12 +68,38 @@ const checkHealthPings = async (cl: Client) => {
   const currentMinute = today.getMinutes();
 
   if (currentMinute === minuteToCheck && hourToCheck.includes(currentHour)) {
-    console.log("Running health poll");
+    console.log("===== Generate Health Message =====");
+
+    // Different prompts to use to help diversify the workout
+    const workoutPrompts = [
+      "Please provide a quick healthy activity I can do in my office in about a minute.",
+      "Please provide a short activity to get the blood pumping.",
+      "Please provide a short workout I can do in a small office space.",
+      "Please provide a helpful quick activity to improve posture, promote relaxation, etc.",
+      "Please provide a unique minute workout that one could perform in an office-like environment.",
+      "Please provide a short breathing exercise to help refresh me.",
+      "Please suggest a quick and easy stretch that can be done at my desk to relieve tension.",
+      "Please recommend a brief mental exercise to help reset and refocus during a busy day.",
+      "Please provide a simple office-friendly movement to engage core muscles and improve balance.",
+      "Please suggest a quick and calming technique for reducing stress in a busy work environment.",
+      "Please provide a short, creative exercise to boost energy and productivity in a limited space.",
+      "Please recommend a brief, office-friendly yoga pose to help improve flexibility and focus.",
+      "Please provide a quick self-massage technique to alleviate neck or shoulder tension.",
+      "Please suggest a short, dynamic exercise that can be done in a seated position to re-energize.",
+      "Please recommend a simple mindfulness activity to help regain clarity and calm during a hectic day.",
+      "Please provide a quick desk exercise to strengthen and tone lower body muscles in a limited space.",
+    ];
+
+    // get a random option
+    const rand = Math.round(Math.random() * (workoutPrompts.length - 1));
+
+    // combine to form final prompt
+    const prompt =
+      workoutPrompts[rand] +
+      " Please provide the activity in the form of a JSON object, with the keys being: 'activity_name', 'acitivity_description', 'acitivity_benefits'";
+
     // Get the health message
-    const healthMessage = await chatWithUser(
-      "",
-      "Please provide a quick healthy activity I can do in my office. Please keep the activity to about a minute in length. Please provide the activity in the form of a JSON object, with the keys being: 'activity_name', 'acitivity_description', 'acitivity_benefits'"
-    );
+    const healthMessage = await chatWithUser("", prompt);
     console.log({ healthMessage, JSONified: JSON.parse(healthMessage) });
     try {
       const activityJSON = JSON.parse(healthMessage);
