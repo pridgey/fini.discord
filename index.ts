@@ -109,6 +109,17 @@ client.on("messageCreate", async (message: Message) => {
   const messageText = message.content.toLowerCase();
   const messageUser = message.author.username;
 
+  // Good bot reaction
+  if (messageText === "good bot") {
+    await message.react("💖");
+  }
+
+  // Bad bot reaction
+  if (messageText === "bad bot") {
+    await message.react("🥲");
+  }
+
+  // Fini chat
   if (messageText.startsWith("hey fini")) {
     // Send temporary typing message, loop until we are done
     const typingLoop = setInterval(() => {
