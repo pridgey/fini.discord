@@ -1,138 +1,215 @@
-import { Configuration, OpenAIApi, ChatCompletionRequestMessage } from "openai";
-import type { CreateChatCompletionResponse } from "openai";
-import type { AxiosResponse } from "axios";
+import OpenAI from "openai";
+import type {
+  ChatCompletionAssistantMessageParam,
+  ChatCompletionMessageParam,
+  ChatCompletionUserMessageParam,
+  ChatCompletionSystemMessageParam,
+} from "openai/resources";
 
-type HistoryProps = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-const conversationHistory: { [key: string]: HistoryProps[] } = {};
-
+// Length of conversation history array
 const historyMax = 10;
 
+// Object containing everyone's conversation history
+// Stored in memory (for now)
+/*
+export interface ChatCompletionUserMessageParam {
+  content: string | Array<ChatCompletionContentPart> | null;
+  role: 'user';
+}
+*/
+const conversationHistory: { [key: string]: ChatCompletionMessageParam[] } = {};
+
+// Function for determining if a personality is included in the message
+const determinePersonality = (msg: string) => {
+  let personality = "";
+  let restOfMessage = msg;
+  if (msg.startsWith("as") && msg.includes(":")) {
+    const msgParts = msg.split(":");
+    personality = msgParts[0].replace("as", "").trim();
+    restOfMessage = msgParts[1].trim();
+  }
+  return { personality, restOfMessage };
+};
+
+// Function for determing if the message includes an image url
+const determineImageUrl = (msg: string) => {
+  const imageUrlPattern = /(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|gif|png)/g;
+
+  const foundImages = msg.match(imageUrlPattern);
+
+  let imageUrl = "";
+  let restOfMessage = msg;
+
+  if (!!foundImages?.length) {
+    imageUrl = foundImages[0];
+    restOfMessage = msg.replace(imageUrl, "").trim();
+  }
+
+  return { imageUrl, restOfMessage };
+};
+
+// Function that runs when "hey fini ..." is spoken in chat
 export const chatWithUser = async (user: string, msg: string) => {
-  // Createopenai configuration object
-  const configuration = new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
+  console.log("Run chatWithUser()", { user, msg });
+  // Instantiate openai
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY || "no_key_found",
   });
 
-  // Instanstiate openai api
-  const openai = new OpenAIApi(configuration);
-
-  // Placeholders
+  // Chat variables
   let personality;
   let chat = msg;
 
-  // Easier to work with
-  const convertedMsg = msg.toLowerCase().trim();
+  // clean up user message
+  const cleanMsg = msg.toLowerCase().replace("hey fini", "").trim();
 
-  // Check if we're including a personality for this
-  if (convertedMsg.startsWith("as") && convertedMsg.includes(":")) {
-    const msgParts = convertedMsg.split(":");
-    personality = msgParts[0].replace("as", "").trim();
-    chat = msgParts[1].trim();
-  }
+  // Find any personality the user would like us to use
+  const personalityResult = determinePersonality(cleanMsg);
+  personality = personalityResult.personality || "a helpful assistant";
+  chat = personalityResult.restOfMessage;
 
-  const prompt = chat.replace("hey fini", "");
-
-  // Setup message object for the personality
-  const startingMessage: ChatCompletionRequestMessage = {
-    content: personality
-      ? `You are ${personality}`
-      : "You are a helpful assistant",
+  // Craft the opening message
+  const startingMessage: ChatCompletionSystemMessageParam = {
     role: "system",
+    content: `You are ${personality}`,
   };
 
-  // Add conversation parts to history
+  // Create user's chat history if it doesn't exist
   if (!conversationHistory[user]) {
     conversationHistory[user] = [];
   }
-  conversationHistory[user].push({
+
+  // This will represent the chat history for the user
+  const userHistory: ChatCompletionMessageParam[] = [
+    startingMessage,
+    ...conversationHistory[user],
+  ];
+
+  // Determine if this is an image request
+  const imageResult = determineImageUrl(chat);
+  chat = imageResult.restOfMessage;
+
+  // Craft the new message
+  // If this is an image message, format the content differently
+  const newMessage: ChatCompletionUserMessageParam = {
     role: "user",
-    content: prompt,
-  });
+    content: imageResult.imageUrl
+      ? [
+          {
+            type: "text",
+            text: chat,
+          },
+          {
+            type: "image_url",
+            image_url: { url: imageResult.imageUrl },
+          },
+        ]
+      : chat,
+  };
 
-  // Transforms message history into chat message objects
-  const conversationMessages: ChatCompletionRequestMessage[] =
-    conversationHistory[user]?.map((context) => ({
-      content: context.content,
-      role: context.role,
-    })) || [];
-
-  // Hit the api
-  // try {
-  // Combine the personality, conversation history, and latest prompt into one array
-  const combinedMessages = [startingMessage, ...conversationMessages];
-
+  // Call the api
   try {
-    // Call api and wait for response
-    const gpt4response = await getChatResponse(
-      combinedMessages,
-      openai,
-      "gpt-4"
-    );
-
-    return parseChatResponse(user, gpt4response);
-  } catch (err) {
-    console.log("gpt-4 api call failure:", { err });
-    // Try 3.5 instead
-    try {
-      const gpt35response = await getChatResponse(
-        combinedMessages,
-        openai,
-        "gpt-3.5"
-      );
-
-      return parseChatResponse(user, gpt35response);
-    } catch (err) {
-      console.log("gpt-3.5 api call failure:", { err });
-      return "Error calling api. D:";
-    }
-  }
-};
-
-// helper function to call the api
-const getChatResponse = async (
-  messages: ChatCompletionRequestMessage[],
-  openai: OpenAIApi,
-  model: "gpt-4" | "gpt-3.5"
-) => {
-  console.log("Calling OpenAI Chat Completion with:", { messages, model });
-  const response = await openai.createChatCompletion({
-    model,
-    messages,
-  });
-
-  return response;
-};
-
-// helper function to parse response from api
-const parseChatResponse = (
-  user: string,
-  response: AxiosResponse<CreateChatCompletionResponse, any>
-) => {
-  if (response.status === 200) {
-    // Everything is good, let's grab a random response
-    console.log("Response:", { response });
-    const choices = response?.data?.choices;
-    const rand = Math.round(Math.random() * (choices.length - 1));
-
-    // Add response to history
-    conversationHistory[user].push({
-      role: "assistant",
-      content: choices[rand].message?.content || "",
+    const openaiResponse = await openai.chat.completions.create({
+      model:
+        imageResult.imageUrl ||
+        userHistory.some(
+          (h) => Array.isArray(h.content) && h.content[1].type === "image_url"
+        )
+          ? "gpt-4-vision-preview"
+          : "gpt-4-1106-preview",
+      messages: [...userHistory, newMessage],
     });
 
-    // Remove the first item if we are above 5
-    if (conversationHistory[user].length > historyMax) {
-      conversationHistory[user] = conversationHistory[user].slice(historyMax);
-    }
+    if (!!openaiResponse.choices.length) {
+      // Call succeeded
 
-    // Display message to user in chat
-    return choices[rand].message?.content || "";
-  } else {
-    // Something went wrong
-    return "Something fucked up D:";
+      // Grab a random choice
+      const rand = Math.round(
+        Math.random() * (openaiResponse.choices.length - 1)
+      );
+      const randomChoice = openaiResponse.choices.at(rand);
+      console.log("gpt-4 api call success:", {
+        choicesLen: openaiResponse.choices.length,
+        selected: randomChoice,
+      });
+
+      // Add the user message, and response, to the user history
+      const responseObject: ChatCompletionAssistantMessageParam = {
+        role: "assistant",
+        content: randomChoice?.message.content || "",
+      };
+      conversationHistory[user].push(newMessage, responseObject);
+
+      // Remove messages beyond the max limit
+      if (conversationHistory[user].length > historyMax) {
+        conversationHistory[user] = conversationHistory[user].slice(historyMax);
+      }
+
+      return randomChoice?.message.content || "";
+    } else {
+      // Call failed
+      console.log("gpt-4 api call returned no choices");
+      return "I... don't know. D:";
+    }
+  } catch (err) {
+    console.log("gpt-4 api call failure:", { err });
+    return "Error calling the api D:";
   }
 };
+
+/*
+export type ChatCompletionMessageParam =
+  | ChatCompletionSystemMessageParam
+  | ChatCompletionUserMessageParam
+  | ChatCompletionAssistantMessageParam
+  | ChatCompletionToolMessageParam
+  | ChatCompletionFunctionMessageParam;
+  
+export interface ChatCompletionUserMessageParam {
+  content: string | Array<ChatCompletionContentPart> | null;
+  role: 'user';
+}
+
+export type ChatCompletionContentPart = ChatCompletionContentPartText | ChatCompletionContentPartImage;
+
+export interface ChatCompletionContentPartText {
+  text: string;
+  type: 'text';
+}
+
+export interface ChatCompletionContentPartImage {
+  image_url: ChatCompletionContentPartImage.ImageURL;
+  type: 'image_url';
+}
+
+*/
+
+// // helper function to parse response from api
+// const parseChatResponse = (
+//   user: string,
+//   response: AxiosResponse<CreateChatCompletionResponse, any>
+// ) => {
+//   if (response.status === 200) {
+//     // Everything is good, let's grab a random response
+//     console.log("Response:", { response });
+//     const choices = response?.data?.choices;
+//     const rand = Math.round(Math.random() * (choices.length - 1));
+
+//     // Add response to history
+//     conversationHistory[user].push({
+//       role: "assistant",
+//       content: choices[rand].message?.content || "",
+//     });
+
+//     // Remove the first item if we are above 5
+//     if (conversationHistory[user].length > historyMax) {
+//       conversationHistory[user] = conversationHistory[user].slice(historyMax);
+//     }
+
+//     // Display message to user in chat
+//     return choices[rand].message?.content || "";
+//   } else {
+//     // Something went wrong
+//     return "Something fucked up D:";
+//   }
+// };
