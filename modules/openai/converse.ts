@@ -118,6 +118,7 @@ export const chatWithUser = async (user: string, msg: string) => {
           ? "gpt-4-vision-preview"
           : "gpt-4-1106-preview",
       messages: [...userHistory, newMessage],
+      max_tokens: 300,
     });
 
     if (!!openaiResponse.choices.length) {
