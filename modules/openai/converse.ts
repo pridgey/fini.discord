@@ -5,6 +5,7 @@ import type {
   ChatCompletionUserMessageParam,
   ChatCompletionSystemMessageParam,
 } from "openai/resources";
+import type { OpenAIError } from "openai/error";
 
 // Length of conversation history array
 const historyMax = 10;
@@ -32,7 +33,11 @@ const determinePersonality = (msg: string) => {
 };
 
 // Function for determing if the message includes an image url
-const determineImageUrl = (msg: string) => {
+const determineImageUrl = (msg: string, attachmentURL?: string) => {
+  if (attachmentURL) {
+    return { imageUrl: attachmentURL, restOfMessage: msg };
+  }
+
   const imageUrlPattern = /(http(s?):)([/|.|\w|\s|-])*\.(?:jpg|gif|png)/g;
 
   const foundImages = msg.match(imageUrlPattern);
@@ -49,7 +54,11 @@ const determineImageUrl = (msg: string) => {
 };
 
 // Function that runs when "hey fini ..." is spoken in chat
-export const chatWithUser = async (user: string, msg: string) => {
+export const chatWithUser = async (
+  user: string,
+  msg: string,
+  attachmentURL?: string
+) => {
   console.log("Run chatWithUser()", { user, msg });
   // Instantiate openai
   const openai = new OpenAI({
@@ -86,7 +95,7 @@ export const chatWithUser = async (user: string, msg: string) => {
   ];
 
   // Determine if this is an image request
-  const imageResult = determineImageUrl(chat);
+  const imageResult = determineImageUrl(chat, attachmentURL);
   chat = imageResult.restOfMessage;
 
   // Craft the new message
@@ -118,7 +127,7 @@ export const chatWithUser = async (user: string, msg: string) => {
           ? "gpt-4-vision-preview"
           : "gpt-4-1106-preview",
       messages: [...userHistory, newMessage],
-      max_tokens: 300,
+      max_tokens: 900,
     });
 
     if (!!openaiResponse.choices.length) {
@@ -152,9 +161,11 @@ export const chatWithUser = async (user: string, msg: string) => {
       console.log("gpt-4 api call returned no choices");
       return "I... don't know. D:";
     }
-  } catch (err) {
+  } catch (err: unknown) {
     console.log("gpt-4 api call failure:", { err });
-    return "Error calling the api D:";
+    return `Error calling the api D:${
+      (err as OpenAIError)?.message ? `\n${(err as OpenAIError).message}` : ""
+    }`;
   }
 };
 
@@ -184,33 +195,3 @@ export interface ChatCompletionContentPartImage {
 }
 
 */
-
-// // helper function to parse response from api
-// const parseChatResponse = (
-//   user: string,
-//   response: AxiosResponse<CreateChatCompletionResponse, any>
-// ) => {
-//   if (response.status === 200) {
-//     // Everything is good, let's grab a random response
-//     console.log("Response:", { response });
-//     const choices = response?.data?.choices;
-//     const rand = Math.round(Math.random() * (choices.length - 1));
-
-//     // Add response to history
-//     conversationHistory[user].push({
-//       role: "assistant",
-//       content: choices[rand].message?.content || "",
-//     });
-
-//     // Remove the first item if we are above 5
-//     if (conversationHistory[user].length > historyMax) {
-//       conversationHistory[user] = conversationHistory[user].slice(historyMax);
-//     }
-
-//     // Display message to user in chat
-//     return choices[rand].message?.content || "";
-//   } else {
-//     // Something went wrong
-//     return "Something fucked up D:";
-//   }
-// };

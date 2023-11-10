@@ -127,10 +127,15 @@ client.on("messageCreate", async (message: Message) => {
     }, 1000 * 11);
 
     await message.channel.sendTyping();
+
+    // Grab any attachments if they exist
+    const attachment = message.attachments.at(0)?.url;
+
     // Contact openai api
     const response = await chatWithUser(
       messageUser,
-      messageText.replace("hey fini", "")
+      messageText.replace("hey fini", ""),
+      attachment
     );
 
     // Clear typing loop

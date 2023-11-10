@@ -28,7 +28,7 @@ export const execute = async (interaction: CommandInteraction) => {
     });
 
     interaction.editReply(
-      `Promot: ${prompt}\n${respond.data[0].url ?? "I couldn't do it"}`
+      `Prompt: ${prompt}\n${respond.data[0].url ?? "I couldn't do it"}`
     );
   }
 };
