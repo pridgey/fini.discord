@@ -5,7 +5,8 @@ import {
   MessageActionRow,
   MessageButton,
 } from "discord.js";
-import { grabGif } from "./../utilities";
+import { grabGif } from "../utilities";
+import { RawMessagePayloadData } from "discord.js/typings/rawDataTypes";
 
 export const data = new SlashCommandBuilder()
   .setName("gif")
@@ -88,7 +89,7 @@ export const execute = async (interaction: CommandInteraction) => {
         data: {
           type: 1,
           content: "test",
-        },
+        } as RawMessagePayloadData,
       });
     } else {
       interaction.reply(`Couldn't find a gif for ${query}`);

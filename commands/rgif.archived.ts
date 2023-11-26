@@ -5,18 +5,22 @@ import {
   MessageActionRow,
   MessageButton,
 } from "discord.js";
-import { grabGif } from "./../utilities";
+import { grabGif } from "../utilities";
+import { RawMessagePayloadData } from "discord.js/typings/rawDataTypes";
 
 export const data = new SlashCommandBuilder()
-  .setName("agif")
-  .setDescription("React with a random gif, but with anime")
+  .setName("rgif")
+  .setDescription("React with a random gif, but R Rated")
   .addStringOption((option) =>
-    option.setName("query").setDescription("what gif should I look for?")
+    option
+      .setName("query")
+      .setDescription("what gif should I look for?")
+      .setRequired(true)
   );
 
 export const execute = async (interaction: CommandInteraction) => {
-  const query = interaction?.options?.getString("query")?.trim();
-  grabGif(`anime ${query}`).then((gifList) => {
+  const query = interaction?.options?.getString("query")?.trim() || "";
+  grabGif(query, "giphy", "r").then((gifList) => {
     if (gifList) {
       const previousButton = new MessageButton()
         .setLabel("Previous")
@@ -88,7 +92,7 @@ export const execute = async (interaction: CommandInteraction) => {
         data: {
           type: 1,
           content: "test",
-        },
+        } as RawMessagePayloadData,
       });
     } else {
       interaction.reply(`Couldn't find a gif for ${query}`);

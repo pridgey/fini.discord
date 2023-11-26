@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "prestart": "npm run build",
+    "prebuild": "rm -r dist",
     "build": "tsc",
     "start": "node --trace-warnings --unhandled-rejections=strict dist/index.js"
   },

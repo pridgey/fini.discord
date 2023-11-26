@@ -50,10 +50,12 @@ glob("**/commands/**/*.command.js", (err, files) => {
     console.error(" ");
   } else {
     for (const file of files) {
-      import(`./${file.replace("dist/", "")}`).then((cmd: any) => {
-        // Pass in the command, named by the file and value set to the function to run
-        client.commands.set(cmd.data.name, cmd);
-      });
+      if (!file.includes("archived")) {
+        import(`./${file.replace("dist/", "")}`).then((cmd: any) => {
+          // Pass in the command, named by the file and value set to the function to run
+          client.commands.set(cmd.data.name, cmd);
+        });
+      }
     }
   }
 });
@@ -64,6 +66,11 @@ client.once("typingStart", (ev) => {
     process?.env.FINI_TOKEN || ""
   );
 
+  // The clientID
+  const clientId = process?.env.FINI_CLIENTID || "";
+  // The guildID
+  const guildId = ev?.guild?.id || "";
+
   // We have an array that we will shove command's json into
   const commandsToRegister: any[] = [];
   // Generate the json
@@ -71,17 +78,17 @@ client.once("typingStart", (ev) => {
     commandsToRegister.push(cmd.data.toJSON());
   });
 
-  // send the commands and register them
+  // Delete all of the guild commands, then reinstate them
   rest
-    .put(
-      Routes.applicationGuildCommands(
-        process?.env.FINI_CLIENTID || "",
-        ev?.guild?.id || ""
-      ),
-      {
-        body: commandsToRegister,
-      }
-    )
+    .put(Routes.applicationGuildCommands(clientId, guildId), { body: [] })
+    .then(() => console.log("Successfully deleted all guild commands."))
+    .catch(console.error);
+
+  // Register commands to guild
+  rest
+    .put(Routes.applicationGuildCommands(clientId, guildId), {
+      body: commandsToRegister,
+    })
     .then(() => console.log("Successfully registered application commands."))
     .catch(console.error);
 });
