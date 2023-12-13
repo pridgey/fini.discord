@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction, MessageAttachment } from "discord.js";
 import OpenAI from "openai";
+import type { OpenAIError } from "openai/error";
 
 export const data = new SlashCommandBuilder()
   .setName("image")
@@ -20,15 +21,31 @@ export const execute = async (interaction: CommandInteraction) => {
 
     await interaction.deferReply();
 
-    const respond = await openai.images.generate({
-      model: "dall-e-3",
-      prompt,
-      n: 1,
-      size: "1024x1024",
-    });
+    try {
+      const respond = await openai.images.generate({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size: "1024x1024",
+      });
 
-    interaction.editReply(
-      `Prompt: ${prompt}\n${respond.data[0].url ?? "I couldn't do it"}`
-    );
+      const imageAttachment = new MessageAttachment(
+        respond.data[0].url ?? "",
+        "image.png"
+      );
+
+      interaction.editReply({
+        content: `**Prompt:** ${prompt}`,
+        files: [imageAttachment],
+      });
+    } catch (err: unknown) {
+      interaction.editReply(
+        `I couldn't do it.\nPrompt:${prompt}\nError: ${
+          (err as OpenAIError).message
+        }`
+      );
+    }
+  } else {
+    await interaction.reply("You need to give me something to work with.");
   }
 };
