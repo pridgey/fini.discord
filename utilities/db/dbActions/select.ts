@@ -21,7 +21,7 @@ export const select =
               reject(error);
             } else {
               if (rows.length) {
-                rows.forEach((record) => {
+                rows.forEach((record: any) => {
                   // One item of the results
                   const values: any[] = Object.values(record);
                   Object.keys(record).forEach(
@@ -30,7 +30,7 @@ export const select =
                   );
                 });
               }
-              resolve(rows);
+              resolve(rows as T[]);
             }
           }
         );
@@ -48,7 +48,7 @@ export const select =
                   (key, index) => (row[key] = decodeURIComponent(values[index]))
                 );
               }
-              resolve([row]);
+              resolve([row as T]);
             }
           }
         );
@@ -70,7 +70,7 @@ export const select =
                   (key, index) => (row[key] = decodeURIComponent(values[index]))
                 );
               }
-              resolve([row]);
+              resolve([row as T]);
             }
           }
         );

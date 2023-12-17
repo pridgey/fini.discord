@@ -4,7 +4,6 @@ import { LogHammerspaceItem } from "./../utilities/logHammerspaceItem";
 import { db } from "./../utilities/db";
 import { HammerspaceItem, SentenceItem, PhraseItem } from "./../types";
 import brain from "brain.js";
-import * as spoutModel from "./../ml-models/spout-model.json";
 
 export const data = new SlashCommandBuilder()
   .setName("spout")
@@ -19,7 +18,7 @@ export const execute = async (interaction: CommandInteraction) => {
   if (useAI) {
     // Run ml version
     const net = new brain.recurrent.LSTM();
-    net.fromJSON(spoutModel as unknown as brain.INeuralNetworkJSON);
+    //net.fromJSON(spoutModel as unknown as brain.INeuralNetworkJSON);
 
     db()
       .select<HammerspaceItem>(
