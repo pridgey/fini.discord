@@ -14,7 +14,7 @@ export const data = new SlashCommandBuilder()
   );
 
 export const execute = async (interaction: CommandInteraction) => {
-  const itemToAdd = interaction.options.getString("item");
+  const itemToAdd = interaction.options.get("item")?.value?.toString() || "";
 
   if (itemToAdd?.length) {
     if (itemToAdd?.length < 100) {
