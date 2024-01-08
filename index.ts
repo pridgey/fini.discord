@@ -3,6 +3,7 @@ import { glob } from "glob";
 import { runPollTasks } from "./modules";
 import { chatWithUser } from "./modules/openai";
 import { splitBigString } from "./utilities";
+import { createLog } from "./modules/logger";
 const { exec } = require("child_process");
 
 // Initialize client and announce intents
@@ -66,7 +67,9 @@ client.once("typingStart", async (event) => {
     console.groupEnd();
   } catch (err: unknown) {
     const error: Error = err as Error;
-    console.error(`${Date.now()}: ${error.message}`);
+    console.error(
+      `Error registering commands (${Date.now()}): ${error.message}`
+    );
     console.error(error.stack);
     console.error(" ");
   }
@@ -126,6 +129,15 @@ client.on("messageCreate", async (message: Message) => {
       attachment
     );
 
+    // Log hey fini interaction
+    await createLog({
+      user_id: message.author.id,
+      server_id: message.guild?.id || "unknown",
+      command: "hey fini",
+      input: messageText,
+      output: response,
+    });
+
     // Clear typing loop
     clearInterval(typingLoop);
 
@@ -159,9 +171,26 @@ client.on("interactionCreate", async (interaction) => {
     const commandToRun = commands.find(
       (c) => c.data.name === interaction.commandName
     );
+    // Exit early if we can't find the command to run
     if (!commandToRun) return;
+
     // Execute the command
     commandToRun.execute(interaction);
+
+    // Log the command
+    createLog({
+      command: `/${commandToRun.data.name}`,
+      input: `Command options:\n${commandToRun.data.options
+        .map((o) => {
+          const optionName = o.name;
+          const optionValue = interaction.options.get(optionName)?.value;
+          return `${optionName}: ${optionValue}`;
+        })
+        .join(",\n")}`,
+      output: "command ran successfully",
+      server_id: interaction.guild?.id || "unknown",
+      user_id: interaction.user.id,
+    });
   } catch (err) {
     const error: Error = err as Error;
     interaction.reply({
@@ -170,38 +199,6 @@ client.on("interactionCreate", async (interaction) => {
     });
   }
 });
-
-// client.on("interactionCreate", async (interaction) => {
-//   if (!interaction.isCommand()) return;
-
-//   // Let people know this isn't a final version
-//   exec("git rev-parse --abbrev-ref HEAD", (err, stdout) => {
-//     if (err) {
-//       console.error("Error:", err);
-//     }
-//     if (typeof stdout === "string" && stdout.trim() !== "main") {
-//       interaction?.channel?.send(
-//         "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*"
-//       );
-//     }
-//   });
-
-//   // grab the command name
-//   const command = client.commands.get(interaction.commandName);
-
-//   // No command, no run
-//   if (!command) return;
-
-//   try {
-//     await command.execute(interaction);
-//   } catch (error) {
-//     console.error(error);
-//     return interaction.reply({
-//       content: "I fucked up D:",
-//       ephemeral: true,
-//     });
-//   }
-// });
 
 // Let's gooooooo
 client.login(process.env.FINI_TOKEN);

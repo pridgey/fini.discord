@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
-import { db } from "./../utilities";
-import { HammerspaceItem } from "./../types";
+import type { HammerspaceRecord } from "../types/PocketbaseTables";
+import { pb } from "../utilities/pocketbase";
 
 export const data = new SlashCommandBuilder()
   .setName("add")
@@ -18,20 +18,24 @@ export const execute = async (interaction: CommandInteraction) => {
 
   if (itemToAdd?.length) {
     if (itemToAdd?.length < 100) {
-      return db()
-        .insert<HammerspaceItem>("Hammerspace", {
-          DateCreated: Date.now(),
-          Item: itemToAdd,
-          Server: interaction.guildId || "",
-          TimesUsed: 0,
-          User: interaction.user.id,
-        })
-        .then(() => {
-          interaction.reply({
-            content: `I've added _${itemToAdd}_ to the ${interaction?.guild?.name} Hammerspace`,
-          });
-        })
-        .catch((err) => `I fucked up: ${err}`);
+      try {
+        const newHammerspaceItem: HammerspaceRecord = {
+          item: itemToAdd,
+          times_used: 0,
+          create_by_user_id: interaction.user.id,
+          type: "item",
+          server_id: interaction.guild?.id || "unknown",
+        };
+        await pb.collection("hammerspace").create(newHammerspaceItem);
+        interaction.reply(`**${itemToAdd}** has been added to the hammerspace`);
+      } catch (err) {
+        const error: Error = err as Error;
+        const errorMessage = `Error during /add command: ${error.message}`;
+        console.error(errorMessage);
+        interaction.reply({
+          content: errorMessage,
+        });
+      }
     } else {
       interaction.reply({
         content: "I'm way too lazy to add an item that long",
