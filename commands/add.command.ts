@@ -13,7 +13,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(true)
   );
 
-export const execute = async (interaction: CommandInteraction) => {
+export const execute = async (
+  interaction: CommandInteraction,
+  logCommand: () => void
+) => {
   const itemToAdd = interaction.options.get("item")?.value?.toString() || "";
 
   if (itemToAdd?.length) {
@@ -27,23 +30,30 @@ export const execute = async (interaction: CommandInteraction) => {
           server_id: interaction.guild?.id || "unknown",
         };
         await pb.collection("hammerspace").create(newHammerspaceItem);
-        interaction.reply(`**${itemToAdd}** has been added to the hammerspace`);
+        await interaction.reply(
+          `**${itemToAdd}** has been added to the hammerspace`
+        );
+
+        logCommand();
       } catch (err) {
         const error: Error = err as Error;
         const errorMessage = `Error during /add command: ${error.message}`;
         console.error(errorMessage);
-        interaction.reply({
+        await interaction.reply({
           content: errorMessage,
         });
+        logCommand();
       }
     } else {
-      interaction.reply({
+      await interaction.reply({
         content: "I'm way too lazy to add an item that long",
       });
+      logCommand();
     }
   } else {
-    interaction.reply({
+    await interaction.reply({
       content: "I can't add nothing, crazy pants.",
     });
+    logCommand();
   }
 };

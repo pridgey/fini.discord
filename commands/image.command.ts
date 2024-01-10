@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction, AttachmentBuilder } from "discord.js";
 import OpenAI from "openai";
 import type { OpenAIError } from "openai/error";
+import { createLog } from "../modules/logger";
 
 export const data = new SlashCommandBuilder()
   .setName("image")
@@ -10,7 +11,10 @@ export const data = new SlashCommandBuilder()
     option.setName("prompt").setDescription("Waddya want?").setRequired(true)
   );
 
-export const execute = async (interaction: CommandInteraction) => {
+export const execute = async (
+  interaction: CommandInteraction,
+  logCommand: () => void
+) => {
   const prompt = interaction.options.get("prompt")?.value?.toString() || "";
 
   if (!!prompt?.length) {
@@ -32,18 +36,22 @@ export const execute = async (interaction: CommandInteraction) => {
         name: "image.jpg",
       });
 
-      interaction.editReply({
+      await interaction.editReply({
         content: `**Prompt:** ${prompt}`,
         files: [imageAttachment],
       });
+
+      logCommand();
     } catch (err: unknown) {
-      interaction.editReply(
+      await interaction.editReply(
         `I couldn't do it.\nPrompt:${prompt}\nError: ${
           (err as OpenAIError).message
         }`
       );
+      logCommand();
     }
   } else {
     await interaction.reply("You need to give me something to work with.");
+    logCommand();
   }
 };

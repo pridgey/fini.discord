@@ -175,21 +175,20 @@ client.on("interactionCreate", async (interaction) => {
     if (!commandToRun) return;
 
     // Execute the command
-    commandToRun.execute(interaction);
-
-    // Log the command
-    createLog({
-      command: `/${commandToRun.data.name}`,
-      input: `Command options:\n${commandToRun.data.options
-        .map((o) => {
-          const optionName = o.name;
-          const optionValue = interaction.options.get(optionName)?.value;
-          return `${optionName}: ${optionValue}`;
-        })
-        .join(",\n")}`,
-      output: "command ran successfully",
-      server_id: interaction.guild?.id || "unknown",
-      user_id: interaction.user.id,
+    await commandToRun.execute(interaction, async () => {
+      createLog({
+        command: `/${commandToRun.data.name}`,
+        input: `Command options:\n${commandToRun.data.options
+          .map((o) => {
+            const optionName = o.name;
+            const optionValue = interaction.options.get(optionName)?.value;
+            return `${optionName}: ${optionValue}`;
+          })
+          .join(",\n")}`,
+        output: (await interaction.fetchReply()).content,
+        server_id: interaction.guild?.id || "unknown",
+        user_id: interaction.user.id,
+      });
     });
   } catch (err) {
     const error: Error = err as Error;
