@@ -1,23 +1,24 @@
-import { db } from "./../../utilities";
-import { BankRecord } from "./../../types";
+import { pb } from "../../utilities/pocketbase";
+import type { BankRecord } from "../../types/PocketbaseTables";
 
+/**
+ * utility function to help with wager based games
+ * @param userID The UserID of the user playing the game
+ * @param guildID The server where the call is coming from
+ * @param wager The amount being wagered
+ * @returns An object the the user's funds, the user's current balance, and a function to run post game
+ */
 export const runGame = async (
   userID: string,
   guildID: string,
   wager: number
 ) => {
   let userHasFunds = false;
-  let userBalance = 0;
-  const betAmount = Math.round(wager) || 1;
+  let userBalance = (await getUserBalance(userID, guildID)) || 0;
+  const betAmount = wager || 1;
 
   // Check if user has funds
-  await db()
-    .select<BankRecord>("Bank", { Field: "User", Value: userID }, guildID)
-    .then((results: BankRecord[]) => {
-      const balance = Number(results[0].Balance);
-      userBalance = balance;
-      userHasFunds = balance >= betAmount;
-    });
+  userHasFunds = userBalance >= betAmount;
 
   // If funds available, hold funds
   if (userHasFunds) {
@@ -25,13 +26,9 @@ export const runGame = async (
   }
 
   // Create command to run when game is over
-  const rewardWager = (win: boolean, multiplier: number) =>
-    addCoin(win ? userID : "fini", guildID, multiplier * betAmount).then(
-      ({ balance }) => ({
-        balance: win ? balance : userBalance - betAmount,
-        betAmount,
-      })
-    );
+  const rewardWager = async (win: boolean, multiplier: number) => {
+    await addCoin(win ? userID : "fini", guildID, multiplier * betAmount);
+  };
 
   // return whether the user has funds, and the resulting function
   return {
@@ -41,42 +38,66 @@ export const runGame = async (
   };
 };
 
-export const removeCoin = (userID: string, guildID, amount: number) =>
+/**
+ * utility function to take finicoin away from a user
+ * @param userID The UserID of the user to remove coin from
+ * @param guildID The server ID of the server where the call is coming from
+ * @param amount The amount to remove
+ */
+export const removeCoin = (userID: string, guildID, amount: number) => {
   addCoin(userID, guildID, amount * -1);
+};
 
-export const addCoin = (userID: string, guildID: string, amount: number) =>
-  db()
-    .select<BankRecord>(
-      "Bank",
-      {
-        Field: "User",
-        Value: userID,
-      },
-      guildID
-    )
-    .then((results: BankRecord[]) => results[0])
-    .then((userAccount) => {
-      db().update<BankRecord>(
-        "Bank",
-        { Field: "ID", Value: userAccount?.ID || "" },
-        {
-          Field: "Balance",
-          Value: Number(userAccount.Balance) + Number(amount),
-        },
-        guildID
-      );
-      return {
-        balance: Number(userAccount.Balance) + Number(amount),
-      };
-    })
-    .catch((err) => {
-      console.error(err);
-      return {
-        balance: 0,
-      };
-    });
+/**
+ * utility function to reward finicoin to a user
+ * @param userID The UserID of the user to add coin to
+ * @param guildID The server ID of the server where the call is coming from
+ * @param amount The amount to reward
+ */
+export const addCoin = async (
+  userID: string,
+  guildID: string,
+  amount: number
+) => {
+  try {
+    // Check if record exists
+    const bankRecord = await pb
+      .collection<BankRecord>("bank")
+      .getFirstListItem(`user_id = "${userID}" && server_id = "${guildID}"`);
 
-export const getUserBalance = (userID: string, guildID: string) =>
-  db()
-    .select<BankRecord>("Bank", { Field: "User", Value: userID }, guildID)
-    .then((results: BankRecord[]) => results[0].Balance);
+    if (bankRecord.id) {
+      // Update
+      pb.collection<BankRecord>("bank").update(bankRecord.id, {
+        balance: bankRecord.balance + amount,
+      });
+    } else {
+      // Create
+      const newBankRecord: BankRecord = {
+        balance: amount,
+        server_id: guildID,
+        user_id: userID,
+      };
+      await pb.collection<BankRecord>("bank").create(newBankRecord);
+    }
+  } catch (err) {
+    console.error("Error running finicoin.addCoin", { err });
+  }
+};
+
+/**
+ * utility function to get the user's current finicoin balance
+ * @param userID The UserID of the user to get the balance of
+ * @param guildID The GuildID of the server the call is coming from
+ * @returns The balance
+ */
+export const getUserBalance = async (userID: string, guildID: string) => {
+  try {
+    const bankRecord = await pb
+      .collection<BankRecord>("bank")
+      .getFirstListItem(`user_id = "${userID}" && server_id = "${guildID}"`);
+
+    return bankRecord.balance || 0;
+  } catch (err) {
+    console.error("Error running getUserBalance", { err });
+  }
+};

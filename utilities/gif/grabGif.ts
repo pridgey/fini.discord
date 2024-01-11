@@ -1,6 +1,7 @@
 import fetch from "node-fetch";
+import seedrandom from "seedrandom";
 
-export const grabGif = (
+export const grabGif = async (
   query: string,
   engine: "giphy" | "tenor" = "giphy",
   rating: "g" | "pg" | "pg-13" | "r" = "pg-13"
@@ -10,24 +11,21 @@ export const grabGif = (
 
   const giphyUrl = `https://api.giphy.com/v1/gifs/search?api_key=${process.env.GIPHY_KEY}&q=${urlarized}&rating=${rating}`;
   const tenorUrl = `https://g.tenor.com/v1/search?key=${process.env.TENOR_KEY}&q=${urlarized}`;
+  const fetchURL = engine === "giphy" ? giphyUrl : tenorUrl;
 
   // Fetch a gif from tenor and return a random one
-  return fetch(engine === "giphy" ? giphyUrl : tenorUrl)
-    .then((results) => results.json())
-    .then((data) => {
-      const engineDict = {
-        giphy: parseGiphyGif,
-        tenor: parseTenorGif,
-      };
+  const fetchResponse = await fetch(fetchURL);
+  const fetchData = await fetchResponse.json();
+  const rng = seedrandom(Date.now());
 
-      const result = engineDict[engine](data);
-
-      return result;
-    });
+  // Get gif
+  if (engine === "giphy") {
+    const randomNumber = Math.round(rng() * fetchData.data.length - 1);
+    const url = fetchData?.data?.[randomNumber]?.images.downsized.url || "";
+    return url;
+  } else {
+    const randomNumber = Math.round(rng() * fetchData.results.length - 1);
+    const url = fetchData?.results?.[randomNumber].url || "";
+    return url;
+  }
 };
-
-// Return an array of the gif results
-const parseGiphyGif = ({ data }) => data.map((g) => g.images.downsized.url);
-
-const parseTenorGif = ({ results }) =>
-  results.map((g) => g.media[0].mediumgif.url).filter((g) => g);

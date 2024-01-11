@@ -13,6 +13,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMessageTyping,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
   ],
 });
 
@@ -49,12 +50,17 @@ client.once("typingStart", async (event) => {
     console.log("Command Data:", { commandData });
     console.log("");
 
-    // First, delete all guild commands to clear out old ones
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-      body: [],
-    });
+    rest.on("rateLimited", (res) => console.log("OnRateLimited:", { res }));
 
-    console.log("Deleted Guild Commands");
+    // First, delete all guild commands to clear out old ones
+    const response = await rest.put(
+      Routes.applicationGuildCommands(clientId, guildId),
+      {
+        body: [],
+      }
+    );
+
+    console.log("Deleted Guild Commands", { response });
     console.log("");
 
     // Now register the commands

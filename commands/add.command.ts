@@ -21,11 +21,12 @@ export const execute = async (
 
   if (itemToAdd?.length) {
     if (itemToAdd?.length < 100) {
+      // Add the item
       try {
         const newHammerspaceItem: HammerspaceRecord = {
           item: itemToAdd,
           times_used: 0,
-          create_by_user_id: interaction.user.id,
+          created_by_user_id: interaction.user.username,
           type: "item",
           server_id: interaction.guild?.id || "unknown",
         };

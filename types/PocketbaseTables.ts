@@ -1,24 +1,29 @@
 export type BankRecord = {
+  id?: string;
   user_id: string;
   balance: number;
   server_id: string;
 };
 
 export type ChatRecord = {
+  id?: string;
   user_id: string;
   message: string;
   author: "bot" | "user";
 };
 
 export type HammerspaceRecord = {
+  id?: string;
   item: string;
   times_used: number;
   server_id: string;
-  create_by_user_id: string;
+  created?: string;
+  created_by_user_id: string;
   type: "item" | "sentence" | "phrase";
 };
 
 export type LogRecord = {
+  id?: string;
   user_id: string;
   server_id: string;
   command: string;
@@ -27,6 +32,7 @@ export type LogRecord = {
 };
 
 export type ReminderRecord = {
+  id?: string;
   time: string;
   server_id: string;
   user_id: string;
