@@ -56,7 +56,7 @@ export const execute = async (
     const outcome = randomNumber % 2 === 0 ? "Even" : "Odd";
     const userHasWon = outcome === option;
     const gif = await grabGif(
-      `cute anime girl ${userHasWon ? "victory" : "failure"}`,
+      `${userHasWon ? "winner" : "failure"} cute anime girl`,
       "giphy"
     );
 
@@ -81,7 +81,7 @@ export const execute = async (
         },
         {
           name: "Your Winnings",
-          value: userHasWon ? (bet * PrizeMultiplier).toLocaleString() : "0",
+          value: userHasWon ? bet.toLocaleString() : "0",
           inline: true,
         },
       ],

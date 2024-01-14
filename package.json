@@ -7,7 +7,9 @@
     "prestart": "npm run build",
     "prebuild": "rm -rf dist",
     "build": "tsc",
-    "start": "node --env-file=.env --trace-warnings --unhandled-rejections=strict dist/index.js"
+    "start": "node --env-file=.env --trace-warnings --unhandled-rejections=strict dist/index.js",
+    "delete-commands": "node --env-file=.env command_scripts/delete.js",
+    "register-commands": "node --env-file=.env command_scripts/register.js"
   },
   "author": "Taylor Pridgen",
   "license": "ISC",

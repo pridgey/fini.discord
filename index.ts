@@ -1,9 +1,9 @@
-import { Client, GatewayIntentBits, Message, REST, Routes } from "discord.js";
-import { glob } from "glob";
-import { runPollTasks } from "./modules";
+import { Client, GatewayIntentBits, Message } from "discord.js";
+import { rewardCoin, runPollTasks } from "./modules";
+import { createLog } from "./modules/logger";
 import { chatWithUser } from "./modules/openai";
 import { splitBigString } from "./utilities";
-import { createLog } from "./modules/logger";
+import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
 const { exec } = require("child_process");
 
 // Initialize client and announce intents
@@ -15,70 +15,6 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
   ],
-});
-
-// Runs once when the typingStart command fires. Registers all commands for a guild
-let commands: any[] = [];
-client.once("typingStart", async (event) => {
-  try {
-    console.log("====== REGISTER COMMANDS ======");
-    console.group();
-
-    // Grab each command from the commands directory
-    const commandFiles = await glob("**/commands/*.command.js");
-
-    console.log("Found Command Files:", { commandFiles });
-    console.log("");
-
-    // Utilize discord's REST module for registering commands
-    const rest = new REST().setToken(process.env.FINI_TOKEN || "");
-
-    // Fini client ID
-    const clientId = process.env.FINI_CLIENTID || "";
-    // The guild ID
-    const guildId = event?.guild?.id || "";
-
-    // Map files to format the rest registration needs
-    const importedFiles = await Promise.all(
-      commandFiles
-        .filter((file) => !file.includes("archived"))
-        .map((file) => import(`./${file.replace("dist/", "")}`))
-    );
-    commands = importedFiles;
-    const commandData = importedFiles.map((cmdData) => cmdData.data.toJSON());
-
-    console.log("Command Data:", { commandData });
-    console.log("");
-
-    rest.on("rateLimited", (res) => console.log("OnRateLimited:", { res }));
-
-    // First, delete all guild commands to clear out old ones
-    const response = await rest.put(
-      Routes.applicationGuildCommands(clientId, guildId),
-      {
-        body: [],
-      }
-    );
-
-    console.log("Deleted Guild Commands", { response });
-    console.log("");
-
-    // Now register the commands
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-      body: commandData,
-    });
-
-    console.log("Registered Commands");
-    console.log("");
-    console.groupEnd();
-  } catch (err: unknown) {
-    const error: Error = err as Error;
-    console.error(
-      `Error registering commands (${Date.now()}): ${error.message}`
-    );
-    console.error(error.stack);
-    console.error(" ");
-  }
 });
 
 let pollingInterval;
@@ -152,6 +88,9 @@ client.on("messageCreate", async (message: Message) => {
 
     // Send replies
     replyArray.forEach(async (str) => await message.channel.send(str));
+  } else {
+    // Regular messages should be rewarded finicoin
+    await rewardCoin(message);
   }
 });
 
@@ -174,6 +113,7 @@ client.on("interactionCreate", async (interaction) => {
 
   try {
     // Get the commands name
+    const { importedFiles: commands } = await getCommandFiles();
     const commandToRun = commands.find(
       (c) => c.data.name === interaction.commandName
     );

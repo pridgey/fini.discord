@@ -67,7 +67,7 @@ export const addCoin = async (
 
     if (bankRecord.id) {
       // Update
-      pb.collection<BankRecord>("bank").update(bankRecord.id, {
+      await pb.collection<BankRecord>("bank").update(bankRecord.id, {
         balance: bankRecord.balance + amount,
       });
     } else {
