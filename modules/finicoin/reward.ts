@@ -1,6 +1,7 @@
 import { Message } from "discord.js";
-import { addCoin, getUserBalance, removeCoin } from "../finicoin";
-import { randomNumber } from "../../utilities/randomNumber";
+import { addCoin, getUserBalance, removeCoin } from "./finicoin";
+import { randomNumber } from "./../../utilities/randomNumber";
+import { rollJackpot } from "./jackpot";
 
 type userChatStatsType = Record<
   string,
@@ -68,37 +69,11 @@ export const rewardCoin = async (message: Message) => {
       Math.min(authorBalance, BALANCE_CEILING) * rewardVariable
   );
 
-  const jackPotRandom = randomNumber(Date.now() * messageTimestamp, 0, 100);
-  if (jackPotRandom < JACKPOT_CEILING) {
-    // Get fini's balance (aka the jackpot)
-    const finiBalance =
-      (await getUserBalance("Fini", message.guildId || "")) ?? 0;
-    // Add jackpot to the message reward
-    messageReward += finiBalance;
-    // react the message as an indicator
-    await message.react(JACKPOT_EMOJI);
-    // reset fini balance
-    await removeCoin("Fini", message.guildId || "", finiBalance);
-  } else {
-    // The user didn't win, so add the reward to fini's balance (aka the jackpot)
-    await addCoin("Fini", message.guildId || "", messageReward);
-  }
+  // Award the chat reward
+  await addCoin("Fini", message.guildId || "", messageReward);
 
-  console.log("Message Rewards:", {
-    content: message.content,
-    authorID,
-    username: message.author.username,
-    messageTimestamp,
-    rewardVariable,
-    userStat_NumberofMessages,
-    userStat_TimeOfFirstMessage,
-    isOverPeriod: messageTimestamp - userStat_TimeOfFirstMessage > TIME_PERIOD,
-    effectiveMessageCount,
-    messageReward,
-    JACKPOT_CEILING,
-    jackPotRandom,
-    wonJackpot: jackPotRandom < JACKPOT_CEILING,
-  });
+  // Roll for jackpot
+  await rollJackpot(message);
 
   // Finally reward the amount to the user
   await addCoin(authorID, message.guildId || "", messageReward);

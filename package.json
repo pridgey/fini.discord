@@ -7,7 +7,7 @@
     "prestart": "npm run build",
     "prebuild": "rm -rf dist",
     "build": "tsc",
-    "start": "node --env-file=.env --trace-warnings --unhandled-rejections=strict dist/index.js",
+    "start": "concurrently \"./pocketbase serve\" \"node --env-file=.env --trace-warnings --unhandled-rejections=strict dist/index.js\"",
     "delete-commands": "node --env-file=.env command_scripts/delete.js",
     "register-commands": "node --env-file=.env command_scripts/register.js"
   },
@@ -36,6 +36,7 @@
     "ts-luxon": "^3.0.1"
   },
   "devDependencies": {
+    "concurrently": "^8.2.2",
     "typescript": "^5.3.3"
   }
 }

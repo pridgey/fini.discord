@@ -1,9 +1,16 @@
-import { Client, GatewayIntentBits, Message } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  Message,
+  MessageReaction,
+  User,
+} from "discord.js";
 import { rewardCoin, runPollTasks } from "./modules";
 import { createLog } from "./modules/logger";
 import { chatWithUser } from "./modules/openai";
 import { splitBigString } from "./utilities";
 import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
+import { rollJackpot } from "./modules/finicoin/jackpot";
 const { exec } = require("child_process");
 
 // Initialize client and announce intents
@@ -32,6 +39,13 @@ client.once("ready", (cl) => {
   }
 });
 
+// Event to fire when a reaction is added to a message
+client.on("messageReactionAdd", async (reaction) => {
+  // A reaction was added to a message, roll jackpot chances
+  await rollJackpot(reaction.message, true);
+});
+
+// Event to fire when a user chats
 client.on("messageCreate", async (message: Message) => {
   // We don't care about bots. Sad but true.
   if (message.author.bot) return;
