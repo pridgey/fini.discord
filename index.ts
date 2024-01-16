@@ -40,9 +40,11 @@ client.once("ready", (cl) => {
 });
 
 // Event to fire when a reaction is added to a message
-client.on("messageReactionAdd", async (reaction) => {
-  // A reaction was added to a message, roll jackpot chances
-  await rollJackpot(reaction.message, true);
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.id !== reaction.message.author?.id) {
+    // A reaction was added to a message, roll jackpot chances
+    await rollJackpot(reaction.message, true);
+  }
 });
 
 // Event to fire when a user chats
