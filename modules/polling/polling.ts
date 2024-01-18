@@ -1,9 +1,12 @@
 import { db } from "./../../utilities";
-import { ReminderRecord, SettingsRecord } from "./../../types";
+import { SettingsRecord } from "./../../types";
 import { Client, TextChannel } from "discord.js";
 // import { run as runFeeds } from "../../commands/to-be-converted/feed.command";
 import { chatWithUser } from "./../openai";
 // import { HEALTH_KEY } from "../../commands/to-be-converted/health.command";
+import { pb } from "../../utilities/pocketbase";
+import type { ReminderRecord } from "../../types/PocketbaseTables";
+import { createLog } from "../logger";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
@@ -14,30 +17,31 @@ export const runPollTasks = (cl: Client) => {
 /* Polling Functions to run */
 
 // Look for any reminders that were set by users
-const checkReminders = (cl: Client) => {
-  db()
-    .select<ReminderRecord>("Reminder", "All")
-    .then((reminders) => {
-      const now = new Date().getTime();
-      reminders
-        .filter((r) => r.Time < now)
-        .forEach((rem) => {
-          // All reminders that need actioning
-          cl.channels
-            .fetch(rem.Channel)
-            .then((channel) =>
-              (channel as TextChannel).send(
-                `<@${rem.User}>, here is your reminder to ${rem.Reminder}`
-              )
-            )
-            .finally(() => {
-              db().remove<ReminderRecord>("Reminder", {
-                Field: "id",
-                Value: rem?.id || 0,
-              });
-            });
-        });
+const checkReminders = async (cl: Client) => {
+  // Current time to check
+  const now = new Date().toISOString();
+
+  // Pull out reminder records
+  const reminderRecords = await pb
+    .collection<ReminderRecord>("reminder")
+    .getFullList({
+      filter: `time < @now`,
     });
+
+  reminderRecords.forEach(async (reminder) => {
+    // Pull channel from client
+    const channel: TextChannel = (await cl.channels.fetch(
+      reminder.channel_id
+    )) as TextChannel;
+
+    // Send the reminder
+    await channel.send(
+      `<@${reminder.user_id}>, here is your reminder: ${reminder.reminder_text}`
+    );
+
+    // Delete the reminder
+    await pb.collection<ReminderRecord>("reminder").delete(reminder.id!);
+  });
 };
 
 // At the same time every day, generate RSS feeds

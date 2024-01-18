@@ -5,12 +5,13 @@ import {
   MessageReaction,
   User,
 } from "discord.js";
-import { rewardCoin, runPollTasks } from "./modules";
+import { runPollTasks } from "./modules";
 import { createLog } from "./modules/logger";
 import { chatWithUser } from "./modules/openai";
 import { splitBigString } from "./utilities";
 import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
 import { rollJackpot } from "./modules/finicoin/jackpot";
+import { rewardCoin } from "./modules/finicoin/reward";
 const { exec } = require("child_process");
 
 // Initialize client and announce intents
@@ -55,8 +56,6 @@ client.on("messageCreate", async (message: Message) => {
   // Lowercase makes comparisons way easier
   const messageText = message.content.toLowerCase();
   const messageUser = message.author.username;
-
-  console.log("Message:", { message: message.content });
 
   // Good bot reaction
   if (messageText === "good bot") {
