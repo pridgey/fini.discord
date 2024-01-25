@@ -56,8 +56,8 @@ export const execute = async (
     const outcome = randomNumber % 2 === 0 ? "Even" : "Odd";
     const userHasWon = outcome === option;
     const gif = await grabGif(
-      `${userHasWon ? "winner" : "failure"} anime girl`,
-      "giphy"
+      `anime ${userHasWon ? "winner" : "failure"}`,
+      "tenor"
     );
 
     // Run postgame

@@ -54,21 +54,22 @@ client.on("messageCreate", async (message: Message) => {
   if (message.author.bot) return;
 
   // Lowercase makes comparisons way easier
-  const messageText = message.content.toLowerCase();
+  const messageText = message.content;
+  const messageTextLower = messageText.toLowerCase();
   const messageUser = message.author.username;
 
   // Good bot reaction
-  if (messageText === "good bot") {
+  if (messageTextLower === "good bot") {
     await message.react("💖");
   }
 
   // Bad bot reaction
-  if (messageText === "bad bot") {
+  if (messageTextLower === "bad bot") {
     await message.react("🥲");
   }
 
   // Fini chat
-  if (messageText.startsWith("hey fini")) {
+  if (messageTextLower.startsWith("hey fini")) {
     // Send temporary typing message, loop until we are done
     const typingLoop = setInterval(() => {
       message.channel.sendTyping();
