@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
-import type { BankRecord } from "../types/PocketbaseTables";
+import type { TtsRecord } from "../types/PocketbaseTables";
+import { pb } from "../utilities/pocketbase";
 const { exec } = require("child_process");
 
 // Voice options
@@ -53,9 +54,17 @@ export const execute = async (
   const voice =
     interaction.options.get("voice")?.value?.toString() || "william";
 
+  // Add record to tts table
+  const createdTtsRecord = await pb.collection<TtsRecord>("tts").create({
+    channel_id: interaction.channelId || "",
+    user_id: interaction.user.id,
+    server_id: interaction.guildId || "",
+    prompt: text,
+  });
+
   if (voiceOptions.includes(voice)) {
     try {
-      const commandWithArgs = `/home/pridgey/Documents/Code/fini.discord/scripts/run_tortoise.sh --text "${text}" --voice ${voice} --candidates 1 --output_path tts_output/`;
+      const commandWithArgs = `/home/pridgey/Documents/Code/fini.discord/scripts/run_tortoise.sh --text "${text}" --voice ${voice} --candidates 1 --output_path "tts_output/${createdTtsRecord.id}"`;
 
       exec(commandWithArgs, (error, stdout, stderr) => {
         if (error) {

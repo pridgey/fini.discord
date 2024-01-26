@@ -39,3 +39,11 @@ export type ReminderRecord = {
   channel_id: string;
   reminder_text: string;
 };
+
+export type TtsRecord = {
+  id?: string;
+  prompt: string;
+  server_id: string;
+  user_id: string;
+  channel_id: string;
+};

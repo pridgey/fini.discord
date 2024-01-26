@@ -1,20 +1,61 @@
 import { db } from "./../../utilities";
 import { SettingsRecord } from "./../../types";
-import { Client, TextChannel } from "discord.js";
+import { AttachmentBuilder, Client, TextChannel } from "discord.js";
 // import { run as runFeeds } from "../../commands/to-be-converted/feed.command";
 import { chatWithUser } from "./../openai";
 // import { HEALTH_KEY } from "../../commands/to-be-converted/health.command";
 import { pb } from "../../utilities/pocketbase";
-import type { ReminderRecord } from "../../types/PocketbaseTables";
+import { TtsRecord, type ReminderRecord } from "../../types/PocketbaseTables";
 import { createLog } from "../logger";
+import { readdirSync, rmSync } from "fs";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
   checkFeeds(cl);
   checkHealthPings(cl);
+  checkTtsFiles(cl);
 };
 
 /* Polling Functions to run */
+
+// Check for tts files
+const checkTtsFiles = async (cl: Client) => {
+  // Grab all db records
+  const ttsRecords = await pb.collection<TtsRecord>("tts").getFullList();
+
+  const path = "/home/pridgey/Documents/Code/fini.discord/tts_output";
+
+  // Loop through them and check for files
+  ttsRecords.forEach(async (ttsr) => {
+    console.log("TTS Record:", { ttsr });
+    // Array of files in this directory
+    const files = await readdirSync(`${path}/${ttsr.id}`);
+
+    if (files.length) {
+      // Pull channel from client
+      const channel: TextChannel = (await cl.channels.fetch(
+        ttsr.channel_id
+      )) as TextChannel;
+
+      // Create attachment
+      const attachment = new AttachmentBuilder(
+        `${path}/${ttsr.id}/${files[0]}`
+      );
+
+      // Upload
+      await channel.send({
+        files: [attachment],
+        content: `<@${ttsr.user_id}>, Text: "${ttsr.prompt}"`,
+      });
+
+      // Delete this directory
+      await rmSync(`${path}/${ttsr.id}`, { recursive: true, force: true });
+
+      // Delete the tts record
+      pb.collection<TtsRecord>("tts").delete(ttsr.id || "");
+    }
+  });
+};
 
 // Look for any reminders that were set by users
 const checkReminders = async (cl: Client) => {
