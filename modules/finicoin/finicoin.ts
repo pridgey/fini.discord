@@ -27,11 +27,17 @@ export const runGame = async (
 
   // Create command to run when game is over
   const rewardWager = async (win: boolean, multiplier: number) => {
-    await addCoin(win ? userID : "fini", guildID, multiplier * betAmount);
+    await addCoin(win ? userID : "Fini", guildID, multiplier * betAmount);
+  };
+
+  // A fallback function to run on error so we don't accidentally steal their coin
+  const onError = async () => {
+    await addCoin(userID, guildID, wager);
   };
 
   // return whether the user has funds, and the resulting function
   return {
+    onError,
     userHasFunds,
     userBalance,
     rewardWager,

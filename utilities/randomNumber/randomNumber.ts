@@ -7,7 +7,11 @@ import seedrandom from "seedrandom";
  * @param max The maximum number in the random range
  * @returns A random number
  */
-export const randomNumber = (seed?: number, min?: number, max?: number) => {
+export const randomNumber = (
+  seed?: number | string,
+  min?: number,
+  max?: number
+) => {
   const rng = seedrandom(seed ?? Math.random());
   const maxNum = max ?? 1;
   const minNum = min ?? 0;
