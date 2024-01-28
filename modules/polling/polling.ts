@@ -7,7 +7,7 @@ import { chatWithUser } from "./../openai";
 import { pb } from "../../utilities/pocketbase";
 import { TtsRecord, type ReminderRecord } from "../../types/PocketbaseTables";
 import { createLog } from "../logger";
-import { readdirSync, rmSync } from "fs";
+import { readdirSync, rmSync, readFileSync, existsSync } from "fs";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
@@ -28,19 +28,18 @@ const checkTtsFiles = async (cl: Client) => {
   // Loop through them and check for files
   ttsRecords.forEach(async (ttsr) => {
     console.log("TTS Record:", { ttsr });
-    // Array of files in this directory
-    const files = await readdirSync(`${path}/${ttsr.id}`);
 
-    if (files.length) {
+    // Check if file exists
+    const fileExists = await existsSync(`${path}/${ttsr.id}.wav`);
+
+    if (fileExists) {
       // Pull channel from client
       const channel: TextChannel = (await cl.channels.fetch(
         ttsr.channel_id
       )) as TextChannel;
 
       // Create attachment
-      const attachment = new AttachmentBuilder(
-        `${path}/${ttsr.id}/${files[0]}`
-      );
+      const attachment = new AttachmentBuilder(`${path}/${ttsr.id}.wav`);
 
       // Upload
       await channel.send({
@@ -49,7 +48,7 @@ const checkTtsFiles = async (cl: Client) => {
       });
 
       // Delete this directory
-      await rmSync(`${path}/${ttsr.id}`, { recursive: true, force: true });
+      await rmSync(`${path}/${ttsr.id}.wav`, { recursive: true, force: true });
 
       // Delete the tts record
       pb.collection<TtsRecord>("tts").delete(ttsr.id || "");

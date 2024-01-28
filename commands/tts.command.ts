@@ -24,6 +24,7 @@ const voiceOptions = [
   "tom",
   "weaver",
   "william",
+  "vegeta",
 ];
 
 export const data = new SlashCommandBuilder()
@@ -52,7 +53,8 @@ export const execute = async (
     `[I'm so angry] ${interaction.user.username} is a little bitch and forgot to include a text prompt`;
 
   const voice =
-    interaction.options.get("voice")?.value?.toString() || "william";
+    interaction.options.get("voice")?.value?.toString().toLowerCase() ||
+    "william";
 
   // Add record to tts table
   const createdTtsRecord = await pb.collection<TtsRecord>("tts").create({
@@ -64,7 +66,7 @@ export const execute = async (
 
   if (voiceOptions.includes(voice)) {
     try {
-      const commandWithArgs = `/home/pridgey/Documents/Code/fini.discord/scripts/run_tortoise.sh --text "${text}" --voice ${voice} --candidates 1 --output_path "tts_output/${createdTtsRecord.id}"`;
+      const commandWithArgs = `/home/pridgey/Documents/Code/fini.discord/scripts/run_tortoise.sh --text "${text}" --language_idx en --model_name "tts_models/multilingual/multi-dataset/xtts_v2" --speaker_wav "/home/pridgey/Documents/Code/third-party/TTS/TTS/voices/${voice}/1.wav" --out_path "/home/pridgey/Documents/Code/fini.discord/tts_output/${createdTtsRecord.id}.wav"`;
 
       exec(commandWithArgs, (error, stdout, stderr) => {
         if (error) {
