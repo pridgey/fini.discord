@@ -1,7 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction, EmbedBuilder } from "discord.js";
-import seedrandom from "seedrandom";
-import { runGame } from "../modules";
+import { runGame } from "../modules/finicoin";
 import { grabGif } from "../utilities";
 import { randomNumber } from "../utilities/randomNumber";
 
@@ -77,7 +76,7 @@ export const execute = async (
   } else {
     try {
       // The user has the appropriate funds. Play the game
-      const randomNum = randomNumber(interaction.token, 0, 9);
+      const randomNum = randomNumber(Date.now(), 0, 9, true);
       const outcome = randomNum % 2 === 0 ? "Even" : "Odd";
       const userHasWon = outcome === option;
       let gif = await grabGif(
@@ -87,7 +86,7 @@ export const execute = async (
 
       // If the gif call fails, use a fallback gif url
       if (!gif) {
-        const randomIndex = randomNumber(interaction.token, 0, 9);
+        const randomIndex = randomNumber(Date.now(), 0, 9, true);
         gif = userHasWon ? winningGifs[randomIndex] : losingGifs[randomIndex];
       }
 

@@ -4,7 +4,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionUserMessageParam,
   ChatCompletionSystemMessageParam,
-} from "openai/resources";
+} from "openai/resources/index";
 import type { OpenAIError } from "openai/error";
 
 // Length of conversation history array

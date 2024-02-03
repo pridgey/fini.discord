@@ -5,13 +5,14 @@ import {
   MessageReaction,
   User,
 } from "discord.js";
-import { runPollTasks } from "./modules";
+import { runPollTasks } from "./modules/polling";
 import { createLog } from "./modules/logger";
 import { chatWithUser } from "./modules/openai";
 import { splitBigString } from "./utilities";
 import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
 import { rollJackpot } from "./modules/finicoin/jackpot";
 import { rewardCoin } from "./modules/finicoin/reward";
+import { wizardRespond } from "./modules/wizardUncensored/respond";
 const { exec } = require("child_process");
 
 // Initialize client and announce intents
@@ -66,6 +67,27 @@ client.on("messageCreate", async (message: Message) => {
   // Bad bot reaction
   if (messageTextLower === "bad bot") {
     await message.react("🥲");
+  }
+
+  // Testing Wizard LLM
+  if (messageTextLower.startsWith("hey wizard")) {
+    // Send temporary typing message, loop until we are done
+    const typingLoop = setInterval(() => {
+      message.channel.sendTyping();
+    }, 1000 * 11);
+
+    await message.channel.sendTyping();
+
+    const response = await wizardRespond(messageText.replace("hey wizard", ""));
+
+    // Clear typing loop
+    clearInterval(typingLoop);
+
+    // Split response to discord-sizable chunks
+    const replyArray = splitBigString(response);
+
+    // Send replies
+    replyArray.forEach(async (str) => await message.channel.send(str));
   }
 
   // Fini chat

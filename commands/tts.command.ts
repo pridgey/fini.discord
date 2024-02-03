@@ -13,8 +13,11 @@ const voiceOptions = [
   "emma",
   "freeman",
   "geralt",
+  "gojo",
   "halle",
   "jlaw",
+  "joey_wheeler",
+  "king",
   "lj",
   "mol",
   "pat",
@@ -22,9 +25,9 @@ const voiceOptions = [
   "snakes",
   "tim_reynolds",
   "tom",
+  "vegeta",
   "weaver",
   "william",
-  "vegeta",
 ];
 
 export const data = new SlashCommandBuilder()
