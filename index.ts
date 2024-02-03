@@ -70,7 +70,7 @@ client.on("messageCreate", async (message: Message) => {
   }
 
   // Testing Wizard LLM
-  if (messageTextLower.startsWith("hey wizard")) {
+  if (messageTextLower.startsWith("hey wizard") && false) {
     // Send temporary typing message, loop until we are done
     const typingLoop = setInterval(() => {
       message.channel.sendTyping();
