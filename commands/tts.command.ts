@@ -1,8 +1,9 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
-import type { TtsRecord } from "../types/PocketbaseTables";
-import { pb } from "../utilities/pocketbase";
-const { exec } = require("child_process");
+import { AttachmentBuilder, CommandInteraction } from "discord.js";
+import OpenAI from "openai";
+const util = require("util");
+const exec = util.promisify(require("child_process").exec);
+import { rmSync } from "fs";
 
 // Voice options
 const voiceOptions = [
@@ -30,6 +31,18 @@ const voiceOptions = [
   "william",
 ];
 
+type openAIVoices = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
+
+// Open AI Voice Options    alloy, echo, fable, onyx, nova, and shimmer
+const openAiVoiceOptions: `${openAIVoices}-openai`[] = [
+  "alloy-openai",
+  "echo-openai",
+  "fable-openai",
+  "onyx-openai",
+  "nova-openai",
+  "shimmer-openai",
+];
+
 export const data = new SlashCommandBuilder()
   .setName("tts")
   .setDescription("Create some audio from text")
@@ -42,7 +55,7 @@ export const data = new SlashCommandBuilder()
   .addStringOption((option) =>
     option
       .setName("voice")
-      .setDescription("What voice I should use")
+      .setDescription("What voice I should use? (OpenAI and Tortoise Models)")
       .setRequired(true)
       .addChoices(voiceOptions.map((voice) => [voice, voice]))
   );
@@ -59,38 +72,72 @@ export const execute = async (
     interaction.options.get("voice")?.value?.toString().toLowerCase() ||
     "william";
 
-  // Add record to tts table
-  const createdTtsRecord = await pb.collection<TtsRecord>("tts").create({
-    channel_id: interaction.channelId || "",
-    user_id: interaction.user.id,
-    server_id: interaction.guildId || "",
-    prompt: text,
-  });
+  // Determines if this is an OpenAI voice, or a local voice
+  const isOpenAI = voice.endsWith("-openai");
 
-  if (voiceOptions.includes(voice)) {
+  if (isOpenAI) {
+    // Generate TTS from OpenAI
+    await interaction.deferReply();
+
     try {
-      const commandWithArgs = `/home/pridgey/Documents/Code/fini.discord/scripts/run_tortoise.sh --text "${text}" --language_idx en --model_name "tts_models/multilingual/multi-dataset/xtts_v2" --speaker_wav "/home/pridgey/Documents/Code/third-party/TTS/TTS/voices/${voice}/1.wav" --out_path "/home/pridgey/Documents/Code/fini.discord/tts_output/${createdTtsRecord.id}.wav"`;
-
-      exec(commandWithArgs, (error, stdout, stderr) => {
-        if (error) {
-          console.error(`exec error: ${error}`);
-        }
-        if (stderr) {
-          console.error(`stderr: ${stderr}`);
-        }
-        console.log("Executing Tortoise TTS:", { stdout });
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY || "no_key_found",
       });
-      interaction.reply(
-        "Generating file. This may take some time so I'll deliver it later."
-      );
+
+      const speech = await openai.audio.speech.create({
+        model: "tts-1",
+        voice: voice.replace("-openai", "") as openAIVoices,
+        input: text || "I did not receive anything!",
+      });
+
+      const buffer = Buffer.from(await speech.arrayBuffer());
+      const attachment = new AttachmentBuilder(buffer, {
+        name: `${interaction.user.username}-${voice}-${Date.now()}.mp3`,
+      });
+      // const attachment = new MessageAttachment(buffer, "fini.mp3");
+
+      await interaction.editReply({
+        content: `Prompt: ${text}`,
+        files: [attachment],
+      });
+    } catch (err) {
+      console.error("Error generating OpenAI TTS:", err);
+      await interaction.editReply("Something went wrong.");
+    } finally {
+      logCommand();
+    }
+  } else {
+    // Generate TTS using local models
+    await interaction.deferReply();
+
+    try {
+      const fileName = `${interaction.user.username}-${voice}-${Date.now()}`;
+      const modelName = "tts_models/multilingual/multi-dataset/xtts_v2";
+      const speakerWav = `/home/pridgey/Documents/Code/third-party/TTS/TTS/voices/${voice}/1.wav`;
+      const outPath = `${process.env.FINI_PATH}/tts_output/${fileName}.wav`;
+      const commandWithArgs = `${process.env.FINI_PATH}/scripts/run_tts.sh --text "${text}" --language_idx en --model_name "${modelName}" --speaker_wav "${speakerWav}" --out_path "${outPath}"`;
+
+      // Run the script to generate TTS
+      const { stderr } = await exec(commandWithArgs);
+
+      if (stderr) {
+        console.error("TTS Exec stderr:", { stderr });
+      }
+
+      const attachment = new AttachmentBuilder(outPath);
+
+      await interaction.editReply({
+        content: `Prompt: ${text}`,
+        files: [attachment],
+      });
+
+      // Delete file
+      await rmSync(outPath);
     } catch (err) {
       const error: Error = err as Error;
       console.error("Error running /tts command", { error });
     } finally {
       logCommand();
     }
-  } else {
-    interaction.reply("I don't recognize that voice.");
-    logCommand();
   }
 };

@@ -3,10 +3,7 @@ import { CommandInteraction } from "discord.js";
 import type { ReminderRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 import { add } from "date-fns";
-import {
-  tryParseDate,
-  isDateValid,
-} from "../utilities/tryParseDate/tryParseDate";
+import { tryParseDate } from "../utilities/tryParseDate/tryParseDate";
 
 export const data = new SlashCommandBuilder()
   .setName("remind")

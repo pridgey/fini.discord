@@ -11,8 +11,8 @@
     "start": "concurrently \"./pocketbase serve\" \"bun --env-file=.env run index.ts\"",
     "blah": "bun --env-file=.env run index.ts",
     "start-archived": "concurrently \"./pocketbase serve\" \"node --env-file=.env --experimental-specifier-resolution=node --trace-warnings --unhandled-rejections=strict dist/index.js\"",
-    "delete-commands": "node --env-file=.env command_scripts/delete.js",
-    "register-commands": "npm run build && node --env-file=.env command_scripts/register.js"
+    "delete-commands": "bun --env-file=.env run command_scripts/delete.ts",
+    "register-commands": "bun --env-file=.env run command_scripts/register.ts"
   },
   "author": "Taylor Pridgen",
   "license": "ISC",

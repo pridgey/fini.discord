@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction, EmbedBuilder } from "discord.js";
 import { runGame } from "../modules/finicoin";
-import { grabGif } from "../utilities";
+import { grabGif } from "../utilities/gif";
 import { randomNumber } from "../utilities/randomNumber";
 
 // Game config
@@ -124,13 +124,13 @@ export const execute = async (
       });
 
       // Reply
-      interaction.reply({
+      await interaction.reply({
         embeds: [resultEmbed],
       });
     } catch (err) {
       // An issue with the game
       onError();
-      interaction.reply(
+      await interaction.reply(
         "An error occurred during running the game. Your finicoin has been refunded."
       );
     } finally {

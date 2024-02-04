@@ -1,5 +1,5 @@
-const { REST, Routes } = require("discord.js");
-const { glob } = require("glob");
+import { REST, Routes } from "discord.js";
+import { glob } from "glob";
 
 const registerAllCommands = async () => {
   try {
@@ -7,7 +7,7 @@ const registerAllCommands = async () => {
     console.group();
 
     // Grab each command from the commands directory
-    const commandFiles = await glob("**/commands/*.command.js");
+    const commandFiles = await glob("**/commands/*.command.ts");
 
     console.log("Found Command Files:", { commandFiles });
     console.log("");
@@ -23,7 +23,7 @@ const registerAllCommands = async () => {
     const importedFiles = await Promise.all(
       commandFiles
         .filter((file) => !file.includes("archived"))
-        .map((file) => import(`./${file.replace("dist/", "../dist/")}`))
+        .map((file) => import(`./../${file}`))
     );
     const commandData = importedFiles.map((cmdData) => cmdData.data.toJSON());
 
@@ -46,8 +46,7 @@ const registerAllCommands = async () => {
     console.log("");
     console.groupEnd();
   } catch (err) {
-    console.error(`Error registering commands (${Date.now()}): ${err.message}`);
-    console.error(err.stack);
+    console.error(`Error registering commands (${Date.now()}):`, { err });
     console.error(" ");
   }
 };

@@ -1,6 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
-import { LogHammerspaceItem } from "../utilities/logHammerspaceItem";
 import { pb } from "../utilities/pocketbase";
 import type { HammerspaceRecord } from "../types/PocketbaseTables";
 import { logHammerspaceUsage } from "../utilities/hammerspace";

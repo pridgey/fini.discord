@@ -2,7 +2,6 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction, AttachmentBuilder } from "discord.js";
 import OpenAI from "openai";
 import type { OpenAIError } from "openai/error";
-import { createLog } from "../modules/logger";
 
 export const data = new SlashCommandBuilder()
   .setName("image")

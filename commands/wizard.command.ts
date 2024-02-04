@@ -13,24 +13,25 @@ export const execute = async (
   logCommand: () => void
 ) => {
   try {
-    const { LlamaModel, LlamaContext, LlamaChatSession } = await import(
-      "node-llama-cpp"
-    );
+    interaction.reply("Being worked on");
+    // const { LlamaModel, LlamaContext, LlamaChatSession } = await import(
+    //   "node-llama-cpp"
+    // );
 
-    const prompt = interaction.options.get("text")?.value?.toString() || "";
+    // const prompt = interaction.options.get("text")?.value?.toString() || "";
 
-    const model = new LlamaModel({
-      modelPath:
-        "/home/pridgey/Documents/Code/fini.discord/modules/wizardUncensored/combined_model.bin",
-    });
-    const context = new LlamaContext({ model });
-    const session = new LlamaChatSession({ context });
+    // const model = new LlamaModel({
+    //   modelPath:
+    //     "/home/pridgey/Documents/Code/fini.discord/modules/wizardUncensored/combined_model.bin",
+    // });
+    // const context = new LlamaContext({ model });
+    // const session = new LlamaChatSession({ context });
 
-    interaction.deferReply();
+    // interaction.deferReply();
 
-    const response = await session.prompt(prompt);
+    // const response = await session.prompt(prompt);
 
-    interaction.editReply(response);
+    // interaction.editReply(response);
   } catch (err) {
     const error: Error = err as Error;
     console.error("Error running /wizard command", { error });

@@ -1,4 +1,4 @@
-const { REST, Routes } = require("discord.js");
+import { REST, Routes } from "discord.js";
 
 const deleteAllCommands = async () => {
   try {
@@ -10,24 +10,25 @@ const deleteAllCommands = async () => {
 
     // Fini client ID
     const clientId = process.env.FINI_CLIENTID || "";
+    // Guild ID
+    const guildId = process.env.GEKIN_SERVERID || "";
 
     rest.on("rateLimited", (res) => console.log("OnRateLimited:", { res }));
 
     // First, delete all guild commands to clear out old ones
-    const response = await rest.put(Routes.applicationCommands(clientId), {
-      body: [],
-    });
+    const response = await rest.put(
+      Routes.applicationGuildCommands(clientId, guildId),
+      {
+        body: [],
+      }
+    );
 
     console.log("Deleted Guild Commands", { response });
     console.log("");
 
     console.groupEnd();
-  } catch (err) {
-    console.error(
-      `Error registering commands (${Date.now()}): ${err.message}`,
-      { err }
-    );
-    console.error(err.stack);
+  } catch (err: unknown) {
+    console.error(`Error registering commands (${Date.now()}):`, { err });
     console.error(" ");
   }
 };

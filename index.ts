@@ -1,18 +1,12 @@
-import {
-  Client,
-  GatewayIntentBits,
-  Message,
-  MessageReaction,
-  User,
-} from "discord.js";
-import { runPollTasks } from "./modules/polling";
-import { createLog } from "./modules/logger";
-import { chatWithUser } from "./modules/openai";
-import { splitBigString } from "./utilities";
-import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
+import { Client, GatewayIntentBits, Message } from "discord.js";
 import { rollJackpot } from "./modules/finicoin/jackpot";
 import { rewardCoin } from "./modules/finicoin/reward";
+import { createLog } from "./modules/logger";
+import { chatWithUser } from "./modules/openai";
+import { runPollTasks } from "./modules/polling";
 import { wizardRespond } from "./modules/wizardUncensored/respond";
+import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
+import { splitBigString } from "./utilities/splitBigString";
 const { exec } = require("child_process");
 
 // Initialize client and announce intents
@@ -134,6 +128,10 @@ client.on("messageCreate", async (message: Message) => {
 
 // If we get a slash command, run the slash command.
 client.on("interactionCreate", async (interaction) => {
+  console.log("Is Autocomplete:", {
+    autocomplete: interaction.isAutocomplete(),
+    command: interaction.isCommand(),
+  });
   // Ignore if not a command
   if (!interaction.isCommand()) return;
 
@@ -176,7 +174,8 @@ client.on("interactionCreate", async (interaction) => {
     });
   } catch (err) {
     const error: Error = err as Error;
-    interaction.reply({
+    console.error("Error running interaction:", { error });
+    await interaction.reply({
       content: `I fucked up D:\n${error.message}`,
       ephemeral: true,
     });
