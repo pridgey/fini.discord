@@ -3,25 +3,47 @@
   "version": "1.0.0",
   "description": "Fini discord bot",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "prestart": "npm run build",
+    "prestart-archived": "./pocketbase serve",
+    "prebuild": "rm -rf dist",
     "build": "tsc",
-    "start": "node --trace-warnings --unhandled-rejections=strict dist/index.js"
+    "start": "concurrently \"./pocketbase serve\" \"bun --env-file=.env run index.ts\"",
+    "blah": "bun --env-file=.env run index.ts",
+    "start-archived": "concurrently \"./pocketbase serve\" \"node --env-file=.env --experimental-specifier-resolution=node --trace-warnings --unhandled-rejections=strict dist/index.js\"",
+    "delete-commands": "bun --env-file=.env run command_scripts/delete.ts",
+    "register-commands": "bun --env-file=.env run command_scripts/register.ts"
   },
   "author": "Taylor Pridgen",
   "license": "ISC",
   "dependencies": {
+    "@discordjs/builders": "^0.11.0",
+    "@discordjs/rest": "^0.2.0-canary.0",
+    "@giphy/js-fetch-api": "^4.1.2",
+    "@types/intl": "^1.2.0",
+    "@types/sqlite3": "^3.1.11",
     "airtable": "^0.10.1",
     "brain.js": "^1.6.1",
-    "discord.js": "^13.1.0",
+    "date-fns": "^3.2.0",
+    "discord-api-types": "^0.26.1",
+    "discord.js": "^14.14.1",
     "dotenv": "^8.2.0",
-    "node-fetch": "^2.6.7",
+    "glob": "^10.3.10",
+    "intl": "^1.2.5",
+    "moment": "^2.30.1",
+    "node-fetch": "^2.0.0",
+    "node-llama-cpp": "^2.8.5",
+    "openai": "^4.16.1",
+    "pocketbase": "^0.20.1",
+    "prettier": "^2.7.1",
     "rss-parser": "^3.12.0",
     "seedrandom": "^3.0.5",
-    "sqlite3": "^4.2.0",
-    "typescript": "^4.3.5"
+    "sqlite3": "^5.1.6",
+    "ts-luxon": "^3.0.1"
   },
   "devDependencies": {
-    "@types/sqlite3": "^3.1.7"
+    "@types/bun": "^1.0.4",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
   }
 }

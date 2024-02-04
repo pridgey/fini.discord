@@ -1,139 +1,186 @@
-import Discord, {
-  Intents,
-  Interaction,
-  Message,
-  MessageEmbed,
-} from "discord.js";
-import { callAndResponse, commands, generateFiniBucks } from "./modules";
-import dotenv from "dotenv";
-import { db } from "./utilities";
+import { Client, GatewayIntentBits, Message } from "discord.js";
+import { rollJackpot } from "./modules/finicoin/jackpot";
+import { rewardCoin } from "./modules/finicoin/reward";
+import { createLog } from "./modules/logger";
+import { chatWithUser } from "./modules/openai";
+import { runPollTasks } from "./modules/polling";
+import { wizardRespond } from "./modules/wizardUncensored/respond";
+import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
+import { splitBigString } from "./utilities/splitBigString";
+const { exec } = require("child_process");
 
-// Run config to get our environment variables
-dotenv.config();
-
-// Create Discord client and login to Discord API
-const disClient = new Discord.Client({
-  intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES],
-});
-disClient.login(process.env.FINI_TOKEN);
-
-// Once ready, let me know in the console so I can jump out
-disClient.once("ready", () => {
-  console.log("I'm ready");
-  console.log("Ctrl+A D to detach session");
+// Initialize client and announce intents
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageTyping,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+  ],
 });
 
-// Now for the actual meat of the operation
-//   First check for typing indicators to send out health reminder pings
-// disClient.on("typingStart", async (channel: Channel) => {
-//   // Do the Health Ping
-//   // healthyTime();
-//   console.log("channel:", channel);
-// });
+let pollingInterval;
 
-const commandPrefix = "fini ";
+// WE READY
+client.once("ready", (cl) => {
+  console.log("Connected");
 
-disClient.on("interactionCreate", async (interaction: Interaction) => {
-  if (!interaction.isCommand()) return;
-
-  const test = interaction.options.getString("wager");
-  const embed = new MessageEmbed()
-    .setColor("#0099ff")
-    .setTitle("Haha you silly bitch")
-    .setDescription(test);
-  await interaction.reply({ embeds: [embed] });
+  // Set interval for periodic things
+  if (!pollingInterval) {
+    console.log("Creating Poll Interval...");
+    pollingInterval = setInterval(() => {
+      runPollTasks(cl);
+    }, 60_000);
+  }
 });
 
-//  Now handling full on messages
-disClient.on("messageCreate", async (message: Message) => {
+// Event to fire when a reaction is added to a message
+client.on("messageReactionAdd", async (reaction, user) => {
+  if (user.id !== reaction.message.author?.id) {
+    // A reaction was added to a message, roll jackpot chances
+    await rollJackpot(reaction.message, true);
+  }
+});
+
+// Event to fire when a user chats
+client.on("messageCreate", async (message: Message) => {
   // We don't care about bots. Sad but true.
   if (message.author.bot) return;
 
-  // message.guild.commands.create({
-  //   description: "A test of discord's command system",
-  //   name: "fini-test-2",
-  //   options: [
-  //     {
-  //       description: "option one",
-  //       name: "wager",
-  //       type: "STRING",
-  //       required: true,
-  //     },
-  //     {
-  //       description: "a int option",
-  //       name: "int",
-  //       type: "INTEGER",
-  //       required: true,
-  //     },
-  //     {
-  //       description: "a num option",
-  //       name: "num",
-  //       type: "NUMBER",
-  //       required: true,
-  //     },
-  //     {
-  //       description: "a bool option",
-  //       name: "bool",
-  //       type: "BOOLEAN",
-  //       required: true,
-  //     },
-  //     {
-  //       description: "a user option",
-  //       name: "user",
-  //       type: "USER",
-  //       required: true,
-  //     },
-  //     {
-  //       description: "a role option",
-  //       name: "role",
-  //       type: "ROLE",
-  //       required: true,
-  //     },
-  //     {
-  //       description: "a mention option",
-  //       name: "mention",
-  //       type: "MENTIONABLE",
-  //       required: true,
-  //     },
-  //   ],
-  // });
-
   // Lowercase makes comparisons way easier
-  const messageText = message.content.toLowerCase();
+  const messageText = message.content;
+  const messageTextLower = messageText.toLowerCase();
+  const messageUser = message.author.username;
 
-  // Next look for actual fini commands
-  if (messageText.startsWith(commandPrefix)) {
-    // This looks like a command, but which one?
+  // Good bot reaction
+  if (messageTextLower === "good bot") {
+    await message.react("💖");
+  }
 
-    // Fini commands should always be `fini {command} {arguments...}`
-    const messageParts: string[] = messageText
-      .replace(commandPrefix, "")
-      .split(" ");
-    const command: string = messageParts[0];
-    const args: string[] = messageParts.slice(1);
+  // Bad bot reaction
+  if (messageTextLower === "bad bot") {
+    await message.react("🥲");
+  }
 
-    // Run the command
-    commands(command, args, message)
-      .then((commandResult) => {
-        message.channel.send(commandResult);
-      })
-      .catch((err) => console.error(err));
+  // Testing Wizard LLM
+  if (messageTextLower.startsWith("hey wizard") && false) {
+    // Send temporary typing message, loop until we are done
+    const typingLoop = setInterval(() => {
+      message.channel.sendTyping();
+    }, 1000 * 11);
+
+    await message.channel.sendTyping();
+
+    const response = await wizardRespond(messageText.replace("hey wizard", ""));
+
+    // Clear typing loop
+    clearInterval(typingLoop);
+
+    // Split response to discord-sizable chunks
+    const replyArray = splitBigString(response);
+
+    // Send replies
+    replyArray.forEach(async (str) => await message.channel.send(str));
+  }
+
+  // Fini chat
+  if (messageTextLower.startsWith("hey fini")) {
+    // Send temporary typing message, loop until we are done
+    const typingLoop = setInterval(() => {
+      message.channel.sendTyping();
+    }, 1000 * 11);
+
+    await message.channel.sendTyping();
+
+    // Grab any attachments if they exist
+    const attachment = message.attachments.at(0)?.url;
+
+    // Contact openai api
+    const response = await chatWithUser(
+      messageUser,
+      messageText.replace("hey fini", ""),
+      attachment
+    );
+
+    // Log hey fini interaction
+    await createLog({
+      user_id: message.author.id,
+      server_id: message.guild?.id || "unknown",
+      command: "hey fini",
+      input: messageText,
+      output: response,
+    });
+
+    // Clear typing loop
+    clearInterval(typingLoop);
+
+    // Split response to discord-sizable chunks
+    const replyArray = splitBigString(response);
+
+    // Send replies
+    replyArray.forEach(async (str) => await message.channel.send(str));
   } else {
-    // No command here. But someone is engaging the server. Let's reward them :)
-    generateFiniBucks(message);
-
-    // Add message to db for training later
-    db()
-      .insert("ChatLog", { Content: message.content })
-      .then(() => console.log("Added"));
-
-    // Check if this was some sort of call and response message
-    // First check for any simple call-and-response's
-    const response = callAndResponse(messageText);
-    if (response) {
-      message.channel.send(response);
-    }
-
-    return;
+    // Regular messages should be rewarded finicoin
+    await rewardCoin(message);
   }
 });
+
+// If we get a slash command, run the slash command.
+client.on("interactionCreate", async (interaction) => {
+  console.log("Is Autocomplete:", {
+    autocomplete: interaction.isAutocomplete(),
+    command: interaction.isCommand(),
+  });
+  // Ignore if not a command
+  if (!interaction.isCommand()) return;
+
+  // Display warning if not on main branch
+  exec("git rev-parse --abbrev-ref HEAD", (err, stdout) => {
+    if (err) {
+      console.error("Error occurred while showing git warning:", err);
+    }
+    if (typeof stdout === "string" && stdout.trim() !== "main") {
+      interaction.channel?.send(
+        "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*"
+      );
+    }
+  });
+
+  try {
+    // Get the commands name
+    const { importedFiles: commands } = await getCommandFiles();
+    const commandToRun = commands.find(
+      (c) => c.data.name === interaction.commandName
+    );
+    // Exit early if we can't find the command to run
+    if (!commandToRun) return;
+
+    // Execute the command
+    await commandToRun.execute(interaction, async () => {
+      createLog({
+        command: `/${commandToRun.data.name}`,
+        input: `Command options:\n${commandToRun.data.options
+          .map((o) => {
+            const optionName = o.name;
+            const optionValue = interaction.options.get(optionName)?.value;
+            return `${optionName}: ${optionValue}`;
+          })
+          .join(",\n")}`,
+        output: (await interaction.fetchReply()).content,
+        server_id: interaction.guild?.id || "unknown",
+        user_id: interaction.user.id,
+      });
+    });
+  } catch (err) {
+    const error: Error = err as Error;
+    console.error("Error running interaction:", { error });
+    await interaction.reply({
+      content: `I fucked up D:\n${error.message}`,
+      ephemeral: true,
+    });
+  }
+});
+
+// Let's gooooooo
+client.login(process.env.FINI_TOKEN);
