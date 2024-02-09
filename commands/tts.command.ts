@@ -87,7 +87,7 @@ export const execute = async (
       const speech = await openai.audio.speech.create({
         model: "tts-1",
         voice: voice.replace("-openai", "") as openAIVoices,
-        input: text || "I did not receive anything!",
+        input: text.replaceAll('"', "'") || "I did not receive anything!",
       });
 
       const buffer = Buffer.from(await speech.arrayBuffer());
@@ -115,7 +115,12 @@ export const execute = async (
       const modelName = "tts_models/multilingual/multi-dataset/xtts_v2";
       const speakerWav = `/home/pridgey/Documents/Code/third-party/TTS/TTS/voices/${voice}/1.wav`;
       const outPath = `${process.env.FINI_PATH}/tts_output/${fileName}.wav`;
-      const commandWithArgs = `${process.env.FINI_PATH}/scripts/run_tts.sh --text "${text}" --language_idx en --model_name "${modelName}" --speaker_wav "${speakerWav}" --out_path "${outPath}"`;
+      const commandWithArgs = `${
+        process.env.FINI_PATH
+      }/scripts/run_tts.sh --text "${text.replaceAll(
+        '"',
+        "'"
+      )}" --language_idx en --model_name "${modelName}" --speaker_wav "${speakerWav}" --out_path "${outPath}"`;
 
       // Run the script to generate TTS
       const { stderr } = await exec(commandWithArgs);

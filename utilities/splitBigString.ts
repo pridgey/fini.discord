@@ -1,11 +1,12 @@
-/* Takes a large string and splits it into an array of chunks
-param str - string - the string to split apart
-param addEllipsis - boolean - whether or not to append a "..." at the end of each chunk, defaults false
-param maxLength - number - what size to split each chunk to, defaults 1990
-*/
+/**
+ * Breaks large strings into an array of smaller strings -- helpful for things like Discord with max message sizes
+ * @param str The string to split into multiple strings
+ * @param addEllipsis Whether or not to add a trailing ellipsis to the prior strings
+ * @param maxLength The max length of any given string
+ * @returns array of smaller strings
+ */
 export const splitBigString = (
   str: string,
-  addEllipsis: boolean = false,
   maxLength: number = 1990
 ): string[] => {
   // If less than max amount, simply return
@@ -13,12 +14,10 @@ export const splitBigString = (
     return [str];
   }
 
-  // otherwise let's recursively go through this shiz
-  const stringChunk = `${str.slice(0, maxLength)}${addEllipsis ? "..." : ""}`;
-  const remainingString = splitBigString(
-    str.slice(maxLength),
-    addEllipsis,
-    maxLength
-  );
+  // Gets a chunk of string
+  const stringChunk = str.slice(0, maxLength);
+
+  // Recursively goes through the rest
+  const remainingString = splitBigString(str.slice(maxLength), maxLength);
   return [stringChunk, ...remainingString];
 };
