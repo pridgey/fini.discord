@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import seedrandom from "seedrandom";
 
 export const grabGif = async (
@@ -35,6 +34,7 @@ export const grabGif = async (
       return url;
     }
   } catch (err) {
+    console.error("Error grabbing gif:", err);
     return "";
   }
 };

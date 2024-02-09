@@ -35,7 +35,7 @@ export const rewardCoin = async (message: Message) => {
   const authorBalance =
     (await getUserBalance(authorID, message.guildId || "")) ?? 0;
   // random generator
-  const rewardVariable = randomNumber(messageTimestamp, 0.01, 0.05);
+  const rewardVariable = randomNumber(0.01, 0.05);
 
   // Updates user message stats for reward calculation
   userChatStats[authorID] = {

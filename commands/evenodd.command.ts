@@ -76,7 +76,7 @@ export const execute = async (
   } else {
     try {
       // The user has the appropriate funds. Play the game
-      const randomNum = randomNumber(Date.now(), 0, 9, true);
+      const randomNum = randomNumber(0, 9, true);
       const outcome = randomNum % 2 === 0 ? "Even" : "Odd";
       const userHasWon = outcome === option;
       let gif = await grabGif(
@@ -86,7 +86,7 @@ export const execute = async (
 
       // If the gif call fails, use a fallback gif url
       if (!gif) {
-        const randomIndex = randomNumber(Date.now(), 0, 9, true);
+        const randomIndex = randomNumber(0, 9, true);
         gif = userHasWon ? winningGifs[randomIndex] : losingGifs[randomIndex];
       }
 

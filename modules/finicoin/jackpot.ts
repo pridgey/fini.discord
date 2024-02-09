@@ -17,11 +17,7 @@ export const rollJackpot = async (
   const guildId = message.guildId || "";
 
   // Roll the dice
-  const jackPotRandom = randomNumber(
-    Date.now() * message.createdTimestamp,
-    0,
-    100
-  );
+  const jackPotRandom = randomNumber(0, 100);
 
   // Check if user has won
   if (jackPotRandom < JACKPOT_CEILING) {

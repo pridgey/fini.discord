@@ -47,12 +47,7 @@ export const execute = async (
 
   for (let i = 0; i < amountOfDice; i++) {
     // Randomly generate dice roll
-    const randomRoll = randomNumber(
-      Date.now() * Math.random(),
-      1,
-      numberOfSides,
-      true
-    );
+    const randomRoll = randomNumber(1, numberOfSides, true);
     results.push(randomRoll);
   }
 
