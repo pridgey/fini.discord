@@ -31,7 +31,6 @@
     "glob": "^10.3.10",
     "intl": "^1.2.5",
     "moment": "^2.30.1",
-    "node-fetch": "^2.0.0",
     "node-llama-cpp": "^2.8.5",
     "openai": "^4.16.1",
     "pocketbase": "^0.20.1",

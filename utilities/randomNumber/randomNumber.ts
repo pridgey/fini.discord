@@ -19,7 +19,5 @@ export const randomNumber = (min?: number, max?: number, integer?: boolean) => {
     number = Math.round(number);
   }
 
-  console.log("Random Number:", { maxNum, minNum, integer, number });
-
   return number;
 };
