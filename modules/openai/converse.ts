@@ -54,7 +54,7 @@ const determineImageUrl = (msg: string, attachmentURL?: string) => {
 };
 
 // Function that runs when "hey fini ..." is spoken in chat
-export const chatWithUser = async (
+export const chatWithUser_OpenAI = async (
   user: string,
   msg: string,
   attachmentURL?: string

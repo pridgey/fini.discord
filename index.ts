@@ -2,11 +2,12 @@ import { Client, GatewayIntentBits, Message } from "discord.js";
 import { rollJackpot } from "./modules/finicoin/jackpot";
 import { rewardCoin } from "./modules/finicoin/reward";
 import { createLog } from "./modules/logger";
-import { chatWithUser } from "./modules/openai";
+import { chatWithUser_OpenAI } from "./modules/openai";
 import { runPollTasks } from "./modules/polling";
 import { wizardRespond } from "./modules/wizardUncensored/respond";
 import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
 import { splitBigString } from "./utilities/splitBigString";
+import { chatWithUser_Google } from "./modules/googleai/converse";
 const { exec } = require("child_process");
 
 // Initialize client and announce intents
@@ -96,18 +97,31 @@ client.on("messageCreate", async (message: Message) => {
     // Grab any attachments if they exist
     const attachment = message.attachments.at(0)?.url;
 
-    // Contact openai api
-    const response = await chatWithUser(
-      messageUser,
-      messageText.replace("hey fini", ""),
-      attachment
-    );
+    let response;
+    let command = "hey fini";
+
+    if (messageTextLower.startsWith("hey fini -g")) {
+      // Google AI Text
+      command = "hey fini -g";
+
+      response = await chatWithUser_Google(
+        messageUser,
+        messageText.replace("hey fini -g", "")
+      );
+    } else {
+      // Open AI Text
+      response = await chatWithUser_OpenAI(
+        messageUser,
+        messageText.replace("hey fini", ""),
+        attachment
+      );
+    }
 
     // Log hey fini interaction
     await createLog({
       user_id: message.author.id,
       server_id: message.guild?.id || "unknown",
-      command: "hey fini",
+      command,
       input: messageText,
       output: response,
     });
