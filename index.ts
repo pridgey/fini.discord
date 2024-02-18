@@ -8,6 +8,7 @@ import { wizardRespond } from "./modules/wizardUncensored/respond";
 import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
 import { splitBigString } from "./utilities/splitBigString";
 import { chatWithUser_Google } from "./modules/googleai/converse";
+import { chatWithUser_Llama } from "./modules/llama/converse";
 const { exec } = require("child_process");
 
 // Initialize client and announce intents
@@ -64,27 +65,6 @@ client.on("messageCreate", async (message: Message) => {
     await message.react("🥲");
   }
 
-  // Testing Wizard LLM
-  if (messageTextLower.startsWith("hey wizard") && false) {
-    // Send temporary typing message, loop until we are done
-    const typingLoop = setInterval(() => {
-      message.channel.sendTyping();
-    }, 1000 * 11);
-
-    await message.channel.sendTyping();
-
-    const response = await wizardRespond(messageText.replace("hey wizard", ""));
-
-    // Clear typing loop
-    clearInterval(typingLoop);
-
-    // Split response to discord-sizable chunks
-    const replyArray = splitBigString(response);
-
-    // Send replies
-    replyArray.forEach(async (str) => await message.channel.send(str));
-  }
-
   // Fini chat
   if (messageTextLower.startsWith("hey fini")) {
     // Send temporary typing message, loop until we are done
@@ -95,12 +75,32 @@ client.on("messageCreate", async (message: Message) => {
     await message.channel.sendTyping();
 
     // Grab any attachments if they exist
+    const allAttachments = message.attachments;
     const attachment = message.attachments.at(0)?.url;
 
     let response;
     let command = "hey fini";
 
-    if (messageTextLower.startsWith("hey fini -g")) {
+    if (messageTextLower.startsWith("hey fini -l")) {
+      // Llama AI text
+      command = "hey fini -l";
+
+      response = await chatWithUser_Llama(
+        messageUser,
+        messageText.replace("hey fini -l", ""),
+        allAttachments
+      );
+    } else if (messageTextLower.startsWith("hey fini -c")) {
+      // Llama AI code chat
+      command = "hey fini -c";
+
+      response = await chatWithUser_Llama(
+        messageUser,
+        messageText.replace("hey fini -c", ""),
+        allAttachments,
+        true
+      );
+    } else if (messageTextLower.startsWith("hey fini -g")) {
       // Google AI Text
       command = "hey fini -g";
 

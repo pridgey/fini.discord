@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
-import { chatWithUser } from "../modules/openai/converse";
+import { chatWithUser_Llama } from "../modules/llama/converse";
 
 export const data = new SlashCommandBuilder()
   .setName("timmy")
@@ -24,7 +24,7 @@ export const execute = async (
 
   await interaction.deferReply();
 
-  const response = await chatWithUser(interaction.user.username, prompt);
+  const response = await chatWithUser_Llama(interaction.user.username, prompt);
 
   await interaction.editReply(response);
   logCommand();
