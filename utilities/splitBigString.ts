@@ -11,28 +11,36 @@ export const splitBigString = (str: string, maxLength: number = 1990): string[] 
 
   const markdownRegexes: RegExp[] = [
     /\*\*[^]*?\*\*/,      // Bold markdown
+    /\*[^]*?\*/,          // Single star
     /_[^]*?_/,            // Italic markdown
+    /__[^]*?__/,          // Double underscore
     /`[^]*?`/,            // Inline code markdown
     /```[^]*?```/,        // Code block markdown
-    /\n/                  // Newline character
   ];
 
   let breakIndex = maxLength;
-  for (const regex of markdownRegexes) {
-    const match = regex.exec(str.slice(0, maxLength + 1));
-    if (match && match.index !== undefined) {
-      if (regex.source === '\n') { // If the match is a newline character
-        breakIndex = match.index;
-        break;
-      }
-      breakIndex = match.index + (regex.source === '```' ? 6 : 2);
+
+  // Find the nearest sentence terminator before the breakIndex
+  for (let i = maxLength; i >= 0; i--) {
+    const char = str[i];
+    if (char === '.' || char === '?' || char === '\n') {
+      breakIndex = i;
       break;
     }
   }
 
-  // Find the nearest space character before the breakIndex
-  const spaceIndex = str.lastIndexOf(' ', breakIndex);
-  const splitIndex = spaceIndex !== -1 ? spaceIndex : breakIndex;
+  // Check for markdown matches before the breakIndex
+  for (const regex of markdownRegexes) {
+    const match = regex.exec(str.slice(0, breakIndex + 1));
+    if (match && match.index !== undefined) {
+      if (regex.source === '```') { // If the match is a code block
+        breakIndex = match.index + 6;
+      } else {
+        breakIndex = match.index + 2;
+      }
+      break;
+    }
+  }
 
-  return [str.slice(0, splitIndex), ...splitBigString(str.slice(splitIndex), maxLength)];
+  return [str.slice(0, breakIndex), ...splitBigString(str.slice(breakIndex).trim(), maxLength)];
 };
