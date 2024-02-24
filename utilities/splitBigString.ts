@@ -11,23 +11,28 @@ export const splitBigString = (str: string, maxLength: number = 1990): string[] 
 
   const markdownRegexes: RegExp[] = [
     /\*\*[^]*?\*\*/,      // Bold markdown
-    /\*[^]*?\*/,          // Single star Italic
-    /__[^]*?__/,          // Double line Bold
     /_[^]*?_/,            // Italic markdown
     /`[^]*?`/,            // Inline code markdown
     /```[^]*?```/,        // Code block markdown
     /\n/                  // Newline character
   ];
 
+  let breakIndex = maxLength;
   for (const regex of markdownRegexes) {
     const match = regex.exec(str.slice(0, maxLength + 1));
     if (match && match.index !== undefined) {
       if (regex.source === '\n') { // If the match is a newline character
-        return [str.slice(0, maxLength), ...splitBigString(str.slice(maxLength + 1), maxLength)];
+        breakIndex = match.index;
+        break;
       }
-      return [str.slice(0, maxLength + match.index + (regex.source === '```' ? 6 : 2)), ...splitBigString(str.slice(maxLength + match.index + (regex.source === '```' ? 6 : 2)), maxLength)];
+      breakIndex = match.index + (regex.source === '```' ? 6 : 2);
+      break;
     }
   }
 
-  return [str.slice(0, maxLength), ...splitBigString(str.slice(maxLength), maxLength)];
+  // Find the nearest space character before the breakIndex
+  const spaceIndex = str.lastIndexOf(' ', breakIndex);
+  const splitIndex = spaceIndex !== -1 ? spaceIndex : breakIndex;
+
+  return [str.slice(0, splitIndex), ...splitBigString(str.slice(splitIndex), maxLength)];
 };
