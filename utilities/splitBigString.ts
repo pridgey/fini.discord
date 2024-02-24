@@ -46,7 +46,7 @@ function splitString(input: string, maxLength: number): string[] {
         part.lastIndexOf(' ')
       );
       // Split the part at the last occurrence
-      return part.slice(0, index + 1);
+      return part.slice(0, index + 2);
     }
     return part;
   });
