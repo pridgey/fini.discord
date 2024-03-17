@@ -56,12 +56,12 @@ client.on("messageCreate", async (message: Message) => {
   const messageUser = message.author.username;
 
   // Good bot reaction
-  if (messageTextLower === "good bot") {
+  if (messageTextLower === "good fini") {
     await message.react("💖");
   }
 
   // Bad bot reaction
-  if (messageTextLower === "bad bot") {
+  if (messageTextLower === "bad fini") {
     await message.react("🥲");
   }
 
