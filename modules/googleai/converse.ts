@@ -1,23 +1,17 @@
-import {
-  GoogleGenerativeAI,
-  HarmBlockThreshold,
-  HarmCategory,
-} from "@google/generative-ai";
+// // Length of conversation history array
+// const historyMax = 10;
 
-// Length of conversation history array
-const historyMax = 10;
+// // Type for Chat messages
+// type ChatMessageProps = {
+//   role: "user" | "model";
+//   parts: string;
+// };
 
-// Type for Chat messages
-type ChatMessageProps = {
-  role: "user" | "model";
-  parts: string;
-};
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY || "");
+// const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_KEY || "");
 
 // Object containing everyone's conversation history
 // Stored in memory (for now)
-const conversationHistory: { [key: string]: ChatMessageProps[] } = {};
+// const conversationHistory: { [key: string]: ChatMessageProps[] } = {};
 
 export const chatWithUser_Google = async (user: string, msg: string) => {
   console.log("Deprecated chat with Google user");

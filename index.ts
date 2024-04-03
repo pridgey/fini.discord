@@ -44,19 +44,22 @@ client.once("ready", async (cl) => {
     // What does the file say?
     const fileContents = await readFile(fileName);
 
-    // Get all guilds
-    const guilds = await cl.guilds.fetch();
+    console.log("File Contents:", fileContents);
+    if (!!fileContents.length) {
+      // Get all guilds
+      const guilds = await cl.guilds.fetch();
 
-    // For each guild, get the system channel and send the update
-    guilds.forEach(async (g) => {
-      const guild = await g.fetch();
-      guild.systemChannel?.send(
-        `**${new Date().toLocaleDateString()} Update:**\r\n${fileContents}`
-      );
-    });
+      // For each guild, get the system channel and send the update
+      guilds.forEach(async (g) => {
+        const guild = await g.fetch();
+        guild.systemChannel?.send(
+          `**${new Date().toLocaleDateString()} Update:**\r\n${fileContents}`
+        );
+      });
 
-    // Empty the file out
-    await writeFile(fileName, "");
+      // Empty the file out
+      await writeFile(fileName, "");
+    }
   }
 });
 
