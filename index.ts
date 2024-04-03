@@ -10,6 +10,7 @@ import { splitBigString } from "./utilities/splitBigString";
 import { chatWithUser_Google } from "./modules/googleai/converse";
 import { chatWithUser_Llama } from "./modules/llama/converse";
 const { exec } = require("child_process");
+import { exists, readFile, writeFile } from "fs/promises";
 
 // Initialize client and announce intents
 const client = new Client({
@@ -25,7 +26,7 @@ const client = new Client({
 let pollingInterval;
 
 // WE READY
-client.once("ready", (cl) => {
+client.once("ready", async (cl) => {
   console.log("Connected");
 
   // Set interval for periodic things
@@ -34,6 +35,28 @@ client.once("ready", (cl) => {
     pollingInterval = setInterval(() => {
       runPollTasks(cl);
     }, 60_000);
+  }
+
+  // Read update.txt for update logs and announce them
+  const fileName = "update.txt";
+  const fileExists = await exists(fileName);
+  if (fileExists) {
+    // What does the file say?
+    const fileContents = await readFile(fileName);
+
+    // Get all guilds
+    const guilds = await cl.guilds.fetch();
+
+    // For each guild, get the system channel and send the update
+    guilds.forEach(async (g) => {
+      const guild = await g.fetch();
+      guild.systemChannel?.send(
+        `**${new Date().toLocaleDateString()} Update:**\r\n${fileContents}`
+      );
+    });
+
+    // Empty the file out
+    await writeFile(fileName, "");
   }
 });
 
@@ -99,14 +122,6 @@ client.on("messageCreate", async (message: Message) => {
         messageText.replace("hey fini -c", ""),
         allAttachments,
         true
-      );
-    } else if (messageTextLower.startsWith("hey fini -g")) {
-      // Google AI Text
-      command = "hey fini -g";
-
-      response = await chatWithUser_Google(
-        messageUser,
-        messageText.replace("hey fini -g", "")
       );
     } else {
       // Open AI Text
