@@ -124,8 +124,8 @@ export const chatWithUser_OpenAI = async (
         userHistory.some(
           (h) => Array.isArray(h.content) && h.content[1].type === "image_url"
         )
-          ? "gpt-4-vision-preview"
-          : "gpt-4-1106-preview",
+          ? "gpt-4-turbo"
+          : "gpt-4-turbo",
       messages: [...userHistory, newMessage],
       max_tokens: 900,
     });
