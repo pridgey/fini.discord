@@ -35,7 +35,7 @@ export const chatWithUser_Llama = async (
   console.log("Run Llama chatWithUser()", { user, msg });
 
   // clean up user message
-  const cleanMsg = msg.toLowerCase().replace("hey fini -l", "").trim();
+  const cleanMsg = msg.trim();
 
   // Create user's chat history if it doesn't exist
   if (!conversationHistory[user]) {
@@ -67,7 +67,7 @@ export const chatWithUser_Llama = async (
         ? "codellama:7b"
         : userMessage.images?.length
         ? "llava"
-        : "llama2-uncensored",
+        : "llama3",
       messages: [...userHistory, userMessage],
     });
 

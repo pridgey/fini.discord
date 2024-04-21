@@ -107,13 +107,13 @@ client.on("messageCreate", async (message: Message) => {
     let response;
     let command = "hey fini";
 
-    if (messageTextLower.startsWith("hey fini -l")) {
+    if (messageTextLower.startsWith("hey fini -o")) {
       // Llama AI text
-      command = "hey fini -l";
+      command = "hey fini -o";
 
-      response = await chatWithUser_Llama(
+      response = await chatWithUser_OpenAI(
         messageUser,
-        messageText.replace("hey fini -l", ""),
+        messageText.replace(command, ""),
         allAttachments
       );
     } else if (messageTextLower.startsWith("hey fini -c")) {
@@ -128,9 +128,9 @@ client.on("messageCreate", async (message: Message) => {
       );
     } else {
       // Open AI Text
-      response = await chatWithUser_OpenAI(
+      response = await chatWithUser_Llama(
         messageUser,
-        messageText.replace("hey fini", ""),
+        messageText.replace(command, ""),
         attachment
       );
     }
