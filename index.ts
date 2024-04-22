@@ -79,7 +79,7 @@ client.on("messageCreate", async (message: Message) => {
   // Lowercase makes comparisons way easier
   const messageText = message.content;
   const messageTextLower = messageText.toLowerCase();
-  const messageUser = message.author.username;
+  const messageUser = message.author.id;
 
   // Good bot reaction
   if (messageTextLower === "good fini") {
@@ -114,7 +114,8 @@ client.on("messageCreate", async (message: Message) => {
       response = await chatWithUser_OpenAI(
         messageUser,
         messageText.replace(command, ""),
-        allAttachments
+        message.guildId ?? "unknown",
+        attachment
       );
     } else if (messageTextLower.startsWith("hey fini -c")) {
       // Llama AI code chat
@@ -123,6 +124,7 @@ client.on("messageCreate", async (message: Message) => {
       response = await chatWithUser_Llama(
         messageUser,
         messageText.replace("hey fini -c", ""),
+        message.guildId ?? "unknown",
         allAttachments,
         true
       );
@@ -131,7 +133,8 @@ client.on("messageCreate", async (message: Message) => {
       response = await chatWithUser_Llama(
         messageUser,
         messageText.replace(command, ""),
-        attachment
+        message.guildId ?? "unknown",
+        allAttachments
       );
     }
 
@@ -151,7 +154,7 @@ client.on("messageCreate", async (message: Message) => {
     const replyArray = splitBigString(response);
 
     // Send replies
-    replyArray.forEach(async (str) => await message.channel.send(str));
+    replyArray.forEach(async (str) => await message.reply(str));
   } else {
     // Regular messages should be rewarded finicoin
     await rewardCoin(message);

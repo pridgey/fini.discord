@@ -10,6 +10,8 @@ export type ChatRecord = {
   user_id: string;
   message: string;
   author: "bot" | "user";
+  chatType: string;
+  server_id: string;
 };
 
 export type HammerspaceRecord = {

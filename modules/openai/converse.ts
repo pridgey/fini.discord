@@ -6,6 +6,7 @@ import type {
   ChatCompletionSystemMessageParam,
 } from "openai/resources/index";
 import type { OpenAIError } from "openai/error";
+import { addHistory, getHistory } from "../../utilities/chatHistory";
 
 // Length of conversation history array
 const historyMax = 10;
@@ -57,6 +58,7 @@ const determineImageUrl = (msg: string, attachmentURL?: string) => {
 export const chatWithUser_OpenAI = async (
   user: string,
   msg: string,
+  server: string,
   attachmentURL?: string
 ) => {
   console.log("Run chatWithUser()", { user, msg });
@@ -83,16 +85,12 @@ export const chatWithUser_OpenAI = async (
     content: `You are ${personality}`,
   };
 
-  // Create user's chat history if it doesn't exist
-  if (!conversationHistory[user]) {
-    conversationHistory[user] = [];
-  }
-
-  // This will represent the chat history for the user
-  const userHistory: ChatCompletionMessageParam[] = [
-    startingMessage,
-    ...conversationHistory[user],
-  ];
+  // Get history from logs and transform to proper type
+  const chatLogs = await getHistory(user, server, "openai");
+  const userHistory: ChatCompletionMessageParam[] = chatLogs.map((record) => ({
+    content: record.message,
+    role: record.author === "bot" ? "assistant" : "user",
+  }));
 
   // Determine if this is an image request
   const imageResult = determineImageUrl(chat, attachmentURL);
@@ -143,17 +141,22 @@ export const chatWithUser_OpenAI = async (
         selected: randomChoice,
       });
 
-      // Add the user message, and response, to the user history
-      const responseObject: ChatCompletionAssistantMessageParam = {
-        role: "assistant",
-        content: randomChoice?.message.content || "",
-      };
-      conversationHistory[user].push(newMessage, responseObject);
+      // Add user's original message to history
+      await addHistory({
+        author: "user",
+        chatType: "openai",
+        message: chat,
+        server_id: server,
+        user_id: user,
+      });
 
-      // Remove messages beyond the max limit
-      if (conversationHistory[user].length > historyMax) {
-        conversationHistory[user] = conversationHistory[user].slice(historyMax);
-      }
+      await addHistory({
+        author: "bot",
+        chatType: "openai",
+        message: randomChoice?.message.content ?? "",
+        server_id: server,
+        user_id: user,
+      });
 
       return randomChoice?.message.content || "";
     } else {

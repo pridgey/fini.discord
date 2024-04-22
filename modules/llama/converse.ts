@@ -1,13 +1,7 @@
 import ollama from "ollama";
 import type { Message } from "ollama";
 import type { Attachment, Collection } from "discord.js";
-
-// Length of conversation history array
-const historyMax = 10;
-
-// Object containing everyone's conversation history
-// Stored in memory (for now)
-const conversationHistory: { [key: string]: Message[] } = {};
+import { addHistory, getHistory } from "../../utilities/chatHistory";
 
 // Utility function to convert discord.js attachment to base64
 const attachmentToBase64 = async (attachment: Attachment) => {
@@ -29,6 +23,7 @@ const attachmentToBase64 = async (attachment: Attachment) => {
 export const chatWithUser_Llama = async (
   user: string,
   msg: string,
+  server: string,
   attachments?: Collection<string, Attachment>,
   code?: boolean
 ) => {
@@ -37,13 +32,12 @@ export const chatWithUser_Llama = async (
   // clean up user message
   const cleanMsg = msg.trim();
 
-  // Create user's chat history if it doesn't exist
-  if (!conversationHistory[user]) {
-    conversationHistory[user] = [];
-  }
-
-  // This will represent the chat history for the user
-  const userHistory: Message[] = [...conversationHistory[user]];
+  // Grab chat logs from server and convert to proper type
+  const chatLogs = await getHistory(user, server, "llama");
+  const userHistory: Message[] = chatLogs.map((record) => ({
+    content: record.message,
+    role: record.author === "bot" ? "system" : "user",
+  }));
 
   const attachmentStrings: string[] = [];
   if (attachments) {
@@ -75,21 +69,23 @@ export const chatWithUser_Llama = async (
 
     const responseText = response.message.content;
 
-    // Add response to history
-    conversationHistory[user].push(
-      ...[
-        userMessage,
-        {
-          role: "system",
-          content: responseText,
-        },
-      ]
-    );
+    // Add user's new message
+    await addHistory({
+      author: "user",
+      chatType: "llama",
+      message: cleanMsg,
+      server_id: server,
+      user_id: user,
+    });
 
-    // Remove messages beyond the max limit
-    if (conversationHistory[user].length > historyMax) {
-      conversationHistory[user] = conversationHistory[user].slice(historyMax);
-    }
+    // Add chat response
+    await addHistory({
+      author: "bot",
+      chatType: "llama",
+      message: responseText,
+      server_id: server,
+      user_id: user,
+    });
 
     // Return ai generated text
     return responseText || "";
