@@ -54,43 +54,67 @@ export const chatWithUser_Llama = async (
     images: attachmentStrings,
   };
 
+  let responseText = "";
+
   try {
-    // Create the chat from the model
-    const response = await ollama.chat({
-      model: code
-        ? "codellama:7b"
-        : userMessage.images?.length
-        ? "llava"
-        : "llama3",
-      messages: [...userHistory, userMessage],
+    // First try to run the big model on the desktop tower
+    const response = await fetch(process.env.DESKTOP_LLAMA_URL ?? "", {
+      method: "POST",
+      body: JSON.stringify({
+        model: "llama3:70b",
+        messages: [...userHistory, userMessage],
+        stream: false,
+      }),
     });
 
-    console.log("Llama chat", { response });
+    const json = await response.json();
 
-    const responseText = response.message.content;
+    console.log("Json", { json });
 
-    // Add user's new message
-    await addHistory({
-      author: "user",
-      chatType: "llama",
-      message: cleanMsg,
-      server_id: server,
-      user_id: user,
-    });
-
-    // Add chat response
-    await addHistory({
-      author: "bot",
-      chatType: "llama",
-      message: responseText,
-      server_id: server,
-      user_id: user,
-    });
-
-    // Return ai generated text
-    return responseText || "";
+    // Set response
+    responseText = json.message.content;
   } catch (err) {
-    console.error("Error running LlamaAI Chat:", err);
-    return `Error with LlamaAI API D: (${err})`;
+    // Something went wrong trying to contact bigboi
+    console.error("Error running large llama call", { err });
+
+    // Try locally instead
+    try {
+      // Create the chat from the model
+      const response = await ollama.chat({
+        model: code
+          ? "codellama:7b"
+          : userMessage.images?.length
+          ? "llava"
+          : "llama3",
+        messages: [...userHistory, userMessage],
+      });
+
+      // Set response
+      responseText = response.message.content;
+    } catch (err) {
+      console.error("Error running local llama call", { err });
+      return `Error with LlamaAI API D: (${err})`;
+    }
   }
+
+  // Add user's new message
+  await addHistory({
+    author: "user",
+    chatType: "llama",
+    message: cleanMsg,
+    server_id: server,
+    user_id: user,
+  });
+
+  // Add chat response
+  await addHistory({
+    author: "bot",
+    chatType: "llama",
+    message: responseText,
+    server_id: server,
+    user_id: user,
+  });
+
+  // Return ai generated text
+  return responseText || "";
 };

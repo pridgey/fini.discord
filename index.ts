@@ -107,15 +107,15 @@ client.on("messageCreate", async (message: Message) => {
     let response;
     let command = "hey fini";
 
-    if (messageTextLower.startsWith("hey fini -o")) {
+    if (messageTextLower.startsWith("hey fini -l")) {
       // Llama AI text
-      command = "hey fini -o";
+      command = "hey fini -l";
 
-      response = await chatWithUser_OpenAI(
+      response = await chatWithUser_Llama(
         messageUser,
         messageText.replace(command, ""),
         message.guildId ?? "unknown",
-        attachment
+        allAttachments
       );
     } else if (messageTextLower.startsWith("hey fini -c")) {
       // Llama AI code chat
@@ -130,11 +130,11 @@ client.on("messageCreate", async (message: Message) => {
       );
     } else {
       // Open AI Text
-      response = await chatWithUser_Llama(
+      response = await chatWithUser_OpenAI(
         messageUser,
         messageText.replace(command, ""),
         message.guildId ?? "unknown",
-        allAttachments
+        attachment
       );
     }
 
