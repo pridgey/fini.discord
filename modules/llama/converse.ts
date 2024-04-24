@@ -57,44 +57,21 @@ export const chatWithUser_Llama = async (
   let responseText = "";
 
   try {
-    // First try to run the big model on the desktop tower
-    const response = await fetch(process.env.DESKTOP_LLAMA_URL ?? "", {
-      method: "POST",
-      body: JSON.stringify({
-        model: "llama3:70b",
-        messages: [...userHistory, userMessage],
-        stream: false,
-      }),
+    // Create the chat from the model
+    const response = await ollama.chat({
+      model: code
+        ? "codellama:7b"
+        : userMessage.images?.length
+        ? "llava"
+        : "phi3",
+      messages: [...userHistory, userMessage],
     });
 
-    const json = await response.json();
-
-    console.log("Json", { json });
-
     // Set response
-    responseText = json.message.content;
+    responseText = response.message.content;
   } catch (err) {
-    // Something went wrong trying to contact bigboi
-    console.error("Error running large llama call", { err });
-
-    // Try locally instead
-    try {
-      // Create the chat from the model
-      const response = await ollama.chat({
-        model: code
-          ? "codellama:7b"
-          : userMessage.images?.length
-          ? "llava"
-          : "llama3",
-        messages: [...userHistory, userMessage],
-      });
-
-      // Set response
-      responseText = response.message.content;
-    } catch (err) {
-      console.error("Error running local llama call", { err });
-      return `Error with LlamaAI API D: (${err})`;
-    }
+    console.error("Error running local llama call", { err });
+    return `Error with LlamaAI API D: (${err})`;
   }
 
   // Add user's new message
