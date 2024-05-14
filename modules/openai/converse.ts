@@ -117,13 +117,7 @@ export const chatWithUser_OpenAI = async (
   // Call the api
   try {
     const openaiResponse = await openai.chat.completions.create({
-      model:
-        imageResult.imageUrl ||
-        userHistory.some(
-          (h) => Array.isArray(h.content) && h.content[1].type === "image_url"
-        )
-          ? "gpt-4-turbo"
-          : "gpt-4-turbo",
+      model: "gpt-4o",
       messages: [...userHistory, newMessage],
       max_tokens: 900,
     });

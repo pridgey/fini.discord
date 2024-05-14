@@ -36,7 +36,7 @@ export const chatWithUser_Llama = async (
   const chatLogs = await getHistory(user, server, "llama");
   const userHistory: Message[] = chatLogs.map((record) => ({
     content: record.message,
-    role: record.author === "bot" ? "system" : "user",
+    role: record.author === "bot" ? "assistant" : "user",
   }));
 
   const attachmentStrings: string[] = [];
@@ -93,5 +93,5 @@ export const chatWithUser_Llama = async (
   });
 
   // Return ai generated text
-  return responseText || "";
+  return responseText || "Something fucked up.";
 };

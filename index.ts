@@ -1,4 +1,9 @@
-import { Client, GatewayIntentBits, Message } from "discord.js";
+import {
+  ChatInputCommandInteraction,
+  Client,
+  GatewayIntentBits,
+  Message,
+} from "discord.js";
 import { rollJackpot } from "./modules/finicoin/jackpot";
 import { rewardCoin } from "./modules/finicoin/reward";
 import { createLog } from "./modules/logger";
@@ -163,6 +168,10 @@ client.on("messageCreate", async (message: Message) => {
 
 // If we get a slash command, run the slash command.
 client.on("interactionCreate", async (interaction) => {
+  console.log("Interaction Used", {
+    commandName: (interaction as ChatInputCommandInteraction).commandName,
+  });
+
   console.log("Is Autocomplete:", {
     autocomplete: interaction.isAutocomplete(),
     command: interaction.isCommand(),
@@ -190,6 +199,8 @@ client.on("interactionCreate", async (interaction) => {
     );
     // Exit early if we can't find the command to run
     if (!commandToRun) return;
+
+    console.log("Pre-Execute", commandToRun);
 
     // Execute the command
     await commandToRun.execute(interaction, async () => {

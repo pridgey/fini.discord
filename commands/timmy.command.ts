@@ -1,9 +1,9 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
-import { chatWithUser_Llama } from "../modules/llama/converse";
+import { chatWithUser_OpenAI } from "../modules/openai";
 
 export const data = new SlashCommandBuilder()
-  .setName("timmy")
+  .setName("timmypoem")
   .setDescription(
     "Creates a Little Timmy poem in the style of u/poem_for_your_sprog"
   )
@@ -24,7 +24,11 @@ export const execute = async (
 
   await interaction.deferReply();
 
-  const response = await chatWithUser_Llama(interaction.user.username, prompt);
+  const response = await chatWithUser_OpenAI(
+    interaction.user.username,
+    prompt,
+    interaction.guildId ?? ""
+  );
 
   await interaction.editReply(response);
   logCommand();
