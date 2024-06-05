@@ -18,8 +18,10 @@ export const splitBigString = (
   let stringChunk = str.slice(0, maxLength);
   let nextStartIndex = stringChunk.length;
 
-  // The number of instances of "aaa" in the chunk
+  // The number of instances of "```" in the chunk
   const codeBlockCount = (stringChunk.match(/```/g) || []).length;
+  // If the chunk includes a newline break
+  const hasNewLine = stringChunk.match(/(\r\n|\r|\n)/);
 
   // Ensure string chunk is not in-between code block markdown
   if (stringChunk.includes("```") && codeBlockCount % 2 !== 0) {
@@ -28,11 +30,22 @@ export const splitBigString = (
       stringChunk.lastIndexOf("```", stringChunk.lastIndexOf("```") - 1) + 3;
     stringChunk = str.slice(0, secondToLastCodeBlockIndex);
     nextStartIndex = secondToLastCodeBlockIndex;
-  } else {
-    // We are fine on code blocks, make sure we end on a new line
-    const lastNewline = stringChunk.lastIndexOf("\n");
-    stringChunk = str.slice(0, lastNewline);
-    nextStartIndex = lastNewline;
+  } else if (!stringChunk.at(-1)?.match(/(\s|\.)/)) {
+    // Last character isn't a whitespace or a period
+    // First try to find the latest newline
+    const lastNewlineIndex = stringChunk.lastIndexOf("\n");
+
+    if (lastNewlineIndex > maxLength * 0.75) {
+      // If the last newline is more than 75% through the chunk, split it there
+      stringChunk = str.slice(0, lastNewlineIndex) + 1;
+      nextStartIndex = lastNewlineIndex;
+    } else {
+      // Otherwise find the most recent space to split on
+      const lastWhitespaceIndex = stringChunk.lastIndexOf(" ");
+
+      stringChunk = str.slice(0, lastWhitespaceIndex);
+      nextStartIndex = lastWhitespaceIndex;
+    }
   }
 
   console.log("Split String", {
