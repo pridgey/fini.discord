@@ -72,7 +72,7 @@ export const chatWithUser_OpenAI = async (
   let chat = msg;
 
   // clean up user message
-  const cleanMsg = msg.toLowerCase().replace("hey fini", "").trim();
+  const cleanMsg = msg.replace(new RegExp("hey fini", "i"), "").trim();
 
   // Find any personality the user would like us to use
   const personalityResult = determinePersonality(cleanMsg);
