@@ -15,9 +15,38 @@ export const splitBigString = (
   }
 
   // Gets a chunk of string
-  const stringChunk = str.slice(0, maxLength);
+  let stringChunk = str.slice(0, maxLength);
+  let nextStartIndex = stringChunk.length;
+
+  // The number of instances of "aaa" in the chunk
+  const codeBlockCount = (stringChunk.match(/```/g) || []).length;
+
+  // Ensure string chunk is not in-between code block markdown
+  if (stringChunk.includes("```") && codeBlockCount % 2 !== 0) {
+    // Get second to last instance of code block
+    const secondToLastCodeBlockIndex =
+      stringChunk.lastIndexOf("```", stringChunk.lastIndexOf("```") - 1) + 3;
+    stringChunk = str.slice(0, secondToLastCodeBlockIndex);
+    nextStartIndex = secondToLastCodeBlockIndex;
+  } else {
+    // We are fine on code blocks, make sure we end on a new line
+    const lastNewline = stringChunk.lastIndexOf("\n");
+    stringChunk = str.slice(0, lastNewline);
+    nextStartIndex = lastNewline;
+  }
+
+  console.log("Split String", {
+    nextStartIndex,
+    codeBlockCount,
+    stringChunk,
+  });
 
   // Recursively goes through the rest
-  const remainingString = splitBigString(str.slice(maxLength), maxLength);
-  return [stringChunk, ...remainingString];
+  const remainingStringChunks: string[] = splitBigString(
+    str.slice(nextStartIndex),
+    maxLength
+  );
+
+  // Returns the chunk and the rest for this iteration of the recursion
+  return [stringChunk, ...remainingStringChunks];
 };
