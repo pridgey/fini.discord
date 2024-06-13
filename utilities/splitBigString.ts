@@ -24,7 +24,11 @@ export const splitBigString = (
   const hasNewLine = stringChunk.match(/(\r\n|\r|\n)/);
 
   // Ensure string chunk is not in-between code block markdown
-  if (stringChunk.includes("```") && codeBlockCount % 2 !== 0) {
+  if (
+    stringChunk.includes("```") &&
+    codeBlockCount > 2 &&
+    codeBlockCount % 2 !== 0
+  ) {
     // Get second to last instance of code block
     const secondToLastCodeBlockIndex =
       stringChunk.lastIndexOf("```", stringChunk.lastIndexOf("```") - 1) + 3;
