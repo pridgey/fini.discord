@@ -30,15 +30,18 @@ export const execute = async (
       try {
         const replicate = new Replicate();
 
-        const respond: any = await replicate.run("black-forest-labs/flux-pro", {
-          input: {
-            prompt,
-            disable_safety_checker: true,
-            safety_tolerance: 5,
-          },
-        });
+        const respond: any = await replicate.run(
+          "black-forest-labs/flux-schnell",
+          {
+            input: {
+              prompt,
+              disable_safety_checker: true,
+              safety_tolerance: 5,
+            },
+          }
+        );
 
-        const imageAttachment = new AttachmentBuilder(respond || "", {
+        const imageAttachment = new AttachmentBuilder(respond[0] || "", {
           name: "image.jpg",
         });
 
