@@ -50,8 +50,8 @@ export const runGame = async (
  * @param guildID The server ID of the server where the call is coming from
  * @param amount The amount to remove
  */
-export const removeCoin = (userID: string, guildID, amount: number) => {
-  addCoin(userID, guildID, amount * -1);
+export const removeCoin = async (userID: string, guildID, amount: number) => {
+  await addCoin(userID, guildID, amount * -1);
 };
 
 /**

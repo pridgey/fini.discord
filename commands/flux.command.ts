@@ -3,7 +3,7 @@ import { CommandInteraction, AttachmentBuilder } from "discord.js";
 import { getUserBalance, removeCoin } from "../modules/finicoin";
 import Replicate from "replicate";
 
-const COMMAND_COST = 500;
+const COMMAND_COST = 1000;
 
 export const data = new SlashCommandBuilder()
   .setName("flux")
@@ -30,14 +30,15 @@ export const execute = async (
       try {
         const replicate = new Replicate();
 
-        const respond = await replicate.run("black-forest-labs/flux-schnell", {
+        const respond: any = await replicate.run("black-forest-labs/flux-pro", {
           input: {
             prompt,
             disable_safety_checker: true,
+            safety_tolerance: 5,
           },
         });
 
-        const imageAttachment = new AttachmentBuilder(respond[0] || "", {
+        const imageAttachment = new AttachmentBuilder(respond || "", {
           name: "image.jpg",
         });
 
