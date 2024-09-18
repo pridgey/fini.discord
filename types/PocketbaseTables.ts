@@ -49,3 +49,11 @@ export type TtsRecord = {
   user_id: string;
   channel_id: string;
 };
+
+export type PersonalitiesRecord = {
+  id?: string;
+  user_id: string;
+  prompt: string;
+  active: boolean;
+  personality_name: string;
+};

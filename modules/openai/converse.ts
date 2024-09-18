@@ -7,31 +7,11 @@ import type {
 } from "openai/resources/index";
 import type { OpenAIError } from "openai/error";
 import { addHistory, getHistory } from "../../utilities/chatHistory";
+import { pb } from "../../utilities/pocketbase";
+import { PersonalitiesRecord } from "../../types/PocketbaseTables";
 
 // Length of conversation history array
 const historyMax = 10;
-
-// Object containing everyone's conversation history
-// Stored in memory (for now)
-/*
-export interface ChatCompletionUserMessageParam {
-  content: string | Array<ChatCompletionContentPart> | null;
-  role: 'user';
-}
-*/
-const conversationHistory: { [key: string]: ChatCompletionMessageParam[] } = {};
-
-// Function for determining if a personality is included in the message
-const determinePersonality = (msg: string) => {
-  let personality = "";
-  let restOfMessage = msg;
-  if (msg.startsWith("as") && msg.includes(":")) {
-    const msgParts = msg.split(":");
-    personality = msgParts[0].replace("as", "").trim();
-    restOfMessage = msgParts[1].trim();
-  }
-  return { personality, restOfMessage };
-};
 
 // Function for determing if the message includes an image url
 const determineImageUrl = (msg: string, attachmentURL?: string) => {
@@ -68,54 +48,63 @@ export const chatWithUser_OpenAI = async (
   });
 
   // Chat variables
-  let personality;
-  let chat = msg;
-
-  // clean up user message
-  const cleanMsg = msg.replace(new RegExp("hey fini", "i"), "").trim();
+  let chat = msg.replace(new RegExp("hey fini", "i"), "").trim();
 
   // Find any personality the user would like us to use
-  const personalityResult = determinePersonality(cleanMsg);
-  personality = personalityResult.personality || "a helpful assistant";
-  chat = personalityResult.restOfMessage;
-
-  // Craft the opening message
-  const startingMessage: ChatCompletionSystemMessageParam = {
-    role: "system",
-    content: `You are ${personality}`,
-  };
-
-  // Get history from logs and transform to proper type
-  const chatLogs = await getHistory(user, server, "openai");
-  const userHistory: ChatCompletionMessageParam[] = chatLogs.map((record) => ({
-    content: record.message,
-    role: record.author === "bot" ? "assistant" : "user",
-  }));
-
-  // Determine if this is an image request
-  const imageResult = determineImageUrl(chat, attachmentURL);
-  chat = imageResult.restOfMessage;
-
-  // Craft the new message
-  // If this is an image message, format the content differently
-  const newMessage: ChatCompletionUserMessageParam = {
-    role: "user",
-    content: imageResult.imageUrl
-      ? [
-          {
-            type: "text",
-            text: chat,
-          },
-          {
-            type: "image_url",
-            image_url: { url: imageResult.imageUrl },
-          },
-        ]
-      : chat,
-  };
-
-  // Call the api
   try {
+    const foundPersonalities = await pb
+      .collection<PersonalitiesRecord>("personalities")
+      .getFullList({
+        filter: `user_id = "${user}" && active = true`,
+      });
+
+    const foundPersonality =
+      foundPersonalities.length > 0 ? foundPersonalities[0] : undefined;
+
+    chat = !!foundPersonality
+      ? `You are ${
+          foundPersonality!.personality_name
+        } with the personality of ${foundPersonality!.prompt} ${chat}`
+      : chat;
+
+    // // Craft the opening message
+    // const startingMessage: ChatCompletionSystemMessageParam = {
+    //   role: "system",
+    //   content: personality,
+    // };
+
+    // Get history from logs and transform to proper type
+    const chatLogs = await getHistory(user, server, "openai");
+    const userHistory: ChatCompletionMessageParam[] = chatLogs.map(
+      (record) => ({
+        content: record.message,
+        role: record.author === "bot" ? "assistant" : "user",
+      })
+    );
+
+    // Determine if this is an image request
+    const imageResult = determineImageUrl(chat, attachmentURL);
+    chat = imageResult.restOfMessage;
+
+    // Craft the new message
+    // If this is an image message, format the content differently
+    const newMessage: ChatCompletionUserMessageParam = {
+      role: "user",
+      content: imageResult.imageUrl
+        ? [
+            {
+              type: "text",
+              text: chat,
+            },
+            {
+              type: "image_url",
+              image_url: { url: imageResult.imageUrl },
+            },
+          ]
+        : chat,
+    };
+
+    // Call the api
     const openaiResponse = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [...userHistory, newMessage],
