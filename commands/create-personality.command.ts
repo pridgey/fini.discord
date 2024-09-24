@@ -19,6 +19,12 @@ export const data = new SlashCommandBuilder()
         "The description of the personality. This will be insert before every prompt."
       )
       .setRequired(true)
+  )
+  .addBooleanOption((option) =>
+    option
+      .setName("activate")
+      .setDescription("Will see this personality as active immediately")
+      .setRequired(false)
   );
 
 export const execute = async (
@@ -29,11 +35,21 @@ export const execute = async (
     interaction.options.get("name")?.value?.toString() || "";
   const personalityPrompt =
     interaction.options.get("prompt")?.value?.toString() || "";
+  const setActiveNow: boolean = Boolean(
+    interaction.options.get("activate")?.value?.toString() || false
+  );
 
   if (!personalityName.length || !personalityPrompt.length) {
     // Input invalid
     await interaction.reply({
       content: "A personality needs both Name and Prompt.",
+    });
+    logCommand();
+  } else if (personalityPrompt.length > 300 || personalityName.length > 100) {
+    // Too long of a personality prompt
+    await interaction.reply({
+      content:
+        "Woah, I can't remember all that. Let's try and keep things less than 300 characters, okay?",
     });
     logCommand();
   } else {
@@ -54,15 +70,39 @@ export const execute = async (
         logCommand();
       } else {
         // No other personalities with this name (for this user)
-        await pb.collection<PersonalitiesRecord>("personalities").create({
-          user_id: interaction.user.id,
-          prompt: personalityPrompt,
-          personality_name: personalityName,
-          active: false,
-        });
+        const newPersonalityRecord = await pb
+          .collection<PersonalitiesRecord>("personalities")
+          .create({
+            user_id: interaction.user.id,
+            prompt: personalityPrompt,
+            personality_name: personalityName,
+            active: setActiveNow ?? false,
+          });
+
+        if (setActiveNow) {
+          // Set everything else as not active
+          const allPersonalitiesExceptNew = await pb
+            .collection<PersonalitiesRecord>("personalities")
+            .getFullList({
+              filter: `user_id = "${interaction.user.id}" && id != "${newPersonalityRecord.id}"`,
+            });
+
+          for (let i = 0; i < allPersonalitiesExceptNew.length; i++) {
+            await pb
+              .collection("personalities")
+              .update(allPersonalitiesExceptNew[i].id || "", {
+                ...allPersonalitiesExceptNew[i],
+                active: false,
+              });
+          }
+        }
 
         await interaction.reply(
-          `${personalityName} created. To use it, run /set-personality ${personalityName}`
+          `${personalityName} created. ${
+            setActiveNow
+              ? "It is set as active."
+              : `To use it, run \`/set-personality ${personalityName}\``
+          }`
         );
 
         logCommand();
