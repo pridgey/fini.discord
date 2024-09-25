@@ -57,3 +57,27 @@ export type PersonalitiesRecord = {
   active: boolean;
   personality_name: string;
 };
+
+export type PollRecord = {
+  id?: string;
+  name: string;
+  user_id: string;
+  users_can_add: boolean;
+  single_vote: boolean;
+  slug: number;
+};
+
+export type PollOptionRecord = {
+  id?: string;
+  option_name: string;
+  user_id: string;
+  poll: string;
+  option_number: number;
+  slug: number;
+};
+
+export type PollVoteRecord = {
+  id?: string;
+  poll_option: string;
+  user_id: string;
+};
