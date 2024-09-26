@@ -24,6 +24,10 @@ export const execute = async (
   const pollOptionSlug =
     interaction.options.get("option")?.value?.toString() || "";
 
+  await interaction.reply("This command currently does nothing.");
+  logCommand();
+  return;
+
   if (!pollOptionSlug.length) {
     // Input invalid
     await interaction.reply({
