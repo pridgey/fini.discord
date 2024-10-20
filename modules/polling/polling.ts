@@ -1,9 +1,15 @@
-import { Client, TextChannel } from "discord.js";
-import { type ReminderRecord } from "../../types/PocketbaseTables";
+import { AttachmentBuilder, Client, TextChannel } from "discord.js";
+import {
+  WeatherRecord,
+  type ReminderRecord,
+} from "../../types/PocketbaseTables";
 import { pb } from "../../utilities/pocketbase";
+import OpenAI from "openai";
+import Replicate from "replicate";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
+  checkWeatherReports(cl);
   //checkHealthPings(cl);
 };
 
@@ -35,6 +41,109 @@ const checkReminders = async (cl: Client) => {
     // Delete the reminder
     await pb.collection<ReminderRecord>("reminder").delete(reminder.id!);
   });
+};
+
+// Check for morning weather reports
+const checkWeatherReports = async (cl: Client) => {
+  // Current time to check
+  const now = new Date();
+
+  // 9 AM run the health
+  if (now.getHours() === 9 && now.getMinutes() === 0) {
+    const weatherRecords = await pb
+      .collection<WeatherRecord>("weather")
+      .getFullList();
+
+    for (let i = 0; i < weatherRecords.length; i++) {
+      const user = weatherRecords[i].user_id;
+
+      // First grab the weather report
+      const tomorrowResponse = await fetch(
+        `https://api.tomorrow.io/v4/weather/forecast?location=${weatherRecords[i].city}&timesteps=1d&&units=imperial&apikey=${process.env.TOMORROW_WEATHER_API_KEY}`
+      );
+      const weatherData = await tomorrowResponse.json();
+      const dayWeatherData = weatherData.timelines.daily?.[0]?.values;
+
+      if (!dayWeatherData) {
+        console.error("Error retrieving weather data");
+        break;
+      }
+
+      // Generate the opening message
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY || "no_key_found",
+      });
+
+      const openaiResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Given the data about today's weather, please generate a message to brief me on the start of my day and what it might entail. Include the information that seems relevant or noteworthy, and feel free to ignore anything else. Ensure your response is well formatted for Discord, and well condensed to be easily readable. Today's Data: ${JSON.stringify(
+                  dayWeatherData
+                )}. ${weatherRecords[i].additional_prompt}`,
+              },
+            ],
+          },
+        ],
+        max_tokens: 900,
+      });
+
+      if (!openaiResponse.choices.length) {
+        console.error("OpenAI generation failed for weather report.");
+        break;
+      }
+
+      // Grab a random choice
+      const rand = Math.round(
+        Math.random() * (openaiResponse.choices.length - 1)
+      );
+      const randomChoice = openaiResponse.choices.at(rand);
+
+      // Generate an image
+      const replicate = new Replicate();
+
+      const replicateResponse: any = await replicate.run(
+        "black-forest-labs/flux-schnell",
+        {
+          input: {
+            prompt: `A nice landscape depicting the weather from the following data: ${JSON.stringify(
+              dayWeatherData
+            )}`,
+            disable_safety_checker: true,
+            safety_tolerance: 5,
+            aspect_ratio: "16:9",
+          },
+        }
+      );
+
+      const imageAttachment = new AttachmentBuilder(
+        replicateResponse[0] || "",
+        {
+          name: "image.jpg",
+        }
+      );
+
+      const userDM = await (await cl.users.fetch(user)).createDM();
+
+      // Send Image
+      await userDM.send({
+        files: [imageAttachment],
+      });
+      // Then the report
+      await userDM.send(
+        randomChoice?.message.content ??
+          "Error during weather report generation"
+      );
+      // Then a separator
+      await userDM.send(
+        "---------------------------------------------------------------------"
+      );
+    }
+  }
 };
 
 // Check for health reminders
