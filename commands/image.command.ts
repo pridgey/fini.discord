@@ -17,6 +17,15 @@ export const execute = async (
   const prompt = interaction.options.get("prompt")?.value?.toString() || "";
 
   if (!!prompt?.length) {
+    // Ensure prompt is a reasonable length
+    if (prompt.length > 1000) {
+      await interaction.reply(
+        "If you're Graham, stop it. If you're not Graham, I bet he put you up to it. I need a shorter prompt please."
+      );
+      logCommand();
+      return;
+    }
+
     // Instantiate openai
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY || "no_key_found",

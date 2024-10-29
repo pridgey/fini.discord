@@ -19,6 +19,15 @@ export const execute = async (
 ) => {
   const hammerspaceItem = interaction.options.get("item")?.value?.toString();
 
+  // Ensure prompt is a reasonable length
+  if (hammerspaceItem?.length ?? 0 > 100) {
+    await interaction.reply(
+      "If you're Graham, stop it. If you're not Graham, I bet he put you up to it. I need a shorter prompt please."
+    );
+    logCommand();
+    return;
+  }
+
   try {
     const response = await pb
       .collection<HammerspaceRecord>("hammerspace")

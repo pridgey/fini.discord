@@ -66,14 +66,14 @@ const checkWeatherReports = async (cl: Client) => {
           console.error("Error retrieving weather data", {
             weatherData: weatherRecords[i],
           });
-          break;
+          continue;
         }
         const weatherData = await tomorrowResponse.json();
         const dayWeatherData = weatherData?.timelines.daily?.[0]?.values;
 
         if (!dayWeatherData) {
           console.error("Error retrieving weather data");
-          break;
+          continue;
         }
 
         // Generate the opening message
@@ -101,7 +101,7 @@ const checkWeatherReports = async (cl: Client) => {
 
         if (!openaiResponse.choices.length) {
           console.error("OpenAI generation failed for weather report.");
-          break;
+          continue;
         }
 
         // Grab a random choice
