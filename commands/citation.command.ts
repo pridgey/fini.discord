@@ -34,9 +34,7 @@ export const execute = async (
   const title = interaction.options.get("title")?.value?.toString() || "";
   const citation = interaction.options.get("citation")?.value?.toString() || "";
   const penalty = interaction.options.get("penalty")?.value?.toString() || "";
-  const isGif: boolean = Boolean(
-    interaction.options.get("gif")?.value?.toString() || true
-  );
+  const isGif: boolean = Boolean(interaction.options.get("gif")?.value ?? true);
 
   // Function to generate the citation image
   const generateCitation = async (
