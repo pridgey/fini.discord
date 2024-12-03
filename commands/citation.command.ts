@@ -75,14 +75,36 @@ export const execute = async (
     });
     logCommand();
   } else {
-    console.log("good path", { title, citation, penalty, isGif });
-    await interaction.deferReply();
+    // Check length
+    if (title.length > 200 || penalty.length > 200 || citation.length > 1000) {
+      await interaction.deferReply();
 
-    const attachment = await generateCitation(title, penalty, citation, isGif);
+      const attachment = await generateCitation(
+        "Length Too Long",
+        "/slap Graham",
+        "One of your parameters has too many characters.",
+        isGif
+      );
 
-    await interaction.editReply({
-      files: [attachment],
-    });
-    logCommand();
+      await interaction.editReply({
+        files: [attachment],
+      });
+      logCommand();
+    } else {
+      // All good
+      await interaction.deferReply();
+
+      const attachment = await generateCitation(
+        title,
+        penalty,
+        citation,
+        isGif
+      );
+
+      await interaction.editReply({
+        files: [attachment],
+      });
+      logCommand();
+    }
   }
 };
