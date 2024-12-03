@@ -149,6 +149,9 @@ const checkWeatherReports = async (cl: Client) => {
         await userDM.send(
           "---------------------------------------------------------------"
         );
+
+        // To prevent tomorrow.io rate limiting (and potentially other services too)
+        await new Promise((resolve) => setTimeout(() => resolve(null), 750));
       }
     } catch (err) {
       console.error("Error when generating weather report.", err);

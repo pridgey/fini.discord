@@ -3,13 +3,13 @@ import { CommandInteraction, AttachmentBuilder } from "discord.js";
 import { getUserBalance, removeCoin } from "../modules/finicoin";
 import Replicate from "replicate";
 
-// flux-dev is $0.025 / image
-const COMMAND_COST = 1000;
+// refactor is $0.04 / image
+const COMMAND_COST = 2000;
 
 export const data = new SlashCommandBuilder()
-  .setName("flux")
+  .setName("refactor")
   .setDescription(
-    `Create an image with flux-schnell (${COMMAND_COST} fini coin per image)`
+    `Create an image with refactor-v3 (${COMMAND_COST} fini coin per image)`
   )
   .addStringOption((option) =>
     option.setName("prompt").setDescription("Waddya want?").setRequired(true)
@@ -40,18 +40,16 @@ export const execute = async (
       try {
         const replicate = new Replicate();
 
-        const respond: any = await replicate.run(
-          "black-forest-labs/flux-schnell",
-          {
-            input: {
-              prompt,
-              disable_safety_checker: true,
-              safety_tolerance: 5,
-            },
-          }
-        );
+        const respond: any = await replicate.run("recraft-ai/recraft-v3", {
+          input: {
+            size: "1365x1024",
+            prompt,
+            disable_safety_checker: true,
+            safety_tolerance: 5,
+          },
+        });
 
-        const imageAttachment = new AttachmentBuilder(respond[0] || "", {
+        const imageAttachment = new AttachmentBuilder(respond || "", {
           name: "image.jpg",
         });
 

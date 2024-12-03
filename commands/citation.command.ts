@@ -1,0 +1,88 @@
+import { SlashCommandBuilder } from "@discordjs/builders";
+import { AttachmentBuilder, CommandInteraction } from "discord.js";
+import { Citation } from "@blockzilla101/citation";
+
+export const data = new SlashCommandBuilder()
+  .setName("citation")
+  .setDescription("Generates a Papers Please style citation")
+  .addStringOption((option) =>
+    option
+      .setName("title")
+      .setDescription("the title at the top")
+      .setRequired(true)
+  )
+  .addStringOption((option) =>
+    option
+      .setName("citation")
+      .setDescription("the actual issue")
+      .setRequired(true)
+  )
+  .addStringOption((option) =>
+    option
+      .setName("penalty")
+      .setDescription("the penalty at the bottom")
+      .setRequired(true)
+  )
+  .addBooleanOption((option) =>
+    option.setName("gif").setDescription("render as a gif").setRequired(false)
+  );
+
+export const execute = async (
+  interaction: CommandInteraction,
+  logCommand: () => void
+) => {
+  const title = interaction.options.get("title")?.value?.toString() || "";
+  const citation = interaction.options.get("citation")?.value?.toString() || "";
+  const penalty = interaction.options.get("penalty")?.value?.toString() || "";
+  const isGif: boolean = Boolean(
+    interaction.options.get("gif")?.value?.toString() || false
+  );
+
+  // Function to generate the citation image
+  const generateCitation = async (
+    title: string,
+    penalty: string,
+    reason: string,
+    gif: boolean
+  ) => {
+    console.log("generateCitation", { title, penalty, reason, gif });
+    const citation = new Citation();
+
+    citation.reason = reason;
+    citation.penalty = penalty;
+    citation.title = title;
+
+    const buffer = await citation.render("citation.gif", gif);
+
+    const attachment = new AttachmentBuilder(buffer, { name: "citation.gif" });
+
+    return attachment;
+  };
+
+  if (!title || !citation || !penalty) {
+    console.log("Bad path", { title, citation, penalty });
+    await interaction.deferReply();
+
+    const attachment = await generateCitation(
+      "You dun goofed",
+      "To the gulag with you.",
+      "You cannot create a citation without citation.",
+      true
+    );
+
+    await interaction.editReply({
+      files: [attachment],
+    });
+    logCommand();
+  } else {
+    console.log("good path", { title, citation, penalty, isGif });
+    await interaction.deferReply();
+
+    const attachment = await generateCitation(title, penalty, citation, isGif);
+
+    await interaction.editReply({
+      files: [attachment],
+    });
+    logCommand();
+  }
+};

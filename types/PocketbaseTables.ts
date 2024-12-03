@@ -31,6 +31,7 @@ export type LogRecord = {
   command: string;
   input: string;
   output: string;
+  created?: string;
 };
 
 export type ReminderRecord = {
