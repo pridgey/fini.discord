@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
 import { PersonalitiesRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
+import { clearHistory } from "../utilities/chatHistory";
 
 export const data = new SlashCommandBuilder()
   .setName("set-personality")
@@ -11,6 +12,12 @@ export const data = new SlashCommandBuilder()
       .setName("name")
       .setDescription("The name of the personality you want Fini to have.")
       .setRequired(true)
+  )
+  .addBooleanOption((option) =>
+    option
+      .setName("clear")
+      .setDescription("Clear your chat history")
+      .setRequired(false)
   );
 
 export const execute = async (
@@ -19,6 +26,9 @@ export const execute = async (
 ) => {
   const personalityName =
     interaction.options.get("name")?.value?.toString() || "";
+  const clearChat: boolean = Boolean(
+    interaction.options.get("clear")?.value?.toString() || false
+  );
 
   if (!personalityName.length) {
     // Input invalid
@@ -63,6 +73,14 @@ export const execute = async (
               ...foundPersonality,
               active: true,
             });
+        }
+
+        if (clearChat) {
+          await clearHistory(
+            interaction.user.id,
+            interaction.guild?.id ?? "",
+            "openai"
+          );
         }
 
         await interaction.reply(

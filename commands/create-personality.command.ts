@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
 import { PersonalitiesRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
+import { clearHistory } from "../utilities/chatHistory";
 
 export const data = new SlashCommandBuilder()
   .setName("create-personality")
@@ -25,6 +26,12 @@ export const data = new SlashCommandBuilder()
       .setName("activate")
       .setDescription("Will see this personality as active immediately")
       .setRequired(false)
+  )
+  .addBooleanOption((option) =>
+    option
+      .setName("clear")
+      .setDescription("Clear your chat history")
+      .setRequired(false)
   );
 
 export const execute = async (
@@ -37,6 +44,9 @@ export const execute = async (
     interaction.options.get("prompt")?.value?.toString() || "";
   const setActiveNow: boolean = Boolean(
     interaction.options.get("activate")?.value?.toString() || false
+  );
+  const clearChat: boolean = Boolean(
+    interaction.options.get("clear")?.value?.toString() || false
   );
 
   if (!personalityName.length || !personalityPrompt.length) {
@@ -95,6 +105,14 @@ export const execute = async (
                 active: false,
               });
           }
+        }
+
+        if (clearChat) {
+          await clearHistory(
+            interaction.user.id,
+            interaction.guild?.id ?? "",
+            "openai"
+          );
         }
 
         await interaction.reply(
