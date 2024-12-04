@@ -43,7 +43,7 @@ export const execute = async (
       const allPersonalities = await pb
         .collection<PersonalitiesRecord>("personalities")
         .getFullList({
-          filter: `user_id = "${interaction.user.id}"`,
+          filter: `user_id = "${interaction.user.id}" && server_id = "${interaction.guild?.id}"`,
         });
 
       // The found personality

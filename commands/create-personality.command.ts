@@ -87,6 +87,7 @@ export const execute = async (
             prompt: personalityPrompt,
             personality_name: personalityName,
             active: setActiveNow ?? false,
+            server_id: interaction.guild?.id ?? "unknown",
           });
 
         if (setActiveNow) {
@@ -94,7 +95,7 @@ export const execute = async (
           const allPersonalitiesExceptNew = await pb
             .collection<PersonalitiesRecord>("personalities")
             .getFullList({
-              filter: `user_id = "${interaction.user.id}" && id != "${newPersonalityRecord.id}"`,
+              filter: `user_id = "${interaction.user.id}" && id != "${newPersonalityRecord.id}" && server_id = "${interaction.guild?.id}"`,
             });
 
           for (let i = 0; i < allPersonalitiesExceptNew.length; i++) {

@@ -34,7 +34,7 @@ export const execute = async (
       const existingPersonalities = await pb
         .collection<PersonalitiesRecord>("personalities")
         .getFullList({
-          filter: `user_id = "${interaction.user.id}" && personality_name = "${personalityName}"`,
+          filter: `user_id = "${interaction.user.id}" && personality_name = "${personalityName}" && server_id = "${interaction.guild?.id}"`,
         });
 
       if (existingPersonalities.length > 0) {
