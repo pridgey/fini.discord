@@ -69,7 +69,7 @@ export const addCoin = async (
     // Check if record exists
     const bankRecord = await pb
       .collection<BankRecord>("bank")
-      .getFirstListItem(`user_id = "${userID}" && server_id = "${guildID}"`);
+      .getFirstListItem(`user_id = "${userID}"`);
 
     if (bankRecord.id) {
       // Update
@@ -100,7 +100,7 @@ export const getUserBalance = async (userID: string, guildID: string) => {
   try {
     const bankRecord = await pb
       .collection<BankRecord>("bank")
-      .getFirstListItem(`user_id = "${userID}" && server_id = "${guildID}"`);
+      .getFirstListItem(`user_id = "${userID}"`);
 
     return bankRecord.balance || 0;
   } catch (err) {

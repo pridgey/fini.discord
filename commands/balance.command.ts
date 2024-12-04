@@ -12,18 +12,24 @@ export const execute = async (
   logCommand: () => void
 ) => {
   try {
-    const bankRecord = await pb
-      .collection<BankRecord>("bank")
-      .getFirstListItem(
-        `user_id = "${interaction.user.id}" && server_id = "${interaction.guildId}"`
-      );
+    const bankRecord = await pb.collection<BankRecord>("bank").getFullList({
+      filter: `user_id = "${interaction.user.id}"`,
+    });
 
-    if (!!bankRecord) {
-      interaction.reply(
-        `You currently have ${bankRecord.balance?.toLocaleString()} Finicoin.`
+    const matchingBankRecord = bankRecord[0];
+
+    if (!!matchingBankRecord) {
+      await interaction.reply(
+        `You currently have ${matchingBankRecord.balance?.toLocaleString()} Finicoin.`
       );
     } else {
-      interaction.reply("You currently have 0 Finicoin.");
+      // create a new bank record for the user
+      await pb.collection<BankRecord>("bank").create({
+        user_id: interaction.user.id,
+        balance: 0,
+      });
+
+      await interaction.reply("You currently have 0 Finicoin.");
     }
   } catch (err) {
     const error: Error = err as Error;
