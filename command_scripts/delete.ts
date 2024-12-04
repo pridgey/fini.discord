@@ -11,19 +11,31 @@ const deleteAllCommands = async () => {
     // Fini client ID
     const clientId = process.env.FINI_CLIENTID || "";
     // Guild ID
-    const guildId = process.env.GEKIN_SERVERID || "";
+    const gekin_guildId = process.env.GEKIN_SERVERID || "";
+    // League of really good friends guild ID
+    const league_guildId = process.env.LEAGUE_SERVERID || "";
 
     rest.on("rateLimited", (res) => console.log("OnRateLimited:", { res }));
 
     // First, delete all guild commands to clear out old ones
-    const response = await rest.put(
-      Routes.applicationGuildCommands(clientId, guildId),
+    const gekin_response = await rest.put(
+      Routes.applicationGuildCommands(clientId, gekin_guildId),
       {
         body: [],
       }
     );
 
-    console.log("Deleted Guild Commands", { response });
+    console.log("Deleted Guild Commands", { guild: "gekin", gekin_response });
+    console.log("");
+
+    const league_response = await rest.put(
+      Routes.applicationGuildCommands(clientId, league_guildId),
+      {
+        body: [],
+      }
+    );
+
+    console.log("Deleted Guild Commands", { guild: "gekin", league_response });
     console.log("");
 
     console.groupEnd();
