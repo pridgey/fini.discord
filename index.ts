@@ -9,11 +9,8 @@ import { rewardCoin } from "./modules/finicoin/reward";
 import { createLog } from "./modules/logger";
 import { chatWithUser_OpenAI } from "./modules/openai";
 import { runPollTasks } from "./modules/polling";
-import { wizardRespond } from "./modules/wizardUncensored/respond";
 import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
 import { splitBigString } from "./utilities/splitBigString";
-import { chatWithUser_Google } from "./modules/googleai/converse";
-import { chatWithUser_Llama } from "./modules/llama/converse";
 const { exec } = require("child_process");
 import { exists, readFile, writeFile } from "fs/promises";
 
@@ -112,36 +109,13 @@ client.on("messageCreate", async (message: Message) => {
     let response;
     let command = "hey fini";
 
-    if (messageTextLower.startsWith("hey fini -l")) {
-      // Llama AI text
-      command = "hey fini -l";
-
-      response = await chatWithUser_Llama(
-        messageUser,
-        messageText.replace(command, ""),
-        message.guildId ?? "unknown",
-        allAttachments
-      );
-    } else if (messageTextLower.startsWith("hey fini -c")) {
-      // Llama AI code chat
-      command = "hey fini -c";
-
-      response = await chatWithUser_Llama(
-        messageUser,
-        messageText.replace("hey fini -c", ""),
-        message.guildId ?? "unknown",
-        allAttachments,
-        true
-      );
-    } else {
-      // Open AI Text
-      response = await chatWithUser_OpenAI(
-        messageUser,
-        messageText.replace(command, ""),
-        message.guildId ?? "unknown",
-        attachment
-      );
-    }
+    // Open AI Text
+    response = await chatWithUser_OpenAI(
+      messageUser,
+      messageText.replace(command, ""),
+      message.guildId ?? "unknown",
+      attachment
+    );
 
     // Log hey fini interaction
     await createLog({
