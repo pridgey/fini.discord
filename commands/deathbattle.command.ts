@@ -48,7 +48,11 @@ export const execute = async (
 
   await interaction.deferReply();
 
-  const response = await chatWithUser_OpenAI(interaction.user.username, prompt);
+  const response = await chatWithUser_OpenAI(
+    interaction.user.username,
+    prompt,
+    interaction.guild?.id ?? "unknown server id"
+  );
 
   await interaction.editReply(response);
   logCommand();
