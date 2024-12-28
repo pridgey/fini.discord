@@ -86,7 +86,7 @@
 <stop stop-color="{color_start}"/>
 <stop offset="1" stop-color="{color_stop}"/>
 </linearGradient>
-<linearGradient id="paint1_linear_383_359" x1="530.5" y1="730" x2="546.5" y2="772" gradientUnits="userSpaceOnUse">
+<linearGradient id="paint1_linear_383_359" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0" y2="1">
 <stop stop-color="#FF0000"/>
 <stop offset="0.175" stop-color="#FF4D00"/>
 <stop offset="0.345" stop-color="#FFE100"/>
