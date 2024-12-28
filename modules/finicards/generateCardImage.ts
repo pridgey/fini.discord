@@ -173,7 +173,11 @@ const createCardImage = async (cardDefinitionRecord: CardDefinitionRecord) => {
       .resize({ width: 600 })
       .png()
       .toFile(
-        path.join(__dirname, `${cardDefinitionRecord.id ?? "unknown id"}.png`)
+        path.join(
+          __dirname,
+          "generated card images",
+          `${cardDefinitionRecord.id ?? "unknown id"}.png`
+        )
       );
   } catch (err) {
     console.error(err);
@@ -240,9 +244,11 @@ const determineAbilityGrade = (ability: number) => {
   return "F";
 };
 
-const allCards = await pb
+let allCards = await pb
   .collection<CardDefinitionRecord>("card_definition")
   .getFullList();
+
+allCards = allCards.filter((c) => c.card_name === "Marcille Donato");
 
 for (let i = 0; i < allCards.length; i++) {
   createCardImage(allCards[i]);
