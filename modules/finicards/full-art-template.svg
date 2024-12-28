@@ -9,15 +9,15 @@
 <rect x="-2" y="-37" width="609" height="1082" fill="url(#pattern1_373_257)"/>
 <rect width="600" height="90" transform="translate(0 707)" fill="black" fill-opacity="0.4"/>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="47.5" y="739.203">Str</tspan></text>
-<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="51.5" y="778.305">{strength}</tspan></text>
+<text fill="{strength_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="51.5" y="778.305">{strength}</tspan></text>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="163.25" y="739.203">Agi</tspan></text>
-<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="170.25" y="778.305">{agility}</tspan></text>
+<text fill="{agility_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="170.25" y="778.305">{agility}</tspan></text>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="279.5" y="739.203">End</tspan></text>
-<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="287.5" y="778.305">{endurance}</tspan></text>
+<text fill="{endurance_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="287.5" y="778.305">{endurance}</tspan></text>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="403.75" y="739.203">Int</tspan></text>
-<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="405.75" y="778.305">{intellect}</tspan></text>
+<text fill="{intellect_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="405.75" y="778.305">{intellect}</tspan></text>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="510.5" y="739.203">Luck</tspan></text>
-<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="525" y="778.305">{luck}</tspan></text>
+<text fill="{luck_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="36" font-weight="bold" letter-spacing="0em"><tspan x="525" y="778.305">{luck}</tspan></text>
 </g>
 <g filter="url(#filter1_d_373_257)">
 <rect x="20" y="637" width="559" height="50" rx="10" fill="black" fill-opacity="0.4" shape-rendering="crispEdges"/>
@@ -69,9 +69,18 @@
 <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_373_257"/>
 <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_373_257" result="shape"/>
 </filter>
+<linearGradient id="paint1_linear_383_359" x1="530.5" y1="730" x2="546.5" y2="772" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FF0000"/>
+<stop offset="0.175" stop-color="#FF4D00"/>
+<stop offset="0.345" stop-color="#FFE100"/>
+<stop offset="0.495" stop-color="#00FF26"/>
+<stop offset="0.675" stop-color="#002BFF"/>
+<stop offset="0.835" stop-color="#BF00FF"/>
+<stop offset="1" stop-color="#FF00EE"/>
+</linearGradient>
 <linearGradient id="paint0_linear_373_257" x1="300" y1="0" x2="300" y2="836" gradientUnits="userSpaceOnUse">
-<stop stop-color="#002BFF"/>
-<stop offset="1" stop-color="#010C50"/>
+<stop stop-color="{color_start}"/>
+<stop offset="1" stop-color="{color_stop}"/>
 </linearGradient>
 <clipPath id="clip0_373_257">
 <rect width="600" height="836" rx="17" fill="white"/>

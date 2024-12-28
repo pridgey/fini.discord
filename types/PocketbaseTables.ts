@@ -68,3 +68,27 @@ export type WeatherRecord = {
   city: string;
   additional_prompt: string;
 };
+
+export type CardDefinitionRecord = {
+  id?: string;
+  card_name: string;
+  color:
+    | "red"
+    | "blue"
+    | "yellow"
+    | "purple"
+    | "green"
+    | "black"
+    | "light"
+    | "shadow";
+  type: string;
+  series: string;
+  rarity: "c" | "u" | "fa" | "l";
+  image: string;
+  strength: number;
+  agility: number;
+  endurance: number;
+  intellect: number;
+  luck: number;
+  population: number;
+};

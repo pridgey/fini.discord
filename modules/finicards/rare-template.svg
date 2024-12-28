@@ -1,0 +1,122 @@
+<svg width="606" height="842" viewBox="0 0 606 842" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g filter="url(#filter0_d_373_229)">
+<g clip-path="url(#clip0_373_229)">
+<rect width="600" height="836" rx="17" fill="url(#paint0_linear_373_229)"/>
+<rect width="600" height="836" rx="17" fill="url(#pattern0_373_229)" fill-opacity="0.8"/>
+<g clip-path="url(#clip1_373_229)">
+<rect width="600" height="477" fill="black"/>
+<rect x="-212" y="-49" width="1025" height="576" fill="url(#pattern1_373_229)"/>
+</g>
+<g filter="url(#filter1_d_373_229)">
+<rect x="17" y="26" width="566" height="69" rx="10" fill="black" fill-opacity="0.4" shape-rendering="crispEdges"/>
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="36" y="68.7031">{card_name}</tspan></text>
+</g>
+<g filter="url(#filter2_d_373_229)">
+<rect x="24" y="417" width="559" height="50" rx="10" fill="black" fill-opacity="0.4" shape-rendering="crispEdges"/>
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="43" y="447.469">{type} | {series}</tspan></text>
+</g>
+<g clip-path="url(#clip2_373_229)">
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="513.203">Strength</tspan></text>
+{strength_pips}
+<text fill="{strength_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="535.672">{strength}</tspan></text>
+</g>
+<g clip-path="url(#clip3_373_229)">
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="571.203">Agility</tspan></text>
+{agility_pips}
+<text fill="{agility_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="593.672">{agility}</tspan></text>
+</g>
+<g clip-path="url(#clip4_373_229)">
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="629.203">Endurance</tspan></text>
+{endurance_pips}
+<text fill="{endurance_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="651.672">{endurance}</tspan></text>
+</g>
+<g clip-path="url(#clip5_373_229)">
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="687.203">Intellect</tspan></text>
+{intellect_pips}
+<text fill="{intellect_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="709.672">{intellect}</tspan></text>
+</g>
+<g clip-path="url(#clip6_373_229)">
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="745.203">Luck</tspan></text>
+{luck_pips}
+<text fill="{luck_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="767.672">{luck}</tspan></text>
+</g>
+<rect width="600" height="39" transform="translate(0 797)" fill="black" fill-opacity="0.4"/>
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="20" y="821.969">Generated FiniCard</tspan></text>
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan text-anchor="end" x="580" y="821.969">{card_id} | {rarity}</tspan></text>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_373_229" x="0" y="0" width="606" height="842" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dx="4" dy="4"/>
+<feGaussianBlur stdDeviation="1"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_373_229"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_373_229" result="shape"/>
+</filter>
+<pattern id="pattern0_373_229" patternContentUnits="objectBoundingBox" width="0.01875" height="0.0269139">
+<use xlink:href="#image0_373_229" transform="scale(0.00125 0.000897129)"/>
+</pattern>
+<pattern id="pattern1_373_229" patternContentUnits="objectBoundingBox" width="1" height="1">
+<use xlink:href="#image1_373_229" transform="matrix(0.00116279 0 0 0.0020692 0 -0.000746932)"/>
+</pattern>
+<filter id="filter1_d_373_229" x="13" y="26" width="574" height="77" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_373_229"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_373_229" result="shape"/>
+</filter>
+<filter id="filter2_d_373_229" x="20" y="417" width="567" height="58" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_373_229"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_373_229" result="shape"/>
+</filter>
+<linearGradient id="paint0_linear_373_229" x1="300" y1="0" x2="300" y2="836" gradientUnits="userSpaceOnUse">
+<stop stop-color="{color_start}"/>
+<stop offset="1" stop-color="{color_stop}"/>
+</linearGradient>
+<linearGradient id="paint1_linear_383_359" x1="530.5" y1="730" x2="546.5" y2="772" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FF0000"/>
+<stop offset="0.175" stop-color="#FF4D00"/>
+<stop offset="0.345" stop-color="#FFE100"/>
+<stop offset="0.495" stop-color="#00FF26"/>
+<stop offset="0.675" stop-color="#002BFF"/>
+<stop offset="0.835" stop-color="#BF00FF"/>
+<stop offset="1" stop-color="#FF00EE"/>
+</linearGradient>
+<clipPath id="clip0_373_229">
+<rect width="600" height="836" rx="17" fill="white"/>
+</clipPath>
+<clipPath id="clip1_373_229">
+<rect width="600" height="477" fill="white"/>
+</clipPath>
+<clipPath id="clip2_373_229">
+<rect width="530" height="53" fill="white" transform="translate(35 491)"/>
+</clipPath>
+<clipPath id="clip3_373_229">
+<rect width="530" height="53" fill="white" transform="translate(35 549)"/>
+</clipPath>
+<clipPath id="clip4_373_229">
+<rect width="530" height="53" fill="white" transform="translate(35 607)"/>
+</clipPath>
+<clipPath id="clip5_373_229">
+<rect width="530" height="53" fill="white" transform="translate(35 665)"/>
+</clipPath>
+<clipPath id="clip6_373_229">
+<rect width="530" height="53" fill="white" transform="translate(35 723)"/>
+</clipPath>
+<image id="image0_373_229" width="15" height="30" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAeCAYAAADzXER0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAEKSURBVHgB5ZTbEYIwEEUvM/xrB9CBdCAdaAfQAXaAnagdaAVoB1qBoQKxAsySBTKZMPLyyzNzyWtJcsMGACg1ZVDE3E65fTDiKrnyIdBScPni/kLr1+Om40iFXL9KLaUCS5xgBRzTQPt/cj2ExZtUxOMZDM9HtN4Et01yLs+Yy7vDJflIesSfeOUEmncfdq+m1hxPZ1R5JshzjO/U3ncwTn0w5DnDcOJ6F+UIefXKHoaTYy58TPhUhEB/hsTa+dcrmWptAXXtyNtG6gZ1FluplW2C0b9eWjnSJiLvF6ikoYR4SN2hDnJMGnfTdSXJ6553FXe97KJNEh3Bpd8x3qxs8/KG8k/ZtMAv+AAEsYF5ACWTygAAAABJRU5ErkJggg=="/>
+<image id="image1_373_229" width="860" height="484" xlink:href="{image_base64}"/>
+</defs>
+</svg>
