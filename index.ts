@@ -146,10 +146,13 @@ client.on("interactionCreate", async (interaction) => {
     commandName: (interaction as ChatInputCommandInteraction).commandName,
   });
 
-  console.log("Is Autocomplete:", {
+  console.log("Interaction Type:", {
     autocomplete: interaction.isAutocomplete(),
     command: interaction.isCommand(),
+    isChatInput: interaction.isChatInputCommand(),
+    isButton: interaction.isButton(),
   });
+
   // Ignore if not a command
   if (!interaction.isCommand()) return;
 
