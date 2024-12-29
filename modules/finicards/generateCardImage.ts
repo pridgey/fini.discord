@@ -248,7 +248,7 @@ let allCards = await pb
   .collection<CardDefinitionRecord>("card_definition")
   .getFullList();
 
-// allCards = allCards.filter((c) => c.card_name === "Marcille Donato");
+allCards = allCards.filter((c) => c.rarity === "fa");
 
 for (let i = 0; i < allCards.length; i++) {
   createCardImage(allCards[i]);
