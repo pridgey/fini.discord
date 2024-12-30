@@ -12,7 +12,9 @@ import {
 } from "./dictionaries";
 
 // Function to create the card image used in discord
-const createCardImage = async (cardDefinitionRecord: CardDefinitionRecord) => {
+export const createCardImage = async (
+  cardDefinitionRecord: CardDefinitionRecord
+) => {
   try {
     // Get the card template svg code
     const templateFileContents = await readFile(
@@ -169,16 +171,16 @@ const createCardImage = async (cardDefinitionRecord: CardDefinitionRecord) => {
 
     // Export and save image file
     const sharpItem = sharp(Buffer.from(templateSVG), { density: 300 });
-    await sharpItem
-      .resize({ width: 600 })
-      .png()
-      .toFile(
-        path.join(
-          __dirname,
-          "generated card images",
-          `${cardDefinitionRecord.id ?? "unknown id"}.png`
-        )
-      );
+    const imageBuffer = await sharpItem.resize({ width: 600 }).png().toBuffer();
+    // .toFile(
+    //   path.join(
+    //     __dirname,
+    //     "generated card images",
+    //     `${cardDefinitionRecord.id ?? "unknown id"}.png`
+    //   )
+    // );
+
+    return imageBuffer;
   } catch (err) {
     console.error(err);
   }
@@ -248,7 +250,7 @@ let allCards = await pb
   .collection<CardDefinitionRecord>("card_definition")
   .getFullList();
 
-allCards = allCards.filter((c) => c.rarity === "fa");
+allCards = allCards.filter((c) => c.rarity === "c");
 
 for (let i = 0; i < allCards.length; i++) {
   createCardImage(allCards[i]);
