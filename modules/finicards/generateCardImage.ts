@@ -111,6 +111,14 @@ export const createCardImage = async (
     // Card Image
     templateSVG = templateSVG.replace("{image_base64}", base64String);
 
+    // If item card, replace description
+    if (cardDefinitionRecord.rarity === "i") {
+      templateSVG = templateSVG.replace(
+        "{card_description}",
+        cardDefinitionRecord.description
+      );
+    }
+
     // If a common or uncommon, generate pips
     if (["c", "u"].includes(cardDefinitionRecord.rarity)) {
       // Strength
@@ -172,13 +180,6 @@ export const createCardImage = async (
     // Export and save image file
     const sharpItem = sharp(Buffer.from(templateSVG), { density: 300 });
     const imageBuffer = await sharpItem.resize({ width: 600 }).png().toBuffer();
-    // .toFile(
-    //   path.join(
-    //     __dirname,
-    //     "generated card images",
-    //     `${cardDefinitionRecord.id ?? "unknown id"}.png`
-    //   )
-    // );
 
     return imageBuffer;
   } catch (err) {
@@ -250,8 +251,17 @@ let allCards = await pb
   .collection<CardDefinitionRecord>("card_definition")
   .getFullList();
 
-allCards = allCards.filter((c) => c.rarity === "c");
+allCards = allCards.filter((c) => c.rarity === "i");
 
 for (let i = 0; i < allCards.length; i++) {
-  createCardImage(allCards[i]);
+  const imagebuffer = await createCardImage(allCards[i]);
+  sharp(imagebuffer)
+    .png()
+    .toFile(
+      path.join(
+        __dirname,
+        "generated card images",
+        `${allCards[i].card_name ?? "unknown id"}.png`
+      )
+    );
 }

@@ -83,7 +83,7 @@ export type CardDefinitionRecord = {
     | "shadow";
   type: string;
   series: string;
-  rarity: "c" | "u" | "fa" | "l";
+  rarity: "c" | "u" | "fa" | "l" | "i";
   image: string;
   strength: number;
   agility: number;
@@ -91,4 +91,6 @@ export type CardDefinitionRecord = {
   intellect: number;
   luck: number;
   population: number;
+  mod_operation?: "addition" | "subtraction" | "multiplication" | "division";
+  description: string;
 };

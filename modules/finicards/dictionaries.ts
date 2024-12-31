@@ -82,6 +82,7 @@ export const cardLayoutDictionary: Record<
   u: "rare-template.svg",
   fa: "full-art-template.svg",
   l: "",
+  i: "item-template.svg",
 };
 
 type CardImageSize = {
@@ -95,6 +96,10 @@ export const cardImageSizeDictionary: Record<
   CardImageSize
 > = {
   c: {
+    width: 600,
+    height: 374,
+  },
+  i: {
     width: 600,
     height: 374,
   },
