@@ -144,9 +144,6 @@ client.on("messageCreate", async (message: Message) => {
 client.on("interactionCreate", async (interaction) => {
   console.log("Interaction Used", {
     commandName: (interaction as ChatInputCommandInteraction).commandName,
-  });
-
-  console.log("Interaction Type:", {
     autocomplete: interaction.isAutocomplete(),
     command: interaction.isCommand(),
     isChatInput: interaction.isChatInputCommand(),

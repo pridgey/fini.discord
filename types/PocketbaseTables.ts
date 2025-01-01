@@ -3,6 +3,7 @@ export type BankRecord = {
   user_id: string;
   balance: number;
   server_id: string;
+  identifier: string;
 };
 
 export type ChatRecord = {
@@ -101,4 +102,18 @@ export type UserCardRecord = {
   server_id: string;
   identifier: string;
   card: string;
+};
+
+// Helpful for identifying user by name in database
+export type UserRecord = {
+  id?: string;
+  user_id: string;
+  username: string;
+};
+
+// Helpful for identifying server by name in database
+export type ServerRecord = {
+  id?: string;
+  server_id: string;
+  servername: string;
 };

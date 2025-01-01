@@ -19,11 +19,7 @@ export const execute = async (
   interaction: CommandInteraction,
   logCommand: () => void
 ) => {
-  if (
-    interaction.user.id === "255016605191241729" ||
-    interaction.user.id === "1260813127973470238" ||
-    interaction.user.id === "1138921518949212270"
-  ) {
+  if (interaction.guildId === "1313711612527513680") {
     await interaction.deferReply();
 
     try {

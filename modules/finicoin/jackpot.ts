@@ -3,6 +3,11 @@ import { addCoin, removeCoin, getUserBalance } from "./finicoin";
 import { randomNumber } from "../../utilities/randomNumber";
 import { createLog } from "../logger";
 
+/**
+ * Calculates whether or not the user wins the jackpot
+ * @param message Discord message object identifying the message being checked
+ * @param fromReaction If the jackpot check is from a user reacting to a message
+ */
 export const rollJackpot = async (
   message: Message | PartialMessage,
   fromReaction: boolean = false
@@ -29,10 +34,22 @@ export const rollJackpot = async (
     await message.react(JACKPOT_EMOJI);
 
     // reset fini balance
-    await removeCoin("Fini", message.guildId || "", finiBalance);
+    await removeCoin(
+      "Fini",
+      message.guildId || "unknown guild id",
+      finiBalance,
+      "fini",
+      message.guild?.name ?? "unknown guild name"
+    );
 
     // reward jackpot to user
-    await addCoin(authorId, guildId, finiBalance);
+    await addCoin(
+      authorId,
+      guildId,
+      finiBalance,
+      message.author?.username ?? "unknown username",
+      message.guild?.name ?? "unknown guild name"
+    );
 
     // Log the jackpot win
     createLog({
