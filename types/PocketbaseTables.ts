@@ -94,3 +94,11 @@ export type CardDefinitionRecord = {
   mod_operation?: "addition" | "subtraction" | "multiplication" | "division";
   description: string;
 };
+
+export type UserCardRecord = {
+  id?: string;
+  user_id: string;
+  server_id: string;
+  identifier: string;
+  card: string;
+};

@@ -247,21 +247,21 @@ const determineAbilityGrade = (ability: number) => {
   return "F";
 };
 
-let allCards = await pb
-  .collection<CardDefinitionRecord>("card_definition")
-  .getFullList();
+// let allCards = await pb
+//   .collection<CardDefinitionRecord>("card_definition")
+//   .getFullList();
 
-allCards = allCards.filter((c) => c.rarity === "i");
+// allCards = allCards.filter((c) => c.rarity === "i");
 
-for (let i = 0; i < allCards.length; i++) {
-  const imagebuffer = await createCardImage(allCards[i]);
-  sharp(imagebuffer)
-    .png()
-    .toFile(
-      path.join(
-        __dirname,
-        "generated card images",
-        `${allCards[i].card_name ?? "unknown id"}.png`
-      )
-    );
-}
+// for (let i = 0; i < allCards.length; i++) {
+//   const imagebuffer = await createCardImage(allCards[i]);
+//   sharp(imagebuffer)
+//     .png()
+//     .toFile(
+//       path.join(
+//         __dirname,
+//         "generated card images",
+//         `${allCards[i].card_name ?? "unknown id"}.png`
+//       )
+//     );
+// }
