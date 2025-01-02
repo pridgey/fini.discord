@@ -15,7 +15,7 @@ export const execute = async (
     const bankRecord = await pb
       .collection<BankRecord>("bank")
       .getFirstListItem(
-        `user_id = "Fini" && server_id = "${interaction.guildId}"`
+        `user_id = "Jackpot" && server_id = "${interaction.guildId}"`
       );
 
     if (!!bankRecord) {

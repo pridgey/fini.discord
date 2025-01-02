@@ -1,5 +1,5 @@
 import type { Message, PartialMessage } from "discord.js";
-import { addCoin, removeCoin, getUserBalance } from "./finicoin";
+import { addCoin, getUserBalance } from "./finicoin";
 import { randomNumber } from "../../utilities/randomNumber";
 import { createLog } from "../logger";
 
@@ -33,22 +33,14 @@ export const rollJackpot = async (
     // react the message as an indicator
     await message.react(JACKPOT_EMOJI);
 
-    // reset fini balance
-    await removeCoin(
-      "Fini",
-      message.guildId || "unknown guild id",
-      finiBalance,
-      "fini",
-      message.guild?.name ?? "unknown guild name"
-    );
-
     // reward jackpot to user
     await addCoin(
       authorId,
       guildId,
       finiBalance,
       message.author?.username ?? "unknown username",
-      message.guild?.name ?? "unknown guild name"
+      message.guild?.name ?? "unknown guild name",
+      "Jackpot"
     );
 
     // Log the jackpot win

@@ -7,25 +7,39 @@ import {
   CommandInteraction,
   ComponentType,
 } from "discord.js";
-import type { CardDefinitionRecord } from "../types/PocketbaseTables";
-import { pb } from "../utilities/pocketbase";
-import { randomNumber } from "../utilities/randomNumber";
-import { createCardImage } from "../modules/finicards/generateCardImage";
 import path from "path";
 import { generateBoosterPack } from "../modules/finicards/generateBoosterPack";
+import { addCoin, getUserBalance } from "../modules/finicoin";
+
+const COMMAND_COST = 25;
 
 export const data = new SlashCommandBuilder()
-  .setName("test")
-  .setDescription("Testing new commands");
+  .setName("booster-pack")
+  .setDescription(`Buy a new finicard booster pack (${COMMAND_COST} fc)`);
 
 export const execute = async (
   interaction: CommandInteraction,
   logCommand: () => void
 ) => {
-  if (interaction.guildId === "1313711612527513680") {
-    await interaction.deferReply();
+  await interaction.deferReply();
 
-    try {
+  try {
+    // Ensure user has enough balance
+    const currentUserBalance =
+      (await getUserBalance(interaction.user.id, interaction.guildId || "")) ||
+      0;
+
+    if (currentUserBalance >= COMMAND_COST) {
+      // Pay for booster
+      await addCoin(
+        "Reserve",
+        interaction.guildId ?? "unknown guild id",
+        COMMAND_COST,
+        interaction.user.username,
+        interaction.guild?.name ?? "unknown guild name",
+        interaction.user.id
+      );
+
       // Generate the cards of the booster pack and save to user account
       const packImages = await generateBoosterPack({
         userId: interaction.user.id,
@@ -145,10 +159,15 @@ export const execute = async (
 
         await i.update({});
       });
-    } catch (err) {
-      console.error("Error during booster pack generation", err);
+    } else {
+      interaction.editReply(
+        "You do not have enough finicoin to run these command."
+      );
     }
-  } else {
-    await interaction.reply("Under construction");
+  } catch (err) {
+    console.error("Error during booster pack generation", err);
+    interaction.editReply("An error occurred during booster-pack");
+  } finally {
+    logCommand();
   }
 };

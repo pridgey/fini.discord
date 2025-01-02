@@ -89,7 +89,7 @@ const checkWeatherReports = async (cl: Client) => {
               content: [
                 {
                   type: "text",
-                  text: `Given the data about today's weather, please generate a message to brief me on the start of my day and what it might entail. Include the information that seems relevant or noteworthy, and feel free to ignore anything else. Ensure your response is well formatted for Discord, and well condensed to be easily readable. Please remember to format the temperature and time in association with the location: ${
+                  text: `Given the data about today's weather, please generate a message to what the weather might feel like. User will be provided with the full stats, your response will be supplemental to the data. Include the information that seems relevant or noteworthy, and feel free to ignore anything else. Ensure your response is well formatted for Discord, and well condensed to be easily readable. Please remember to format the temperature and time in association with the location: ${
                     weatherRecords[i].city
                   }. Today's Data: ${JSON.stringify(dayWeatherData)}. ${
                     weatherRecords[i].additional_prompt
@@ -138,15 +138,18 @@ const checkWeatherReports = async (cl: Client) => {
 
         const userDM = await (await cl.users.fetch(user)).createDM();
 
+        // Content
+        const messageContent = `${
+          randomChoice?.message.content ??
+          "Error during weather report generation"
+        }.\r\n${JSON.stringify(dayWeatherData, null, 4)}`;
+
         // Send Image
         await userDM.send({
           files: [imageAttachment],
         });
         // Then the report
-        await userDM.send(
-          randomChoice?.message.content ??
-            "Error during weather report generation"
-        );
+        await userDM.send(messageContent);
         // Then a separator
         await userDM.send(
           "---------------------------------------------------------------"

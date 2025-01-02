@@ -1,10 +1,10 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction, AttachmentBuilder } from "discord.js";
-import { getUserBalance, removeCoin } from "../modules/finicoin";
+import { addCoin, getUserBalance } from "../modules/finicoin";
 import Replicate from "replicate";
 
 // flux-dev is $0.025 / image
-const COMMAND_COST = 1000;
+const COMMAND_COST = 10;
 
 export const data = new SlashCommandBuilder()
   .setName("flux")
@@ -60,10 +60,13 @@ export const execute = async (
           files: [imageAttachment],
         });
 
-        await removeCoin(
-          interaction.user.id,
-          interaction.guildId || "",
-          COMMAND_COST
+        await addCoin(
+          "Reserve",
+          interaction.guildId ?? "unknown guild id",
+          COMMAND_COST,
+          "Reserve",
+          interaction.guild?.name ?? "unknown guild name",
+          interaction.user.id
         );
 
         logCommand();

@@ -5,7 +5,7 @@ import { grabGif } from "../utilities/gif";
 import { randomNumber } from "../utilities/randomNumber";
 
 // Game config
-const PrizeMultiplier = 2;
+const PrizeMultiplier = 1;
 const winningGifs = [
   "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmIxeW14YWE2eWU0NjFnN3p0cmVzZ2tmenN6ZGU5cmhwYmI1NHo5NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/fT3PPZwB2lZMk/giphy.gif",
   "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWJyamRhdHRqcDFlbGdsOHplNzNza2Q3dDh4ZzZkYm55cHAycmlucyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ErZ8hv5eO92JW/giphy.gif",
@@ -62,10 +62,12 @@ export const execute = async (
   const option = interaction.options.get("option")?.value?.toString() || "Even";
 
   // Call runGame() to run pre-game checks
-  const { rewardWager, userBalance, userHasFunds, onError } = await runGame(
+  const { rewardWager, userBalance, userHasFunds } = await runGame(
     interaction.user.id,
-    interaction.guildId || "",
-    bet
+    interaction.guildId || "unknown guild id",
+    bet,
+    interaction.user.username,
+    interaction.guild?.name ?? "unknown guild name"
   );
 
   if (!userHasFunds) {
@@ -129,7 +131,6 @@ export const execute = async (
       });
     } catch (err) {
       // An issue with the game
-      onError();
       await interaction.reply(
         "An error occurred during running the game. Your finicoin has been refunded."
       );

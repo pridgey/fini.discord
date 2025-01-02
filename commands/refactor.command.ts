@@ -1,10 +1,10 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction, AttachmentBuilder } from "discord.js";
-import { getUserBalance, removeCoin } from "../modules/finicoin";
+import { addCoin, getUserBalance } from "../modules/finicoin";
 import Replicate from "replicate";
 
 // refactor is $0.04 / image
-const COMMAND_COST = 2000;
+const COMMAND_COST = 20;
 
 export const data = new SlashCommandBuilder()
   .setName("refactor")
@@ -58,10 +58,14 @@ export const execute = async (
           files: [imageAttachment],
         });
 
-        await removeCoin(
-          interaction.user.id,
-          interaction.guildId || "",
-          COMMAND_COST
+        // Move coin from user to reserve
+        await addCoin(
+          "Reserve",
+          interaction.guildId ?? "unknown guild id",
+          COMMAND_COST,
+          "Reserve",
+          interaction.guild?.name ?? "unknown guild name",
+          interaction.user.id
         );
 
         logCommand();

@@ -13,6 +13,7 @@ import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
 import { splitBigString } from "./utilities/splitBigString";
 const { exec } = require("child_process");
 import { exists, readFile, writeFile } from "fs/promises";
+import { initializeServerBank } from "./modules/finicoin/initialize";
 
 // Initialize client and announce intents
 const client = new Client({
@@ -30,6 +31,11 @@ let pollingInterval;
 // WE READY
 client.once("ready", async (cl) => {
   console.log("Connected");
+
+  // Initialize connected guilds to ensure they have the proper bank records
+  for (const guild of cl.guilds.cache.values()) {
+    await initializeServerBank(guild.id, guild.name);
+  }
 
   // Set interval for periodic things
   if (!pollingInterval) {

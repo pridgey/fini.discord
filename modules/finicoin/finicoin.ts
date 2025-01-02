@@ -24,50 +24,24 @@ export const runGame = async (
   // Check if user has funds
   userHasFunds = userBalance >= betAmount;
 
-  // If funds available, hold funds
-  if (userHasFunds) {
-    await removeCoin(userID, guildID, betAmount, username, servername);
-  }
-
   // Create command to run when game is over
   const rewardWager = async (win: boolean, multiplier: number) => {
     await addCoin(
-      win ? userID : "Fini",
+      win ? userID : "Jackpot",
       guildID,
-      multiplier * betAmount,
+      win ? multiplier * betAmount : betAmount,
       username,
-      servername
+      servername,
+      win ? "Reserve" : userID
     );
-  };
-
-  // A fallback function to run on error so we don't accidentally steal their coin
-  const onError = async () => {
-    await addCoin(userID, guildID, wager, username, servername);
   };
 
   // return whether the user has funds, and the resulting function
   return {
-    onError,
     userHasFunds,
     userBalance,
     rewardWager,
   };
-};
-
-/**
- * utility function to take finicoin away from a user
- * @param userID The UserID of the user to remove coin from
- * @param guildID The server ID of the server where the call is coming from
- * @param amount The amount to remove
- */
-export const removeCoin = async (
-  userID: string,
-  guildID,
-  amount: number,
-  username: string,
-  servername: string
-) => {
-  await addCoin(userID, guildID, amount * -1, username, servername);
 };
 
 /**
@@ -81,29 +55,61 @@ export const addCoin = async (
   guildID: string,
   amount: number,
   username: string,
-  servername: string
+  servername: string,
+  fromUserID: string
 ) => {
   try {
     // Check if record exists
-    const bankRecord = await pb
-      .collection<BankRecord>("bank")
-      .getFirstListItem(`user_id = "${userID}"`);
+    const bankResponse = await pb.collection<BankRecord>("bank").getFullList({
+      filter: `user_id = "${userID}" && server_id = "${guildID}"`,
+    });
 
-    if (bankRecord.id) {
-      // Update
-      await pb.collection<BankRecord>("bank").update(bankRecord.id, {
-        balance: bankRecord.balance + amount,
-      });
-    } else {
+    let bankRecord = bankResponse?.[0];
+
+    // Create it if it doesn't exist
+    if (!bankRecord) {
       // Create
       const newBankRecord: BankRecord = {
-        balance: amount,
+        balance: 0,
         server_id: guildID,
         user_id: userID,
         identifier: `${username}-${servername}`,
       };
-      await pb.collection<BankRecord>("bank").create(newBankRecord);
+      bankRecord = await pb
+        .collection<BankRecord>("bank")
+        .create(newBankRecord);
     }
+
+    // Ensure source account has the balance to transfer
+    const sourceResponse = await pb.collection<BankRecord>("bank").getFullList({
+      filter: `user_id = "${fromUserID}" && server_id = "${guildID}"`,
+    });
+
+    const sourceRecord = sourceResponse?.[0];
+
+    if (!sourceRecord) {
+      throw new Error(`Source Record ID ${fromUserID} does not exist`);
+    }
+
+    if (sourceRecord.balance < amount) {
+      throw new Error(
+        `Source Record ID ${fromUserID} does not have enough finicoin to transfer ${amount} to ${userID}`
+      );
+    }
+
+    // Remove from source
+    await pb
+      .collection<BankRecord>("bank")
+      .update(sourceRecord.id ?? "unknown bank record id", {
+        balance: sourceRecord.balance - amount,
+      });
+
+    // Add coin to recipient
+    await pb
+      .collection<BankRecord>("bank")
+      .update(bankRecord.id ?? "unknown bank record id", {
+        balance: bankRecord.balance + amount,
+      });
   } catch (err) {
     console.error("Error running finicoin.addCoin", { err });
   }
@@ -119,10 +125,11 @@ export const getUserBalance = async (userID: string, guildID: string) => {
   try {
     const bankRecord = await pb
       .collection<BankRecord>("bank")
-      .getFirstListItem(`user_id = "${userID}"`);
+      .getFirstListItem(`user_id = "${userID}" && server_id = "${guildID}"`);
 
     return bankRecord.balance || 0;
   } catch (err) {
     console.error("Error running getUserBalance", { err });
+    return 0;
   }
 };

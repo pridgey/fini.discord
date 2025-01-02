@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction, User } from "discord.js";
+import { CommandInteraction, InteractionCollector, User } from "discord.js";
 import type { BankRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 
@@ -17,25 +17,21 @@ export const execute = async (
       sort: "-balance",
     });
 
-    const userIDs = allBalances.map((balance) => {
-      if (balance.user_id === "Fini") {
-        return new Promise((resolve) =>
-          resolve({
-            username: "Fini",
-            balance: balance.balance,
-          })
-        );
-      }
-      return interaction.client.users.fetch(balance.user_id);
-    });
+    const userBankRecords = await Promise.all(
+      allBalances
+        .filter((ab) => !["Jackpot", "Reserve"].includes(ab.user_id))
+        .map(async (ab) => {
+          const userRecord = await interaction.client.users.fetch(ab.user_id);
+          return {
+            username: userRecord.username,
+            balance: ab.balance,
+          };
+        })
+    );
 
-    const userNames: unknown[] = await Promise.all(userIDs);
-
-    const response = `**The Bourgeoisie**\r\n${allBalances
-      .map((balance, index) => {
-        return `${index + 1}. ${
-          (userNames[index] as User).username
-        }: ${balance.balance.toLocaleString()}`;
+    const response = `**The Bourgeoisie**\r\n${userBankRecords
+      .map((ubr, index) => {
+        return `${index + 1}. ${ubr.username}: ${ubr.balance.toLocaleString()}`;
       })
       .join("\r\n")}`;
 

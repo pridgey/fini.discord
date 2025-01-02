@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
-import { getUserBalance, removeCoin, addCoin } from "./../modules/finicoin";
+import { getUserBalance, addCoin } from "./../modules/finicoin";
+import { user } from "elevenlabs/api";
 
 export const data = new SlashCommandBuilder()
   .setName("give")
@@ -31,9 +32,12 @@ export const execute = async (
   );
 
   try {
-    const currentUserBalance =
-      (await getUserBalance(interaction.user.id, interaction.guildId || "")) ||
-      0;
+    const userId = interaction.user.id;
+    const username = interaction.user.username;
+    const guildId = interaction.guildId ?? "unknown server id";
+    const guildname = interaction.guild?.name ?? "unknown server name";
+
+    const currentUserBalance = (await getUserBalance(userId, guildId)) || 0;
 
     if (currentUserBalance < amount) {
       // The user cannot give away that much
@@ -41,20 +45,21 @@ export const execute = async (
         `You don't have enough Finicoin to gift ${amount.toLocaleString()}\nYour current balance: ${currentUserBalance.toLocaleString()}`
       );
     } else {
-      // First remove the coin from the gifter
-      await removeCoin(interaction.user.id, interaction.guildId || "", amount);
-
       // Now give it to the recipient
-      await addCoin(luckyFuck?.id || "", interaction.guildId || "", amount);
+      await addCoin(
+        luckyFuck?.id || "uknown user id",
+        guildId,
+        amount,
+        username,
+        guildname,
+        userId
+      );
 
       // Get new balances
-      const userNewBalance = await getUserBalance(
-        interaction.user.id,
-        interaction.guildId || ""
-      );
+      const userNewBalance = await getUserBalance(userId, guildId);
       const recipientNewBalance = await getUserBalance(
         luckyFuck?.id || "",
-        interaction.guildId || ""
+        guildId
       );
 
       // Log result
