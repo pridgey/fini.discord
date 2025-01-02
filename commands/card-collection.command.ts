@@ -86,7 +86,7 @@ export const execute = async (
       const collector = interactionResponse.createMessageComponentCollector({
         componentType: ComponentType.Button,
         filter: collectorFilter,
-        time: 3_600_000,
+        time: 600_000, // 10 min
       });
 
       // Event that fires when the collector times out

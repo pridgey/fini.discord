@@ -1,6 +1,8 @@
 import { Message } from "discord.js";
 import { addCoin } from "./finicoin";
 import { rollJackpot } from "./jackpot";
+import { pb } from "../../utilities/pocketbase";
+import { MessageRewardStats } from "../../types/PocketbaseTables";
 
 /**
  * Utility function to calculate the score of a message, based on word count and unique words
@@ -20,22 +22,6 @@ const calculateMessageScore = (messageContent: string) => {
   return lengthScore * 0.6 + uniqueRatio * 0.4;
 };
 
-// User Chat Stats keeps track of the user's reward through a daily period
-type userChatStatsType = Record<
-  string,
-  {
-    today: string;
-    todayEarnings: number;
-    numberOfMessagesInPeriod: number;
-    lastMessageTimestamp: number;
-    lastMessage: string;
-  }
->;
-let userChatStats: userChatStatsType = {};
-
-// Determines the current date to refresh fini coin earnings
-let currentdate: string;
-
 /**
  * The main way to get fini coin is to simply chat in the server. This calculates how much coin to reward to the user
  */
@@ -49,19 +35,7 @@ export const rewardCoin = async (message: Message) => {
   // Daily cap that a user can gain per day
   const DAILY_CAP = 100;
   // Cool down between messages
-  const COOL_DOWN_SECONDS = 3;
-
-  // Determine what today is
-  const today = new Date();
-  const todayDateString = `${today.getFullYear()}${today.getMonth()}${today.getDate()}`;
-  // Reset today if different days
-  if (todayDateString !== currentdate) {
-    // Update current date
-    currentdate = todayDateString;
-
-    // Reset user chat stats
-    userChatStats = {};
-  }
+  const COOL_DOWN_SECONDS = 5;
 
   // Get info for logging and operations
   const userId = message.author.id;
@@ -72,33 +46,61 @@ export const rewardCoin = async (message: Message) => {
   const messageLength = message.content.length;
   const messageContent = message.content;
 
-  // Initialize user chat if needed
-  if (!Object.hasOwn(userChatStats, userId)) {
-    userChatStats[userId] = {
-      lastMessageTimestamp: 0,
-      numberOfMessagesInPeriod: 0,
-      today: currentdate,
-      todayEarnings: 0,
-      lastMessage: "",
-    };
+  // Determine what today is
+  const today = new Date();
+  const todayDateString = `${today.getFullYear()}${today.getMonth()}${today.getDate()}`;
+
+  // Get user chat stats
+  const messageRewardResponse = await pb
+    .collection<MessageRewardStats>("message_reward_stats")
+    .getFullList({
+      filter: `user_id = "${userId}" && server_id = "${serverId}"`,
+    });
+
+  let userChat = messageRewardResponse?.[0];
+
+  // Create record for user if it doesn't exist
+  if (!userChat?.id) {
+    userChat = await pb
+      .collection<MessageRewardStats>("message_reward_stats")
+      .create({
+        user_id: userId,
+        server_id: serverId,
+        identifier: `${username}-${servername}`,
+        today: todayDateString,
+        today_earnings: 0,
+        number_messages_in_period: 0,
+        last_message_timestamp: 0,
+        last_message: "",
+      });
+  }
+
+  // Reset today if different days
+  if (todayDateString !== userChat.today) {
+    await pb
+      .collection<MessageRewardStats>("message_reward_stats")
+      .update(userChat.id ?? "unknown messageRewardStats id", {
+        today: todayDateString,
+        today_earnings: 0,
+        number_messages_in_period: 0,
+      });
   }
 
   // seconds since last message
-  const userLastTimestamp = userChatStats[userId].lastMessageTimestamp;
+  const userLastTimestamp = userChat.last_message_timestamp;
   const secondsSinceLastMessage = (messageTimestamp - userLastTimestamp) / 1000;
 
   // Determine if we should reward user
   if (
     messageLength >= MIN_MESSAGE_LENGTH &&
-    userChatStats[userId].todayEarnings < DAILY_CAP &&
+    userChat.today_earnings < DAILY_CAP &&
     secondsSinceLastMessage > COOL_DOWN_SECONDS &&
-    userChatStats[userId].lastMessage !== messageContent
+    userChat.last_message !== messageContent
   ) {
     // Run reward calculations
     const messageScore = calculateMessageScore(messageContent);
-    const messageReward = Math.max(
-      BASE_REWARD_AMOUNT,
-      MAX_REWARD_AMOUNT * messageScore
+    const messageReward = Number(
+      Math.max(BASE_REWARD_AMOUNT, MAX_REWARD_AMOUNT * messageScore).toFixed(2)
     );
 
     // Award user for chatting
@@ -115,13 +117,14 @@ export const rewardCoin = async (message: Message) => {
     await rollJackpot(message);
 
     // Update user stats
-    userChatStats[userId] = {
-      today: currentdate,
-      lastMessageTimestamp: messageTimestamp,
-      numberOfMessagesInPeriod:
-        userChatStats[userId].numberOfMessagesInPeriod + 1,
-      todayEarnings: userChatStats[userId].todayEarnings + messageReward,
-      lastMessage: messageContent,
-    };
+    await pb
+      .collection<MessageRewardStats>("message_reward_stats")
+      .update(userChat.id ?? "unknown messageRewardStats id", {
+        today: todayDateString,
+        last_message_timestamp: messageTimestamp,
+        number_messages_in_period: userChat.number_messages_in_period + 1,
+        today_earnings: userChat.today_earnings + messageReward,
+        last_message: messageContent,
+      });
   }
 };

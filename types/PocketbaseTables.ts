@@ -117,3 +117,15 @@ export type ServerRecord = {
   server_id: string;
   servername: string;
 };
+
+export type MessageRewardStats = {
+  id?: string;
+  user_id: string;
+  server_id: string;
+  identifier: string;
+  today: string;
+  today_earnings: number;
+  number_messages_in_period: number;
+  last_message_timestamp: number;
+  last_message: string;
+};
