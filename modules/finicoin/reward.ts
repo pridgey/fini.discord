@@ -1,6 +1,5 @@
 import { Message } from "discord.js";
-import { addCoin, getUserBalance } from "./finicoin";
-import { randomNumber } from "./../../utilities/randomNumber";
+import { addCoin } from "./finicoin";
 import { rollJackpot } from "./jackpot";
 
 /**
