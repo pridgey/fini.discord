@@ -60,9 +60,18 @@ client.once("ready", async (cl) => {
       // For each guild, get the system channel and send the update
       guilds.forEach(async (g) => {
         const guild = await g.fetch();
-        guild.systemChannel?.send(
-          `**${new Date().toLocaleDateString()} Update:**\r\n${fileContents}`
-        );
+
+        const splitMessage = splitBigString(fileContents.toString());
+
+        splitMessage.forEach(async (s, index) => {
+          await guild.systemChannel?.send(
+            `${
+              index === 0
+                ? `**${new Date().toLocaleDateString()} Update:**\r\n`
+                : ""
+            }${s}`
+          );
+        });
       });
 
       // Empty the file out
