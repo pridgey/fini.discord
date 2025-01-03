@@ -31,6 +31,7 @@
     "glob": "^10.3.10",
     "i": "^0.3.7",
     "intl": "^1.2.5",
+    "lodash.sortby": "^4.7.0",
     "moment": "^2.30.1",
     "node-llama-cpp": "^2.8.5",
     "npm": "^10.4.0",
@@ -47,6 +48,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.0.4",
+    "@types/lodash": "^4.17.14",
     "concurrently": "^8.2.2",
     "typescript": "^5.3.3"
   },

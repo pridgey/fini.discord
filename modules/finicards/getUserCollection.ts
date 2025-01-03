@@ -3,6 +3,9 @@ import {
   UserCardRecord,
 } from "../../types/PocketbaseTables";
 import { pb } from "../../utilities/pocketbase";
+import { sortBy } from "lodash";
+
+type CardCollectionRecord = CardDefinitionRecord & { userCardID: string };
 
 /**
  * Collects all of a user's pulled cards
@@ -24,16 +27,36 @@ export const getUserCollection = async (userId: string, serverId: string) => {
     });
 
   // All user card definitions
-  const allUserCards = allCards.filter((ac) =>
-    allUserCardRecords.some((au) => au.card === ac.id)
-  );
+  const allUserCards: CardCollectionRecord[] = allUserCardRecords.map((ucr) => {
+    const cardDefinition = allCards.find((ac) => ac.id === ucr.card);
+
+    return {
+      ...cardDefinition!,
+      userCardID: ucr.id ?? "unknown card id",
+    };
+  });
 
   // Sort user cards
-  const legendaryCards = allUserCards.filter((c) => c.rarity === "l");
-  const fullArtCards = allUserCards.filter((c) => c.rarity === "fa");
-  const uncommonCards = allUserCards.filter((c) => c.rarity === "u");
-  const commonCards = allUserCards.filter((c) => c.rarity === "c");
-  const itemCards = allUserCards.filter((c) => c.rarity === "i");
+  const legendaryCards = sortBy(
+    allUserCards.filter((c) => c.rarity === "l"),
+    "card_name"
+  );
+  const fullArtCards = sortBy(
+    allUserCards.filter((c) => c.rarity === "fa"),
+    "card_name"
+  );
+  const uncommonCards = sortBy(
+    allUserCards.filter((c) => c.rarity === "u"),
+    "card_name"
+  );
+  const commonCards = sortBy(
+    allUserCards.filter((c) => c.rarity === "c"),
+    "card_name"
+  );
+  const itemCards = sortBy(
+    allUserCards.filter((c) => c.rarity === "i"),
+    "card_name"
+  );
 
   // Return user's cards in order of rarity
   return [

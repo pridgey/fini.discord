@@ -41,7 +41,7 @@ export const splitBigString = (
 
     if (lastNewlineIndex > maxLength * 0.75) {
       // If the last newline is more than 75% through the chunk, split it there
-      stringChunk = str.slice(0, lastNewlineIndex) + 1;
+      stringChunk = str.slice(0, lastNewlineIndex);
       nextStartIndex = lastNewlineIndex;
     } else {
       // Otherwise find the most recent space to split on
@@ -51,12 +51,6 @@ export const splitBigString = (
       nextStartIndex = lastWhitespaceIndex;
     }
   }
-
-  console.log("Split String", {
-    nextStartIndex,
-    codeBlockCount,
-    stringChunk,
-  });
 
   // Recursively goes through the rest
   const remainingStringChunks: string[] = splitBigString(
