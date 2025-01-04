@@ -10,7 +10,6 @@ import {
 import { createCardImage } from "../modules/finicards/generateCardImage";
 import { getUserCollection } from "../modules/finicards/getUserCollection";
 import type { CardDefinitionRecord } from "../types/PocketbaseTables";
-import { splitBigString } from "../utilities/splitBigString";
 
 export const data = new SlashCommandBuilder()
   .setName("card-collection")
