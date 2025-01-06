@@ -42,6 +42,15 @@ export const execute = async (
   interaction: CommandInteraction,
   logCommand: () => void
 ) => {
+  const finiUserId = "608114286082129921";
+  const priceDictionary: Record<CardDefinitionRecord["rarity"], number> = {
+    c: 2,
+    fa: 10,
+    i: 2,
+    l: 25,
+    u: 5,
+  };
+
   await interaction.deferReply();
 
   try {
@@ -52,6 +61,7 @@ export const execute = async (
     );
     const targetUser = interaction.options.getUser("who");
     const targetUserDefined = !!targetUser;
+    const targetUserIsFini = targetUser?.id === finiUserId;
 
     if (!sellingCardId) {
       await interaction.editReply(
@@ -61,12 +71,16 @@ export const execute = async (
     }
 
     // Check if the card exists
-    const userCardResponse = await pb
-      .collection<UserCardRecord>("user_card")
-      .getFullList({
-        filter: `id = "${sellingCardId}" && server_id = "${interaction.guildId}" && user_id = "${interaction.user.id}"`,
-      });
-    const userCardRecord = userCardResponse?.at(0);
+    const checkCardExists = async () => {
+      const userCardResponse = await pb
+        .collection<UserCardRecord>("user_card")
+        .getFullList({
+          filter: `id = "${sellingCardId}" && server_id = "${interaction.guildId}" && user_id = "${interaction.user.id}"`,
+        });
+      const userCardRecord = userCardResponse?.at(0);
+      return userCardRecord;
+    };
+    const userCardRecord = await checkCardExists();
 
     if (!userCardRecord) {
       await interaction.editReply(
@@ -99,7 +113,9 @@ export const execute = async (
       .setCustomId("purchase")
       .setLabel(
         targetUserDefined
-          ? `(${targetUser.username}) I Accept`
+          ? targetUserIsFini
+            ? `Confirm`
+            : `(${targetUser.username}) I Accept`
           : "(Anyone) Purchase"
       )
       .setStyle(ButtonStyle.Secondary);
@@ -125,9 +141,15 @@ export const execute = async (
         cardDefinition.card_name
       }.${
         targetUserDefined
-          ? ` ${targetUser} Do you accept?`
+          ? targetUserIsFini
+            ? ` Are you sure you'd like to sell to Fini?`
+            : ` ${targetUser} Do you accept?`
           : " Anyone can purchase."
-      }\r\nAsking cost is ${sellingPrice} Finicoin`,
+      }\r\n${
+        targetUserIsFini
+          ? `Fini will buy for ${priceDictionary[cardDefinition.rarity]}`
+          : `Asking cost is ${sellingPrice} Finicoin`
+      }`,
       components: [row],
       files: [cardImageAttachment],
     });
@@ -174,7 +196,18 @@ export const execute = async (
             components: [],
           });
         } else if (i.customId === "purchase" && i.user.id === targetUser.id) {
-          // Transfer coin
+          // Card could have been sold prior to a user clicking purchase
+          const userCardRecord = await checkCardExists();
+
+          if (!userCardRecord) {
+            await i.update({
+              content: `Card ${cardDefinition.card_name} (${sellingCardId}) couldn't be found in user's collection. Could it already have been sold?`,
+              components: [],
+            });
+            return;
+          }
+
+          // Check user balance
           const targetUserBalance = await getUserBalance(
             targetUser.id,
             interaction.guildId ?? "unknown guild id"
@@ -212,6 +245,40 @@ export const execute = async (
               components: [],
             });
           }
+        } else if (i.customId === "purchase" && targetUserIsFini) {
+          // Card could have been sold prior to a user clicking purchase
+          const userCardRecord = await checkCardExists();
+
+          if (!userCardRecord) {
+            await i.update({
+              content: `Card ${cardDefinition.card_name} (${sellingCardId}) couldn't be found in user's collection. Could it already have been sold?`,
+              components: [],
+            });
+            return;
+          }
+
+          // Transfer coin
+          await addCoin(
+            interaction.user.id,
+            interaction.guildId ?? "unknown guild id",
+            priceDictionary[cardDefinition.rarity],
+            interaction.user.username,
+            interaction.guild?.name ?? "unknown guild name",
+            "Reserve"
+          );
+
+          // "Transfer" card - aka delete card from user
+          await pb
+            .collection<UserCardRecord>("user_card")
+            .delete(userCardRecord.id ?? "unknown card id");
+
+          // Update interaction
+          await i.update({
+            content: `${interaction.user} sold their ${
+              cardDefinition.card_name
+            } to Fini for ${priceDictionary[cardDefinition.rarity]}`,
+            components: [],
+          });
         } else {
           await i.update({});
         }
@@ -229,6 +296,17 @@ export const execute = async (
           i.customId === "purchase" &&
           i.user.id !== interaction.user.id
         ) {
+          // Card could have been sold prior to a user clicking purchase
+          const userCardRecord = await checkCardExists();
+
+          if (!userCardRecord) {
+            await i.update({
+              content: `Card ${cardDefinition.card_name} (${sellingCardId}) couldn't be found in user's collection. Could it already have been sold?`,
+              components: [],
+            });
+            return;
+          }
+
           // Transfer coin
           const purchaserBalance = await getUserBalance(
             i.user.id,

@@ -18,7 +18,11 @@ export const createCardImage = async (
   try {
     // Get the card template svg code
     const templateFileContents = await readFile(
-      join(__dirname, cardLayoutDictionary[cardDefinitionRecord.rarity])
+      join(
+        __dirname,
+        "card templates",
+        cardLayoutDictionary[cardDefinitionRecord.rarity]
+      )
     );
     let templateSVG = templateFileContents.toString();
 

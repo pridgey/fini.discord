@@ -81,7 +81,7 @@ export const cardLayoutDictionary: Record<
   c: "common-template.svg",
   u: "rare-template.svg",
   fa: "full-art-template.svg",
-  l: "",
+  l: "legendary-template.svg",
   i: "item-template.svg",
 };
 
