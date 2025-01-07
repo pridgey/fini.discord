@@ -83,9 +83,18 @@ export const execute = async (
         .setLabel("Next Card ->")
         .setStyle(ButtonStyle.Secondary);
 
+      const finishButton = new ButtonBuilder()
+        .setCustomId("finish")
+        .setLabel("Show All")
+        .setStyle(ButtonStyle.Secondary);
+
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         button1,
         button2
+      );
+
+      const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        finishButton
       );
 
       // Initial image (booster pack cover)
@@ -118,7 +127,7 @@ export const execute = async (
           getImageAttachment(img.buffer)
         );
 
-        endedInteraction?.editReply({
+        await endedInteraction?.editReply({
           content: `${endedInteraction.user} pulled 5 cards:`,
           files: imageAttachments,
           components: [],
@@ -127,6 +136,22 @@ export const execute = async (
 
       // Event that fires when a user interacts with the buttons
       collector.on("collect", async (i) => {
+        // Finish button
+        if (i.customId === "finish") {
+          // Build all attachments
+          const imageAttachments = packImages.map((img) =>
+            getImageAttachment(img.buffer)
+          );
+
+          await i.update({
+            content: `${interaction.user} pulled 5 cards:`,
+            files: imageAttachments,
+            components: [],
+          });
+
+          return;
+        }
+
         // Opening the pack
         if (i.customId === "open-pack") {
           currentImageIndex = 0;
@@ -153,7 +178,7 @@ export const execute = async (
           content: `Card ${currentImageIndex + 1} of 5: ${
             packImages[currentImageIndex].card_name
           }:`,
-          components: [row],
+          components: [row, row2],
           files: [getImageAttachment()],
         });
 

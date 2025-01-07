@@ -49,6 +49,7 @@ export const execute = async (
     i: 2,
     l: 25,
     u: 5,
+    ri: 5,
   };
 
   await interaction.deferReply();
