@@ -116,7 +116,7 @@ export const createCardImage = async (
     templateSVG = templateSVG.replace("{image_base64}", base64String);
 
     // If item card, replace description
-    if (cardDefinitionRecord.rarity === "i") {
+    if (["i", "ri"].includes(cardDefinitionRecord.rarity)) {
       templateSVG = templateSVG.replace(
         "{card_description}",
         cardDefinitionRecord.description

@@ -12,8 +12,9 @@ export const generateBoosterPackRarities = (): Partial<
   const probabilities = {
     l: 0.5, // 0.5% chance for legendary
     fa: 4.5, // 4.5% chance for full-art
-    u: 25, // 25% chance for uncommon
-    c: 70, // 70% chance for common
+    ri: 20, // 20% chance for rare-item
+    u: 20, // 25% chance for uncommon
+    c: 55, // 50% chance for common
   };
 
   // Helper function that will generate a single rarity given the above probabilities
@@ -24,8 +25,9 @@ export const generateBoosterPackRarities = (): Partial<
     // Randomly pick a rarity
     for (const [rarity, prob] of Object.entries(probabilities)) {
       cumulativeProb += prob;
-      if (rand < cumulativeProb)
+      if (rand < cumulativeProb) {
         return rarity as Partial<CardDefinitionRecord["rarity"]>;
+      }
     }
 
     // Default to common, though likely to return above
@@ -45,7 +47,7 @@ export const generateBoosterPackRarities = (): Partial<
   const itemCards = Array.from({ length: numItemCards }, () => "i" as const);
 
   // Combine and shuffle the arrays
-  const allCards = [...normalCards, ...itemCards];
+  let allCards = [...normalCards, ...itemCards];
 
   // Fisher-Yates shuffle
   for (let i = allCards.length - 1; i > 0; i--) {
@@ -53,5 +55,17 @@ export const generateBoosterPackRarities = (): Partial<
     [allCards[i], allCards[j]] = [allCards[j], allCards[i]];
   }
 
-  return allCards;
+  // Temporarily filter cards
+  const resultingRarities: CardDefinitionRecord["rarity"][] = [];
+
+  allCards.forEach((r) => {
+    if (r === "l") {
+      resultingRarities.push("fa");
+      resultingRarities.push("fa");
+    } else {
+      resultingRarities.push(r);
+    }
+  });
+
+  return resultingRarities;
 };

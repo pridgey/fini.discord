@@ -50,6 +50,11 @@ export const cardColorDictionary: Record<
     stop: "",
     pip: "",
   },
+  item: {
+    start: "",
+    stop: "",
+    pip: "",
+  },
 };
 
 // The x position of pills
@@ -83,6 +88,7 @@ export const cardLayoutDictionary: Record<
   fa: "full-art-template.svg",
   l: "legendary-template.svg",
   i: "item-template.svg",
+  ri: "item-template.svg",
 };
 
 type CardImageSize = {
@@ -100,6 +106,10 @@ export const cardImageSizeDictionary: Record<
     height: 374,
   },
   i: {
+    width: 600,
+    height: 374,
+  },
+  ri: {
     width: 600,
     height: 374,
   },

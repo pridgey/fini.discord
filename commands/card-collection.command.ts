@@ -119,7 +119,6 @@ export const execute = async (
           }
 
           if (i.customId === "page-next") {
-            console.log("DEBUG:", { currentPage, maxPages });
             if (currentPage >= maxPages) {
               currentPage = 0;
             } else {

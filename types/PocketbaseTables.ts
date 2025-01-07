@@ -81,10 +81,11 @@ export type CardDefinitionRecord = {
     | "green"
     | "black"
     | "light"
-    | "shadow";
+    | "shadow"
+    | "item";
   type: string;
   series: string;
-  rarity: "c" | "u" | "fa" | "l" | "i";
+  rarity: "c" | "u" | "fa" | "l" | "i" | "ri";
   image: string;
   strength: number;
   agility: number;
@@ -128,4 +129,11 @@ export type MessageRewardStats = {
   number_messages_in_period: number;
   last_message_timestamp: number;
   last_message: string;
+};
+
+export type CardSuggestionRecord = {
+  id?: string;
+  name: string;
+  description: string;
+  identifier: string;
 };
