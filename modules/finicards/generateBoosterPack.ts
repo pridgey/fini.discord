@@ -41,6 +41,7 @@ export const generateBoosterPack = async (
     u: cardDefinitions.filter((cd) => cd.rarity === "u"),
     fa: cardDefinitions.filter((cd) => cd.rarity === "fa"),
     l: cardDefinitions.filter((cd) => cd.rarity === "l"),
+    ri: cardDefinitions.filter((cd) => cd.rarity === "ri"),
   };
 
   // Generate pack rarities
