@@ -53,6 +53,10 @@ export const getUserCollection = async (userId: string, serverId: string) => {
     allUserCards.filter((c) => c.rarity === "c"),
     "card_name"
   );
+  const rareItemCards = sortBy(
+    allUserCards.filter((c) => c.rarity === "ri"),
+    "card_name"
+  );
   const itemCards = sortBy(
     allUserCards.filter((c) => c.rarity === "i"),
     "card_name"
@@ -64,6 +68,7 @@ export const getUserCollection = async (userId: string, serverId: string) => {
     ...fullArtCards,
     ...uncommonCards,
     ...commonCards,
+    ...rareItemCards,
     ...itemCards,
   ];
 };

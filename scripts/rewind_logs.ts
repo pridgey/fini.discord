@@ -1,6 +1,9 @@
 import { LogRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 import { writeFile } from "fs/promises";
+import { format } from "date-fns";
+
+const YEAR = 2024;
 
 const userIdMap = {
   "255016605191241729": "Pridgey",
@@ -14,8 +17,12 @@ const userIdMap = {
 };
 
 const getData = async () => {
+  console.log(`Running for ${YEAR}`);
+
   const data = await pb.collection<LogRecord>("log").getFullList({
-    filter: `created > @yearStart && created < @yearEnd`,
+    filter: `created > ${YEAR - 1} && created < ${
+      YEAR + 1
+    } && server_id = "813622219569758258"`,
   });
 
   console.log(`Query returned ${data.length} records.`);
@@ -30,8 +37,13 @@ const getData = async () => {
     data
       .filter((datum) => !!datum)
       .map((datum) => {
+        if (!Object.hasOwn(userIdMap, datum.user_id)) {
+          console.log(`${datum.user_id} has no matching dictionary username.`);
+        }
         const user = userIdMap[datum.user_id] ?? datum.user_id;
-        const created = datum.created;
+        const created = datum.created
+          ? format(datum.created, "MM/dd/yyyy HH:mm")
+          : "";
         const command = datum.command;
         const input = datum.input.replaceAll('"', '""');
         const output = datum.input.replaceAll('"', '""');
@@ -41,10 +53,8 @@ const getData = async () => {
 
     console.log("Creating CSV File...");
 
-    await writeFile(`rewind-${new Date().getFullYear()}.csv`, fileData);
-    console.log(
-      `File 'rewind-${new Date().getFullYear()}.csv' created. Job complete.`
-    );
+    await writeFile(`rewind-${YEAR}.csv`, fileData);
+    console.log(`File 'rewind-${YEAR}.csv' created. Job complete.`);
   }
 };
 
