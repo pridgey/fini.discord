@@ -1,8 +1,10 @@
+import { createCardImage } from "../modules/finicards/generateCardImage";
 import {
   CardDefinitionRecord,
   UserCardRecord,
 } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
+import { writeFile } from "fs/promises";
 
 const getUnSelectedCards = async () => {
   const allCardDefinitions = await pb
@@ -34,4 +36,28 @@ const getUnSelectedCards = async () => {
   }
 };
 
-getUnSelectedCards();
+const allByRarity = async () => {
+  const user = await pb.collection<UserCardRecord>("user_card").getFullList({
+    filter: `card.rarity = "fa" && server_id = "813622219569758258"`,
+  });
+
+  for (let i = 0; i < user.length; i++) {
+    console.log(`Card: ${user[i].card}`);
+  }
+
+  console.log(`${user.length}`);
+};
+
+const getCard = async (id: string) => {
+  const cardDefinition = await pb
+    .collection<CardDefinitionRecord>("card_definition")
+    .getOne(id);
+
+  const imageBuffer = await createCardImage(cardDefinition);
+
+  if (Buffer.isBuffer(imageBuffer)) {
+    await writeFile("test_card.png", new Uint8Array(imageBuffer));
+  }
+};
+
+getCard("5qserjy5ruhpcoc");

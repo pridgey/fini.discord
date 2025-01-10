@@ -33,7 +33,7 @@ export const generateBoosterPack = async (
       filter: `set = 1`,
     });
 
-  // Get current population counts
+  // Get current population counts of each card type
   const populationCounts = await getCardPopulationCounts(options.serverId);
 
   // Group cards by rarity
@@ -47,7 +47,7 @@ export const generateBoosterPack = async (
   };
 
   // Generate pack rarities
-  const packRarities = generateBoosterPackRarities();
+  const packRarities = await generateBoosterPackRarities(options.serverId);
 
   // Array of resulting selections
   const images: CardDefinitionWithBuffer[] = [];
@@ -60,6 +60,10 @@ export const generateBoosterPack = async (
       selectedCard = await selectAvailableCard(
         cardsByRarity[rarity as keyof typeof cardsByRarity],
         populationCounts
+      );
+
+      console.log(
+        `${options.username} pulled ${selectedCard?.card_name} [${selectedCard?.rarity}]`
       );
 
       if (selectedCard) {

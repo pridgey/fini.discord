@@ -11,6 +11,7 @@ export const getCardPopulationCounts = async (serverid: string) => {
     .getFullList({
       filter: `server_id = "${serverid}"`,
     });
+
   const populationCounts = new Map<string, number>();
 
   userCards.forEach((card: UserCardRecord) => {

@@ -12,6 +12,7 @@ import { generateBoosterPack } from "../modules/finicards/generateBoosterPack";
 import { addCoin, getUserBalance } from "../modules/finicoin";
 
 const COMMAND_COST = 25;
+const EXPECTED_CARDS = 5;
 
 export const data = new SlashCommandBuilder()
   .setName("booster-pack")
@@ -104,10 +105,30 @@ export const execute = async (
 
       // Initial response
       const interactionResponse = await interaction.editReply({
-        content: `Here is your 5 card booster pack:`,
+        content: `Here is your ${packImages.length} card booster pack:`,
         components: [openPackRow],
         files: [coverImage],
       });
+
+      // Check if the user got fewer than 5 cards for whatever reason
+      if (packImages.length < EXPECTED_CARDS) {
+        const numCardsMissing = EXPECTED_CARDS - packImages.length;
+        const reimbursement = numCardsMissing * 5;
+
+        // Reimburse user for missing cards
+        await addCoin(
+          interaction.user.id,
+          interaction.guildId ?? "unknown guild id",
+          reimbursement,
+          interaction.user.username,
+          interaction.guild?.name ?? "unknown guild name",
+          "Reserve"
+        );
+
+        await interaction.followUp(
+          `Uh oh, looks like you only got ${packImages.length} cards.\r\nSince you're missing ${numCardsMissing}, I've reimbursed you ${reimbursement} finicoin.`
+        );
+      }
 
       // Filter ensures only the original user can interact with the buttons
       const collectorFilter = (i) => i.user.id === interaction.user.id;
@@ -128,7 +149,7 @@ export const execute = async (
         );
 
         await endedInteraction?.editReply({
-          content: `${endedInteraction.user} pulled 5 cards:`,
+          content: `${endedInteraction.user} pulled ${packImages.length} cards:`,
           files: imageAttachments,
           components: [],
         });
@@ -144,7 +165,7 @@ export const execute = async (
           );
 
           await i.update({
-            content: `${interaction.user} pulled 5 cards:`,
+            content: `${interaction.user} pulled ${packImages.length} cards:`,
             files: imageAttachments,
             components: [],
           });
@@ -175,7 +196,7 @@ export const execute = async (
         }
 
         await interactionResponse.edit({
-          content: `Card ${currentImageIndex + 1} of 5: ${
+          content: `Card ${currentImageIndex + 1} of ${packImages.length}: ${
             packImages[currentImageIndex].card_name
           }:`,
           components: [row, row2],

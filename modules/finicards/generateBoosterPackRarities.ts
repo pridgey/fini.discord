@@ -1,24 +1,54 @@
 import { CardDefinitionRecord } from "../../types/PocketbaseTables";
 import { randomNumber } from "../../utilities/randomNumber";
+import { availablePopulationByRarity } from "./availablePopulationByRarity";
 
 /**
  * Function to calculate which rarities will appear in a given booster pack
  * @returns an array of 5 rarities
  */
-export const generateBoosterPackRarities = (): Partial<
-  CardDefinitionRecord["rarity"]
->[] => {
+export const generateBoosterPackRarities = async (
+  serverId: string
+): Promise<Partial<CardDefinitionRecord["rarity"]>[]> => {
   // Probabilities for non-item cards (these add up to 100)
   const probabilities = {
     l: 0.5, // 0.5% chance for legendary
     fa: 4.5, // 4.5% chance for full-art
-    ri: 20, // 20% chance for rare-item
-    u: 20, // 25% chance for uncommon
-    c: 55, // 50% chance for common
+    ri: 8, // 8% chance for rare-item
+    u: 20, // 20% chance for uncommon
+    c: 67, // 67% chance for common
+  };
+
+  // Generate available population by rarity
+  const rarityPopulations = await availablePopulationByRarity(serverId);
+  console.log("DEBUG:", { rarityPopulations });
+
+  const allRarities: CardDefinitionRecord["rarity"][] = [
+    "ri",
+    "i",
+    "c",
+    "u",
+    "fa",
+    "l",
+  ];
+
+  // Function to ensure selected rarity has population, recursing upwards if none
+  const ensureRarityPopulation = (rarity: CardDefinitionRecord["rarity"]) => {
+    const populationCount = rarityPopulations[rarity];
+
+    if (populationCount > 0) {
+      return rarity;
+    } else if (rarity === allRarities.at(-1)) {
+      return null;
+    } else {
+      const currentRarityIndex = allRarities.indexOf(rarity);
+      return ensureRarityPopulation(allCards.at(currentRarityIndex + 1)!);
+    }
   };
 
   // Helper function that will generate a single rarity given the above probabilities
-  const generateSingleRarity = (): Partial<CardDefinitionRecord["rarity"]> => {
+  const generateSingleRarity = (): Partial<
+    CardDefinitionRecord["rarity"]
+  > | null => {
     const rand = randomNumber(0, 100, true);
     let cumulativeProb = 0;
 
@@ -26,7 +56,9 @@ export const generateBoosterPackRarities = (): Partial<
     for (const [rarity, prob] of Object.entries(probabilities)) {
       cumulativeProb += prob;
       if (rand < cumulativeProb) {
-        return rarity as Partial<CardDefinitionRecord["rarity"]>;
+        return ensureRarityPopulation(
+          rarity as Partial<CardDefinitionRecord["rarity"]>
+        );
       }
     }
 
@@ -59,6 +91,9 @@ export const generateBoosterPackRarities = (): Partial<
   const resultingRarities: CardDefinitionRecord["rarity"][] = [];
 
   allCards.forEach((r) => {
+    if (r === null) {
+      return;
+    }
     if (r === "l") {
       resultingRarities.push("fa");
       resultingRarities.push("fa");
