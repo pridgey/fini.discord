@@ -61,6 +61,11 @@ export const execute = async (
   );
   const option = interaction.options.get("option")?.value?.toString() || "Even";
 
+  if (bet < 0.1) {
+    await interaction.reply("You cannot bet less than 0.10 finicoin");
+    return;
+  }
+
   // Call runGame() to run pre-game checks
   const { rewardWager, userBalance, userHasFunds } = await runGame(
     interaction.user.id,

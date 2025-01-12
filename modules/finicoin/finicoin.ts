@@ -91,9 +91,11 @@ export const addCoin = async (
       throw new Error(`Source Record ID ${fromUserID} does not exist`);
     }
 
-    if (sourceRecord.balance < amount) {
+    const parsedAmount = parseFloat(amount.toFixed(2));
+
+    if (sourceRecord.balance < parsedAmount) {
       throw new Error(
-        `Source Record ID ${fromUserID} does not have enough finicoin to transfer ${amount} to ${userID}`
+        `Source Record ID ${fromUserID} does not have enough finicoin to transfer ${parsedAmount} to ${userID}`
       );
     }
 
@@ -101,14 +103,14 @@ export const addCoin = async (
     await pb
       .collection<BankRecord>("bank")
       .update(sourceRecord.id ?? "unknown bank record id", {
-        balance: sourceRecord.balance - amount,
+        balance: sourceRecord.balance - parsedAmount,
       });
 
     // Add coin to recipient
     await pb
       .collection<BankRecord>("bank")
       .update(bankRecord.id ?? "unknown bank record id", {
-        balance: bankRecord.balance + amount,
+        balance: bankRecord.balance + parsedAmount,
       });
   } catch (err) {
     console.error("Error running finicoin.addCoin", { err });
@@ -127,7 +129,7 @@ export const getUserBalance = async (userID: string, guildID: string) => {
       .collection<BankRecord>("bank")
       .getFirstListItem(`user_id = "${userID}" && server_id = "${guildID}"`);
 
-    return bankRecord.balance || 0;
+    return parseFloat(bankRecord.balance.toFixed(2) || "0");
   } catch (err) {
     console.error("Error running getUserBalance", { err });
     return 0;

@@ -41,7 +41,7 @@ export const generateBoosterPackRarities = async (
       return null;
     } else {
       const currentRarityIndex = allRarities.indexOf(rarity);
-      return ensureRarityPopulation(allCards.at(currentRarityIndex + 1)!);
+      return ensureRarityPopulation(allRarities.at(currentRarityIndex + 1)!);
     }
   };
 
