@@ -268,7 +268,9 @@ export const execute = async (
         players[interactionUserId].Cards,
         true,
         true,
-        "Natural Blackjack. Congratulations!"
+        `Natural Blackjack. Congratulations! You've gained: ${
+          bet * 1.5
+        } finicoin.`
       );
       await interaction.editReply(playerBlackjack);
       return;
@@ -404,7 +406,7 @@ export const execute = async (
               players[i.user.id].Cards,
               true,
               true,
-              `Dealer busts. Congratulations, you've won ${reward}`
+              `Dealer busts. Congratulations, you've won ${bet} finicoin.`
             );
             await interaction.editReply({
               content: dealerBust,
@@ -466,7 +468,7 @@ export const execute = async (
             players[i.user.id].Cards,
             true,
             true,
-            `You've beat the dealer. Congratulations, you've won ${reward}`
+            `You've beat the dealer. Congratulations, you've won ${bet} finicoin.`
           );
           await i.update({
             content: winMessage,
