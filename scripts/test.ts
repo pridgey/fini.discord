@@ -1,4 +1,6 @@
+import { availablePopulationByRarity } from "../modules/finicards/availablePopulationByRarity";
 import { createCardImage } from "../modules/finicards/generateCardImage";
+import { getCardPopulationCounts } from "../modules/finicards/getCardPopulationCounts";
 import {
   CardDefinitionRecord,
   UserCardRecord,
@@ -34,6 +36,24 @@ const getUnSelectedCards = async () => {
       );
     }
   }
+
+  const populationCounts = await getCardPopulationCounts("813622219569758258");
+  const populationByName = {};
+
+  populationCounts.forEach((population, cardId) => {
+    const cardName = allCardDefinitions.find((d) => d.id === cardId);
+
+    if (cardName) {
+      populationByName[`${cardName.card_name}-[${cardName.rarity}]`] =
+        population;
+    }
+  });
+
+  console.log("Population Counts:", { populationByName });
+
+  const available = await availablePopulationByRarity("813622219569758258");
+
+  console.log("Available:", { available });
 };
 
 const allByRarity = async () => {
@@ -60,4 +80,4 @@ const getCard = async (id: string) => {
   }
 };
 
-getCard("5qserjy5ruhpcoc");
+getUnSelectedCards();

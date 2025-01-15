@@ -19,6 +19,14 @@ export const data = new SlashCommandBuilder()
       .setName("list")
       .setDescription("List all cards by text")
       .setRequired(false)
+  )
+  .addUserOption((opt) =>
+    opt
+      .setName("who")
+      .setDescription(
+        "Who's collection are you viewing? (Leave blank for your own)"
+      )
+      .setRequired(false)
   );
 
 export const execute = async (
@@ -29,12 +37,13 @@ export const execute = async (
     const listCards: boolean = Boolean(
       interaction.options.get("list")?.value || false
     );
+    const userCollection = interaction.options.getUser("who");
 
     await interaction.deferReply();
 
     // Get all user cards
     const userCards = await getUserCollection(
-      interaction.user.id,
+      userCollection?.id || interaction.user.id,
       interaction.guildId ?? "unknown guild id"
     );
 
@@ -70,7 +79,7 @@ export const execute = async (
         );
 
         const interactionResponse = await interaction.editReply({
-          content: `${interaction.user} Collection (${
+          content: `${userCollection || interaction.user} Collection (${
             currentPage * pageSize + 1
           }-${Math.min(
             userCards.length,
@@ -95,7 +104,7 @@ export const execute = async (
         // Event that fires when the collector times out
         collector.on("end", async (i) => {
           await interaction.editReply({
-            content: `${interaction.user} Collection (${
+            content: `${userCollection || interaction.user} Collection (${
               currentPage * pageSize + 1
             }-${Math.min(
               userCards.length,
@@ -127,7 +136,7 @@ export const execute = async (
           }
 
           await interactionResponse.edit({
-            content: `${interaction.user} Collection (${
+            content: `${userCollection || interaction.user} Collection (${
               currentPage * pageSize + 1
             }-${Math.min(
               userCards.length,
@@ -185,9 +194,9 @@ export const execute = async (
 
         // Initial response
         const interactionResponse = await interaction.editReply({
-          content: `Card ${currentImageIndex + 1} of ${userCards.length}: ${
-            userCards[currentImageIndex].card_name
-          }:`,
+          content: `${userCollection || interaction.user} Collection\nCard ${
+            currentImageIndex + 1
+          } of ${userCards.length}: ${userCards[currentImageIndex].card_name}:`,
           components: [row],
           files: [currentImageAttachment],
         });
@@ -205,9 +214,12 @@ export const execute = async (
         collector.on("end", async (i) => {
           const endedInteraction = i.at(0);
 
-          endedInteraction?.editReply({
-            content: `Interaction timeout`,
-            files: [],
+          await endedInteraction?.editReply({
+            content: `${userCollection || interaction.user} Collection\nCard ${
+              currentImageIndex + 1
+            } of ${userCards.length}: ${
+              userCards[currentImageIndex].card_name
+            }:`,
             components: [],
           });
         });
@@ -237,7 +249,9 @@ export const execute = async (
           );
 
           await interactionResponse.edit({
-            content: `Card ${currentImageIndex + 1} of ${userCards.length}: ${
+            content: `${userCollection || interaction.user} Collection\nCard ${
+              currentImageIndex + 1
+            } of ${userCards.length}: ${
               userCards[currentImageIndex].card_name
             }:`,
             components: [row],
