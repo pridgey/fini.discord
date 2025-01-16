@@ -99,18 +99,24 @@ export const addCoin = async (
       );
     }
 
-    // Remove from source
+    // Remove from source account
+    const sourceBalance = parseFloat(
+      (sourceRecord.balance - parsedAmount).toFixed(2)
+    );
     await pb
       .collection<BankRecord>("bank")
       .update(sourceRecord.id ?? "unknown bank record id", {
-        balance: sourceRecord.balance - parsedAmount,
+        balance: sourceBalance,
       });
 
     // Add coin to recipient
+    const recipientBalance = parseFloat(
+      (bankRecord.balance + parsedAmount).toFixed(2)
+    );
     await pb
       .collection<BankRecord>("bank")
       .update(bankRecord.id ?? "unknown bank record id", {
-        balance: bankRecord.balance + parsedAmount,
+        balance: recipientBalance,
       });
   } catch (err) {
     console.error("Error running finicoin.addCoin", { err });
