@@ -23,7 +23,7 @@ update.txt
 rewind*.csv
 
 # images
-citation.gif
+citation*.gif
 /*/test_images/*
 **/citation.gif
 /**/generated card images/*
