@@ -4,7 +4,7 @@ import { addCoin, getUserBalance } from "../modules/finicoin";
 import Replicate from "replicate";
 
 // refactor is $0.04 / image
-const COMMAND_COST = 20;
+const COMMAND_COST = 10;
 
 export const data = new SlashCommandBuilder()
   .setName("refactor")

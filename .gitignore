@@ -24,3 +24,6 @@ rewind*.csv
 
 # images
 citation.gif
+/*/test_images/*
+**/citation.gif
+/**/generated card images/*

@@ -4,7 +4,7 @@ import { addCoin, getUserBalance } from "../modules/finicoin";
 import Replicate from "replicate";
 
 // flux-dev is $0.025 / image
-const COMMAND_COST = 10;
+const COMMAND_COST = 5;
 
 export const data = new SlashCommandBuilder()
   .setName("flux")

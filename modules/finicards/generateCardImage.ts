@@ -10,6 +10,7 @@ import {
   pillXDictionary,
   pillYDictionary,
 } from "./dictionaries";
+import { createGifOverlay } from "./createGifOverlay";
 
 // Function to create the card image used in discord
 export const createCardImage = async (
@@ -71,7 +72,10 @@ export const createCardImage = async (
       cardDefinitionRecord.id ?? "unknown id"
     );
     // Rarity
-    templateSVG = templateSVG.replace("{rarity}", cardDefinitionRecord.rarity);
+    templateSVG = templateSVG.replace(
+      "{rarity}",
+      cardDefinitionRecord.rarity.toUpperCase()
+    );
     // Strength
     const strengthScore = determineAbilityGrade(cardDefinitionRecord.strength);
     templateSVG = templateSVG.replace("{strength}", strengthScore);
@@ -183,7 +187,43 @@ export const createCardImage = async (
 
     // Export and save image file
     const sharpItem = sharp(Buffer.from(templateSVG), { density: 300 });
-    const imageBuffer = await sharpItem.resize({ width: 600 }).png().toBuffer();
+    const modifiedImage = await sharpItem.resize({ width: 600 });
+    let imageBuffer;
+    if (cardDefinitionRecord.color === "light") {
+      // Light Card
+      imageBuffer = await modifiedImage
+        .modulate({
+          brightness: 1.75, // Multiplier (1 = no change, >1 = brighter, <1 = darker)
+          saturation: 0.3, // Color saturation (1 = no change, >1 = more color, <1 = less color)
+          hue: 0, // Specify hue rotation in degrees (-360 to 360)
+          lightness: 1.5, // Adjusts the lightness by scaling luminance (specific to older versions)
+        })
+        .png()
+        .toBuffer();
+    } else {
+      imageBuffer = await modifiedImage.png().toBuffer();
+    }
+
+    // =================================================
+
+    if (cardDefinitionRecord.color === "light") {
+      try {
+        const gifBuffer = await createGifOverlay(
+          imageBuffer,
+          path.join(__dirname, "generated card images", "doggo.gif")
+        );
+
+        console.log("Debug Gif Buffer:", gifBuffer.slice(0, 15));
+
+        await sharp(gifBuffer, { animated: true })
+          .gif()
+          .toFile(path.join(__dirname, "generated card images", "new_gif.gif"));
+      } catch (error) {
+        console.error("Operation failed:", error);
+      }
+    }
+
+    // =================================================
 
     return imageBuffer;
   } catch (err) {
@@ -250,22 +290,3 @@ const determineAbilityGrade = (ability: number) => {
   }
   return "F";
 };
-
-// let allCards = await pb
-//   .collection<CardDefinitionRecord>("card_definition")
-//   .getFullList();
-
-// allCards = allCards.filter((c) => c.rarity === "i");
-
-// for (let i = 0; i < allCards.length; i++) {
-//   const imagebuffer = await createCardImage(allCards[i]);
-//   sharp(imagebuffer)
-//     .png()
-//     .toFile(
-//       path.join(
-//         __dirname,
-//         "generated card images",
-//         `${allCards[i].card_name ?? "unknown id"}.png`
-//       )
-//     );
-// }
