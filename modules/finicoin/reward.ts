@@ -77,7 +77,7 @@ export const rewardCoin = async (message: Message) => {
 
   // Reset today if different days
   if (todayDateString !== userChat.today) {
-    await pb
+    userChat = await pb
       .collection<MessageRewardStats>("message_reward_stats")
       .update(userChat.id ?? "unknown messageRewardStats id", {
         today: todayDateString,
