@@ -76,6 +76,11 @@ export const createCardImage = async (
       "{rarity}",
       cardDefinitionRecord.rarity.toUpperCase()
     );
+    // Set Number
+    templateSVG = templateSVG.replace(
+      "{set}",
+      cardDefinitionRecord.set.toLocaleString()
+    );
     // Strength
     const strengthScore = determineAbilityGrade(cardDefinitionRecord.strength);
     templateSVG = templateSVG.replace("{strength}", strengthScore);

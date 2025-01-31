@@ -95,6 +95,7 @@ export type CardDefinitionRecord = {
   population: number;
   mod_operation?: "addition" | "subtraction" | "multiplication" | "division";
   description: string;
+  set: number;
 };
 
 export type UserCardRecord = {

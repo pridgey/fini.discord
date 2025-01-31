@@ -30,7 +30,7 @@ export const generateBoosterPack = async (
   const cardDefinitions = await pb
     .collection<CardDefinitionRecord>("card_definition")
     .getFullList({
-      filter: `set = 1`,
+      filter: `set <= 2`,
     });
 
   // Get current population counts of each card type

@@ -13,9 +13,9 @@ export const generateBoosterPackRarities = async (
   const probabilities = {
     l: 0.5, // 0.5% chance for legendary
     fa: 4.5, // 4.5% chance for full-art
-    ri: 8, // 8% chance for rare-item
+    ri: 5, // 5% chance for rare-item
     u: 20, // 20% chance for uncommon
-    c: 67, // 67% chance for common
+    c: 70, // 70% chance for common
   };
 
   // Generate available population by rarity

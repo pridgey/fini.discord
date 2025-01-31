@@ -4,7 +4,7 @@
 <rect width="600" height="836" rx="17" fill="url(#pattern0_412_124)" fill-opacity="0.8"/>
 <rect x="5" y="5" width="590" height="826" rx="12" stroke="black" stroke-width="10"/>
 <rect width="600" height="45" transform="translate(0 791)" fill="black" fill-opacity="0.4"/>
-<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="20" y="815.969">Generated FiniCard</tspan></text>
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="20" y="815.969">FiniCard s{set}</tspan></text>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan text-anchor="end" x="574" y="815.969">{card_id} | {rarity}</tspan></text>
 <g clip-path="url(#clip0_412_124)">
 <path d="M35 89H565V393C565 402.389 557.389 410 548 410H52C42.6112 410 35 402.389 35 393V89Z" fill="black"/>

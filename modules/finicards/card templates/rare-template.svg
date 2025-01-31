@@ -41,7 +41,7 @@
 <text fill="{luck_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="767.672">{luck}</tspan></text>
 </g>
 <rect width="600" height="39" transform="translate(0 797)" fill="black" fill-opacity="0.4"/>
-<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="20" y="821.969">Generated FiniCard</tspan></text>
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="20" y="821.969">FiniCard s{set}</tspan></text>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan text-anchor="end" x="580" y="821.969">{card_id} | {rarity}</tspan></text>
 </g>
 </g>

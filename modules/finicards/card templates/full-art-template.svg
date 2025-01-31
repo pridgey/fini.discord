@@ -28,7 +28,7 @@
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="36" y="68.7031">{card_name}</tspan></text>
 </g>
 <rect width="600" height="39" transform="translate(0 797)" fill="black" fill-opacity="0.4"/>
-<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="20" y="821.969">Generated FiniCard</tspan></text>
+<text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="20" y="821.969">FiniCard s{set}</tspan></text>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan text-anchor="end" x="580" y="821.969">{card_id} | {rarity}</tspan></text>
 <!-- Add the shimmering overlay -->
 <rect width="600" height="836" rx="17" fill="url(#{ANIMATION_NAME})" style="mix-blend-mode: overlay"/>
