@@ -66,8 +66,8 @@ export const generateBoosterPackRarities = async (
     return "c";
   };
 
-  // Each booster pack should have 2 or 3 random cards
-  const numItemCards = randomNumber(2, 3, true);
+  // Each booster pack should have 2 item cards
+  const numItemCards = 2;
   const numNormalCards = 5 - numItemCards;
 
   // Generate the normal cards first
