@@ -27,13 +27,13 @@ export const chatWithUser_Llama = async (
   attachments?: Collection<string, Attachment>,
   code?: boolean
 ) => {
-  console.log("Run Llama chatWithUser()", { user, msg });
+  console.log("Run Ollama chatWithUser()", { user, msg });
 
   // clean up user message
   const cleanMsg = msg.trim();
 
   // Grab chat logs from server and convert to proper type
-  const chatLogs = await getHistory(user, server, "llama");
+  const chatLogs = await getHistory(user, server, "ollama");
   const userHistory: Message[] = chatLogs.map((record) => ({
     content: record.message,
     role: record.author === "bot" ? "assistant" : "user",
@@ -62,22 +62,23 @@ export const chatWithUser_Llama = async (
       model: code
         ? "codellama:7b"
         : userMessage.images?.length
-        ? "llava"
-        : "phi3",
+        ? "deepseek-r1:14b"
+        : "deepseek-r1:14b",
       messages: [...userHistory, userMessage],
+      stream: false,
     });
 
     // Set response
     responseText = response.message.content;
   } catch (err) {
-    console.error("Error running local llama call", { err });
-    return `Error with LlamaAI API D: (${err})`;
+    console.error("Error running local illama call", { err });
+    return `Error with ollama API D: (${err})`;
   }
 
   // Add user's new message
   await addHistory({
     author: "user",
-    chatType: "llama",
+    chatType: "ollama",
     message: cleanMsg,
     server_id: server,
     user_id: user,
@@ -86,7 +87,7 @@ export const chatWithUser_Llama = async (
   // Add chat response
   await addHistory({
     author: "bot",
-    chatType: "llama",
+    chatType: "ollama",
     message: responseText,
     server_id: server,
     user_id: user,
