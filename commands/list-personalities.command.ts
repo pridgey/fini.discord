@@ -2,6 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { CommandInteraction } from "discord.js";
 import { PersonalitiesRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
+import { splitBigString } from "../utilities/splitBigString";
 
 export const data = new SlashCommandBuilder()
   .setName("list-personalities")
@@ -19,13 +20,20 @@ export const execute = async (
         filter: `user_id = "${interaction.user.id}" && server_id = "${interaction.guild?.id}"`,
       });
 
-    await interaction.reply(
-      `Here are the personalities you've created: \n- Default: Essentially unsets Fini's personality.${personalities.map(
+    const messages =
+      splitBigString(`Here are the personalities you've created: \n- Default: Essentially unsets Fini's personality.${personalities.map(
         (p) =>
           `\n- ${p.personality_name}${p.active ? " (Active)" : ""}: ${p.prompt}`
       )}
-      \n\nTo use a command run /set-personality {name}`
-    );
+    \n\nTo use a command run /set-personality {name}`);
+
+    await interaction.reply(messages.at(0) ?? "No personalities found.");
+
+    if (messages.length > 1) {
+      messages.slice(1).forEach(async (m) => {
+        await interaction.followUp(m);
+      });
+    }
 
     logCommand();
   } catch (err) {
