@@ -6,6 +6,8 @@ import {
 import { pb } from "../../utilities/pocketbase";
 import OpenAI from "openai";
 import Replicate from "replicate";
+import { splitBigString } from "../../utilities/splitBigString";
+import { find } from "geo-tz";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
@@ -48,7 +50,7 @@ const checkWeatherReports = async (cl: Client) => {
   // Current time to check
   const now = new Date();
 
-  // 9 AM run the health
+  // 9 AM run the weather report
   if (now.getHours() === 9 && now.getMinutes() === 0) {
     try {
       const weatherRecords = await pb
@@ -69,12 +71,83 @@ const checkWeatherReports = async (cl: Client) => {
           continue;
         }
         const weatherData = await tomorrowResponse.json();
-        const dayWeatherData = weatherData?.timelines.daily?.[0]?.values;
+        const todayWeatherData = weatherData?.timelines.daily?.[0]?.values;
 
-        if (!dayWeatherData) {
+        if (!todayWeatherData) {
           console.error("Error retrieving weather data");
           continue;
         }
+
+        const lat = weatherData.location.lat;
+        const long = weatherData.location.lon;
+        const timezone = find(lat, long).at(0);
+
+        // Get relevant bits of data
+        const dewPoint = todayWeatherData.dewPointAvg;
+        const hailProbability = todayWeatherData.hailProbabilityAvg;
+        const humidity = todayWeatherData.humidityAvg;
+        const rain = todayWeatherData.rainAccumulationAvg;
+        const snow = todayWeatherData.snowAccumulationAvg;
+        const sunrise = new Date(
+          todayWeatherData.sunriseTime
+        ).toLocaleTimeString("en-US", { timeZone: timezone });
+        const sunset = new Date(todayWeatherData.sunsetTime).toLocaleTimeString(
+          "en-US",
+          { timeZone: timezone }
+        );
+        const temperature = todayWeatherData.temperatureAvg;
+        const temperatureFeelsLike = todayWeatherData.temperatureApparentAvg;
+        const tempHigh = todayWeatherData.temperatureMax;
+        const tempLow = todayWeatherData.temperatureMin;
+        const uvIndex = todayWeatherData.uvIndexAvg;
+        const visibility = todayWeatherData.visibilityAvg;
+        const windGust = todayWeatherData.windGustAvg;
+        const windSpeed = todayWeatherData.windSpeedAvg;
+
+        const toCelsius = (tempF: number) => {
+          return Math.round((5 / 9) * (tempF - 32)).toPrecision(2);
+        };
+
+        // Formatted to be readable
+        const formattedData = {
+          "High / Low": `High ${tempHigh} F (${toCelsius(
+            tempHigh
+          )} C) | Low ${tempLow} F (${toCelsius(tempLow)} C)`,
+          Temperature: `${temperature} F (${Math.round(
+            (5 / 9) * (temperature - 32)
+          ).toPrecision(2)} C)`,
+          "Feels Like": `${temperatureFeelsLike} F (${Math.round(
+            (5 / 9) * (temperatureFeelsLike - 32)
+          ).toPrecision(2)} C)`,
+          Humidity: `${humidity}% (Dew Point: ${dewPoint} F)`,
+          Precipitation: rain,
+          Snow: snow,
+          "UV Index": uvIndex,
+          "Sunrise & Sunset": `${sunrise} - ${sunset}`,
+          Visibility: visibility,
+          Wind: `${windSpeed} (Gust: ${windGust})`,
+        };
+
+        // Formatted for AI to understand
+        const includedData = {
+          Temperature: temperature,
+          "Temperature (Celsius)": Math.round((5 / 9) * (temperature - 32)),
+          "Feels like": temperatureFeelsLike,
+          "Feels like (Celsius)": Math.round(
+            (5 / 9) * (temperatureFeelsLike - 32)
+          ),
+          Humidity: humidity,
+          "Dew Point": dewPoint,
+          Rain: rain,
+          Snow: snow,
+          "Hail (probability)": hailProbability,
+          "UV Index": uvIndex,
+          Sunrise: sunrise,
+          Sunset: sunset,
+          Visibility: visibility,
+          "Wind Speed": windSpeed,
+          "Wind Gust": windGust,
+        };
 
         // Generate the opening message
         const openai = new OpenAI({
@@ -89,10 +162,12 @@ const checkWeatherReports = async (cl: Client) => {
               content: [
                 {
                   type: "text",
-                  text: `Given the data about today's weather, please generate a message to what the weather might feel like. User will be provided with the full stats, your response will be supplemental to the data. Include the information that seems relevant or noteworthy, and feel free to ignore anything else. Ensure your response is well formatted for Discord, and well condensed to be easily readable. Please remember to format the temperature and time in association with the location: ${
-                    weatherRecords[i].city
-                  }. Today's Data: ${JSON.stringify(dayWeatherData)}. ${
+                  text: `Given the data about today's weather, please generate 2 sentences summarizing what the weather might feel like. User will be provided with the full stats, your response will be supplemental to the data. Do not list data points. Ensure your response is well condensed to be easily readable. All units will be imperial. Today's Data: ${JSON.stringify(
+                    includedData
+                  )}. ${
                     weatherRecords[i].additional_prompt
+                      ? `Please generate an additional few sentences for this custom prompt: ${weatherRecords[i].additional_prompt}`
+                      : ""
                   }`,
                 },
               ],
@@ -114,13 +189,12 @@ const checkWeatherReports = async (cl: Client) => {
 
         // Generate an image
         const replicate = new Replicate();
-
         const replicateResponse: any = await replicate.run(
           "black-forest-labs/flux-schnell",
           {
             input: {
-              prompt: `A nice landscape depicting the weather from the following data: ${JSON.stringify(
-                dayWeatherData
+              prompt: `A landscape depicting from the following description: ${JSON.stringify(
+                randomChoice?.message.content
               )}`,
               disable_safety_checker: true,
               safety_tolerance: 5,
@@ -136,24 +210,34 @@ const checkWeatherReports = async (cl: Client) => {
           }
         );
 
-        const userDM = await (await cl.users.fetch(user)).createDM();
-
-        // Content
-        const messageContent = `${
+        // AI Summary Content
+        const aiSummaryContent = `${
           randomChoice?.message.content ??
           "Error during weather report generation"
-        }.\r\n${JSON.stringify(dayWeatherData, null, 4)}`;
+        }.`;
 
-        // Send Image
-        await userDM.send({
-          files: [imageAttachment],
-        });
-        // Then the report
-        await userDM.send(messageContent);
-        // Then a separator
-        await userDM.send(
-          "---------------------------------------------------------------"
-        );
+        const userDM = await (await cl.users.fetch(user)).createDM();
+
+        // Combine message to single message
+        const weatherDataPoints = Object.entries(formattedData)
+          .map((e) => `- ${e.at(0)}: ${e.at(1)}`)
+          .join("\n");
+        const weatherReport = `---------------------------------------------------------------\r\n# ${now.toLocaleDateString()} Weather Report\r\n${weatherDataPoints}\r\n${aiSummaryContent}\r\n`;
+        const weatherReportParts = splitBigString(weatherReport);
+
+        // Send Weather report
+        for (let i = 0; i < weatherReportParts.length; i++) {
+          if (i === weatherReportParts.length - 1) {
+            await userDM.send({
+              files: [imageAttachment],
+              content: weatherReportParts[i],
+            });
+          } else {
+            await userDM.send({
+              content: weatherReportParts[i],
+            });
+          }
+        }
 
         // To prevent tomorrow.io rate limiting (and potentially other services too)
         await new Promise((resolve) => setTimeout(() => resolve(null), 750));

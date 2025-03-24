@@ -8,6 +8,8 @@ import {
 import { pb } from "../utilities/pocketbase";
 import { writeFile } from "fs/promises";
 
+const serverId = "1313711612527513680";
+
 const getUnSelectedCards = async () => {
   const allCardDefinitions = await pb
     .collection<CardDefinitionRecord>("card_definition")
@@ -37,7 +39,7 @@ const getUnSelectedCards = async () => {
     }
   }
 
-  const populationCounts = await getCardPopulationCounts("813622219569758258");
+  const populationCounts = await getCardPopulationCounts(serverId);
   const populationByName = {};
 
   populationCounts.forEach((population, cardId) => {
@@ -51,7 +53,7 @@ const getUnSelectedCards = async () => {
 
   console.log("Population Counts:", { populationByName });
 
-  const available = await availablePopulationByRarity("813622219569758258");
+  const available = await availablePopulationByRarity(serverId);
 
   console.log("Available:", { available });
 };
