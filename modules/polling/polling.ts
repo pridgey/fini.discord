@@ -84,7 +84,6 @@ const checkWeatherReports = async (cl: Client) => {
 
         // Get relevant bits of data
         const dewPoint = todayWeatherData.dewPointAvg;
-        const hailProbability = todayWeatherData.hailProbabilityAvg;
         const humidity = todayWeatherData.humidityAvg;
         const rain = todayWeatherData.rainAccumulationAvg;
         const snow = todayWeatherData.snowAccumulationAvg;
@@ -140,7 +139,6 @@ const checkWeatherReports = async (cl: Client) => {
           "Dew Point": dewPoint,
           Rain: rain,
           Snow: snow,
-          "Hail (probability)": hailProbability,
           "UV Index": uvIndex,
           Sunrise: sunrise,
           Sunset: sunset,
