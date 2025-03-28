@@ -8,14 +8,51 @@ import OpenAI from "openai";
 import Replicate from "replicate";
 import { splitBigString } from "../../utilities/splitBigString";
 import { find } from "geo-tz";
+import { fetchJobPostings } from "./jobSearch";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
   checkWeatherReports(cl);
+  checkJobs(cl);
   //checkHealthPings(cl);
 };
 
 /* Polling Functions to run */
+// Check for jobs for me
+const checkJobs = async (cl: Client) => {
+  // Current time to check
+  const now = new Date();
+
+  console.log("Checking Job Postings...");
+
+  // Between 9am-5pm and on 30 min intervals
+  if (
+    now.getHours() > 9 &&
+    now.getHours() < 17 &&
+    now.getMinutes() % 30 === 0
+  ) {
+    // Wait a random delay (30s - 5min)
+    await new Promise((resolve) =>
+      setTimeout(resolve, Math.floor(Math.random() * 270000) + 30000)
+    );
+    // Get new jobs
+    const latestJobs = await fetchJobPostings();
+
+    if (latestJobs.length > 0) {
+      // Get bots channel
+      const gekinServer = await cl.guilds.fetch(
+        process.env.GEKIN_SERVERID ?? ""
+      );
+      const botChannel = (await gekinServer.channels.fetch(
+        "829091125234237440"
+      )) as TextChannel;
+
+      latestJobs.forEach(async (job) => {
+        await botChannel.send(`${process.env.LINK}${job.link}`);
+      });
+    }
+  }
+};
 
 // Look for any reminders that were set by users
 const checkReminders = async (cl: Client) => {
