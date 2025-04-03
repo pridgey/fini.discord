@@ -55,7 +55,7 @@ export const execute = async (
       content: "A personality needs both Name and Prompt.",
     });
     logCommand();
-  } else if (personalityPrompt.length > 300 || personalityName.length > 100) {
+  } else if (personalityPrompt.length > 1000 || personalityName.length > 100) {
     // Too long of a personality prompt
     await interaction.reply({
       content:

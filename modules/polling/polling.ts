@@ -13,7 +13,7 @@ import { fetchJobPostings } from "./jobSearch";
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
   checkWeatherReports(cl);
-  checkJobs(cl);
+  // checkJobs(cl);
   //checkHealthPings(cl);
 };
 

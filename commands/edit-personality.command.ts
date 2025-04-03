@@ -35,7 +35,7 @@ export const execute = async (
     });
 
     logCommand();
-  } else if (personalityName.length > 100 || personalityPrompt.length > 300) {
+  } else if (personalityName.length > 100 || personalityPrompt.length > 1000) {
     // Input too long
     await interaction.reply({
       content:
