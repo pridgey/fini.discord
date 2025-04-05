@@ -1,119 +1,110 @@
 <svg width="606" height="842" viewBox="0 0 606 842" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<g filter="url(#filter0_d_383_359)">
-<rect width="600" height="836" rx="17" fill="url(#paint0_linear_383_359)"/>
-<rect width="600" height="836" rx="17" fill="url(#pattern0_383_359)" fill-opacity="0.8"/>
+<g filter="url(#filter0_d_385_786)">
+<rect width="600" height="836" rx="17" fill="url(#paint0_linear_385_786)"/>
+<rect width="600" height="836" rx="17" fill="url(#pattern0_385_786)" fill-opacity="0.8"/>
 <rect x="5" y="5" width="590" height="826" rx="12" stroke="black" stroke-width="10"/>
 <rect width="600" height="45" transform="translate(0 791)" fill="black" fill-opacity="0.4"/>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="20" y="815.969">FiniCard s{set}</tspan></text>
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan text-anchor="end" x="580" y="815.969">{card_id} | {rarity}</tspan></text>
-<g clip-path="url(#clip0_383_359)">
+<g clip-path="url(#clip0_385_786)">
 <path d="M35 89H565V393C565 402.389 557.389 410 548 410H52C42.6112 410 35 402.389 35 393V89Z" fill="black"/>
-<rect x="-57" y="89" width="705" height="439" fill="url(#pattern1_383_359)"/>
+<rect x="-1" y="81" width="601" height="338" fill="url(#pattern1_385_786)"/>
 </g>
 <path d="M38.5 92.5H561.5V393C561.5 400.456 555.456 406.5 548 406.5H52C44.5442 406.5 38.5 400.456 38.5 393V92.5Z" stroke="white" stroke-width="7"/>
-<g filter="url(#filter1_d_383_359)">
+<g filter="url(#filter1_d_385_786)">
 <rect x="35" y="422" width="530" height="50" rx="10" fill="white"/>
 <text fill="black" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="16" font-weight="bold" letter-spacing="0em"><tspan x="54" y="452.469">{type} | {series}</tspan></text>
 </g>
-<g filter="url(#filter2_d_383_359)">
+<g filter="url(#filter2_d_385_786)">
 <rect x="17" y="20" width="566" height="69" rx="10" fill="white"/>
 <text fill="black" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="36" y="62.7031">{card_name}</tspan></text>
 </g>
-<g clip-path="url(#clip1_383_359)">
+<g clip-path="url(#clip1_385_786)">
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="510.203">Strength</tspan></text>
 {strength_pips}
 <text fill="{strength_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="532.672">{strength}</tspan></text>
 </g>
-<g clip-path="url(#clip2_383_359)">
+<g clip-path="url(#clip2_385_786)">
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="568.203">Agility</tspan></text>
 {agility_pips}
 <text fill="{agility_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="590.672">{agility}</tspan></text>
 </g>
-<g clip-path="url(#clip3_383_359)">
+<g clip-path="url(#clip3_385_786)">
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="626.203">Endurance</tspan></text>
 {endurance_pips}
 <text fill="{endurance_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="648.672">{endurance}</tspan></text>
 </g>
-<g clip-path="url(#clip4_383_359)">
+<g clip-path="url(#clip4_385_786)">
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="684.203">Intellect</tspan></text>
 {intellect_pips}
 <text fill="{intellect_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="706.672">{intellect}</tspan></text>
 </g>
-<g clip-path="url(#clip5_383_359)">
+<g clip-path="url(#clip5_385_786)">
 <text fill="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="24" font-weight="bold" letter-spacing="0em"><tspan x="35" y="742.203">Luck</tspan></text>
 {luck_pips}
-<text fill="{luck_color}" stroke="white" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="764.672">{luck}</tspan></text>
+<text fill="{luck_color}" xml:space="preserve" style="white-space: pre" font-family="Roboto" font-size="40" font-weight="bold" letter-spacing="0em"><tspan x="525" y="764.672">{luck}</tspan></text>
 </g>
 </g>
 <defs>
-<filter id="filter0_d_383_359" x="0" y="0" width="606" height="842" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<filter id="filter0_d_385_786" x="0" y="0" width="606" height="842" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
 <feOffset dx="4" dy="4"/>
 <feGaussianBlur stdDeviation="1"/>
 <feComposite in2="hardAlpha" operator="out"/>
 <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
-<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_383_359"/>
-<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_383_359" result="shape"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_385_786"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_385_786" result="shape"/>
 </filter>
-<pattern id="pattern0_383_359" patternContentUnits="objectBoundingBox" width="0.01875" height="0.0269139">
-<use xlink:href="#image0_383_359" transform="scale(0.00125 0.000897129)"/>
+<pattern id="pattern0_385_786" patternContentUnits="objectBoundingBox" width="0.01875" height="0.0269139">
+<use xlink:href="#image0_385_786" transform="scale(0.00125 0.000897129)"/>
 </pattern>
-<pattern id="pattern1_383_359" patternContentUnits="objectBoundingBox" width="1" height="1">
-<use xlink:href="#image1_383_359" transform="matrix(0.00166667 0 0 0.00267654 0 -0.000512528)"/>
+<pattern id="pattern1_385_786" patternContentUnits="objectBoundingBox" width="1" height="1">
+<use xlink:href="#image1_385_786" transform="matrix(0.00194175 0 0 0.00345263 0 -0.033432)"/>
 </pattern>
-<filter id="filter1_d_383_359" x="31" y="422" width="538" height="58" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<filter id="filter1_d_385_786" x="31" y="422" width="538" height="58" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
 <feOffset dy="4"/>
 <feGaussianBlur stdDeviation="2"/>
 <feComposite in2="hardAlpha" operator="out"/>
 <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
-<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_383_359"/>
-<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_383_359" result="shape"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_385_786"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_385_786" result="shape"/>
 </filter>
-<filter id="filter2_d_383_359" x="13" y="20" width="574" height="77" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<filter id="filter2_d_385_786" x="13" y="20" width="574" height="77" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
 <feFlood flood-opacity="0" result="BackgroundImageFix"/>
 <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
 <feOffset dy="4"/>
 <feGaussianBlur stdDeviation="2"/>
 <feComposite in2="hardAlpha" operator="out"/>
 <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
-<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_383_359"/>
-<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_383_359" result="shape"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_385_786"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_385_786" result="shape"/>
 </filter>
-<linearGradient id="paint0_linear_383_359" x1="300" y1="0" x2="300" y2="836" gradientUnits="userSpaceOnUse">
+<linearGradient id="paint0_linear_385_786" x1="300" y1="0" x2="300" y2="836" gradientUnits="userSpaceOnUse">
 <stop stop-color="{color_start}"/>
 <stop offset="1" stop-color="{color_stop}"/>
 </linearGradient>
-<linearGradient id="paint1_linear_383_359" gradientUnits="objectBoundingBox" x1="0" y1="0" x2="0" y2="1">
-<stop stop-color="#FF0000"/>
-<stop offset="0.175" stop-color="#FF4D00"/>
-<stop offset="0.345" stop-color="#FFE100"/>
-<stop offset="0.495" stop-color="#00FF26"/>
-<stop offset="0.675" stop-color="#002BFF"/>
-<stop offset="0.835" stop-color="#BF00FF"/>
-<stop offset="1" stop-color="#FF00EE"/>
-</linearGradient>
-<clipPath id="clip0_383_359">
+<clipPath id="clip0_385_786">
 <path d="M35 89H565V393C565 402.389 557.389 410 548 410H52C42.6112 410 35 402.389 35 393V89Z" fill="white"/>
 </clipPath>
-<clipPath id="clip1_383_359">
+<clipPath id="clip1_385_786">
 <rect width="530" height="53" fill="white" transform="translate(35 488)"/>
 </clipPath>
-<clipPath id="clip2_383_359">
+<clipPath id="clip2_385_786">
 <rect width="530" height="53" fill="white" transform="translate(35 546)"/>
 </clipPath>
-<clipPath id="clip3_383_359">
+<clipPath id="clip3_385_786">
 <rect width="530" height="53" fill="white" transform="translate(35 604)"/>
 </clipPath>
-<clipPath id="clip4_383_359">
+<clipPath id="clip4_385_786">
 <rect width="530" height="53" fill="white" transform="translate(35 662)"/>
 </clipPath>
-<clipPath id="clip5_383_359">
+<clipPath id="clip5_385_786">
 <rect width="530" height="53" fill="white" transform="translate(35 720)"/>
 </clipPath>
-<image id="image0_383_359" width="15" height="30" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAeCAYAAADzXER0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAEKSURBVHgB5ZTbEYIwEEUvM/xrB9CBdCAdaAfQAXaAnagdaAVoB1qBoQKxAsySBTKZMPLyyzNzyWtJcsMGACg1ZVDE3E65fTDiKrnyIdBScPni/kLr1+Om40iFXL9KLaUCS5xgBRzTQPt/cj2ExZtUxOMZDM9HtN4Et01yLs+Yy7vDJflIesSfeOUEmncfdq+m1hxPZ1R5JshzjO/U3ncwTn0w5DnDcOJ6F+UIefXKHoaTYy58TPhUhEB/hsTa+dcrmWptAXXtyNtG6gZ1FluplW2C0b9eWjnSJiLvF6ikoYR4SN2hDnJMGnfTdSXJ6553FXe97KJNEh3Bpd8x3qxs8/KG8k/ZtMAv+AAEsYF5ACWTygAAAABJRU5ErkJggg=="/>
-<image id="image1_383_359" width="600" height="374" xlink:href="{image_base64}"/>
+<image id="image0_385_786" width="15" height="30" preserveAspectRatio="none" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA8AAAAeCAYAAADzXER0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAEKSURBVHgB5ZTbEYIwEEUvM/xrB9CBdCAdaAfQAXaAnagdaAVoB1qBoQKxAsySBTKZMPLyyzNzyWtJcsMGACg1ZVDE3E65fTDiKrnyIdBScPni/kLr1+Om40iFXL9KLaUCS5xgBRzTQPt/cj2ExZtUxOMZDM9HtN4Et01yLs+Yy7vDJflIesSfeOUEmncfdq+m1hxPZ1R5JshzjO/U3ncwTn0w5DnDcOJ6F+UIefXKHoaTYy58TPhUhEB/hsTa+dcrmWptAXXtyNtG6gZ1FluplW2C0b9eWjnSJiLvF6ikoYR4SN2hDnJMGnfTdSXJ6553FXe97KJNEh3Bpd8x3qxs8/KG8k/ZtMAv+AAEsYF5ACWTygAAAABJRU5ErkJggg=="/>
+<image id="image1_385_786" width="515" height="309" preserveAspectRatio="none" xlink:href="{image_base64}"/>
 </defs>
 </svg>

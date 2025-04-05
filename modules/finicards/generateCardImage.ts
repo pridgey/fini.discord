@@ -192,7 +192,7 @@ export const createCardImage = async (
 
     // Export and save image file
     const sharpItem = sharp(Buffer.from(templateSVG), { density: 300 });
-    const modifiedImage = await sharpItem.resize({ width: 600 });
+    const modifiedImage = await sharpItem.resize({ width: 606 });
     let imageBuffer;
     if (cardDefinitionRecord.color === "light") {
       // Light Card
