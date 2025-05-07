@@ -48,8 +48,16 @@ export const data = new SlashCommandBuilder()
       .setName("option")
       .setDescription("Is it Even or Odd?")
       .setRequired(true)
-      .addChoice("Even", "Even")
-      .addChoice("Odd", "Odd")
+      .addChoices([
+        {
+          name: "Even",
+          value: "Even",
+        },
+        {
+          name: "Odd",
+          value: "Odd",
+        },
+      ])
   );
 
 export const execute = async (

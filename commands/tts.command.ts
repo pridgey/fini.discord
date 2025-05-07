@@ -52,13 +52,6 @@ export const data = new SlashCommandBuilder()
       .setName("text")
       .setDescription("The text you want me to speech")
       .setRequired(true)
-  )
-  .addStringOption((option) =>
-    option
-      .setName("voice")
-      .setDescription("What voice I should use? (OpenAI and Tortoise Models)")
-      .setRequired(true)
-      .addChoices(voiceOptions.map((voice) => [voice, voice]))
   );
 
 export const execute = async (

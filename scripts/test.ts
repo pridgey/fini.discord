@@ -11,9 +11,11 @@ import { writeFile } from "fs/promises";
 const serverId = "1313711612527513680";
 
 const getUnSelectedCards = async () => {
-  const allCardDefinitions = await pb
+  let allCardDefinitions = await pb
     .collection<CardDefinitionRecord>("card_definition")
     .getFullList();
+
+  allCardDefinitions.filter((c) => c.set !== 3);
 
   const allUserCards = await pb
     .collection<UserCardRecord>("user_card")
