@@ -62,16 +62,18 @@ export const chatWithUser_Llama = async (
       model: code
         ? "codellama:7b"
         : userMessage.images?.length
-        ? "deepseek-r1:14b"
-        : "deepseek-r1:14b",
+        ? "deepseek-r1:8b"
+        : "deepseek-r1:8b",
       messages: [...userHistory, userMessage],
       stream: false,
+      think: false,
+      keep_alive: "30m",
     });
 
     // Set response
     responseText = response.message.content;
   } catch (err) {
-    console.error("Error running local illama call", { err });
+    console.error("Error running local ollama call", { err });
     return `Error with ollama API D: (${err})`;
   }
 

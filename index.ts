@@ -150,7 +150,7 @@ client.on("messageCreate", async (message: Message) => {
 
     // Send replies
     replyArray.forEach(async (str) => await message.reply(str));
-  } else if (messageTextLower.startsWith("hey deepseek")) {
+  } else if (messageTextLower.startsWith("hey ollama")) {
     // Send temporary typing message, loop until we are done
     const typingLoop = setInterval(() => {
       message.channel.sendTyping();
@@ -162,7 +162,7 @@ client.on("messageCreate", async (message: Message) => {
     const allAttachments = message.attachments;
 
     let response;
-    let command = "hey deepseek";
+    let command = "hey ollama";
 
     // Ollama AI Text
     response = await chatWithUser_Llama(

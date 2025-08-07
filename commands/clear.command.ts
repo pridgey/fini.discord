@@ -19,7 +19,7 @@ export const execute = async (
     await clearHistory(
       interaction.user.id,
       interaction.guildId ?? "unknown",
-      "llama"
+      "ollama"
     );
 
     await interaction.reply("Your chat history has been cleared.");
