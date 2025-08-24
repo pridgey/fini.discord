@@ -26,9 +26,9 @@ export const rollJackpot = async (
 
   // Check if user has won
   if (jackPotRandom < JACKPOT_CEILING) {
-    // Get fini's balance (aka the jackpot)
-    const finiBalance =
-      (await getUserBalance("Fini", message.guildId || "")) ?? 0;
+    // Get jackpot's balance
+    const jackpotBalance =
+      (await getUserBalance("Jackpot", message.guildId || "")) ?? 0;
 
     // react the message as an indicator
     await message.react(JACKPOT_EMOJI);
@@ -37,7 +37,7 @@ export const rollJackpot = async (
     await addCoin(
       authorId,
       guildId,
-      finiBalance,
+      jackpotBalance,
       message.author?.username ?? "unknown username",
       message.guild?.name ?? "unknown guild name",
       "Jackpot"
@@ -47,7 +47,7 @@ export const rollJackpot = async (
     createLog({
       command: "jackpot",
       input: message.content || "Content not found",
-      output: `Jackpot award: ${finiBalance} finicoin`,
+      output: `Jackpot award: ${jackpotBalance} finicoin`,
       server_id: guildId,
       user_id: authorId,
     });
