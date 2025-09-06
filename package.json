@@ -47,7 +47,7 @@
     "npm": "^10.4.0",
     "ollama": "^0.5.16",
     "openai": "^4.36.0",
-    "pocketbase": "^0.20.1",
+    "pocketbase": "latest",
     "prettier": "^2.7.1",
     "puppeteer": "^24.4.0",
     "puppeteer-extra": "^3.3.6",

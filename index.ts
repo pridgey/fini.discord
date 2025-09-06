@@ -53,7 +53,7 @@ client.once("ready", async (cl) => {
     // What does the file say?
     const fileContents = await readFile(fileName);
 
-    console.log("File Contents:", fileContents);
+    console.log("Update File Contents:", fileContents);
     if (!!fileContents.length) {
       // Get all guilds
       const guilds = await cl.guilds.fetch();

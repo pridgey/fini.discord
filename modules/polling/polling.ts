@@ -9,16 +9,44 @@ import Replicate from "replicate";
 import { splitBigString } from "../../utilities/splitBigString";
 import { find } from "geo-tz";
 import { fetchJobPostings } from "./jobSearch";
+import { getUpcomingStockData } from "../finistocks/stockData";
+import { ClientResponseError } from "pocketbase";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
   checkWeatherReports(cl);
+  pollUpcomingAnime();
   // checkJobs(cl);
-  //checkHealthPings(cl);
+  // checkHealthPings(cl);
 };
 
-/* Polling Functions to run */
-// Check for jobs for me
+// #region Polling Jobs
+
+// Check for upcoming anime to add to the stock system
+const pollUpcomingAnime = async () => {
+  // Current time to check
+  const now = new Date();
+  // Check at midnight every month
+  if (now.getDate() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
+    console.log("===== Polling Upcoming Anime =====");
+    try {
+      await getUpcomingStockData();
+    } catch (err) {
+      if (err instanceof ClientResponseError) {
+        console.error("Pocketbase Error Data:", {
+          status: err.status,
+          originalError: err.originalError,
+          message: err.message,
+          data: err.data,
+        });
+      } else if (err instanceof Error) {
+        console.error("Error during polling upcoming anime:", err.message);
+      }
+    }
+  }
+};
+
+// Check for jobs for me -- Disabled, as it didn't work as expected
 const checkJobs = async (cl: Client) => {
   // Current time to check
   const now = new Date();
@@ -345,3 +373,5 @@ const checkWeatherReports = async (cl: Client) => {
 //   }
 // }
 //};
+
+// #endregion
