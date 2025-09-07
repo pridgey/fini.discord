@@ -27,6 +27,7 @@ const pollUpcomingAnime = async () => {
   // Current time to check
   const now = new Date();
   // Check at midnight every month
+
   if (now.getDate() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
     console.log("===== Polling Upcoming Anime =====");
     try {

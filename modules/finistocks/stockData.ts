@@ -1,9 +1,13 @@
 import { ClientResponseError } from "pocketbase";
 import { pb } from "../../utilities/pocketbase";
-import { getHypeScore, getVolatilityRating } from "./utilities";
+import {
+  calculateStockPrice,
+  getHypeScore,
+  getVolatilityRating,
+} from "./utilities";
 
 const BASE_PRICE = 10;
-const MAX_INITIAL_PRICE = 500;
+const MAX_INITIAL_PRICE = 300;
 
 export type AnimeRecord = {
   mal_id: number;
@@ -18,6 +22,21 @@ export type AnimeRecord = {
   initial_hype_score: number;
   initial_stock_price: number;
   volatility_rating: "low" | "medium" | "high" | "extreme";
+};
+
+export type AnimeStockRecord = {
+  anime: string;
+  popularity: number;
+  members: number;
+  favorites: number;
+  score: number;
+  rank: number;
+  stock_price: number;
+  price_change: number;
+  price_change_percent: number;
+  hype_score: number;
+  performance_score: number;
+  created: string;
 };
 
 /**
@@ -50,15 +69,12 @@ export const getUpcomingStockData = async () => {
             upcomingAnime.favorites
           );
 
-          // Considering hypescore is between 0 and 1, calculate initial price using BASE_PRICE and MAX_INITIAL_PRICE
-          // The higher the hypescore, the closer the price is to MAX_INITIAL_PRICE, exponentially
+          // Initial price calculation based on hype score
+          // Lower hype scores get a quadratic reduction, higher hype scores get a square root boost (hype is < 1)
           const initialPrice =
-            Math.pow(hypeScore, 0.75) * (MAX_INITIAL_PRICE - BASE_PRICE) +
+            (hypeScore < 0.4 ? hypeScore ** 2 : Math.sqrt(hypeScore)) *
+              (MAX_INITIAL_PRICE - BASE_PRICE) +
             BASE_PRICE;
-
-          // (hypeScore > 0.4 ? hypeScore : Math.pow(hypeScore, 0.75)) *
-          //   (MAX_INITIAL_PRICE - BASE_PRICE) +
-          // BASE_PRICE;
 
           return {
             mal_id: upcomingAnime.mal_id,
@@ -105,3 +121,69 @@ export const getUpcomingStockData = async () => {
     }
   }
 };
+
+/**
+ * Called by an interval polling function to get the latest stock data for ongoing anime
+ */
+// export const getOngoingAnimeStockData = async () => {
+//   try {
+//     const formattedData: AnimeStockRecord[] = [];
+
+//     const pagesToFetch = 4;
+
+//     for (let page = 1; page <= pagesToFetch; page++) {
+//       await new Promise((resolve) => setTimeout(resolve, 1000)); // Rate limit to 1 request per second
+//       const respond = await fetch(
+//         "https://api.jikan.moe/v4/seasons/now?page=" + page
+//       );
+
+//       if (!respond.ok) {
+//         console.error("Failed to fetch ongoing anime:", respond.statusText);
+//         return;
+//       }
+
+//       const json = await respond.json();
+
+//       formattedData.push(
+//         ...json.data.map((ongoingAnime) => {
+//           const hypeScore = getHypeScore(
+//             ongoingAnime.popularity,
+//             ongoingAnime.members,
+//             ongoingAnime.favorites
+//           );
+
+//           // Calculate latest price
+//           const latestPrice = calculateStockPrice();
+
+//           return {
+//             mal_id: ongoingAnime.mal_id,
+//             title:
+//               ongoingAnime.titles.filter((t) => t.type === "English")[0]
+//                 ?.title || ongoingAnime.title,
+//             image_url: ongoingAnime.images.webp.image_url,
+//             season: ongoingAnime.season,
+//             year: ongoingAnime.year,
+//             status: "upcoming",
+//             initial_popularity: ongoingAnime.popularity,
+//             initial_members: ongoingAnime.members,
+//             initial_favorites: ongoingAnime.favorites,
+//             initial_hype_score: hypeScore,
+//             initial_stock_price: Math.round(initialPrice * 100) / 100,
+//             volatility_rating: getVolatilityRating(hypeScore),
+//           };
+//         })
+//       );
+//     }
+//   } catch (err) {
+//     if (err instanceof ClientResponseError) {
+//       if (
+//         (err.cause as any)?.data?.data["mal_id"]?.code !==
+//         "validation_not_unique"
+//       ) {
+//         console.error("Pocketbase Error Data:", err.message);
+//       }
+//     } else {
+//       console.error("Error fetching ongoing anime:", err);
+//     }
+//   }
+// };
