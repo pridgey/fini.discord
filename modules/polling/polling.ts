@@ -31,6 +31,7 @@ const pollUpcomingAnime = async () => {
     console.log("===== Polling Upcoming Anime =====");
     try {
       await getUpcomingStockData();
+      console.log("===== Finished Polling Upcoming Anime =====");
     } catch (err) {
       if (err instanceof ClientResponseError) {
         console.error("Pocketbase Error Data:", {
