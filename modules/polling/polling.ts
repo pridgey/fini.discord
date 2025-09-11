@@ -9,13 +9,17 @@ import Replicate from "replicate";
 import { splitBigString } from "../../utilities/splitBigString";
 import { find } from "geo-tz";
 import { fetchJobPostings } from "./jobSearch";
-import { getUpcomingStockData } from "../finistocks/stockData";
+import {
+  getOngoingAnimeStockData,
+  getUpcomingStockData,
+} from "../finistocks/stockData";
 import { ClientResponseError } from "pocketbase";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
   checkWeatherReports(cl);
   pollUpcomingAnime();
+  pollCurrentAnime();
   // checkJobs(cl);
   // checkHealthPings(cl);
 };
@@ -48,41 +52,69 @@ const pollUpcomingAnime = async () => {
   }
 };
 
-// Check for jobs for me -- Disabled, as it didn't work as expected
-const checkJobs = async (cl: Client) => {
+// Check for current anime to update stock data
+const pollCurrentAnime = async () => {
   // Current time to check
   const now = new Date();
-
-  console.log("Checking Job Postings...");
-
-  // Between 9am-5pm and on 30 min intervals
+  // Check at midnight and noon every day
   if (
-    now.getHours() > 9 &&
-    now.getHours() < 17 &&
-    now.getMinutes() % 30 === 0
+    (now.getHours() === 0 || now.getHours() === 12) &&
+    now.getMinutes() === 0
   ) {
-    // Wait a random delay (30s - 5min)
-    await new Promise((resolve) =>
-      setTimeout(resolve, Math.floor(Math.random() * 270000) + 30000)
-    );
-    // Get new jobs
-    const latestJobs = await fetchJobPostings();
-
-    if (latestJobs.length > 0) {
-      // Get bots channel
-      const gekinServer = await cl.guilds.fetch(
-        process.env.GEKIN_SERVERID ?? ""
-      );
-      const botChannel = (await gekinServer.channels.fetch(
-        "829091125234237440"
-      )) as TextChannel;
-
-      latestJobs.forEach(async (job) => {
-        await botChannel.send(`${process.env.LINK}${job.link}`);
-      });
+    console.log("===== Polling Current Anime =====");
+    try {
+      await getOngoingAnimeStockData();
+      console.log("===== Finished Polling Current Anime =====");
+    } catch (err) {
+      if (err instanceof ClientResponseError) {
+        console.error("Pocketbase Error Data:", {
+          status: err.status,
+          originalError: err.originalError,
+          message: err.message,
+          data: err.data,
+        });
+      } else if (err instanceof Error) {
+        console.error("Error during polling current anime:", err.message);
+      }
     }
   }
 };
+
+// Check for jobs for me -- Disabled, as it didn't work as expected
+// const checkJobs = async (cl: Client) => {
+//   // Current time to check
+//   const now = new Date();
+
+//   console.log("Checking Job Postings...");
+
+//   // Between 9am-5pm and on 30 min intervals
+//   if (
+//     now.getHours() > 9 &&
+//     now.getHours() < 17 &&
+//     now.getMinutes() % 30 === 0
+//   ) {
+//     // Wait a random delay (30s - 5min)
+//     await new Promise((resolve) =>
+//       setTimeout(resolve, Math.floor(Math.random() * 270000) + 30000)
+//     );
+//     // Get new jobs
+//     const latestJobs = await fetchJobPostings();
+
+//     if (latestJobs.length > 0) {
+//       // Get bots channel
+//       const gekinServer = await cl.guilds.fetch(
+//         process.env.GEKIN_SERVERID ?? ""
+//       );
+//       const botChannel = (await gekinServer.channels.fetch(
+//         "829091125234237440"
+//       )) as TextChannel;
+
+//       latestJobs.forEach(async (job) => {
+//         await botChannel.send(`${process.env.LINK}${job.link}`);
+//       });
+//     }
+//   }
+// };
 
 // Look for any reminders that were set by users
 const checkReminders = async (cl: Client) => {
