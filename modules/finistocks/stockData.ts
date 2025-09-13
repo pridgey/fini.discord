@@ -227,21 +227,37 @@ export const getOngoingAnimeStockData = async () => {
           ongoingAnime.rank
         );
 
-        // Create a new stock entry given the current pricing
-        console.log(
-          `-- Creating new stock price entry for ${ongoingAnime.title}-${ongoingAnime.mal_id} at $${latestPriceData.currentPrice}`
-        );
-        await pb.collection<AnimeStockRecord>("anistock_stock").create({
-          anime: initialStock.id ?? "unknown anime",
-          popularity: ongoingAnime.popularity,
-          members: ongoingAnime.members,
-          favorites: ongoingAnime.favorites,
-          score: ongoingAnime.score ?? 0,
-          rank: ongoingAnime.rank,
-          stock_price: Math.round(latestPriceData.currentPrice * 100) / 100,
-          hype_score: hypeScore,
-          performance_score: 0, // To be calculated later1,
-        });
+        const latestStock = await pb
+          .collection<AnimeStockRecord>("anistock_stock")
+          .getFullList({
+            filter: `anime = "${initialStock.id}"`,
+            sort: "-created",
+            perPage: 1,
+            requestKey: `latest-${ongoingAnime.mal_id}`,
+          });
+
+        // If the latest stock price is the same as the last entry, skip creating a new entry
+        if (
+          latestStock.length > 0 &&
+          latestStock[0].stock_price ===
+            Math.round(latestPriceData.currentPrice * 100) / 100
+        ) {
+          // Create a new stock entry given the current pricing
+          console.log(
+            `-- Creating new stock price entry for ${ongoingAnime.title}-${ongoingAnime.mal_id} at $${latestPriceData.currentPrice}`
+          );
+          await pb.collection<AnimeStockRecord>("anistock_stock").create({
+            anime: initialStock.id ?? "unknown anime",
+            popularity: ongoingAnime.popularity,
+            members: ongoingAnime.members,
+            favorites: ongoingAnime.favorites,
+            score: ongoingAnime.score ?? 0,
+            rank: ongoingAnime.rank,
+            stock_price: Math.round(latestPriceData.currentPrice * 100) / 100,
+            hype_score: hypeScore,
+            performance_score: 0, // To be calculated later1,
+          });
+        }
       }
     }
   } catch (err) {
