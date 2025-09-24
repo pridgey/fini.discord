@@ -236,11 +236,12 @@ export const getOngoingAnimeStockData = async () => {
             requestKey: `latest-${ongoingAnime.mal_id}`,
           });
 
+        const newPrice = Math.round(latestPriceData.currentPrice * 100) / 100;
+
         // If the latest stock price is the same as the last entry, skip creating a new entry
         if (
-          latestStock.length > 0 &&
-          latestStock[0].stock_price ===
-            Math.round(latestPriceData.currentPrice * 100) / 100
+          latestStock.length === 0 ||
+          latestStock[0].stock_price !== newPrice
         ) {
           // Create a new stock entry given the current pricing
           console.log(
