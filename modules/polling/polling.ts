@@ -8,18 +8,19 @@ import OpenAI from "openai";
 import Replicate from "replicate";
 import { splitBigString } from "../../utilities/splitBigString";
 import { find } from "geo-tz";
-import { fetchJobPostings } from "./jobSearch";
 import {
   getOngoingAnimeStockData,
   getUpcomingStockData,
 } from "../finistocks/stockData";
 import { ClientResponseError } from "pocketbase";
+import { checkMonitoredServices } from "./monitoring";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
   checkWeatherReports(cl);
   pollUpcomingAnime();
   pollCurrentAnime();
+  checkMonitoredServices(cl);
   // checkJobs(cl);
   // checkHealthPings(cl);
 };
@@ -134,9 +135,12 @@ const checkReminders = async (cl: Client) => {
       reminder.channel_id
     )) as TextChannel;
 
+    // Original reminder date
+    const reminderDate = new Date(reminder.created!).toLocaleDateString();
+
     // Send the reminder
     await channel.send(
-      `<@${reminder.user_id}>, here is your reminder: ${reminder.reminder_text}`
+      `${reminder.original_message}\n<@${reminder.user_id}>, here is your reminder: ${reminder.reminder_text}`
     );
 
     // Delete the reminder

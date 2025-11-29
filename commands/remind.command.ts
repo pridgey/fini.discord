@@ -87,6 +87,9 @@ export const execute = async (
       timeToRemind = add(now, timeObject);
     }
 
+    // Message link
+    const originalMessageLink = `https://discord.com/channels/${interaction.guildId}/${interaction.channelId}/${interaction.id}`;
+
     // Add reminder to database
     await pb.collection<ReminderRecord>("reminder").create({
       channel_id: interaction.channelId,
@@ -94,6 +97,7 @@ export const execute = async (
       server_id: interaction.guildId || "",
       time: timeToRemind.toISOString(),
       user_id: interaction.user.id,
+      original_message: originalMessageLink,
     } as ReminderRecord);
 
     // Reply to user

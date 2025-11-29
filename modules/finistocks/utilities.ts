@@ -1,3 +1,6 @@
+import { pb } from "../../utilities/pocketbase";
+import { AnimeRecord, AnimeStockRecord } from "./stockData";
+
 // Weight factors for initial pricing
 const POPULARITY_WEIGHT = 0.4;
 const MEMBERS_WEIGHT = 0.4;
@@ -105,4 +108,86 @@ export const getVolatilityRating = (
   if (volatility < 0.4) return "medium";
   if (volatility < 0.6) return "high";
   return "extreme";
+};
+
+/**
+ * Queries the anime database for a specific anime or all anime if no query is provided
+ * @param query The query string to search for
+ * @returns A list of anime matching the query
+ */
+export const queryAnime = async (query?: string) => {
+  // If no query, return all anime
+  if (!query) {
+    try {
+      const allAnime = await pb
+        .collection<AnimeRecord>("anistock_anime")
+        .getFullList({
+          perPage: 10,
+          sort: "-created",
+        });
+
+      console.log("Queried all anime:", JSON.stringify(allAnime, null, 2));
+      return allAnime;
+    } catch (error) {
+      console.error("Error querying all anime:", error);
+      return [];
+    }
+  }
+
+  // First query anime by id
+  try {
+    const animeById = await pb
+      .collection<AnimeRecord>("anistock_anime")
+      .getFullList({
+        filter: `id = "${query}"`,
+      });
+
+    if (animeById.length > 0) {
+      console.log("Queried anime by id:", JSON.stringify(animeById, null, 2));
+      return animeById;
+    }
+  } catch (error) {
+    console.error("Error querying anime by id:", error);
+  }
+
+  // If no results, query by title
+  try {
+    const animeByTitle = await pb
+      .collection<AnimeRecord>("anistock_anime")
+      .getFullList({
+        filter: `title ~ "${query}"`,
+      });
+
+    if (animeByTitle.length > 0) {
+      console.log(
+        "Queried anime by title:",
+        JSON.stringify(animeByTitle, null, 2)
+      );
+      return animeByTitle;
+    }
+  } catch (error) {
+    console.error("Error querying anime by title:", error);
+  }
+
+  // If no results, query by mal_id
+  try {
+    const animeByMalId = await pb
+      .collection<AnimeRecord>("anistock_anime")
+      .getFullList({
+        filter: `mal_id = ${Number(query)}`,
+      });
+
+    if (animeByMalId.length > 0) {
+      console.log(
+        "Queried anime by mal_id:",
+        JSON.stringify(animeByMalId, null, 2)
+      );
+      return animeByMalId;
+    }
+  } catch (error) {
+    console.error("Error querying anime by mal_id:", error);
+  }
+
+  // If no results, return an empty array
+  return [];
 };

@@ -42,6 +42,8 @@ export type ReminderRecord = {
   user_id: string;
   channel_id: string;
   reminder_text: string;
+  original_message: string;
+  created?: string;
 };
 
 export type TtsRecord = {
@@ -136,5 +138,25 @@ export type CardSuggestionRecord = {
   id?: string;
   name: string;
   description: string;
+  identifier: string;
+};
+
+export type MonitorRecord = {
+  id?: string;
+  name: string;
+  ip: string;
+  port: number;
+  server_id: string;
+  user_id: string;
+  identifier: string;
+  healthy: boolean;
+  frequency: number;
+  failing_since: string;
+};
+
+export type ConfigRecord = {
+  id?: string;
+  server_id: string;
+  bot_channel: string;
   identifier: string;
 };
