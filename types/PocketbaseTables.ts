@@ -145,7 +145,6 @@ export type MonitorRecord = {
   id?: string;
   name: string;
   ip: string;
-  port: number;
   server_id: string;
   user_id: string;
   identifier: string;

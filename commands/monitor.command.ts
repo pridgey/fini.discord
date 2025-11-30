@@ -25,14 +25,8 @@ export const data = new SlashCommandBuilder()
       .setDescription("Interval in minutes to check the service")
       .setRequired(true)
       .setChoices(
-        [1, 5, 15, 30, 60].map((i) => ({ name: `${i} minutes`, value: i }))
+        [5, 15, 30, 60].map((i) => ({ name: `${i} minutes`, value: i }))
       )
-  )
-  .addNumberOption((option) =>
-    option
-      .setName("port")
-      .setDescription("Port number of the service or website to monitor")
-      .setRequired(false)
   );
 
 export const execute = async (
@@ -41,7 +35,6 @@ export const execute = async (
 ) => {
   const name = interaction.options.get("name")?.value?.toString() || "";
   const ip = interaction.options.get("ip")?.value?.toString() || "";
-  const port = interaction.options.get("port")?.value as number;
   const interval = interaction.options.get("interval")?.value as number;
 
   if (!name || !ip || !interval) {
@@ -54,13 +47,58 @@ export const execute = async (
   // Defer reply
   await interaction.deferReply();
 
+  // Check if the monitor already exists for this and server
+  const existingMonitors = await pb
+    .collection<MonitorRecord>("monitoring")
+    .getFullList({
+      filter: `name = "${name}" && server_id = "${interaction.guild?.id}"`,
+    });
+
+  if (existingMonitors.length > 0) {
+    // Monitor exists, if it is this user's monitor, edit it, otherwise return error
+    const monitor = existingMonitors[0];
+    if (monitor.user_id === interaction.user.id) {
+      if (ip !== monitor.ip || interval !== monitor.frequency) {
+        // Update monitor
+        await pb
+          .collection<MonitorRecord>("monitoring")
+          .update(monitor.id || "", {
+            ip,
+            interval,
+            frequency: interval,
+          });
+
+        await interaction.editReply(
+          `Monitor with the name ${name} updated successfully.`
+        );
+        logCommand();
+
+        return;
+      } else {
+        // No changes made
+        await interaction.editReply(
+          `You already have a monitor with the name ${name} and no changes were made.`
+        );
+        logCommand();
+
+        return;
+      }
+    } else {
+      // Different user's monitor with same name
+      await interaction.editReply(
+        `A monitor with the name ${name} already exists. Please choose a different name.`
+      );
+      logCommand();
+
+      return;
+    }
+  }
+
   // Ping the service or website to make sure it's reachable
-  const initialServiceCheck = await checkServiceStatus({ ip, port });
+  const initialServiceCheck = await checkServiceStatus({ ip });
   if (!initialServiceCheck) {
     interaction.editReply(
-      `The service at ${ip}${
-        port ? `:${port}` : ""
-      } is not reachable. Please check the IP and port and try again.`
+      `The service at ${ip} is not reachable. Please check the IP / URL and try again.`
     );
     return;
   }
@@ -69,7 +107,6 @@ export const execute = async (
   await pb.collection<MonitorRecord>("monitoring").create({
     name,
     ip,
-    port,
     interval,
     frequency: interval,
     healthy: true,
@@ -83,9 +120,7 @@ export const execute = async (
 
   // Monitor added successfully
   interaction.editReply(
-    `Successfully added monitor for ${name} at ${ip}${
-      port ? `:${port}` : ""
-    } with an interval of ${interval} minutes.`
+    `Successfully added monitor for ${name} at ${ip} with an interval of ${interval} minutes.`
   );
 
   logCommand();

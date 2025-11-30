@@ -7,27 +7,43 @@ import { pb } from "../../utilities/pocketbase";
  * Utility function to check the status of a single monitored service
  */
 export const checkServiceStatus = async (
-  service: Pick<MonitorRecord, "ip" | "port">
+  service: Pick<MonitorRecord, "ip">
 ) => {
   const httpIncluded =
     service.ip.startsWith("http://") || service.ip.startsWith("https://");
-  const portIncluded = service.port !== undefined && service.port !== null;
+
+  console.log("Debug - checking service status for:", service);
 
   // Check service status
   try {
-    const serviceResponse = await fetch(
-      `${httpIncluded ? "" : "http://"}${service.ip}${
-        portIncluded ? `:${service.port}` : ""
-      }`,
-      { method: "HEAD" }
-    );
-    if (serviceResponse.ok) {
+    // Construct timeout for fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const url = httpIncluded ? service.ip : `http://${service.ip}`;
+
+    console.log("Debug - constructed URL:", url);
+
+    const serviceResponse = await fetch(url, {
+      method: "GET",
+      signal: controller.signal,
+      redirect: "follow",
+      // Bun-specific: disable connection reuse
+      keepalive: false,
+    });
+
+    clearTimeout(timeoutId);
+
+    console.log("Debug - service response status:", serviceResponse.status);
+
+    if (serviceResponse.status >= 200 && serviceResponse.status < 400) {
       return true;
     } else {
       return false;
     }
   } catch (error) {
     // Handle error if needed
+    console.log("Debug - error checking service status:", error);
     return false;
   }
 };
@@ -50,8 +66,7 @@ export const checkMonitoredServices = async (cl: Client) => {
   // Filter services that need to be checked at this minute
   const filteredServices = monitoredServices.filter(
     (service) =>
-      service.frequency === minute || // Interval equals current minute
-      service.frequency === 1 || // Interval is every minute
+      minute % service.frequency === 0 || // Interval equals current minute
       (service.frequency === 60 && minute === 0) // Interval is every hour
   );
 

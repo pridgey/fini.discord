@@ -23,50 +23,70 @@ export const execute = async (
   const name = interaction.options.get("name")?.value?.toString();
 
   try {
+    await interaction.deferReply();
+
     if (!!name) {
       // Check specific monitored service
-      const response = await pb
+      const results = await pb
         .collection<MonitorRecord>("monitoring")
-        .getFirstListItem(
-          `name = "${name}" && (server_id = "All" || server_id = "${interaction.guildId}")`
+        .getFullList({
+          filter: `name = "${name}" && (server_id = "All" || server_id = "${interaction.guildId}")`,
+        });
+
+      const response = results.at(0);
+
+      if (!response || !response.id) {
+        await interaction.editReply(
+          `No monitored service found with the name _'${name}'_ for this server.`
         );
+        return;
+      }
 
-      if (response) {
-        if (!response.healthy) {
-          // Service is marked as unhealthy - Report the failure
-          const failingSinceDate = new Date(response.failing_since || "");
-          await interaction.reply(
-            `The monitored service _'${response.name}'_ (${response.ip}${
-              response.port ? `:${response.port}` : ""
-            }) is currently :red_square: **DOWN**. It has been marked as unhealthy since ${failingSinceDate.toLocaleString()}.`
-          );
-          return;
-        } else {
-          // DB says it's healthy, but let's double-check
-          const serviceResponse = await checkServiceStatus(response);
+      // Ping the service to get immediate status
+      const immediateCheck = await checkServiceStatus(response);
 
-          if (serviceResponse) {
-            await interaction.reply(
-              `The monitored service _'${response.name}'_ is currently :green_circle: **UP**.`
-            );
-          } else {
-            await interaction.reply(
-              `The monitored service _'${response.name}'_ (${response.ip}${
-                response.port ? `:${response.port}` : ""
-              }) is currently :red_square: **DOWN**.`
-            );
-          }
-          return;
-        }
-      } else {
-        // Couldn't find the specific monitored service
-        await interaction.reply(
-          `I couldn't find any monitored service matching: _'${name}'_`
+      if (!response.healthy && !immediateCheck) {
+        // Service is marked as unhealthy and immediate check also failed
+        const failingSinceDate = new Date(response.failing_since || "");
+        await interaction.editReply(
+          `The monitored service _'${response.name}'_ (${
+            response.ip
+          }) is currently :red_square: **DOWN**. It has been marked as unhealthy since ${failingSinceDate.toLocaleString()}.`
+        );
+        return;
+      } else if (!response.healthy && immediateCheck) {
+        // DB says it's unhealthy, but immediate check says it's up - update DB
+        await pb
+          .collection<MonitorRecord>("monitoring")
+          .update(response.id || "", {
+            healthy: true,
+            failing_since: null,
+          });
+        await interaction.editReply(
+          `The monitored service _'${response.name}'_ is currently :green_circle: **UP**.`
+        );
+        return;
+      } else if (response.healthy && !immediateCheck) {
+        // DB says it's healthy, but immediate check says it's down - update DB
+        await pb
+          .collection<MonitorRecord>("monitoring")
+          .update(response.id || "", {
+            healthy: false,
+            failing_since: new Date().toISOString(),
+          });
+        await interaction.editReply(
+          `The monitored service _'${response.name}'_ is currently :red_square: **DOWN**.`
+        );
+        return;
+      } else if (response.healthy && immediateCheck) {
+        // Both say it's healthy
+        await interaction.editReply(
+          `The monitored service _'${response.name}'_ is currently :green_circle: **UP**.`
         );
         return;
       }
     } else {
-      // List all monitored services for the server
+      // No specific service name provided, list all monitored services for the server
       const response = await pb
         .collection<MonitorRecord>("monitoring")
         .getFullList({
@@ -74,7 +94,7 @@ export const execute = async (
         });
 
       if (response.length === 0) {
-        await interaction.reply(
+        await interaction.editReply(
           `There are no monitored services for this server.`
         );
         return;
@@ -83,19 +103,17 @@ export const execute = async (
       // Don't want to run a lot of pings, so just report the DB statuses
       let replyMessage = `Monitored services for this server:\n`;
       for (const monitor of response) {
-        replyMessage += `- _'${monitor.name}'_ (${monitor.ip}${
-          monitor.port ? `:${monitor.port}` : ""
-        }): **${
+        replyMessage += `- _'${monitor.name}'_ (${monitor.ip}): **${
           monitor.healthy ? ":green_circle: UP" : ":red_square: DOWN"
         }**\n`;
       }
-      await interaction.reply(replyMessage);
+      await interaction.editReply(replyMessage);
     }
 
     logCommand();
   } catch (error) {
     console.error("Error in monitor-check command:", error);
-    await interaction.reply(
+    await interaction.editReply(
       `There was an error while checking the monitored service(s). Please try again later.`
     );
   }
