@@ -1,4 +1,5 @@
 import {
+  ChannelType,
   ChatInputCommandInteraction,
   Client,
   GatewayIntentBits,
@@ -9,12 +10,16 @@ import { rewardCoin } from "./modules/finicoin/reward";
 import { createLog } from "./modules/logger";
 import { chatWithUser_OpenAI } from "./modules/openai";
 import { runPollTasks } from "./modules/polling";
-import { getCommandFiles } from "./utilities/commandFiles/getCommandFiles";
+import { getCommandFiles } from "./utilities/interactionFiles/getInteractionFiles";
 import { splitBigString } from "./utilities/splitBigString";
 const { exec } = require("child_process");
 import { exists, readFile, writeFile } from "fs/promises";
 import { initializeServerBank } from "./modules/finicoin/initialize";
 import { chatWithUser_Llama } from "./modules/llama/converse";
+import {
+  handleButtonInteraction,
+  loadButtonHandlers,
+} from "./buttons/buttonHandler";
 
 // Initialize client and announce intents
 const client = new Client({
@@ -32,6 +37,9 @@ let pollingInterval;
 // WE READY
 client.once("ready", async (cl) => {
   console.log("Connected");
+
+  // Load button files for handling
+  await loadButtonHandlers();
 
   // Initialize connected guilds to ensure they have the proper bank records
   for (const guild of cl.guilds.cache.values()) {
@@ -93,6 +101,12 @@ client.on("messageReactionAdd", async (reaction, user) => {
 client.on("messageCreate", async (message: Message) => {
   // We don't care about bots. Sad but true.
   if (message.author.bot) return;
+  // If this isn't a text-based channel, ignore
+  if (
+    !message.channel.isTextBased() ||
+    message.channel.type === ChannelType.GroupDM
+  )
+    return;
 
   // Lowercase makes comparisons way easier
   const messageText = message.content;
@@ -111,12 +125,14 @@ client.on("messageCreate", async (message: Message) => {
 
   // Fini chat
   if (messageTextLower.startsWith("hey fini")) {
+    const channel = message.channel;
+
     // Send temporary typing message, loop until we are done
     const typingLoop = setInterval(() => {
-      message.channel.sendTyping();
+      channel.sendTyping();
     }, 1000 * 11);
 
-    await message.channel.sendTyping();
+    await channel.sendTyping();
 
     // Grab any attachments if they exist
     const allAttachments = message.attachments;
@@ -151,12 +167,14 @@ client.on("messageCreate", async (message: Message) => {
     // Send replies
     replyArray.forEach(async (str) => await message.reply(str));
   } else if (messageTextLower.startsWith("hey ollama")) {
+    const channel = message.channel;
+
     // Send temporary typing message, loop until we are done
     const typingLoop = setInterval(() => {
-      message.channel.sendTyping();
+      channel.sendTyping();
     }, 1000 * 11);
 
-    await message.channel.sendTyping();
+    await channel.sendTyping();
 
     // Grab any attachments if they exist
     const allAttachments = message.attachments;
@@ -205,55 +223,63 @@ client.on("interactionCreate", async (interaction) => {
     isButton: interaction.isButton(),
   });
 
-  // Ignore if not a command
-  if (!interaction.isCommand()) return;
+  // Handle slash commands
+  if (interaction.isChatInputCommand()) {
+    if (!interaction.channel?.isTextBased()) return;
+    if (interaction.channel?.type === ChannelType.GroupDM) return;
 
-  // Display warning if not on main branch
-  exec("git rev-parse --abbrev-ref HEAD", (err, stdout) => {
-    if (err) {
-      console.error("Error occurred while showing git warning:", err);
-    }
-    if (typeof stdout === "string" && stdout.trim() !== "main") {
-      interaction.channel?.send(
-        "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*"
+    const channel = interaction.channel;
+
+    // Display warning if not on main branch
+    exec("git rev-parse --abbrev-ref HEAD", (err, stdout) => {
+      if (err) {
+        console.error("Error occurred while showing git warning:", err);
+      }
+      if (typeof stdout === "string" && stdout.trim() !== "main") {
+        channel?.send(
+          "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*"
+        );
+      }
+    });
+
+    try {
+      // Get the commands name
+      const { importedFiles: commands } = await getCommandFiles();
+      const commandToRun = commands.find(
+        (c) => c.data.name === interaction.commandName
       );
-    }
-  });
+      // Exit early if we can't find the command to run
+      if (!commandToRun) return;
 
-  try {
-    // Get the commands name
-    const { importedFiles: commands } = await getCommandFiles();
-    const commandToRun = commands.find(
-      (c) => c.data.name === interaction.commandName
-    );
-    // Exit early if we can't find the command to run
-    if (!commandToRun) return;
+      console.log("Pre-Execute", commandToRun);
 
-    console.log("Pre-Execute", commandToRun);
-
-    // Execute the command
-    await commandToRun.execute(interaction, async () => {
-      createLog({
-        command: `/${commandToRun.data.name}`,
-        input: `Command options:\n${commandToRun.data.options
-          .map((o) => {
-            const optionName = o.name;
-            const optionValue = interaction.options.get(optionName)?.value;
-            return `${optionName}: ${optionValue}`;
-          })
-          .join(",\n")}`,
-        output: (await interaction.fetchReply()).content,
-        server_id: interaction.guild?.id || "unknown",
-        user_id: interaction.user.id,
+      // Execute the command
+      await commandToRun.execute(interaction, async () => {
+        createLog({
+          command: `/${commandToRun.data.name}`,
+          input: `Command options:\n${commandToRun.data.options
+            .map((o) => {
+              const optionName = o.name;
+              const optionValue = interaction.options.get(optionName)?.value;
+              return `${optionName}: ${optionValue}`;
+            })
+            .join(",\n")}`,
+          output: (await interaction.fetchReply()).content,
+          server_id: interaction.guild?.id || "unknown",
+          user_id: interaction.user.id,
+        });
       });
-    });
-  } catch (err) {
-    const error: Error = err as Error;
-    console.error("Error running interaction:", { error });
-    await interaction.reply({
-      content: `I fucked up D:\n${error.message}`,
-      ephemeral: true,
-    });
+    } catch (err) {
+      const error: Error = err as Error;
+      console.error("Error running interaction:", { error });
+      await interaction.reply({
+        content: `I fucked up D:\n${error.message}`,
+        ephemeral: true,
+      });
+    }
+  } else if (interaction.isButton()) {
+    // Handle button interactions
+    await handleButtonInteraction(interaction);
   }
 });
 

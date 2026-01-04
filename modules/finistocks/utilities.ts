@@ -132,62 +132,74 @@ export const queryAnime = async (query?: string) => {
       console.error("Error querying all anime:", error);
       return [];
     }
-  }
+  } else {
+    // Determine if query is just number shaped
+    const isNumberQuery = /^\d+$/.test(query);
 
-  // First query anime by id
-  try {
-    const animeById = await pb
-      .collection<AnimeRecord>("anistock_anime")
-      .getFullList({
-        filter: `id = "${query}"`,
-      });
+    if (isNumberQuery) {
+      // Query by mal_id
+      try {
+        const animeByMalId = await pb
+          .collection<AnimeRecord>("anistock_anime")
+          .getFullList({
+            filter: `mal_id = ${Number(query)}`,
+          });
 
-    if (animeById.length > 0) {
-      console.log("Queried anime by id:", JSON.stringify(animeById, null, 2));
-      return animeById;
+        if (animeByMalId.length > 0) {
+          console.log(
+            "Queried anime by mal_id:",
+            JSON.stringify(animeByMalId, null, 2)
+          );
+          return animeByMalId;
+        }
+      } catch (error) {
+        console.error("Error querying anime by mal_id:", error);
+      }
+    } else {
+      // Not number shaped, query by title
+      try {
+        const animeByTitle = await pb
+          .collection<AnimeRecord>("anistock_anime")
+          .getFullList({
+            filter: query
+              .split(/\s+/)
+              .map((w) => `title ~ "${w}"`)
+              .join(" || "),
+          });
+
+        if (animeByTitle.length > 0) {
+          console.log(
+            "Queried anime by title:",
+            JSON.stringify(animeByTitle, null, 2)
+          );
+          return animeByTitle;
+        }
+      } catch (error) {
+        console.error("Error querying anime by title:", error);
+      }
+
+      // If no results by title, try querying by database id
+      try {
+        const animeById = await pb
+          .collection<AnimeRecord>("anistock_anime")
+          .getFullList({
+            filter: `id = "${query}"`,
+          });
+
+        if (animeById.length > 0) {
+          console.log(
+            "Queried anime by id:",
+            JSON.stringify(animeById, null, 2)
+          );
+          return animeById;
+        }
+      } catch (error) {
+        console.error("Error querying anime by id:", error);
+      }
     }
-  } catch (error) {
-    console.error("Error querying anime by id:", error);
+
+    // If no results, return an empty array
+    console.log("No anime found for query:", query);
+    return [];
   }
-
-  // If no results, query by title
-  try {
-    const animeByTitle = await pb
-      .collection<AnimeRecord>("anistock_anime")
-      .getFullList({
-        filter: `title ~ "${query}"`,
-      });
-
-    if (animeByTitle.length > 0) {
-      console.log(
-        "Queried anime by title:",
-        JSON.stringify(animeByTitle, null, 2)
-      );
-      return animeByTitle;
-    }
-  } catch (error) {
-    console.error("Error querying anime by title:", error);
-  }
-
-  // If no results, query by mal_id
-  try {
-    const animeByMalId = await pb
-      .collection<AnimeRecord>("anistock_anime")
-      .getFullList({
-        filter: `mal_id = ${Number(query)}`,
-      });
-
-    if (animeByMalId.length > 0) {
-      console.log(
-        "Queried anime by mal_id:",
-        JSON.stringify(animeByMalId, null, 2)
-      );
-      return animeByMalId;
-    }
-  } catch (error) {
-    console.error("Error querying anime by mal_id:", error);
-  }
-
-  // If no results, return an empty array
-  return [];
 };
