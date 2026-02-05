@@ -8,18 +8,23 @@ export const data = new SlashCommandBuilder()
 
 export const execute = async (
   interaction: CommandInteraction,
-  logCommand: () => void
+  logCommand: () => void,
 ) => {
   try {
     await clearHistory(
       interaction.user.id,
       interaction.guildId ?? "unknown",
-      "openai"
+      "openai",
     );
     await clearHistory(
       interaction.user.id,
       interaction.guildId ?? "unknown",
-      "ollama"
+      "anthropic",
+    );
+    await clearHistory(
+      interaction.user.id,
+      interaction.guildId ?? "unknown",
+      "ollama",
     );
 
     await interaction.reply("Your chat history has been cleared.");

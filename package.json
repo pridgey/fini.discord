@@ -17,6 +17,7 @@
   "author": "Taylor Pridgen",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
     "@blockzilla101/citation": "^1.3.0",
     "@discordjs/builders": "latest",
     "@discordjs/rest": "^0.2.0-canary.0",

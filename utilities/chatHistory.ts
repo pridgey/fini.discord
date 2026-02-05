@@ -1,3 +1,4 @@
+import { Anthropic } from "@anthropic-ai/sdk/client";
 import { ChatRecord } from "../types/PocketbaseTables";
 import { pb } from "./pocketbase";
 
@@ -13,7 +14,7 @@ const MAX_HISTORY = 50;
 export const getHistory = async (
   userID: string,
   guildID: string,
-  chatType: string
+  chatType: string,
 ) => {
   // Grab the user history
   const userHistory = await pb.collection<ChatRecord>("chat").getFullList({
@@ -36,14 +37,14 @@ export const addHistory = async (chatRecord: ChatRecord) => {
   const userHistory = await getHistory(
     chatRecord.user_id,
     chatRecord.server_id,
-    chatRecord.chatType
+    chatRecord.chatType,
   );
 
   // Keep history length under specified number, beginning from the top
   if (userHistory.length > MAX_HISTORY) {
     const recordsToDelete = userHistory.slice(
       0,
-      userHistory.length - MAX_HISTORY
+      userHistory.length - MAX_HISTORY,
     );
 
     for (const record of recordsToDelete) {
@@ -63,15 +64,20 @@ export const addHistory = async (chatRecord: ChatRecord) => {
 export const clearHistory = async (
   userID: string,
   guildID: string,
-  chatType: string
+  chatType: string,
 ) => {
   // Get all records
   const userHistory = await getHistory(userID, guildID, chatType);
+
+  const anthropic = new Anthropic();
 
   // Delete all of them
   for (const record of userHistory) {
     if (!!record.id) {
       await pb.collection<ChatRecord>("chat").delete(record.id ?? "");
+    }
+    if (record.attachment) {
+      await anthropic.beta.files.delete(record.attachment);
     }
   }
 };

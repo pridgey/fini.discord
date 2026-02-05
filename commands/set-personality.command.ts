@@ -1,8 +1,8 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { PersonalitiesRecord } from "../types/PocketbaseTables";
-import { pb } from "../utilities/pocketbase";
 import { clearHistory } from "../utilities/chatHistory";
+import { pb } from "../utilities/pocketbase";
 
 export const data = new SlashCommandBuilder()
   .setName("set-personality")
@@ -11,23 +11,23 @@ export const data = new SlashCommandBuilder()
     option
       .setName("name")
       .setDescription("The name of the personality you want Fini to have.")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addBooleanOption((option) =>
     option
       .setName("clear")
       .setDescription("Clear your chat history")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const personalityName =
     interaction.options.get("name")?.value?.toString() || "";
   const clearChat: boolean = Boolean(
-    interaction.options.get("clear")?.value?.toString() || false
+    interaction.options.get("clear")?.value?.toString() || false,
   );
 
   if (!personalityName.length) {
@@ -48,7 +48,7 @@ export const execute = async (
 
       // The found personality
       const foundPersonality = allPersonalities.find(
-        (ap) => ap.personality_name === personalityName
+        (ap) => ap.personality_name === personalityName,
       );
 
       if (
@@ -79,19 +79,26 @@ export const execute = async (
           await clearHistory(
             interaction.user.id,
             interaction.guild?.id ?? "",
-            "openai"
+            "openai",
+          );
+          await clearHistory(
+            interaction.user.id,
+            interaction.guild?.id ?? "",
+            "anthropic",
           );
         }
 
         await interaction.reply(
-          `Active personality set to ${personalityName}.`
+          `Active personality set to ${personalityName}. ${
+            clearChat ? "(Chat history cleared)" : ""
+          }`,
         );
 
         logCommand();
       } else {
         // Personality not found
         await interaction.reply(
-          `Cannot find a personality with the name ${personalityName}.`
+          `Cannot find a personality with the name ${personalityName}.`,
         );
 
         logCommand();

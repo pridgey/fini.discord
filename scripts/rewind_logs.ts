@@ -4,6 +4,12 @@ import { writeFile } from "fs/promises";
 import { format } from "date-fns";
 
 const YEAR = 2024;
+const SERVER_DICTIONARY = {
+  gekin: "813622219569758258",
+  lorgf: "1313711612527513680",
+};
+const SERVER_CHOICE = "gekin";
+const SERVER = SERVER_DICTIONARY[SERVER_CHOICE];
 
 const userIdMap = {
   "255016605191241729": "Pridgey",
@@ -14,15 +20,29 @@ const userIdMap = {
   "437713378455191564": "Lawwy",
   "306290472240939008": "Lucky",
   "1260813127973470238": "Pridgey",
+  "96521824984129536": "Airwolf",
+  "780953872289628160": "BreitIdea",
+  "197190972487106560": "IcarusFountain",
+  "807457299152371732": "Noche20",
+  "604123133032660992": "SuzuStudios",
+  "515983662995472385": "AyaHimura",
+  "708078885375442964": "Bliss",
+  "690401216102006794": "CharlesStJohn",
+  "916889223020285952": "HurriKat7",
+  "1138921518949212270": "JazzyEngineer",
+  "637696484896145408": "RiddleMeTriscuits",
+  "584062039383736339": "SalemScout",
+  "468590988169052171": "Sleit",
+  "189543182231404545": "Tabby",
 };
 
 const getData = async () => {
-  console.log(`Running for ${YEAR}`);
+  console.log(`Running for ${YEAR} and server ${SERVER_CHOICE}...`);
 
   const data = await pb.collection<LogRecord>("log").getFullList({
     filter: `created > ${YEAR - 1} && created < ${
       YEAR + 1
-    } && server_id = "813622219569758258"`,
+    } && server_id = "${SERVER}"`,
   });
 
   console.log(`Query returned ${data.length} records.`);
@@ -53,8 +73,10 @@ const getData = async () => {
 
     console.log("Creating CSV File...");
 
-    await writeFile(`rewind-${YEAR}.csv`, fileData);
-    console.log(`File 'rewind-${YEAR}.csv' created. Job complete.`);
+    await writeFile(`rewind-${YEAR}-${SERVER_CHOICE}.csv`, fileData);
+    console.log(
+      `File 'rewind-${YEAR}-${SERVER_CHOICE}.csv' created. Job complete.`
+    );
   }
 };
 

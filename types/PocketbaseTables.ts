@@ -13,6 +13,7 @@ export type ChatRecord = {
   author: "bot" | "user";
   chatType: string;
   server_id: string;
+  attachment?: any;
 };
 
 export type HammerspaceRecord = {

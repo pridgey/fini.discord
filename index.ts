@@ -20,6 +20,7 @@ import {
   handleButtonInteraction,
   loadButtonHandlers,
 } from "./buttons/buttonHandler";
+import { converseWithAI } from "./modules/aiChat/aiChat";
 
 // Initialize client and announce intents
 const client = new Client({
@@ -35,7 +36,7 @@ const client = new Client({
 let pollingInterval;
 
 // WE READY
-client.once("ready", async (cl) => {
+client.once("clientReady", async (cl) => {
   console.log("Connected");
 
   // Load button files for handling
@@ -78,7 +79,7 @@ client.once("ready", async (cl) => {
               index === 0
                 ? `**${new Date().toLocaleDateString()} Update:**\r\n`
                 : ""
-            }${s}`
+            }${s}`,
           );
         });
       });
@@ -135,19 +136,27 @@ client.on("messageCreate", async (message: Message) => {
     await channel.sendTyping();
 
     // Grab any attachments if they exist
-    const allAttachments = message.attachments;
-    const attachment = message.attachments.at(0)?.url;
+    // const allAttachments = message.attachments; // TODO: Implement multiple attachments
 
-    let response;
+    let response: string;
     let command = "hey fini";
 
+    // New AI Conversion logic
+    response = await converseWithAI({
+      user: messageUser,
+      message: messageText.replace(command, ""),
+      server: message.guildId ?? "unknown",
+      attachment: message.attachments.at(0),
+    });
+
+    // DEPRECATED
     // Open AI Text
-    response = await chatWithUser_OpenAI(
-      messageUser,
-      messageText.replace(command, ""),
-      message.guildId ?? "unknown",
-      attachment
-    );
+    // response = await chatWithUser_OpenAI(
+    //   messageUser,
+    //   messageText.replace(command, ""),
+    //   message.guildId ?? "unknown",
+    //   attachment,
+    // );
 
     // Log hey fini interaction
     await createLog({
@@ -187,7 +196,7 @@ client.on("messageCreate", async (message: Message) => {
       messageUser,
       messageText.replace(command, ""),
       message.guildId ?? "unknown",
-      allAttachments
+      allAttachments,
     );
 
     // Log hey fini interaction
@@ -237,7 +246,7 @@ client.on("interactionCreate", async (interaction) => {
       }
       if (typeof stdout === "string" && stdout.trim() !== "main") {
         channel?.send(
-          "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*"
+          "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*",
         );
       }
     });
@@ -246,7 +255,7 @@ client.on("interactionCreate", async (interaction) => {
       // Get the commands name
       const { importedFiles: commands } = await getCommandFiles();
       const commandToRun = commands.find(
-        (c) => c.data.name === interaction.commandName
+        (c) => c.data.name === interaction.commandName,
       );
       // Exit early if we can't find the command to run
       if (!commandToRun) return;
