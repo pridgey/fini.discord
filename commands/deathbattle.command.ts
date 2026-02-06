@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { chatWithUser_OpenAI } from "./../modules/openai/converse";
+import { converseWithAI } from "../modules/aiChat/aiChat";
 
 export const data = new SlashCommandBuilder()
   .setName("deathbattle")
@@ -9,18 +10,18 @@ export const data = new SlashCommandBuilder()
     option
       .setName("character-a")
       .setDescription("The first fighter")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("character-b")
       .setDescription("The second fighter")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const fighterA =
     interaction.options.get("character-a")?.value?.toString() || "";
@@ -48,11 +49,17 @@ export const execute = async (
 
   await interaction.deferReply();
 
-  const response = await chatWithUser_OpenAI(
-    interaction.user.username,
-    prompt,
-    interaction.guild?.id ?? "unknown server id"
-  );
+  const response = await converseWithAI({
+    userID: interaction.user.id,
+    message: prompt,
+    server: interaction.guild?.id ?? "unknown server id",
+  });
+
+  // const response = await chatWithUser_OpenAI(
+  //   interaction.user.username,
+  //   prompt,
+  //   interaction.guild?.id ?? "unknown server id"
+  // );
 
   await interaction.editReply(response);
   logCommand();

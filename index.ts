@@ -143,7 +143,7 @@ client.on("messageCreate", async (message: Message) => {
 
     // New AI Conversion logic
     response = await converseWithAI({
-      user: messageUser,
+      userID: messageUser,
       message: messageText.replace(command, ""),
       server: message.guildId ?? "unknown",
       attachment: message.attachments.at(0),

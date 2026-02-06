@@ -11,27 +11,27 @@ const MAX_CHAT_TOKENS = 2000;
 const CURRENT_MODEL: Model = "claude-sonnet-4-5-20250929";
 
 type AIConverseProps = {
-  user: string;
+  userID: string;
   message: string;
   server: string;
   attachment?: Attachment;
 };
 
 export const converseWithAI = async ({
-  user,
+  userID,
   message,
   server,
   attachment,
 }: AIConverseProps) => {
   try {
     console.group("Run chatWithUser()");
-    console.log("Initializing Chat", { user, message, server, attachment });
+    console.log("Initializing Chat", { userID, message, server, attachment });
 
     // Initialize the AI agent
     const anthropic = new Anthropic();
 
     // Retrieve the user chat history
-    const userHistory = await getChatHistory(user, server, "anthropic");
+    const userHistory = await getChatHistory(userID, server, "anthropic");
     console.log("Retrieved User History of length:", userHistory.length);
 
     // Format history for the AI
@@ -65,7 +65,7 @@ export const converseWithAI = async ({
     }
 
     // Find any personality the user would like us to use
-    const personalityPrompt = await determinePersonality(user, server);
+    const personalityPrompt = await determinePersonality(userID, server);
 
     // Append the current message to the history
     if (anthropicFileID) {
@@ -127,7 +127,7 @@ export const converseWithAI = async ({
         chatType: "anthropic",
         message: message,
         server_id: server,
-        user_id: user,
+        user_id: userID,
         attachment: anthropicFileID,
       },
       anthropic,
@@ -140,7 +140,7 @@ export const converseWithAI = async ({
         chatType: "anthropic",
         message: anthropicResponseText,
         server_id: server,
-        user_id: user,
+        user_id: userID,
       },
       anthropic,
     );

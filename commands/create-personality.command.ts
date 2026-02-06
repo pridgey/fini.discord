@@ -1,8 +1,12 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
-import { PersonalitiesRecord } from "../types/PocketbaseTables";
-import { pb } from "../utilities/pocketbase";
+import { ChatInputCommandInteraction } from "discord.js";
 import { clearHistory } from "../utilities/chatHistory";
+import { createNewPersonality } from "../modules/personalities/createPersonality";
+import { personalityExistsForUser } from "../modules/personalities/getPersonality";
+import { setPersonalityActive } from "../modules/personalities/setPersonalityActive";
+
+const MAX_PERSONALITY_PROMPT_LENGTH = 300;
+const MAX_PERSONALITY_NAME_LENGTH = 100;
 
 export const data = new SlashCommandBuilder()
   .setName("create-personality")
@@ -11,43 +15,41 @@ export const data = new SlashCommandBuilder()
     option
       .setName("name")
       .setDescription("The name of this personality.")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("prompt")
       .setDescription(
-        "The description of the personality. This will be insert before every prompt."
+        "The description of the personality. This will be insert before every prompt.",
       )
-      .setRequired(true)
+      .setRequired(true),
   )
   .addBooleanOption((option) =>
     option
       .setName("activate")
       .setDescription("Will see this personality as active immediately")
-      .setRequired(false)
+      .setRequired(false),
   )
   .addBooleanOption((option) =>
     option
       .setName("clear")
       .setDescription("Clear your chat history")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const personalityName =
     interaction.options.get("name")?.value?.toString() || "";
   const personalityPrompt =
     interaction.options.get("prompt")?.value?.toString() || "";
-  const setActiveNow: boolean = Boolean(
-    interaction.options.get("activate")?.value?.toString() || false
-  );
-  const clearChat: boolean = Boolean(
-    interaction.options.get("clear")?.value?.toString() || false
-  );
+  const setActiveNow: boolean =
+    interaction.options.get("activate")?.value === true;
+  const clearChat: boolean =
+    interaction.options.get("clear")?.value === true;
 
   if (!personalityName.length || !personalityPrompt.length) {
     // Input invalid
@@ -55,64 +57,54 @@ export const execute = async (
       content: "A personality needs both Name and Prompt.",
     });
     logCommand();
-  } else if (personalityPrompt.length > 1000 || personalityName.length > 100) {
+  } else if (
+    personalityPrompt.length > MAX_PERSONALITY_PROMPT_LENGTH ||
+    personalityName.length > MAX_PERSONALITY_NAME_LENGTH
+  ) {
     // Too long of a personality prompt
     await interaction.reply({
-      content:
-        "Woah, I can't remember all that. Let's try and keep things less than 300 characters, okay?",
+      content: `Woah, I can't remember all that. Let's try and keep things less than ${MAX_PERSONALITY_PROMPT_LENGTH} characters for the prompt and ${MAX_PERSONALITY_NAME_LENGTH} characters for the name, okay?`,
     });
     logCommand();
   } else {
     // All good, add the personality
     try {
       // Check to see if there's already a personality with this name
-      const existingPersonalities = await pb
-        .collection<PersonalitiesRecord>("personalities")
-        .getFullList({
-          filter: `user_id = "${interaction.user.id}" && personality_name = "${personalityName}"`,
-        });
+      const personalityExistsForThisUser = await personalityExistsForUser({
+        userId: interaction.user.id,
+        personalityName,
+        serverId: interaction.guild?.id,
+      });
 
-      if (existingPersonalities.length > 0) {
+      if (personalityExistsForThisUser) {
         // One already exists
         await interaction.reply(
-          `There is already a personality with the name ${personalityName}`
+          `There is already a personality with the name ${personalityName}`,
         );
         logCommand();
       } else {
         // No other personalities with this name (for this user)
-        const newPersonalityRecord = await pb
-          .collection<PersonalitiesRecord>("personalities")
-          .create({
-            user_id: interaction.user.id,
-            prompt: personalityPrompt,
-            personality_name: personalityName,
-            active: setActiveNow ?? false,
-            server_id: interaction.guild?.id ?? "unknown",
-          });
+        const newPersonalityRecord = await createNewPersonality({
+          personalityName,
+          personalityPrompt,
+          setActiveNow,
+          userId: interaction.user.id,
+          serverId: interaction.guild?.id,
+        });
 
         if (setActiveNow) {
-          // Set everything else as not active
-          const allPersonalitiesExceptNew = await pb
-            .collection<PersonalitiesRecord>("personalities")
-            .getFullList({
-              filter: `user_id = "${interaction.user.id}" && id != "${newPersonalityRecord.id}" && server_id = "${interaction.guild?.id}"`,
-            });
-
-          for (let i = 0; i < allPersonalitiesExceptNew.length; i++) {
-            await pb
-              .collection("personalities")
-              .update(allPersonalitiesExceptNew[i].id || "", {
-                ...allPersonalitiesExceptNew[i],
-                active: false,
-              });
-          }
+          await setPersonalityActive({
+            personalityId: newPersonalityRecord.id || "",
+            userId: interaction.user.id,
+            serverId: interaction.guild?.id,
+          });
         }
 
         if (clearChat) {
           await clearHistory(
             interaction.user.id,
             interaction.guild?.id ?? "",
-            "openai"
+            "anthropic",
           );
         }
 
@@ -121,7 +113,7 @@ export const execute = async (
             setActiveNow
               ? "It is set as active."
               : `To use it, run \`/set-personality ${personalityName}\``
-          }`
+          }`,
         );
 
         logCommand();
