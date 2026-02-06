@@ -104,12 +104,21 @@ export const converseWithAI = async ({
       max_tokens: MAX_CHAT_TOKENS,
       messages: formattedHistory,
       betas: ["files-api-2025-04-14"],
+      tools: [
+        {
+          type: "web_search_20250305",
+          name: "web_search",
+          max_uses: 5,
+        },
+      ],
     });
     console.log("Anthropic Response:", anthropicMessageResponse);
 
     const anthropicResponseText =
-      anthropicMessageResponse.content.find((block) => block.type === "text")
-        ?.text ?? "";
+      anthropicMessageResponse.content
+        .filter((block) => block.type === "text")
+        ?.map((block) => block.text)
+        .join("") || "";
 
     // Save the user message to history
     await saveChatMessage(
