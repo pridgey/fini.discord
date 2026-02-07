@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
-import { PersonalitiesRecord } from "../types/PocketbaseTables";
-import { pb } from "../utilities/pocketbase";
+import { ChatInputCommandInteraction } from "discord.js";
+import { getPersonalityByName } from "../modules/personalities/getPersonality";
+import { updatePersonality } from "../modules/personalities/updatePersonlity";
 
 export const data = new SlashCommandBuilder()
   .setName("edit-personality")
@@ -10,77 +10,59 @@ export const data = new SlashCommandBuilder()
     option
       .setName("name")
       .setDescription("The name of the personality to modify.")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("prompt")
       .setDescription("The new personality prompt.")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const personalityName =
     interaction.options.get("name")?.value?.toString() || "";
   const personalityPrompt =
     interaction.options.get("prompt")?.value?.toString() || "";
 
-  if (!personalityName.length || !personalityPrompt.length) {
-    // Input invalid
-    await interaction.reply({
-      content: "We're missing information. Please try again.",
+  try {
+    // Check to see if there's already a personality with this name
+    const existingPersonality = await getPersonalityByName({
+      userId: interaction.user.id,
+      personalityName,
+      serverId: interaction.guild?.id,
     });
 
-    logCommand();
-  } else if (personalityName.length > 100 || personalityPrompt.length > 1000) {
-    // Input too long
-    await interaction.reply({
-      content:
-        "That's way too much to remember, please tone it down to less than 300 characters.",
-    });
-
-    logCommand();
-  } else {
-    // Input is valid
-    try {
-      // Check to see if there's already a personality with this name
-      const existingPersonality = await pb
-        .collection<PersonalitiesRecord>("personalities")
-        .getFullList({
-          filter: `user_id = "${interaction.user.id}" && personality_name = "${personalityName}" && server_id = "${interaction.guild?.id}"`,
-        });
-
-      if (existingPersonality.length > 0) {
-        // It's there, update it
-        await pb
-          .collection<PersonalitiesRecord>("personalities")
-          .update(existingPersonality[0]?.id || "", {
-            ...existingPersonality[0],
-            prompt: personalityPrompt,
-          });
-
-        await interaction.reply(`${personalityName} has been updated.`);
-
-        logCommand();
-      } else {
-        // No other personalities with this name (for this user)
-        await interaction.reply(
-          `Could not find a personality with the name ${personalityName}.`
-        );
-
-        logCommand();
-      }
-    } catch (err) {
-      const error: Error = err as Error;
-      const errorMessage = `Error during /edit-personality command: ${error.message}`;
-      console.error(errorMessage);
-      await interaction.reply({
-        content: errorMessage,
+    if (existingPersonality.length > 0) {
+      // It's there, update it
+      const updatedPersonality = await updatePersonality({
+        personalityId: existingPersonality[0]?.id || "",
+        personalityPrompt,
       });
+
+      await interaction.reply(
+        `${updatedPersonality.personality_name} has been updated.`,
+      );
+
+      logCommand();
+    } else {
+      // No other personalities with this name (for this user)
+      await interaction.reply(
+        `Could not find a personality with the name ${personalityName}.`,
+      );
+
       logCommand();
     }
+  } catch (err) {
+    const error: Error = err as Error;
+    const errorMessage = `Error during /edit-personality command: ${error.message}`;
+    console.error(errorMessage);
+    await interaction.reply({
+      content: errorMessage,
+    });
+    logCommand();
   }
 };

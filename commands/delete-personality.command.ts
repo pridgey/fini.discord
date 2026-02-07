@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
-import { PersonalitiesRecord } from "../types/PocketbaseTables";
-import { pb } from "../utilities/pocketbase";
+import { ChatInputCommandInteraction } from "discord.js";
+import { deletePersonalityByName } from "../modules/personalities/deletePersonality";
+import { personalityExistsForUser } from "../modules/personalities/getPersonality";
 
 export const data = new SlashCommandBuilder()
   .setName("delete-personality")
@@ -10,12 +10,12 @@ export const data = new SlashCommandBuilder()
     option
       .setName("name")
       .setDescription("The name of the personality to delete.")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const personalityName =
     interaction.options.get("name")?.value?.toString() || "";
@@ -31,17 +31,19 @@ export const execute = async (
     // Input is valid
     try {
       // Check to see if there's already a personality with this name
-      const existingPersonalities = await pb
-        .collection<PersonalitiesRecord>("personalities")
-        .getFullList({
-          filter: `user_id = "${interaction.user.id}" && personality_name = "${personalityName}" && server_id = "${interaction.guild?.id}"`,
-        });
+      const personalityExists = await personalityExistsForUser({
+        userId: interaction.user.id,
+        personalityName,
+        serverId: interaction.guild?.id,
+      });
 
-      if (existingPersonalities.length > 0) {
+      if (personalityExists) {
         // It's there, delete it
-        await pb
-          .collection<PersonalitiesRecord>("personalities")
-          .delete(existingPersonalities[0]?.id || "");
+        await deletePersonalityByName({
+          userId: interaction.user.id,
+          personalityName,
+          serverId: interaction.guild?.id,
+        });
 
         await interaction.reply(`${personalityName} killed. You did this.`);
 
@@ -49,7 +51,7 @@ export const execute = async (
       } else {
         // No other personalities with this name (for this user)
         await interaction.reply(
-          `Could not find a personality with the name ${personalityName}.`
+          `Could not find a personality with the name ${personalityName}.`,
         );
 
         logCommand();

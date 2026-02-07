@@ -1,6 +1,9 @@
 import { PersonalitiesRecord } from "../../types/PocketbaseTables";
 import { pb } from "../../utilities/pocketbase";
 
+export const MAX_PERSONALITY_PROMPT_LENGTH = 300;
+export const MAX_PERSONALITY_NAME_LENGTH = 100;
+
 type CreatePersonalityParams = {
   personalityPrompt: string;
   personalityName: string;
@@ -19,6 +22,17 @@ export const createNewPersonality = async ({
   userId,
   serverId,
 }: CreatePersonalityParams) => {
+  if (!personalityPrompt.length || !personalityName.length) {
+    throw new Error("Personality name and prompt are required.");
+  }
+
+  if (
+    personalityPrompt.length > MAX_PERSONALITY_PROMPT_LENGTH ||
+    personalityName.length > MAX_PERSONALITY_NAME_LENGTH
+  ) {
+    throw new Error("Personality name or prompt is too long.");
+  }
+
   const newPersonalityRecord = await pb
     .collection<PersonalitiesRecord>("personalities")
     .create({

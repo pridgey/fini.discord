@@ -1,5 +1,8 @@
 import { pb } from "../../utilities/pocketbase";
-import { getAllPersonalitiesForUser } from "./getPersonality";
+import {
+  getAllPersonalitiesForUser,
+  getPersonalityByName,
+} from "./getPersonality";
 
 type SetPersonalityActiveParams = {
   personalityId: string;
@@ -52,4 +55,37 @@ export const markAllPersonalitiesInactiveForUser = async ({
         active: false,
       });
   }
+};
+
+type SetPersonalityActiveByNameParams = {
+  personalityName: string;
+  userId: string;
+  serverId?: string;
+};
+
+/**
+ * Utility function to set a specific personality as active for a user by name.
+ */
+export const setPersonalityActiveByName = async ({
+  personalityName,
+  userId,
+  serverId,
+}: SetPersonalityActiveByNameParams) => {
+  const foundPersonality = await getPersonalityByName({
+    userId,
+    serverId,
+    personalityName,
+  });
+
+  if (!foundPersonality.length || foundPersonality.at(0) === undefined) {
+    throw new Error(
+      `Cannot find a personality with the name ${personalityName}.`,
+    );
+  }
+
+  await setPersonalityActive({
+    personalityId: foundPersonality.at(0)?.id ?? "",
+    userId,
+    serverId,
+  });
 };

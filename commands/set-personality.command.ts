@@ -1,8 +1,10 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
-import { PersonalitiesRecord } from "../types/PocketbaseTables";
+import {
+  markAllPersonalitiesInactiveForUser,
+  setPersonalityActiveByName,
+} from "../modules/personalities/setPersonalityActive";
 import { clearHistory } from "../utilities/chatHistory";
-import { pb } from "../utilities/pocketbase";
 
 export const data = new SlashCommandBuilder()
   .setName("set-personality")
@@ -39,70 +41,39 @@ export const execute = async (
   } else {
     // Input is validated!
     try {
-      // Get all the users personalities
-      const allPersonalities = await pb
-        .collection<PersonalitiesRecord>("personalities")
-        .getFullList({
-          filter: `user_id = "${interaction.user.id}" && server_id = "${interaction.guild?.id}"`,
+      if (personalityName === "Default") {
+        await markAllPersonalitiesInactiveForUser({
+          userId: interaction.user.id,
+          serverId: interaction.guild?.id,
         });
+      } else {
+        await setPersonalityActiveByName({
+          personalityName,
+          userId: interaction.user.id,
+          serverId: interaction.guild?.id,
+        });
+      }
 
-      // The found personality
-      const foundPersonality = allPersonalities.find(
-        (ap) => ap.personality_name === personalityName,
+      if (clearChat) {
+        await clearHistory(
+          interaction.user.id,
+          interaction.guild?.id ?? "",
+          "openai",
+        );
+        await clearHistory(
+          interaction.user.id,
+          interaction.guild?.id ?? "",
+          "anthropic",
+        );
+      }
+
+      await interaction.reply(
+        `Active personality set to ${personalityName}. ${
+          clearChat ? "(Chat history cleared)" : ""
+        }`,
       );
 
-      if (
-        allPersonalities.length > 0 &&
-        (!!foundPersonality || personalityName === "Default")
-      ) {
-        // Set everything to inactive
-        for (let i = 0; i < allPersonalities.length; i++) {
-          await pb
-            .collection("personalities")
-            .update(allPersonalities[i].id || "", {
-              ...allPersonalities[i],
-              active: false,
-            });
-        }
-
-        if (personalityName !== "Default") {
-          // Found it, set it active
-          await pb
-            .collection<PersonalitiesRecord>("personalities")
-            .update(foundPersonality?.id || "", {
-              ...foundPersonality,
-              active: true,
-            });
-        }
-
-        if (clearChat) {
-          await clearHistory(
-            interaction.user.id,
-            interaction.guild?.id ?? "",
-            "openai",
-          );
-          await clearHistory(
-            interaction.user.id,
-            interaction.guild?.id ?? "",
-            "anthropic",
-          );
-        }
-
-        await interaction.reply(
-          `Active personality set to ${personalityName}. ${
-            clearChat ? "(Chat history cleared)" : ""
-          }`,
-        );
-
-        logCommand();
-      } else {
-        // Personality not found
-        await interaction.reply(
-          `Cannot find a personality with the name ${personalityName}.`,
-        );
-
-        logCommand();
-      }
+      logCommand();
     } catch (err) {
       const error: Error = err as Error;
       const errorMessage = `Error during /set-personality command: ${error.message}`;
