@@ -11,28 +11,28 @@ import { queryAnime } from "../modules/finistocks/utilities";
 export const data = new SlashCommandBuilder()
   .setName("anistock")
   .setDescription(
-    "Manage your Anime Stocks portfolio and view anime stock info"
+    "Manage your Anime Stocks portfolio and view anime stock info",
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addSubcommand((subcommand) =>
     subcommand
       .setName("query")
       .setDescription(
-        "Query an anime stock by title, MAL ID, record ID, or leave blank to view all"
+        "Query an anime stock by title, MAL ID, record ID, or leave blank to view all",
       )
       .addStringOption((option) =>
         option
           .setName("query")
           .setDescription(
-            "The title, MAL ID, or record ID of the anime to search for"
+            "The title, MAL ID, or record ID of the anime to search for",
           )
-          .setRequired(false)
-      )
+          .setRequired(false),
+      ),
   );
 
 export const execute = async (
   interaction: ChatInputCommandInteraction,
-  logCommand: () => void
+  logCommand: () => void,
 ) => {
   try {
     const subcommand = interaction.options.getSubcommand();
@@ -63,27 +63,27 @@ export const execute = async (
             animeResultsSection
               .addTextDisplayComponents((textDisplay) =>
                 textDisplay.setContent(
-                  `## **${anime.title}**\nMAL ID: ${anime.mal_id}\nRecord ID: ${anime.id}\nCurrent Price: $0}\nHype Score: ${anime.initial_hype_score}\nVolatility Rating: ${anime.volatility_rating}`
-                )
+                  `## **${anime.title}**\nMAL ID: ${anime.mal_id}\nRecord ID: ${anime.id}\nCurrent Price: $0\nHype Score: ${anime.initial_hype_score}\nVolatility Rating: ${anime.volatility_rating}`,
+                ),
               )
               .setButtonAccessory((button) =>
                 button
                   .setCustomId(
-                    `view_anistock_details:${anime.id}:${interaction.user.id}`
+                    `view_anistock_details:${anime.id}:${interaction.user.id}`,
                   )
                   .setLabel("See More")
-                  .setStyle(ButtonStyle.Secondary)
+                  .setStyle(ButtonStyle.Secondary),
               );
             animeResultsComponents.push(animeResultsSection);
           });
 
           console.log("Anime results components:", {
-            lenth: animeResultsComponents.length,
+            length: animeResultsComponents.length,
           });
 
           await interaction.reply({
             components: animeResultsComponents,
-            flags: MessageFlags.IsComponentsV2,
+            flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
           });
         }
 
