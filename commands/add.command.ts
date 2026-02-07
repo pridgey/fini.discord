@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import type { HammerspaceRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 
@@ -10,12 +10,12 @@ export const data = new SlashCommandBuilder()
     option
       .setName("item")
       .setDescription("what is the item I'm adding?")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const itemToAdd = interaction.options.get("item")?.value?.toString() || "";
 
@@ -32,7 +32,7 @@ export const execute = async (
         };
         await pb.collection("hammerspace").create(newHammerspaceItem);
         await interaction.reply(
-          `**${itemToAdd}** has been added to the hammerspace`
+          `**${itemToAdd}** has been added to the hammerspace`,
         );
 
         logCommand();
