@@ -1,45 +1,37 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import type { ChatInputCommandInteraction } from "discord.js";
+import {
+  setupPersonalityModuleMocks,
+  initPersonalityMocks,
+  mockCreateNewPersonality,
+  mockPersonalityExistsForUser,
+  mockSetPersonalityActive,
+} from "../mocks/personalities.mock";
+import {
+  setupChatHistoryModuleMock,
+  initChatHistoryMocks,
+  mockClearHistory,
+} from "../mocks/chatHistory.mock";
+import { mockConsole, restoreConsole } from "../mocks/console.mock";
 
-// Mock implementations that will be reassigned in beforeEach
-let mockClearHistory: ReturnType<typeof mock>;
-let mockCreateNewPersonality: ReturnType<typeof mock>;
-let mockPersonalityExistsForUser: ReturnType<typeof mock>;
-let mockSetPersonalityActive: ReturnType<typeof mock>;
-
-// Mock the modules
-mock.module("../utilities/chatHistory", () => ({
-  clearHistory: (...args: any[]) => mockClearHistory(...args),
-}));
-
-mock.module("../modules/personalities/createPersonality", () => ({
-  createNewPersonality: (...args: any[]) => mockCreateNewPersonality(...args),
-}));
-
-mock.module("../modules/personalities/getPersonality", () => ({
-  personalityExistsForUser: (...args: any[]) =>
-    mockPersonalityExistsForUser(...args),
-}));
-
-mock.module("../modules/personalities/setPersonalityActive", () => ({
-  setPersonalityActive: (...args: any[]) => mockSetPersonalityActive(...args),
-}));
+// Setup module mocks before importing the module under test
+setupPersonalityModuleMocks();
+setupChatHistoryModuleMock();
 
 // Import after mocking
-const { execute } = await import("./create-personality.command");
+const { execute } = await import("../../commands/create-personality.command");
 
 describe("create-personality command", () => {
   let mockInteraction: any;
   let mockLogCommand: ReturnType<typeof mock>;
 
   beforeEach(() => {
-    // Create fresh mocks before each test
-    mockClearHistory = mock(() => Promise.resolve());
-    mockCreateNewPersonality = mock(() =>
-      Promise.resolve({ id: "test-personality-id" }),
-    );
-    mockPersonalityExistsForUser = mock(() => Promise.resolve(false));
-    mockSetPersonalityActive = mock(() => Promise.resolve());
+    // Reset all mocks before each test
+    initPersonalityMocks();
+    initChatHistoryMocks();
+
+    // Suppress console output during tests
+    mockConsole();
 
     mockLogCommand = mock(() => {});
 
@@ -64,6 +56,11 @@ describe("create-personality command", () => {
       } as any,
       reply: mock(() => Promise.resolve({} as any)),
     };
+  });
+
+  afterEach(() => {
+    // Restore console after each test
+    restoreConsole();
   });
 
   describe("Successful personality creation", () => {
