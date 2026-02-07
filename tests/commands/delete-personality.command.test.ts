@@ -1,35 +1,64 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import type { ChatInputCommandInteraction } from "discord.js";
-import { execute } from "../../commands/delete-personality.command";
-// All dependencies are mocked locally below
+import {
+  setupPersonalityModuleMocks,
+  initPersonalityMocks,
+  mockPersonalityExistsForUser,
+  mockDeletePersonalityByName,
+} from "../mocks/personalities.mock";
+import { mockConsole, restoreConsole } from "../mocks/console.mock";
+
+// Setup module mocks before importing the module under test
+setupPersonalityModuleMocks();
+
+// Import after mocking
+const { execute } = await import("../../commands/delete-personality.command");
 
 describe("delete-personality command", () => {
   let mockInteraction: any;
   let mockLogCommand: ReturnType<typeof mock>;
 
-  let personalityExistsSpy: any;
-  let deletePersonalityByNameSpy: any;
   beforeEach(() => {
+    // Reset all mocks before each test
+    initPersonalityMocks();
+
+    // Suppress console output during tests
+    mockConsole();
+
     mockLogCommand = mock(() => {});
+
+    // Create a mock interaction object
     mockInteraction = {
+      user: {
+        id: "user123",
+      } as any,
+      guild: {
+        id: "guild123",
+      } as any,
       options: {
         get: mock(() => ({ value: "TestPersonality" })),
-      },
-      user: { id: "user123" },
-      guild: { id: "guild123" },
-      reply: mock(() => Promise.resolve()),
+      } as any,
+      reply: mock(() => Promise.resolve({} as any)),
     };
-    personalityExistsSpy = mock(() => Promise.resolve(true));
-    deletePersonalityByNameSpy = mock(() => Promise.resolve());
+  });
+
+  afterEach(() => {
+    // Restore console after each test
+    restoreConsole();
   });
 
   it("should delete personality if exists", async () => {
-    personalityExistsSpy.mockImplementation(() => Promise.resolve(true));
-    await execute(mockInteraction, mockLogCommand, {
-      personalityExistsForUser: personalityExistsSpy,
-      deletePersonalityByName: deletePersonalityByNameSpy,
-    });
-    expect(deletePersonalityByNameSpy).toHaveBeenCalledWith({
+    mockPersonalityExistsForUser.mockImplementation(() =>
+      Promise.resolve(true),
+    );
+    mockDeletePersonalityByName.mockImplementation(() => Promise.resolve());
+
+    await execute(
+      mockInteraction as ChatInputCommandInteraction,
+      mockLogCommand,
+    );
+
+    expect(mockDeletePersonalityByName).toHaveBeenCalledWith({
       userId: "user123",
       personalityName: "TestPersonality",
       serverId: "guild123",
@@ -41,11 +70,15 @@ describe("delete-personality command", () => {
   });
 
   it("should reply if personality does not exist", async () => {
-    personalityExistsSpy.mockImplementation(() => Promise.resolve(false));
-    await execute(mockInteraction, mockLogCommand, {
-      personalityExistsForUser: personalityExistsSpy,
-      deletePersonalityByName: deletePersonalityByNameSpy,
-    });
+    mockPersonalityExistsForUser.mockImplementation(() =>
+      Promise.resolve(false),
+    );
+
+    await execute(
+      mockInteraction as ChatInputCommandInteraction,
+      mockLogCommand,
+    );
+
     expect(mockInteraction.reply).toHaveBeenCalledWith(
       "Could not find a personality with the name TestPersonality.",
     );
@@ -54,10 +87,12 @@ describe("delete-personality command", () => {
 
   it("should reply if name is empty", async () => {
     mockInteraction.options.get = mock(() => ({ value: "" }));
-    await execute(mockInteraction, mockLogCommand, {
-      personalityExistsForUser: personalityExistsSpy,
-      deletePersonalityByName: deletePersonalityByNameSpy,
-    });
+
+    await execute(
+      mockInteraction as ChatInputCommandInteraction,
+      mockLogCommand,
+    );
+
     expect(mockInteraction.reply).toHaveBeenCalledWith({
       content: "A Bot needs a name (to kill).",
     });
@@ -65,16 +100,59 @@ describe("delete-personality command", () => {
   });
 
   it("should handle delete error", async () => {
-    deletePersonalityByNameSpy.mockImplementation(() =>
+    mockPersonalityExistsForUser.mockImplementation(() =>
+      Promise.resolve(true),
+    );
+    mockDeletePersonalityByName.mockImplementation(() =>
       Promise.reject(new Error("fail")),
     );
-    personalityExistsSpy.mockImplementation(() => Promise.resolve(true));
-    await execute(mockInteraction, mockLogCommand, {
-      personalityExistsForUser: personalityExistsSpy,
-      deletePersonalityByName: deletePersonalityByNameSpy,
-    });
+
+    await execute(
+      mockInteraction as ChatInputCommandInteraction,
+      mockLogCommand,
+    );
+
     expect(mockInteraction.reply).toHaveBeenCalledWith({
       content: "Error during /delete-personality command: fail",
+    });
+    expect(mockLogCommand).toHaveBeenCalled();
+  });
+
+  it("should handle interactions without a guild", async () => {
+    mockInteraction.guild = null;
+    mockPersonalityExistsForUser.mockImplementation(() =>
+      Promise.resolve(true),
+    );
+    mockDeletePersonalityByName.mockImplementation(() => Promise.resolve());
+
+    await execute(
+      mockInteraction as ChatInputCommandInteraction,
+      mockLogCommand,
+    );
+
+    expect(mockDeletePersonalityByName).toHaveBeenCalledWith({
+      userId: "user123",
+      personalityName: "TestPersonality",
+      serverId: undefined,
+    });
+    expect(mockInteraction.reply).toHaveBeenCalledWith(
+      "TestPersonality killed. You did this.",
+    );
+    expect(mockLogCommand).toHaveBeenCalled();
+  });
+
+  it("should handle error during personality existence check", async () => {
+    mockPersonalityExistsForUser.mockImplementation(() =>
+      Promise.reject(new Error("DB connection failed")),
+    );
+
+    await execute(
+      mockInteraction as ChatInputCommandInteraction,
+      mockLogCommand,
+    );
+
+    expect(mockInteraction.reply).toHaveBeenCalledWith({
+      content: "Error during /delete-personality command: DB connection failed",
     });
     expect(mockLogCommand).toHaveBeenCalled();
   });

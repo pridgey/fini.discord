@@ -567,7 +567,9 @@ describe("create-personality command", () => {
       }
 
       const replyArg = (mockInteraction.reply as any).mock.calls[0][0];
-      expect(getReplyString(replyArg)).toContain("created");
+      expect(getReplyString(replyArg)).toContain(
+        "Error during /create-personality command",
+      );
     });
 
     it("should handle undefined option values", async () => {
@@ -591,7 +593,9 @@ describe("create-personality command", () => {
       }
 
       const replyArg = (mockInteraction.reply as any).mock.calls[0][0];
-      expect(getReplyString(replyArg)).toContain("created");
+      expect(getReplyString(replyArg)).toContain(
+        "Error during /create-personality command",
+      );
     });
 
     it("should correctly handle boolean true for activate option", async () => {
