@@ -5,6 +5,7 @@ import {
   MessageFlags,
   PermissionFlagsBits,
   SectionBuilder,
+  ContainerBuilder,
 } from "discord.js";
 import { queryAnime } from "../modules/finistocks/utilities";
 
@@ -55,26 +56,59 @@ export const execute = async (
             ephemeral: true,
           });
         } else {
-          const animeResultsComponents: SectionBuilder[] = [];
+          const animeResultsComponents: ContainerBuilder[] = [];
 
-          results.slice(0, 10).forEach((anime) => {
-            const animeResultsSection = new SectionBuilder();
+          results.slice(0, 5).forEach((anime) => {
+            const resultContainer = new ContainerBuilder();
 
-            animeResultsSection
-              .addTextDisplayComponents((textDisplay) =>
-                textDisplay.setContent(
-                  `## **${anime.title}**\nMAL ID: ${anime.mal_id}\nRecord ID: ${anime.id}\nCurrent Price: $0\nHype Score: ${anime.initial_hype_score}\nVolatility Rating: ${anime.volatility_rating}`,
-                ),
+            resultContainer
+              .addTextDisplayComponents((text) =>
+                text.setContent(`## ${anime.title}`),
               )
-              .setButtonAccessory((button) =>
-                button
-                  .setCustomId(
-                    `view_anistock_details:${anime.id}:${interaction.user.id}`,
+              .addSectionComponents((section) =>
+                section
+                  .addTextDisplayComponents((text) =>
+                    text.setContent(`
+                  **MAL ID:** ${
+                    anime.mal_id
+                  } • **Current Price:** $${anime.initial_stock_price.toFixed(
+                      2,
+                    )} • **Hype Score:** ${anime.initial_hype_score}`),
                   )
-                  .setLabel("See More")
-                  .setStyle(ButtonStyle.Secondary),
+                  .setButtonAccessory((button) =>
+                    button
+                      .setCustomId(
+                        `view_anistock_details:${anime.id}:${interaction.user.id}`,
+                      )
+                      .setLabel("See More")
+                      .setStyle(ButtonStyle.Secondary),
+                  ),
               );
-            animeResultsComponents.push(animeResultsSection);
+
+            // const animeResultsSection = new SectionBuilder();
+
+            // animeResultsSection
+            //   .addTextDisplayComponents((textDisplay) =>
+            //     textDisplay.setContent(
+            //       `### **${anime.title}**\n **MAL ID:** ${
+            //         anime.mal_id
+            //       } • **Current Price:** $${anime.initial_stock_price.toFixed(
+            //         2,
+            //       )} • **Hype Score:** ${anime.initial_hype_score}`,
+            //     ),
+            //   )
+            //   .setButtonAccessory((button) =>
+            //     button
+            //       .setCustomId(
+            //         `view_anistock_details:${anime.id}:${interaction.user.id}`,
+            //       )
+            //       .setLabel("See More")
+            //       .setStyle(ButtonStyle.Secondary),
+            //   )
+            //   .addTextDisplayComponents((text) =>
+            //     text.setContent("-----------------------"),
+            //   );
+            animeResultsComponents.push(resultContainer);
           });
 
           console.log("Anime results components:", {

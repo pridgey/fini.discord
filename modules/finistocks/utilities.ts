@@ -17,19 +17,19 @@ const MIN_VOLATILITY = 0.1; // 2%
 export const getNormalizedScores = (
   popularity: number,
   members: number,
-  favorites: number
+  favorites: number,
 ) => {
   const normalizedPopularity = Math.max(
     0,
-    Math.min(1, 1 - Math.log10(popularity) / 4)
+    Math.min(1, 1 - Math.log10(popularity) / 4),
   );
   const normalizedMembers = Math.max(
     0,
-    Math.min(1, Math.log10(members / 1000) / 3.3)
+    Math.min(1, Math.log10(members / 1000) / 3.3),
   );
   const normalizedFavorites = Math.max(
     0,
-    Math.min(1, Math.log10(Math.max(1, favorites)) / 5)
+    Math.min(1, Math.log10(Math.max(1, favorites)) / 5),
   );
 
   return {
@@ -46,7 +46,7 @@ export const getNormalizedScores = (
 export const getHypeScore = (
   popularity: number,
   members: number,
-  favorites: number
+  favorites: number,
 ): number => {
   const { normalizedFavorites, normalizedMembers, normalizedPopularity } =
     getNormalizedScores(popularity, members, favorites);
@@ -67,12 +67,12 @@ export const calculateStockPrice = (
   initialPrice: number,
   hypeScore: number,
   newScore: number,
-  newRank: number
+  newRank: number,
 ) => {
   const normalizedScore = Math.max(0, Math.min(1, (newScore - 5) / 4));
   const normalizedRank = Math.max(
     0,
-    Math.min(1, 1 - Math.log10(newRank) / 4.2)
+    Math.min(1, 1 - Math.log10(newRank) / 4.2),
   );
   // Weight score more heavily than rank (70/30 split)
   const weightedPerformance = normalizedScore * 0.7 + normalizedRank * 0.3;
@@ -100,7 +100,7 @@ export const calculateStockPrice = (
  * Determines the volatility rating of an anime stock based on its hype score
  */
 export const getVolatilityRating = (
-  hypeScore: number
+  hypeScore: number,
 ): "low" | "medium" | "high" | "extreme" => {
   const volatility =
     MAX_VOLATILITY - hypeScore * (MAX_VOLATILITY - MIN_VOLATILITY);
@@ -148,7 +148,7 @@ export const queryAnime = async (query?: string) => {
         if (animeByMalId.length > 0) {
           console.log(
             "Queried anime by mal_id:",
-            JSON.stringify(animeByMalId, null, 2)
+            JSON.stringify(animeByMalId, null, 2),
           );
           return animeByMalId;
         }
@@ -165,12 +165,13 @@ export const queryAnime = async (query?: string) => {
               .split(/\s+/)
               .map((w) => `title ~ "${w}"`)
               .join(" || "),
+            sort: "-created",
           });
 
         if (animeByTitle.length > 0) {
           console.log(
             "Queried anime by title:",
-            JSON.stringify(animeByTitle, null, 2)
+            JSON.stringify(animeByTitle, null, 2),
           );
           return animeByTitle;
         }
@@ -189,7 +190,7 @@ export const queryAnime = async (query?: string) => {
         if (animeById.length > 0) {
           console.log(
             "Queried anime by id:",
-            JSON.stringify(animeById, null, 2)
+            JSON.stringify(animeById, null, 2),
           );
           return animeById;
         }
