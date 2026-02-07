@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
-import { MonitorRecord, PersonalitiesRecord } from "../types/PocketbaseTables";
+import { ChatInputCommandInteraction } from "discord.js";
+import { MonitorRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 
 export const data = new SlashCommandBuilder()
@@ -10,12 +10,12 @@ export const data = new SlashCommandBuilder()
     option
       .setName("name")
       .setDescription("The name of the monitor to delete.")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const monitorName = interaction.options.get("name")?.value?.toString() || "";
 
@@ -38,22 +38,21 @@ export const execute = async (
 
       if (existingMonitors.length > 0) {
         const monitor = existingMonitors[0];
-        const monitoredIp =
-          monitor.ip + (monitor.port ? `:${monitor.port}` : "");
+        const monitoredIp = monitor.ip;
 
         // It's there, delete it
         await pb
           .collection<MonitorRecord>("monitoring")
           .delete(monitor.id || "");
         await interaction.reply(
-          `${monitorName} (${monitoredIp}) deleted. This will no longer be monitored.`
+          `${monitorName} (${monitoredIp}) deleted. This will no longer be monitored.`,
         );
 
         logCommand();
       } else {
-        // No other personalities with this name (for this user)
+        // No other monitors with this name (for this user)
         await interaction.reply(
-          `Could not find a monitored service you configured with the name ${monitorName}.`
+          `Could not find a monitored service you configured with the name ${monitorName}.`,
         );
 
         logCommand();

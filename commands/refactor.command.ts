@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction, AttachmentBuilder } from "discord.js";
+import { ChatInputCommandInteraction, AttachmentBuilder } from "discord.js";
 import { addCoin, getUserBalance } from "../modules/finicoin";
 import Replicate from "replicate";
 
@@ -9,15 +9,15 @@ const COMMAND_COST = 10;
 export const data = new SlashCommandBuilder()
   .setName("refactor")
   .setDescription(
-    `Create an image with refactor-v3 (${COMMAND_COST} fini coin per image)`
+    `Create an image with refactor-v3 (${COMMAND_COST} fini coin per image)`,
   )
   .addStringOption((option) =>
-    option.setName("prompt").setDescription("Waddya want?").setRequired(true)
+    option.setName("prompt").setDescription("Waddya want?").setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const currentUserBalance =
     (await getUserBalance(interaction.user.id, interaction.guildId || "")) || 0;
@@ -29,7 +29,7 @@ export const execute = async (
       // Ensure prompt is a reasonable length
       if (prompt.length > 1000) {
         await interaction.reply(
-          "If you're Graham, stop it. If you're not Graham, I bet he put you up to it. I need a shorter prompt please."
+          "If you're Graham, stop it. If you're not Graham, I bet he put you up to it. I need a shorter prompt please.",
         );
         logCommand();
         return;
@@ -65,7 +65,7 @@ export const execute = async (
           COMMAND_COST,
           "Reserve",
           interaction.guild?.name ?? "unknown guild name",
-          interaction.user.id
+          interaction.user.id,
         );
 
         logCommand();
@@ -73,7 +73,7 @@ export const execute = async (
         await interaction.editReply(
           `I couldn't do it.\nPrompt:${prompt}\nError: ${
             (err as Error).message
-          }`
+          }`,
         );
         logCommand();
       }
@@ -83,7 +83,7 @@ export const execute = async (
     }
   } else {
     await interaction.reply(
-      "You don't have enough fini coin to run this command."
+      "You don't have enough fini coin to run this command.",
     );
     logCommand();
   }

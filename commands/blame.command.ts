@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { pb } from "../utilities/pocketbase";
 import type { HammerspaceRecord } from "../types/PocketbaseTables";
 
@@ -10,19 +10,19 @@ export const data = new SlashCommandBuilder()
     input
       .setName("item")
       .setDescription("The Hammerspace Item that I'll be looking up")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const hammerspaceItem = interaction.options.get("item")?.value?.toString();
 
   // Ensure prompt is a reasonable length
-  if (hammerspaceItem?.length ?? 0 > 100) {
+  if ((hammerspaceItem?.length ?? 0) > 100) {
     await interaction.reply(
-      "If you're Graham, stop it. If you're not Graham, I bet he put you up to it. I need a shorter prompt please."
+      "If you're Graham, stop it. If you're not Graham, I bet he put you up to it. I need a shorter prompt please.",
     );
     logCommand();
     return;
@@ -32,25 +32,33 @@ export const execute = async (
     const response = await pb
       .collection<HammerspaceRecord>("hammerspace")
       .getFirstListItem(
-        `item = "${hammerspaceItem}" && (server_id = "All" || server_id = "${interaction.guildId}")`
+        `item = "${hammerspaceItem}" && (server_id = "All" || server_id = "${interaction.guildId}")`,
       );
 
     if (response) {
       // Found it!
       const dateCreated = new Date(response.created || "");
 
-      await interaction.reply(
-        `Hammerspace entry _'${response.item}'_ was created by **${
-          response.created_by_user_id
-        }** on **${dateCreated.toLocaleDateString()}** and has been used **${
-          response.times_used ?? 0
-        }** time${response.times_used === 1 ? "" : "s"}.`
-      );
+      try {
+        await interaction.reply(
+          `Hammerspace entry _'${response.item}'_ was created by **${
+            response.created_by_user_id
+          }** on **${dateCreated.toLocaleDateString()}** and has been used **${
+            response.times_used ?? 0
+          }** time${response.times_used === 1 ? "" : "s"}.`,
+        );
+      } catch (replyErr) {
+        console.error("Error sending reply:", replyErr);
+      }
     } else {
       // Couldn't find anything, so let them know
-      await interaction.reply(
-        `I couldn't find anything matching: _'${hammerspaceItem}'_`
-      );
+      try {
+        await interaction.reply(
+          `I couldn't find anything matching: _'${hammerspaceItem}'_`,
+        );
+      } catch (replyErr) {
+        console.error("Error sending reply:", replyErr);
+      }
     }
   } catch (err) {
     const error: Error = err as Error;

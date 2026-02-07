@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction, PermissionFlagsBits } from "discord.js";
+import { ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import { ConfigRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 
@@ -10,15 +10,15 @@ export const data = new SlashCommandBuilder()
     option
       .setName("bot_channel")
       .setDescription(
-        "Set the bot channel for this server. (Default: Main Channel)"
+        "Set the bot channel for this server. (Default: Main Channel)",
       )
-      .setRequired(false)
+      .setRequired(false),
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
     return interaction.reply({
@@ -44,7 +44,7 @@ export const execute = async (
   } else {
     // Create new record
     const botChannelName = interaction.guild?.channels.cache.get(
-      botChannel || ""
+      botChannel || "",
     )?.name;
 
     await pb.collection<ConfigRecord>("config").create({

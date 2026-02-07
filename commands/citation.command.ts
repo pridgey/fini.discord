@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { AttachmentBuilder, CommandInteraction } from "discord.js";
+import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
 import { Citation } from "@blockzilla101/citation";
 
 export const data = new SlashCommandBuilder()
@@ -9,27 +9,27 @@ export const data = new SlashCommandBuilder()
     option
       .setName("title")
       .setDescription("the title at the top")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("citation")
       .setDescription("the actual issue")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("penalty")
       .setDescription("the penalty at the bottom")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addBooleanOption((option) =>
-    option.setName("gif").setDescription("render as a gif").setRequired(false)
+    option.setName("gif").setDescription("render as a gif").setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const title = interaction.options.get("title")?.value?.toString() || "";
   const citation = interaction.options.get("citation")?.value?.toString() || "";
@@ -41,7 +41,7 @@ export const execute = async (
     title: string,
     penalty: string,
     reason: string,
-    gif: boolean
+    gif: boolean,
   ) => {
     console.log("generateCitation", { title, penalty, reason, gif });
     const citation = new Citation();
@@ -57,31 +57,16 @@ export const execute = async (
     return attachment;
   };
 
-  if (!title || !citation || !penalty) {
-    console.log("Bad path", { title, citation, penalty });
-    await interaction.deferReply();
-
-    const attachment = await generateCitation(
-      "You dun goofed",
-      "To the gulag with you.",
-      "You cannot create a citation without citation.",
-      true
-    );
-
-    await interaction.editReply({
-      files: [attachment],
-    });
-    logCommand();
-  } else {
-    // Check length
-    if (title.length > 200 || penalty.length > 200 || citation.length > 1000) {
+  try {
+    if (!title || !citation || !penalty) {
+      console.log("Bad path", { title, citation, penalty });
       await interaction.deferReply();
 
       const attachment = await generateCitation(
-        "Length Too Long",
-        "/slap Graham",
-        "One of your parameters has too many characters.",
-        isGif
+        "You dun goofed",
+        "To the gulag with you.",
+        "You cannot create a citation without citation.",
+        true,
       );
 
       await interaction.editReply({
@@ -89,20 +74,40 @@ export const execute = async (
       });
       logCommand();
     } else {
-      // All good
-      await interaction.deferReply();
+      // Check length
+      if (title.length > 200 || penalty.length > 200 || citation.length > 1000) {
+        await interaction.deferReply();
 
-      const attachment = await generateCitation(
-        title,
-        penalty,
-        citation,
-        isGif
-      );
+        const attachment = await generateCitation(
+          "Length Too Long",
+          "/slap Graham",
+          "One of your parameters has too many characters.",
+          isGif,
+        );
 
-      await interaction.editReply({
-        files: [attachment],
-      });
-      logCommand();
+        await interaction.editReply({
+          files: [attachment],
+        });
+        logCommand();
+      } else {
+        // All good
+        await interaction.deferReply();
+
+        const attachment = await generateCitation(
+          title,
+          penalty,
+          citation,
+          isGif,
+        );
+
+        await interaction.editReply({
+          files: [attachment],
+        });
+        logCommand();
+      }
     }
+  } catch (err) {
+    const error: Error = err as Error;
+    console.error("Error running /citation command", { error });
   }
 };

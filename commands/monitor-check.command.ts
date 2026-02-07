@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { pb } from "../utilities/pocketbase";
 import type { MonitorRecord } from "../types/PocketbaseTables";
 import { checkServiceStatus } from "../modules/polling/monitoring";
@@ -11,14 +11,14 @@ export const data = new SlashCommandBuilder()
     input
       .setName("name")
       .setDescription(
-        "Optional: Check specific service, or leave blank to list all."
+        "Optional: Check specific service, or leave blank to list all.",
       )
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const name = interaction.options.get("name")?.value?.toString();
 
@@ -37,7 +37,7 @@ export const execute = async (
 
       if (!response || !response.id) {
         await interaction.editReply(
-          `No monitored service found with the name _'${name}'_ for this server.`
+          `No monitored service found with the name _'${name}'_ for this server.`,
         );
         return;
       }
@@ -51,7 +51,7 @@ export const execute = async (
         await interaction.editReply(
           `The monitored service _'${response.name}'_ (${
             response.ip
-          }) is currently :red_square: **DOWN**. It has been marked as unhealthy since ${failingSinceDate.toLocaleString()}.`
+          }) is currently :red_square: **DOWN**. It has been marked as unhealthy since ${failingSinceDate.toLocaleString()}.`,
         );
         return;
       } else if (!response.healthy && immediateCheck) {
@@ -63,7 +63,7 @@ export const execute = async (
             failing_since: null,
           });
         await interaction.editReply(
-          `The monitored service _'${response.name}'_ is currently :green_circle: **UP**.`
+          `The monitored service _'${response.name}'_ is currently :green_circle: **UP**.`,
         );
         return;
       } else if (response.healthy && !immediateCheck) {
@@ -75,13 +75,13 @@ export const execute = async (
             failing_since: new Date().toISOString(),
           });
         await interaction.editReply(
-          `The monitored service _'${response.name}'_ is currently :red_square: **DOWN**.`
+          `The monitored service _'${response.name}'_ is currently :red_square: **DOWN**.`,
         );
         return;
       } else if (response.healthy && immediateCheck) {
         // Both say it's healthy
         await interaction.editReply(
-          `The monitored service _'${response.name}'_ is currently :green_circle: **UP**.`
+          `The monitored service _'${response.name}'_ is currently :green_circle: **UP**.`,
         );
         return;
       }
@@ -95,7 +95,7 @@ export const execute = async (
 
       if (response.length === 0) {
         await interaction.editReply(
-          `There are no monitored services for this server.`
+          `There are no monitored services for this server.`,
         );
         return;
       }
@@ -114,7 +114,7 @@ export const execute = async (
   } catch (error) {
     console.error("Error in monitor-check command:", error);
     await interaction.editReply(
-      `There was an error while checking the monitored service(s). Please try again later.`
+      `There was an error while checking the monitored service(s). Please try again later.`,
     );
   }
 };

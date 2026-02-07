@@ -1,13 +1,13 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 
 export const data = new SlashCommandBuilder()
   .setName("feature-roadmap")
   .setDescription("The current feature roadmap for Fini.");
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   try {
     const features = [
@@ -17,14 +17,14 @@ export const execute = async (
       "Add card fusion to Finicards",
       "Add game mechanic to Finicards",
       "Finicard trading",
-      "Finicards Set 2",
+      "Finicards Set 3",
       "Geoguessr style game to earn Finicoin",
       "Brainstorm other daily challenges",
       "Fix or remove the /weather command",
     ];
 
     await interaction.reply(
-      `# Current Feature Roadmap.${features.map((f) => `\n- ${f}`)}`
+      `# Current Feature Roadmap.${features.map((f) => `\n- ${f}`)}`,
     );
   } catch (err) {
     const error: Error = err as Error;

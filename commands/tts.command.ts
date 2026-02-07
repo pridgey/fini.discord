@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { AttachmentBuilder, CommandInteraction } from "discord.js";
+import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
 import OpenAI from "openai";
 const util = require("util");
 const exec = util.promisify(require("child_process").exec);
@@ -51,12 +51,12 @@ export const data = new SlashCommandBuilder()
     option
       .setName("text")
       .setDescription("The text you want me to speech")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const text =
     interaction.options.get("text")?.value?.toString() ||
@@ -74,7 +74,7 @@ export const execute = async (
       {
         text: text,
         output_format: ElevenLabs.OutputFormat.Mp32205032,
-      }
+      },
     );
 
     // Convert stream to buffer

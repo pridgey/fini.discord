@@ -1,29 +1,29 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { WeatherRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 
 export const data = new SlashCommandBuilder()
   .setName("weather")
   .setDescription(
-    "Pings you in the mornings with a weather report. (Running command again removes weather ping)"
+    "Pings you in the mornings with a weather report. (Running command again removes weather ping)",
   )
   .addStringOption((option) =>
     option
       .setName("city")
       .setDescription("Your city for weather reports")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("prompt")
       .setDescription("any additional prompt for the AI")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const city =
     interaction.options.get("city")?.value?.toString().replaceAll(",", "") ||
@@ -49,7 +49,7 @@ export const execute = async (
         .delete(weatherRecord[0].id ?? "-1");
 
       await interaction.editReply(
-        "Your daily weather report has been removed. You will no longer be pinged."
+        "Your daily weather report has been removed. You will no longer be pinged.",
       );
     } else {
       // Weather record doesn't exist, add it
@@ -61,14 +61,14 @@ export const execute = async (
       });
 
       await interaction.editReply(
-        "Your daily weather report has been created. You will be pinged each morning."
+        "Your daily weather report has been created. You will be pinged each morning.",
       );
     }
 
     logCommand();
   } else {
     await interaction.reply(
-      `City is required for a weather update ya big dummy.`
+      `City is required for a weather update ya big dummy.`,
     );
   }
 };

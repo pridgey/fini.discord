@@ -4,7 +4,7 @@ import {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   ComponentType,
 } from "discord.js";
 import { pb } from "../utilities/pocketbase";
@@ -22,25 +22,25 @@ export const data = new SlashCommandBuilder()
     opt
       .setName("card")
       .setDescription("The ID of your Finicard")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addNumberOption((opt) =>
     opt
       .setName("price")
       .setDescription("The Price (Finicoin) to sell the card for")
       .setRequired(true)
-      .setMinValue(0)
+      .setMinValue(0),
   )
   .addUserOption((opt) =>
     opt
       .setName("who")
       .setDescription("Who to sell the card to (leave blank to sell to anyone)")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const finiUserId = "608114286082129921";
   const priceDictionary: Record<CardDefinitionRecord["rarity"], number> = {
@@ -58,7 +58,7 @@ export const execute = async (
     const sellingCardId: string =
       interaction.options.get("card")?.value?.toString() ?? "";
     const sellingPrice: number = Number(
-      interaction.options.get("price")?.value || 0
+      interaction.options.get("price")?.value || 0,
     );
     const targetUser = interaction.options.getUser("who");
     const targetUserDefined = !!targetUser;
@@ -66,7 +66,7 @@ export const execute = async (
 
     if (!sellingCardId) {
       await interaction.editReply(
-        "You need to provide a valid card ID to sell. You can find it using the `/card-collection` command with the `list` option set to True."
+        "You need to provide a valid card ID to sell. You can find it using the `/card-collection` command with the `list` option set to True.",
       );
       return;
     }
@@ -85,7 +85,7 @@ export const execute = async (
 
     if (!userCardRecord) {
       await interaction.editReply(
-        `The Card ID (${sellingCardId}) did not validate as a card that you own. You can find your cards using the \`/card-collection\` command with the \`list\` option set to True.`
+        `The Card ID (${sellingCardId}) did not validate as a card that you own. You can find your cards using the \`/card-collection\` command with the \`list\` option set to True.`,
       );
       return;
     }
@@ -100,7 +100,7 @@ export const execute = async (
 
     if (!cardDefinition) {
       await interaction.editReply(
-        `An issue occurred trying to list your card (${sellingCardId}) for sale. Please try again later.`
+        `An issue occurred trying to list your card (${sellingCardId}) for sale. Please try again later.`,
       );
       return;
     }
@@ -117,20 +117,20 @@ export const execute = async (
           ? targetUserIsFini
             ? `Confirm`
             : `(${targetUser.username}) I Accept`
-          : "(Anyone) Purchase"
+          : "(Anyone) Purchase",
       )
       .setStyle(ButtonStyle.Secondary);
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       cancelButton,
-      acceptButton
+      acceptButton,
     );
 
     // Get card image
     const cardImage = await createCardImage(cardDefinition);
     if (!cardImage) {
       await interaction.editReply(
-        `An issue occurred trying to list your card (${sellingCardId}) for sale. Please try again later.`
+        `An issue occurred trying to list your card (${sellingCardId}) for sale. Please try again later.`,
       );
       return;
     }
@@ -211,7 +211,7 @@ export const execute = async (
           // Check user balance
           const targetUserBalance = await getUserBalance(
             targetUser.id,
-            interaction.guildId ?? "unknown guild id"
+            interaction.guildId ?? "unknown guild id",
           );
 
           if (targetUserBalance < sellingPrice) {
@@ -228,7 +228,7 @@ export const execute = async (
               sellingPrice,
               interaction.user.username,
               interaction.guild?.name ?? "unknown guild name",
-              targetUser.id
+              targetUser.id,
             );
 
             // Transfer card over
@@ -265,7 +265,7 @@ export const execute = async (
             priceDictionary[cardDefinition.rarity],
             interaction.user.username,
             interaction.guild?.name ?? "unknown guild name",
-            "Reserve"
+            "Reserve",
           );
 
           // "Transfer" card - aka delete card from user
@@ -311,13 +311,13 @@ export const execute = async (
           // Transfer coin
           const purchaserBalance = await getUserBalance(
             i.user.id,
-            interaction.guildId ?? "unknown guild id"
+            interaction.guildId ?? "unknown guild id",
           );
 
           if (purchaserBalance < sellingPrice) {
             // Target user does have the money
             await i.channel?.send(
-              `${i.user} does not have enough Finicoin to buy ${cardDefinition.card_name} for ${sellingPrice} Finicoin. (Balance: ${purchaserBalance})`
+              `${i.user} does not have enough Finicoin to buy ${cardDefinition.card_name} for ${sellingPrice} Finicoin. (Balance: ${purchaserBalance})`,
             );
             await i.update({});
           } else {
@@ -328,7 +328,7 @@ export const execute = async (
               sellingPrice,
               interaction.user.username,
               interaction.guild?.name ?? "unknown guild name",
-              i.user.id
+              i.user.id,
             );
 
             // Transfer card over

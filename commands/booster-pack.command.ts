@@ -4,7 +4,7 @@ import {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   ComponentType,
 } from "discord.js";
 import path from "path";
@@ -19,8 +19,8 @@ export const data = new SlashCommandBuilder()
   .setDescription(`Buy a new finicard booster pack (${COMMAND_COST} fc)`);
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   await interaction.deferReply();
 
@@ -38,7 +38,7 @@ export const execute = async (
         COMMAND_COST,
         interaction.user.username,
         interaction.guild?.name ?? "unknown guild name",
-        interaction.user.id
+        interaction.user.id,
       );
 
       // Generate the cards of the booster pack and save to user account
@@ -71,7 +71,7 @@ export const execute = async (
         .setStyle(ButtonStyle.Secondary);
 
       const openPackRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        openPackButton
+        openPackButton,
       );
 
       const button1 = new ButtonBuilder()
@@ -91,16 +91,16 @@ export const execute = async (
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         button1,
-        button2
+        button2,
       );
 
       const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        finishButton
+        finishButton,
       );
 
       // Initial image (booster pack cover)
       const coverImage = new AttachmentBuilder(
-        path.join(__dirname, "../modules/finicards", "BoosterPackCover.png")
+        path.join(__dirname, "../modules/finicards", "BoosterPackCover.png"),
       );
 
       // Initial response
@@ -122,11 +122,11 @@ export const execute = async (
           reimbursement,
           interaction.user.username,
           interaction.guild?.name ?? "unknown guild name",
-          "Reserve"
+          "Reserve",
         );
 
         await interaction.followUp(
-          `Uh oh, looks like you only got ${packImages.length} cards.\r\nSince you're missing ${numCardsMissing}, I've reimbursed you ${reimbursement} finicoin.`
+          `Uh oh, looks like you only got ${packImages.length} cards.\r\nSince you're missing ${numCardsMissing}, I've reimbursed you ${reimbursement} finicoin.`,
         );
       }
 
@@ -145,7 +145,7 @@ export const execute = async (
 
         // Build all attachments
         const imageAttachments = packImages.map((img) =>
-          getImageAttachment(img.buffer)
+          getImageAttachment(img.buffer),
         );
 
         await endedInteraction?.editReply({
@@ -161,7 +161,7 @@ export const execute = async (
         if (i.customId === "finish") {
           // Build all attachments
           const imageAttachments = packImages.map((img) =>
-            getImageAttachment(img.buffer)
+            getImageAttachment(img.buffer),
           );
 
           await i.update({
@@ -207,7 +207,7 @@ export const execute = async (
       });
     } else {
       interaction.editReply(
-        "You do not have enough finicoin to run these command."
+        "You do not have enough finicoin to run these command.",
       );
     }
   } catch (err) {

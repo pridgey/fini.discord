@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { getUserBalance } from "../modules/finicoin";
 import { pb } from "../utilities/pocketbase";
 import { MessageRewardStats } from "../types/PocketbaseTables";
@@ -11,21 +11,21 @@ export const data = new SlashCommandBuilder()
     option
       .setName("daily-earnings")
       .setDescription("Show your Finicoin earnings today from chatting")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   try {
     const showDailyEarnings: boolean = Boolean(
-      interaction.options.get("daily-earnings")?.value || false
+      interaction.options.get("daily-earnings")?.value || false,
     );
 
     const userBalance = await getUserBalance(
       interaction.user.id,
-      interaction.guildId ?? "unknown server id"
+      interaction.guildId ?? "unknown server id",
     );
 
     if (showDailyEarnings) {
@@ -42,11 +42,11 @@ export const execute = async (
           userBalance ?? 0
         ).toLocaleString()} Finicoin.\nYou've earned ${usersCurrentEarnings
           .at(0)
-          ?.today_earnings.toLocaleString()} Finicoin today.`
+          ?.today_earnings.toLocaleString()} Finicoin today.`,
       );
     } else {
       await interaction.reply(
-        `You currently have ${(userBalance ?? 0).toLocaleString()} Finicoin.`
+        `You currently have ${(userBalance ?? 0).toLocaleString()} Finicoin.`,
       );
     }
   } catch (err) {

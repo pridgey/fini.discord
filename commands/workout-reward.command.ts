@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { getUserBalance, addCoin } from "./../modules/finicoin";
 
 /*
@@ -22,19 +22,19 @@ export const data = new SlashCommandBuilder()
     opt
       .setName("who")
       .setDescription("Who are you giving Finicoin to?")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addNumberOption((opt) =>
     opt
       .setName("amount")
       .setDescription("How much are you rewarding?")
       .setRequired(true)
-      .setMinValue(1)
+      .setMinValue(1),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   await interaction.deferReply();
 
@@ -42,8 +42,8 @@ export const execute = async (
     const luckyFuck = interaction.options.getUser("who");
     const amount = Math.abs(
       Math.round(
-        Number(interaction?.options?.get("amount")?.value?.toString()) || 0
-      )
+        Number(interaction?.options?.get("amount")?.value?.toString()) || 0,
+      ),
     );
 
     const userId = interaction.user.id;
@@ -53,7 +53,7 @@ export const execute = async (
 
     if (userId !== "255016605191241729") {
       await interaction.editReply(
-        `Sorry ${interaction.user}, only Pridgey can run this command.`
+        `Sorry ${interaction.user}, only Pridgey can run this command.`,
       );
       return;
     }
@@ -65,18 +65,18 @@ export const execute = async (
       amount,
       username,
       guildname,
-      "Reserve"
+      "Reserve",
     );
 
     // Get new balance
     const recipientNewBalance = await getUserBalance(
       luckyFuck?.id || "",
-      guildId
+      guildId,
     );
 
     // Respond
     await interaction.editReply(
-      `${luckyFuck} has received ${amount} by the admin. Way to go!\n${luckyFuck} balance: ${recipientNewBalance}`
+      `${luckyFuck} has received ${amount} by the admin. Way to go!\n${luckyFuck} balance: ${recipientNewBalance}`,
     );
   } catch (err) {
     console.error("Error running /workout-reward command:", { err });

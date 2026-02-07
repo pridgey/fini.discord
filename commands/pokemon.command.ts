@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { AttachmentBuilder, CommandInteraction } from "discord.js";
+import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
 import { calculatePokemonTypeEffectiveness } from "../utilities/pokemonTypes/typeEffective";
 import { toCapitalize } from "../utilities/strings/toCapitalize";
 
@@ -10,12 +10,12 @@ export const data = new SlashCommandBuilder()
     option
       .setName("tag")
       .setDescription("Look up a Pokemon, Ability, Item or Move")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const pokemonTag =
     interaction.options
@@ -29,7 +29,7 @@ export const execute = async (
 
   try {
     const pokemonResponse = await fetch(
-      `https://pokeapi.co/api/v2/pokemon/${pokemonTag.toLowerCase().trim()}`
+      `https://pokeapi.co/api/v2/pokemon/${pokemonTag.toLowerCase().trim()}`,
     );
 
     if (pokemonResponse.ok) {
@@ -40,39 +40,39 @@ export const execute = async (
         data.sprites.other.home.front_default || "",
         {
           name: `${pokemonTag}.jpg`,
-        }
+        },
       );
 
       const pokemonTypeEffectiveness = calculatePokemonTypeEffectiveness(
-        data.types.map((t) => t.type.name)
+        data.types.map((t) => t.type.name),
       );
 
       const WeakToString = `\r\n*Weak To:* ${pokemonTypeEffectiveness.WeakTo.map(
-        (t) => `${t.type} (${t.effective}x)`
+        (t) => `${t.type} (${t.effective}x)`,
       ).join(", ")}`;
 
       const ImmuneToString = `\r\n*Immune To:* ${pokemonTypeEffectiveness.ImmuneTo.map(
-        (t) => `${t.type} (${t.effective}x)`
+        (t) => `${t.type} (${t.effective}x)`,
       ).join(", ")}`;
 
       const NeutralToString = `\r\n*Neutral To:* ${pokemonTypeEffectiveness.NeutralTo.map(
-        (t) => `${t.type} (${t.effective}x)`
+        (t) => `${t.type} (${t.effective}x)`,
       ).join(", ")}`;
 
       const ResistantToString = `\r\n*Resistant To:* ${pokemonTypeEffectiveness.ResistantTo.map(
-        (t) => `${t.type} (${t.effective}x)`
+        (t) => `${t.type} (${t.effective}x)`,
       ).join(", ")}`;
 
       await interaction.editReply({
         content: `**${toCapitalize(
-          pokemonTag
+          pokemonTag,
         )}** (Pokemon)${NeutralToString}${WeakToString}${ImmuneToString}${ResistantToString}`,
         files: [imageAttachment],
       });
     } else {
       // Try /ability
       const abilityResponse = await fetch(
-        `https://pokeapi.co/api/v2/ability/${pokemonTag.toLowerCase().trim()}`
+        `https://pokeapi.co/api/v2/ability/${pokemonTag.toLowerCase().trim()}`,
       );
 
       if (abilityResponse.ok) {
@@ -84,12 +84,12 @@ export const execute = async (
           `**${display}** (Ability)\r\n${abilityData.effect_entries
             .filter((ee) => ee.language.name === "en")
             .map((ee) => ee.effect)
-            .join(", ")}`
+            .join(", ")}`,
         );
       } else {
         // Try /move
         const moveResponse = await fetch(
-          `https://pokeapi.co/api/v2/move/${pokemonTag.toLowerCase().trim()}`
+          `https://pokeapi.co/api/v2/move/${pokemonTag.toLowerCase().trim()}`,
         );
 
         if (moveResponse.ok) {
@@ -97,16 +97,16 @@ export const execute = async (
 
           interaction.editReply(
             `**${toCapitalize(moveData.name)}** (Move)\r\nType: ${toCapitalize(
-              moveData.type.name
+              moveData.type.name,
             )}\r\n${moveData.effect_entries
               .filter((ee) => ee.language.name === "en")
               .map((ee) => ee.effect)
-              .join(", ")}`
+              .join(", ")}`,
           );
         } else {
           // Try /item
           const itemResponse = await fetch(
-            `https://pokeapi.co/api/v2/item/${pokemonTag.toLowerCase().trim()}`
+            `https://pokeapi.co/api/v2/item/${pokemonTag.toLowerCase().trim()}`,
           );
 
           if (itemResponse.ok) {
@@ -114,11 +114,11 @@ export const execute = async (
 
             interaction.editReply(
               `**${toCapitalize(
-                itemData.name
+                itemData.name,
               )}** (Item)\r\n${itemData.effect_entries
                 .filter((ee) => ee.language.name === "en")
                 .map((ee) => ee.effect)
-                .join(", ")}`
+                .join(", ")}`,
             );
           } else {
             // Default to failure
@@ -129,7 +129,7 @@ export const execute = async (
     }
   } catch (err) {
     await interaction.editReply(
-      `Error during /pokemon: ${(err as unknown as Error).message}`
+      `Error during /pokemon: ${(err as unknown as Error).message}`,
     );
   } finally {
     logCommand();

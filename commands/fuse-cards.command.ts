@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
   ActionRowBuilder,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   StringSelectMenuBuilder,
   StringSelectMenuOptionBuilder,
 } from "discord.js";
@@ -10,15 +10,14 @@ import {
   UserCardRecord,
 } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
-import { splitBigString } from "../utilities/splitBigString";
 
 export const data = new SlashCommandBuilder()
   .setName("fuse-cards")
   .setDescription("Fuse alike cards together to gain something more");
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   await interaction.deferReply();
   const userId = interaction.user.id;
@@ -34,17 +33,17 @@ export const execute = async (
       .collection<CardDefinitionRecord>("card_definition")
       .getFullList();
     const userCardDefinitions = allCardDefinitions.filter((acd) =>
-      allUserCards.some((auc) => auc.card === acd.id)
+      allUserCards.some((auc) => auc.card === acd.id),
     );
 
     // Search for any fusion cards
     const hasFusionCard = userCardDefinitions.some(
-      (ucd) => ucd.card_name === "Fusion"
+      (ucd) => ucd.card_name === "Fusion",
     );
 
     if (!hasFusionCard) {
       await interaction.editReply(
-        "You have no Fusion cards. You may not fuse without a Fusion card."
+        "You have no Fusion cards. You may not fuse without a Fusion card.",
       );
       return;
     }
@@ -60,7 +59,7 @@ export const execute = async (
     for (let i = 0; i < userCardDefinitions.length; i++) {
       const currentCard = userCardDefinitions[i];
       const userCards = allUserCards.filter(
-        (auc) => auc.card === currentCard.id
+        (auc) => auc.card === currentCard.id,
       );
 
       // 10 uncommon cards -> 1 full art
@@ -97,9 +96,9 @@ export const execute = async (
         new StringSelectMenuOptionBuilder()
           .setLabel(`${cardName} (${rarity})`)
           .setDescription(
-            `Trade ${fusionNumber} ${cardName} for 1 ${upscaledRarity} card.`
+            `Trade ${fusionNumber} ${cardName} for 1 ${upscaledRarity} card.`,
           )
-          .setValue(fusionSet.cardDefinition.id ?? "")
+          .setValue(fusionSet.cardDefinition.id ?? ""),
       );
     }
 
@@ -109,7 +108,7 @@ export const execute = async (
         new StringSelectMenuBuilder()
           .setCustomId(`menu-${i}`)
           .setPlaceholder("Make a selection!")
-          .addOptions(selectOptions.slice(i, i + 25))
+          .addOptions(selectOptions.slice(i, i + 25)),
       );
     }
 

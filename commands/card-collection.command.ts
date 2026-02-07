@@ -4,7 +4,7 @@ import {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   ComponentType,
 } from "discord.js";
 import { createCardImage } from "../modules/finicards/generateCardImage";
@@ -18,24 +18,24 @@ export const data = new SlashCommandBuilder()
     option
       .setName("list")
       .setDescription("List all cards by text")
-      .setRequired(false)
+      .setRequired(false),
   )
   .addUserOption((opt) =>
     opt
       .setName("who")
       .setDescription(
-        "Who's collection are you viewing? (Leave blank for your own)"
+        "Who's collection are you viewing? (Leave blank for your own)",
       )
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   try {
     const listCards: boolean = Boolean(
-      interaction.options.get("list")?.value || false
+      interaction.options.get("list")?.value || false,
     );
     const userCollection = interaction.options.getUser("who");
 
@@ -44,7 +44,7 @@ export const execute = async (
     // Get all user cards
     const userCards = await getUserCollection(
       userCollection?.id || interaction.user.id,
-      interaction.guildId ?? "unknown guild id"
+      interaction.guildId ?? "unknown guild id",
     );
 
     if (userCards.length === 0) {
@@ -56,7 +56,7 @@ export const execute = async (
           (uc) =>
             `**${uc.card_name}** [${uc.rarity}] (${
               uc.userCardID ?? "unknown card id"
-            })`
+            })`,
         );
 
         const pageSize = 15;
@@ -75,7 +75,7 @@ export const execute = async (
 
         const pageRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
           prevButton,
-          nextButton
+          nextButton,
         );
 
         const interactionResponse = await interaction.editReply({
@@ -83,7 +83,7 @@ export const execute = async (
             currentPage * pageSize + 1
           }-${Math.min(
             userCards.length,
-            currentPage * pageSize + pageSize
+            currentPage * pageSize + pageSize,
           )} of ${userCards.length})
           \r\n${cardList
             .slice(currentPage * pageSize, currentPage * pageSize + pageSize)
@@ -108,7 +108,7 @@ export const execute = async (
               currentPage * pageSize + 1
             }-${Math.min(
               userCards.length,
-              currentPage * pageSize + pageSize
+              currentPage * pageSize + pageSize,
             )} of ${userCards.length})
             \r\n${cardList
               .slice(currentPage * pageSize, currentPage * pageSize + pageSize)
@@ -140,7 +140,7 @@ export const execute = async (
               currentPage * pageSize + 1
             }-${Math.min(
               userCards.length,
-              currentPage * pageSize + pageSize
+              currentPage * pageSize + pageSize,
             )} of ${userCards.length})
             \r\n${cardList
               .slice(currentPage * pageSize, currentPage * pageSize + pageSize)
@@ -184,12 +184,12 @@ export const execute = async (
 
         const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
           button1,
-          button2
+          button2,
         );
 
         // Initial image
         const currentImageAttachment = await getImageAttachment(
-          userCards[currentImageIndex]
+          userCards[currentImageIndex],
         );
 
         // Initial response
@@ -245,7 +245,7 @@ export const execute = async (
 
           // Get navigated card image
           const navigatedImageAttachment = await getImageAttachment(
-            userCards[currentImageIndex]
+            userCards[currentImageIndex],
           );
 
           await interactionResponse.edit({

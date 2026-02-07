@@ -1,7 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { AttachmentBuilder, CommandInteraction } from "discord.js";
-import { chatWithUser_OpenAI } from "./../modules/openai/converse";
-import { string, z } from "zod";
+import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
 import OpenAI from "openai";
 
 export const data = new SlashCommandBuilder()
@@ -11,24 +9,24 @@ export const data = new SlashCommandBuilder()
     option
       .setName("prompt")
       .setDescription("information about the character that will be generated")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addBooleanOption((option) =>
     option
       .setName("ephemeral")
       .setDescription("Sends the result to you ephemerally")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   try {
     const additionalInfo =
       interaction.options.get("prompt")?.value?.toString() || "";
     const isEphemeral: boolean = Boolean(
-      interaction.options.get("ephemeral")?.value?.toString() || false
+      interaction.options.get("ephemeral")?.value?.toString() || false,
     );
 
     const prompt = `You are a helpful assistant who will generate a wiki style page entry for my D&D world. You will generate this in markdown for use in Obsidian, adhering to the following template:
@@ -294,7 +292,7 @@ Erfiðr utilizes a special mask to magically transform his form into anything he
     });
 
     const responseData = JSON.parse(
-      response.choices[0].message.content ?? "{ markdown: ''}"
+      response.choices[0].message.content ?? "{ markdown: ''}",
     );
 
     if (responseData.markdown.length > 0) {

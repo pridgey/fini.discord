@@ -1,22 +1,23 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { chatWithUser_OpenAI } from "../modules/openai";
+import { converseWithAI } from "../modules/aiChat/aiChat";
 
 export const data = new SlashCommandBuilder()
   .setName("timmypoem")
   .setDescription(
-    "Creates a Little Timmy poem in the style of u/poem_for_your_sprog"
+    "Creates a Little Timmy poem in the style of u/poem_for_your_sprog",
   )
   .addStringOption((option) =>
     option
       .setName("prompt")
       .setDescription("What the poem is about")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const poemPrompt = interaction.options.get("prompt")?.value?.toString() || "";
 
@@ -24,11 +25,11 @@ export const execute = async (
 
   await interaction.deferReply();
 
-  const response = await chatWithUser_OpenAI(
-    interaction.user.username,
-    prompt,
-    interaction.guildId ?? ""
-  );
+  const response = await converseWithAI({
+    userID: interaction.user.id,
+    message: prompt,
+    server: interaction.guild?.id ?? "unknown server id",
+  });
 
   await interaction.editReply(response);
   logCommand();

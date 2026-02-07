@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction, AttachmentBuilder } from "discord.js";
+import { ChatInputCommandInteraction, AttachmentBuilder } from "discord.js";
 import OpenAI from "openai";
 import type { OpenAIError } from "openai/error";
 
@@ -7,12 +7,12 @@ export const data = new SlashCommandBuilder()
   .setName("image")
   .setDescription("Create an image with Dall-E")
   .addStringOption((option) =>
-    option.setName("prompt").setDescription("Waddya want?").setRequired(true)
+    option.setName("prompt").setDescription("Waddya want?").setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const prompt = interaction.options.get("prompt")?.value?.toString() || "";
 
@@ -20,7 +20,7 @@ export const execute = async (
     // Ensure prompt is a reasonable length
     if (prompt.length > 1000) {
       await interaction.reply(
-        "If you're Graham, stop it. If you're not Graham, I bet he put you up to it. I need a shorter prompt please."
+        "If you're Graham, stop it. If you're not Graham, I bet he put you up to it. I need a shorter prompt please.",
       );
       logCommand();
       return;
@@ -54,7 +54,7 @@ export const execute = async (
       await interaction.editReply(
         `I couldn't do it.\nPrompt:${prompt}\nError: ${
           (err as OpenAIError).message
-        }`
+        }`,
       );
       logCommand();
     }

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import type { CardSuggestionRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 
@@ -13,18 +13,18 @@ export const data = new SlashCommandBuilder()
     option
       .setName("name")
       .setDescription("The name of the card")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("description")
       .setDescription("Any additional description about the card")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   await interaction.deferReply();
   try {
@@ -34,7 +34,7 @@ export const execute = async (
 
     if (cardName.length > CARD_NAME_MAX_LENGTH && cardName.length > 0) {
       await interaction.editReply(
-        `The Name cannot be longer than ${CARD_NAME_MAX_LENGTH} characters.`
+        `The Name cannot be longer than ${CARD_NAME_MAX_LENGTH} characters.`,
       );
       return;
     }
@@ -44,7 +44,7 @@ export const execute = async (
       cardDescription.length > 0
     ) {
       await interaction.editReply(
-        `The Name cannot be longer than ${CARD_DESC_MAX_LENGTH} characters.`
+        `The Name cannot be longer than ${CARD_DESC_MAX_LENGTH} characters.`,
       );
       return;
     }
@@ -59,7 +59,7 @@ export const execute = async (
     });
 
     await interaction.editReply(
-      `${cardName} suggestion has been added. Good luck!`
+      `${cardName} suggestion has been added. Good luck!`,
     );
   } catch (err) {
     console.error("An error occurred during /suggest-card", { err });

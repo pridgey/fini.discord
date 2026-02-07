@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import type { ReminderRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 import { add } from "date-fns";
@@ -12,13 +12,13 @@ export const data = new SlashCommandBuilder()
     option
       .setName("time")
       .setDescription("when to remind ('Aug 31 2000', or '5d')")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("reminder")
       .setDescription("what to be reminded of")
-      .setRequired(true)
+      .setRequired(true),
   );
 
 // Time duration dictionary
@@ -33,16 +33,17 @@ const timeDictionary = {
 };
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const amountOfTime = interaction.options.get("time")?.value?.toString() || "";
   const reminderText =
     interaction.options.get("reminder")?.value?.toString() || "";
 
   if (amountOfTime && reminderText) {
-    // Defer reply
-    await interaction.deferReply();
+    try {
+      // Defer reply
+      await interaction.deferReply();
 
     // Resulting date object
     let timeToRemind: Date;
@@ -100,17 +101,21 @@ export const execute = async (
       original_message: originalMessageLink,
     } as ReminderRecord);
 
-    // Reply to user
-    interaction.editReply(
-      `OK ${
-        interaction.user.username
-      }, I will remind you: ${reminderText}, on ${timeToRemind.toLocaleString()}${
-        isValidDate ? "" : ` (Today +${amountOfTime})`
-      }`
-    );
+      // Reply to user
+      await interaction.editReply(
+        `OK ${
+          interaction.user.username
+        }, I will remind you: ${reminderText}, on ${timeToRemind.toLocaleString()}${
+          isValidDate ? "" : ` (Today +${amountOfTime})`
+        }`,
+      );
 
-    logCommand();
+      logCommand();
+    } catch (err) {
+      const error: Error = err as Error;
+      console.error("Error running /remind command", { error });
+    }
   } else {
-    interaction.reply(`I can't seem to parse your input. Please try again.`);
+    await interaction.reply(`I can't seem to parse your input. Please try again.`);
   }
 };

@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction, EmbedBuilder } from "discord.js";
+import { ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { runGame } from "../modules/finicoin";
 import { grabGif } from "../utilities/gif";
 import { randomNumber } from "../utilities/randomNumber";
@@ -34,14 +34,14 @@ const losingGifs = [
 export const data = new SlashCommandBuilder()
   .setName("evenodd")
   .setDescription(
-    "A simple game, you wager Finicoin and guess if the result is even, or odd"
+    "A simple game, you wager Finicoin and guess if the result is even, or odd",
   )
   .addNumberOption((opt) =>
     opt
       .setName("bet")
       .setDescription("How much are you betting?")
       .setRequired(true)
-      .setMinValue(1)
+      .setMinValue(1),
   )
   .addStringOption((opt) =>
     opt
@@ -57,15 +57,15 @@ export const data = new SlashCommandBuilder()
           name: "Odd",
           value: "Odd",
         },
-      ])
+      ]),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const bet = Math.abs(
-    parseFloat(interaction?.options?.get("bet")?.value?.toString() || "") || 0
+    parseFloat(interaction?.options?.get("bet")?.value?.toString() || "") || 0,
   );
   const option = interaction.options.get("option")?.value?.toString() || "Even";
 
@@ -80,13 +80,13 @@ export const execute = async (
     interaction.guildId || "unknown guild id",
     bet,
     interaction.user.username,
-    interaction.guild?.name ?? "unknown guild name"
+    interaction.guild?.name ?? "unknown guild name",
   );
 
   if (!userHasFunds) {
     // User doesn't have the funds, let them know
     interaction.reply(
-      `You do not have enough Finicoin to complete this transaction\n**Current Balance:** ${userBalance.toLocaleString()}\n**Your Wager:** ${bet.toLocaleString()}`
+      `You do not have enough Finicoin to complete this transaction\n**Current Balance:** ${userBalance.toLocaleString()}\n**Your Wager:** ${bet.toLocaleString()}`,
     );
   } else {
     try {
@@ -96,7 +96,7 @@ export const execute = async (
       const userHasWon = outcome === option;
       let gif = await grabGif(
         `waifu ${userHasWon ? "winner" : "failure"}`,
-        "giphy"
+        "giphy",
       );
 
       // If the gif call fails, use a fallback gif url
@@ -145,7 +145,7 @@ export const execute = async (
     } catch (err) {
       // An issue with the game
       await interaction.reply(
-        "An error occurred during running the game. Your finicoin has been refunded."
+        "An error occurred during running the game. Your finicoin has been refunded.",
       );
     } finally {
       logCommand();

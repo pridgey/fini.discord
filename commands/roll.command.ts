@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import { randomNumber } from "../utilities/randomNumber";
 
 function formatNums(nums) {
@@ -21,18 +21,18 @@ export const data = new SlashCommandBuilder()
     option
       .setName("amount")
       .setDescription("the number of dice in total (default: 1)")
-      .setRequired(false)
+      .setRequired(false),
   )
   .addNumberOption((option) =>
     option
       .setName("sides")
       .setDescription("the number of sides on the dice (default 20)")
-      .setRequired(false)
+      .setRequired(false),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   // Amount of dice; At least 1
   const amountOption = Number(interaction.options.get("amount")?.value ?? 1);

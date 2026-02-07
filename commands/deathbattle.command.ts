@@ -1,6 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
-import { chatWithUser_OpenAI } from "./../modules/openai/converse";
 import { converseWithAI } from "../modules/aiChat/aiChat";
 
 export const data = new SlashCommandBuilder()
@@ -54,12 +53,6 @@ export const execute = async (
     message: prompt,
     server: interaction.guild?.id ?? "unknown server id",
   });
-
-  // const response = await chatWithUser_OpenAI(
-  //   interaction.user.username,
-  //   prompt,
-  //   interaction.guild?.id ?? "unknown server id"
-  // );
 
   await interaction.editReply(response);
   logCommand();

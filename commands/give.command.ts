@@ -1,7 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
-import { getUserBalance, addCoin } from "./../modules/finicoin";
-import { user } from "elevenlabs/api";
+import { ChatInputCommandInteraction } from "discord.js";
+import { addCoin, getUserBalance } from "./../modules/finicoin";
 
 export const data = new SlashCommandBuilder()
   .setName("give")
@@ -10,25 +9,25 @@ export const data = new SlashCommandBuilder()
     opt
       .setName("who")
       .setDescription("Who are you giving Finicoin to?")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addNumberOption((opt) =>
     opt
       .setName("amount")
       .setDescription("How much are you giving?")
       .setRequired(true)
-      .setMinValue(1)
+      .setMinValue(1),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const luckyFuck = interaction.options.getUser("who");
   const amount = Math.abs(
     Math.round(
-      Number(interaction?.options?.get("amount")?.value?.toString()) || 0
-    )
+      Number(interaction?.options?.get("amount")?.value?.toString()) || 0,
+    ),
   );
 
   try {
@@ -41,8 +40,8 @@ export const execute = async (
 
     if (currentUserBalance < amount) {
       // The user cannot give away that much
-      interaction.reply(
-        `You don't have enough Finicoin to gift ${amount.toLocaleString()}\nYour current balance: ${currentUserBalance.toLocaleString()}`
+      await interaction.reply(
+        `You don't have enough Finicoin to gift ${amount.toLocaleString()}\nYour current balance: ${currentUserBalance.toLocaleString()}`,
       );
     } else {
       // Now give it to the recipient
@@ -52,23 +51,23 @@ export const execute = async (
         amount,
         username,
         guildname,
-        userId
+        userId,
       );
 
       // Get new balances
       const userNewBalance = await getUserBalance(userId, guildId);
       const recipientNewBalance = await getUserBalance(
         luckyFuck?.id || "",
-        guildId
+        guildId,
       );
 
       // Log result
-      interaction.reply(
+      await interaction.reply(
         `You've gifted ${amount.toLocaleString()} Finicoin to ${
           luckyFuck?.username
         }.\n${
           luckyFuck?.username
-        }'s balance: ${recipientNewBalance?.toLocaleString()}\nYour balance: ${userNewBalance?.toLocaleString()}`
+        }'s balance: ${recipientNewBalance?.toLocaleString()}\nYour balance: ${userNewBalance?.toLocaleString()}`,
       );
     }
     logCommand();

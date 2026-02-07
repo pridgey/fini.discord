@@ -3,7 +3,7 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
-  CommandInteraction,
+  ChatInputCommandInteraction,
   ComponentType,
 } from "discord.js";
 import { randomNumber } from "../utilities/randomNumber";
@@ -117,12 +117,12 @@ export const data = new SlashCommandBuilder()
       .setName("bet")
       .setDescription("How much are you betting?")
       .setRequired(true)
-      .setMinValue(1)
+      .setMinValue(1),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   await interaction.deferReply();
 
@@ -133,7 +133,8 @@ export const execute = async (
     const interactionUsername = interaction.user.username;
     const guildName = interaction.guild?.name ?? "unknown guild name";
     const bet = Math.abs(
-      parseFloat(interaction?.options?.get("bet")?.value?.toString() || "") || 0
+      parseFloat(interaction?.options?.get("bet")?.value?.toString() || "") ||
+        0,
     );
 
     // Utility function to help respond to the interaction
@@ -142,7 +143,7 @@ export const execute = async (
       playerHand: Card[],
       showBalance: boolean,
       showDealerHand: boolean,
-      additionalMessage?: string
+      additionalMessage?: string,
     ) => {
       const userBalance = await getUserBalance(interactionUserId, guildId);
       const dealerScore = calculateHandScore(dealerHand);
@@ -155,7 +156,7 @@ export const execute = async (
       const message = `**Dealer's Hand:**\r${dealerHandText}${
         showDealerHand ? `(${dealerScore})` : " `[ ? ]`"
       }\r\r**${interactionUsername}'s Hand:**\r${printCardHand(
-        playerHand
+        playerHand,
       )} (${playerScore})${
         !!additionalMessage ? `\r\r${additionalMessage}` : ""
       }${
@@ -168,7 +169,7 @@ export const execute = async (
     // Ensure bet is enough
     if (bet < 0.1) {
       await interaction.editReply(
-        "You cannot place a bet less than 0.10 finicoin"
+        "You cannot place a bet less than 0.10 finicoin",
       );
       return;
     }
@@ -177,7 +178,7 @@ export const execute = async (
     const userBalance = await getUserBalance(interactionUserId, guildId);
     if (userBalance < bet) {
       await interaction.editReply(
-        `You do not have enough finicoin to place this wager.\nYour wager: ${bet}. Your balance: ${userBalance}`
+        `You do not have enough finicoin to place this wager.\nYour wager: ${bet}. Your balance: ${userBalance}`,
       );
       return;
     }
@@ -200,7 +201,7 @@ export const execute = async (
       bet,
       "Reserve",
       guildName,
-      interactionUserId
+      interactionUserId,
     );
 
     // Check if dealer got blackjack immediately
@@ -216,7 +217,7 @@ export const execute = async (
           bet,
           interactionUsername,
           guildName,
-          "Reserve"
+          "Reserve",
         );
 
         // Reply with push text
@@ -225,7 +226,7 @@ export const execute = async (
           players[interactionUserId].Cards,
           true,
           true,
-          "Double Blackjack. It's a Push."
+          "Double Blackjack. It's a Push.",
         );
         await interaction.editReply(pushReply);
         return;
@@ -240,7 +241,7 @@ export const execute = async (
           players[interactionUserId].Cards,
           true,
           true,
-          "Dealer Blackjack. Better luck next time!"
+          "Dealer Blackjack. Better luck next time!",
         );
         await interaction.editReply(dealerBlackjack);
         return;
@@ -259,7 +260,7 @@ export const execute = async (
         reward,
         interactionUsername,
         guildName,
-        "Reserve"
+        "Reserve",
       );
 
       // Reply with player Blackjack message
@@ -270,7 +271,7 @@ export const execute = async (
         true,
         `Natural Blackjack. Congratulations! You've gained: ${
           bet * 1.5
-        } finicoin.`
+        } finicoin.`,
       );
       await interaction.editReply(playerBlackjack);
       return;
@@ -287,7 +288,7 @@ export const execute = async (
       .setStyle(ButtonStyle.Secondary);
     const actionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       hitButton,
-      standButton
+      standButton,
     );
 
     // Initial (non-blackjack) response
@@ -295,7 +296,7 @@ export const execute = async (
       dealerHand,
       players[interactionUserId].Cards,
       false,
-      false
+      false,
     );
     const interactionResponse = await interaction.editReply({
       content: initialMessage,
@@ -320,7 +321,7 @@ export const execute = async (
         players[interactionUserId].Cards,
         true,
         true,
-        "Game has timed out."
+        "Game has timed out.",
       );
       await interaction.editReply({
         content: timeoutMessage,
@@ -345,7 +346,7 @@ export const execute = async (
             bet,
             "Jackpot",
             guildName,
-            "Reserve"
+            "Reserve",
           );
 
           // Inform user they lost
@@ -354,7 +355,7 @@ export const execute = async (
             players[i.user.id].Cards,
             true,
             true,
-            "You have busted. Better luck next time."
+            "You have busted. Better luck next time.",
           );
           await i.update({
             content: lossMessage,
@@ -366,7 +367,7 @@ export const execute = async (
             dealerHand,
             players[i.user.id].Cards,
             false,
-            false
+            false,
           );
           await i.update({
             content: currentState,
@@ -397,7 +398,7 @@ export const execute = async (
               reward,
               interactionUsername,
               guildName,
-              "Reserve"
+              "Reserve",
             );
 
             // Reply with dealer bust text
@@ -406,7 +407,7 @@ export const execute = async (
               players[i.user.id].Cards,
               true,
               true,
-              `Dealer busts. Congratulations, you've won ${bet} finicoin.`
+              `Dealer busts. Congratulations, you've won ${bet} finicoin.`,
             );
             await interaction.editReply({
               content: dealerBust,
@@ -428,7 +429,7 @@ export const execute = async (
             reward,
             interactionUsername,
             guildName,
-            "Reserve"
+            "Reserve",
           );
 
           // Reply with tie text
@@ -437,7 +438,7 @@ export const execute = async (
             players[i.user.id].Cards,
             true,
             true,
-            `You've tied. You've won your ${reward} bet back.`
+            `You've tied. You've won your ${reward} bet back.`,
           );
           await i.update({
             content: tieMessage,
@@ -459,7 +460,7 @@ export const execute = async (
             reward,
             interactionUsername,
             guildName,
-            "Reserve"
+            "Reserve",
           );
 
           // Reply with winningHand text
@@ -468,7 +469,7 @@ export const execute = async (
             players[i.user.id].Cards,
             true,
             true,
-            `You've beat the dealer. Congratulations, you've won ${bet} finicoin.`
+            `You've beat the dealer. Congratulations, you've won ${bet} finicoin.`,
           );
           await i.update({
             content: winMessage,
@@ -483,7 +484,7 @@ export const execute = async (
             bet,
             "Jackpot",
             guildName,
-            "Reserve"
+            "Reserve",
           );
 
           // Reply with loss text
@@ -492,7 +493,7 @@ export const execute = async (
             players[i.user.id].Cards,
             true,
             true,
-            "Dealer wins. Better luck next time."
+            "Dealer wins. Better luck next time.",
           );
           await i.update({
             content: lossMessage,
@@ -503,9 +504,9 @@ export const execute = async (
         // Unsure of what happened, just return current state I guess
         await i.update({
           content: `**Dealer's Hand:**\n${printCardHand(
-            dealerHand
+            dealerHand,
           )}\n\n**${interactionUsername}'s Hand:**\n${printCardHand(
-            players[interactionUserId].Cards
+            players[interactionUserId].Cards,
           )}`,
           components: [actionRow],
         });

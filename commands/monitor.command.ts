@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { CommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction } from "discord.js";
 import type { MonitorRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 import { checkServiceStatus } from "../modules/polling/monitoring";
@@ -11,13 +11,13 @@ export const data = new SlashCommandBuilder()
     option
       .setName("name")
       .setDescription("Name of the service or website to monitor")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addStringOption((option) =>
     option
       .setName("ip")
       .setDescription("IP address or URL of the service or website to monitor")
-      .setRequired(true)
+      .setRequired(true),
   )
   .addNumberOption((option) =>
     option
@@ -25,13 +25,13 @@ export const data = new SlashCommandBuilder()
       .setDescription("Interval in minutes to check the service")
       .setRequired(true)
       .setChoices(
-        [5, 15, 30, 60].map((i) => ({ name: `${i} minutes`, value: i }))
-      )
+        [5, 15, 30, 60].map((i) => ({ name: `${i} minutes`, value: i })),
+      ),
   );
 
 export const execute = async (
-  interaction: CommandInteraction,
-  logCommand: () => void
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
 ) => {
   const name = interaction.options.get("name")?.value?.toString() || "";
   const ip = interaction.options.get("ip")?.value?.toString() || "";
@@ -39,7 +39,7 @@ export const execute = async (
 
   if (!name || !ip || !interval) {
     interaction.reply(
-      `Please provide all required options: name, ip, interval.`
+      `Please provide all required options: name, ip, interval.`,
     );
     return;
   }
@@ -69,7 +69,7 @@ export const execute = async (
           });
 
         await interaction.editReply(
-          `Monitor with the name ${name} updated successfully.`
+          `Monitor with the name ${name} updated successfully.`,
         );
         logCommand();
 
@@ -77,7 +77,7 @@ export const execute = async (
       } else {
         // No changes made
         await interaction.editReply(
-          `You already have a monitor with the name ${name} and no changes were made.`
+          `You already have a monitor with the name ${name} and no changes were made.`,
         );
         logCommand();
 
@@ -86,7 +86,7 @@ export const execute = async (
     } else {
       // Different user's monitor with same name
       await interaction.editReply(
-        `A monitor with the name ${name} already exists. Please choose a different name.`
+        `A monitor with the name ${name} already exists. Please choose a different name.`,
       );
       logCommand();
 
@@ -98,7 +98,7 @@ export const execute = async (
   const initialServiceCheck = await checkServiceStatus({ ip });
   if (!initialServiceCheck) {
     interaction.editReply(
-      `The service at ${ip} is not reachable. Please check the IP / URL and try again.`
+      `The service at ${ip} is not reachable. Please check the IP / URL and try again.`,
     );
     return;
   }
@@ -120,7 +120,7 @@ export const execute = async (
 
   // Monitor added successfully
   interaction.editReply(
-    `Successfully added monitor for ${name} at ${ip} with an interval of ${interval} minutes.`
+    `Successfully added monitor for ${name} at ${ip} with an interval of ${interval} minutes.`,
   );
 
   logCommand();
