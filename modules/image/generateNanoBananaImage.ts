@@ -16,7 +16,7 @@ export const generateNanoBananaImage = async ({
     const respond: any = await replicate.run("google/nano-banana", {
       input: {
         prompt,
-        image_input: imageInput ? [imageInput] : [],
+        image_input: imageInput ? [imageInput] : undefined,
       },
     });
 

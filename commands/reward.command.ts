@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
-import { getUserBalance, addCoin } from "./../modules/finicoin";
+import { getUserBalance, addCoin } from "../modules/finicoin";
 
 /*
 Current Fini workout reward rules:
@@ -16,8 +16,8 @@ Planking: 1 Finicoin per 10 seconds
 */
 
 export const data = new SlashCommandBuilder()
-  .setName("workout-reward")
-  .setDescription("Admin Command to reward Finicoin to a user")
+  .setName("reward")
+  .setDescription("Admin-Only Command to reward Finicoin to a user")
   .addUserOption((opt) =>
     opt
       .setName("who")
@@ -30,6 +30,12 @@ export const data = new SlashCommandBuilder()
       .setDescription("How much are you rewarding?")
       .setRequired(true)
       .setMinValue(1),
+  )
+  .addStringOption((opt) =>
+    opt
+      .setName("why")
+      .setDescription("What they're receiving it for")
+      .setRequired(false),
   );
 
 export const execute = async (
@@ -45,6 +51,7 @@ export const execute = async (
         Number(interaction?.options?.get("amount")?.value?.toString()) || 0,
       ),
     );
+    const reason = interaction.options.getString("why") || "";
 
     const userId = interaction.user.id;
     const username = interaction.user.username;
@@ -53,7 +60,21 @@ export const execute = async (
 
     if (userId !== "255016605191241729") {
       await interaction.editReply(
-        `Sorry ${interaction.user}, only Pridgey can run this command.`,
+        `Sorry ${interaction.user}, only bot admin can run this command.`,
+      );
+      return;
+    }
+
+    if (!luckyFuck?.id) {
+      await interaction.editReply(
+        `Sorry ${interaction.user}, you must specify a valid user to reward.`,
+      );
+      return;
+    }
+
+    if (amount <= 0) {
+      await interaction.editReply(
+        `Sorry ${interaction.user}, you must specify a valid amount to reward.`,
       );
       return;
     }
@@ -74,13 +95,21 @@ export const execute = async (
       guildId,
     );
 
+    const formattedReason = reason
+      ? `${reason.at(0)?.toLowerCase()}${reason.slice(1)}`
+      : "";
+
     // Respond
     await interaction.editReply(
-      `${luckyFuck} has received ${amount} by the admin. Way to go!\n${luckyFuck} balance: ${recipientNewBalance}`,
+      `${luckyFuck} has received ${amount} by the admin${
+        reason ? `, for ${formattedReason}.` : `. Way to go ${luckyFuck}!`
+      } \nBalance: ${recipientNewBalance}`,
     );
   } catch (err) {
-    console.error("Error running /workout-reward command:", { err });
-    await interaction.editReply("An error occurred running /workout-reward.");
+    console.error("Error running /reward command:", { err });
+    await interaction.editReply(
+      `An error occurred running /reward: ${(err as Error).message}`,
+    );
   } finally {
     logCommand();
   }
