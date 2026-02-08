@@ -1,10 +1,10 @@
 import { pb } from "../../utilities/pocketbase";
 import {
   PaginationParams,
-  PaginationContext,
   PaginatedResult,
 } from "../../utilities/pagination/pagination";
 import { AnimeRecord } from "./stockData";
+import { AnimeSortOptions, determineSortOption } from "./determineSort";
 
 /**
  * Queries the anime database for a specific anime or all anime if no query is provided
@@ -15,9 +15,12 @@ import { AnimeRecord } from "./stockData";
 export const queryAnime = async (
   query?: string,
   pagination: PaginationParams = {},
+  sort?: AnimeSortOptions,
 ): Promise<PaginatedResult<AnimeRecord>> => {
   // Grab, or default, pagination parameters
   const { page = 1, perPage = 5 } = pagination;
+
+  const sortOption = determineSortOption(sort);
 
   // If no query, return all anime
   if (!query) {
@@ -25,7 +28,7 @@ export const queryAnime = async (
       const result = await pb
         .collection<AnimeRecord>("anistock_anime")
         .getList(page, perPage, {
-          sort: "-created",
+          sort: sortOption,
         });
 
       return {
@@ -85,7 +88,7 @@ export const queryAnime = async (
               .split(/\s+/)
               .map((w) => `title ~ "${w}"`)
               .join(" || "),
-            sort: "-created",
+            sort: sortOption,
           });
 
         if (animeByTitle.items.length > 0) {

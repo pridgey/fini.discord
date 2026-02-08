@@ -6,6 +6,17 @@ import {
   getVolatilityRating,
 } from "./utilities";
 
+/**
+ * TODO: Build function to query recent details from anistock_stock table to show on detail card
+ *   So users get the most up to date info when querying a stock, not just the initial offering data.
+ *   Maybe show a small price history graph on the detail card as well?
+ *
+ * TODO: Revisit logic for anistock_anime?
+ *   1. Pull API's /now page for any new offerings
+ *   2. Query all current anistock_anime ongoing and upcoming anime for any updates to anistock_stock
+ *   3. Once an anime ends, mark the status as finished and stock tracking changes
+ */
+
 const BASE_PRICE = 10;
 const MAX_INITIAL_PRICE = 300;
 
@@ -46,7 +57,7 @@ export const createInitialStockEntry = async (animeData: AnimeRecord) => {
     const hypeScore = getHypeScore(
       animeData.initial_popularity,
       animeData.initial_members,
-      animeData.initial_favorites
+      animeData.initial_favorites,
     );
 
     // Initial price calculation based on hype score
@@ -87,7 +98,7 @@ export const getUpcomingStockData = async () => {
     for (let page = 1; page <= pagesToFetch; page++) {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Rate limit to 1 request per second
       const respond = await fetch(
-        "https://api.jikan.moe/v4/seasons/upcoming?page=" + page
+        "https://api.jikan.moe/v4/seasons/upcoming?page=" + page,
       );
 
       if (!respond.ok) {
@@ -116,7 +127,7 @@ export const getUpcomingStockData = async () => {
             initial_stock_price: 0, // To be calculated
             volatility_rating: "low", // To be calculated
           };
-        })
+        }),
       );
     }
 
@@ -149,7 +160,7 @@ export const getOngoingAnimeStockData = async () => {
     for (let page = 1; page <= pagesToFetch; page++) {
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Rate limit to 1 request per second
       const respond = await fetch(
-        "https://api.jikan.moe/v4/seasons/now?page=" + page
+        "https://api.jikan.moe/v4/seasons/now?page=" + page,
       );
 
       if (!respond.ok) {
@@ -162,7 +173,7 @@ export const getOngoingAnimeStockData = async () => {
 
       for (const ongoingAnime of json.data) {
         console.log(
-          `-- Processing ${ongoingAnime.title}-${ongoingAnime.mal_id}`
+          `-- Processing ${ongoingAnime.title}-${ongoingAnime.mal_id}`,
         );
         const initialStockResponse = await pb
           .collection<AnimeRecord>("anistock_anime")
@@ -175,7 +186,7 @@ export const getOngoingAnimeStockData = async () => {
 
         if (!initialStock) {
           console.log(
-            `-- Initial Stock record not found, creating new entry for ${ongoingAnime.title}-${ongoingAnime.mal_id}`
+            `-- Initial Stock record not found, creating new entry for ${ongoingAnime.title}-${ongoingAnime.mal_id}`,
           );
           // If the anime doesn't exist in the database, create it
           initialStock =
@@ -216,7 +227,7 @@ export const getOngoingAnimeStockData = async () => {
         const hypeScore = getHypeScore(
           ongoingAnime.popularity,
           ongoingAnime.members,
-          ongoingAnime.favorites
+          ongoingAnime.favorites,
         );
 
         // Calculate latest price
@@ -224,7 +235,7 @@ export const getOngoingAnimeStockData = async () => {
           initialStock.initial_stock_price,
           initialStock.initial_hype_score,
           hypeScore,
-          ongoingAnime.rank
+          ongoingAnime.rank,
         );
 
         const latestStock = await pb
@@ -245,7 +256,7 @@ export const getOngoingAnimeStockData = async () => {
         ) {
           // Create a new stock entry given the current pricing
           console.log(
-            `-- Creating new stock price entry for ${ongoingAnime.title}-${ongoingAnime.mal_id} at $${latestPriceData.currentPrice}`
+            `-- Creating new stock price entry for ${ongoingAnime.title}-${ongoingAnime.mal_id} at $${latestPriceData.currentPrice}`,
           );
           await pb.collection<AnimeStockRecord>("anistock_stock").create({
             anime: initialStock.id ?? "unknown anime",

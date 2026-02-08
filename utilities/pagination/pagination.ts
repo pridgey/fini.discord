@@ -19,6 +19,7 @@ export interface PaginationContext {
   totalPages: number;
   query?: string;
   namespace: string;
+  sort?: string;
 }
 
 /**
@@ -28,11 +29,12 @@ export interface PaginationContext {
 export function createPaginationRow(
   context: PaginationContext,
 ): ActionRowBuilder<ButtonBuilder> {
-  const { userId, currentPage, totalPages, query, namespace } = context;
+  const { userId, currentPage, totalPages, query, namespace, sort } = context;
 
+  // Namespace+Identifier:Page:Query:Sort:UserId
   const stateString = `${currentPage}:${encodeURIComponent(
     query || "",
-  )}:${userId}`;
+  )}:${encodeURIComponent(sort || "")}:${userId}`;
 
   const prevButton = new ButtonBuilder()
     .setCustomId(`${namespace}_prev_page:${stateString}`)
@@ -65,15 +67,20 @@ export function parsePaginationState(args: string[]): {
   userId: string;
   currentPage: number;
   query?: string;
+  sort?: string;
 } {
-  // userId is at the END (last position)
-  const userId = args[args.length - 1];
-  const currentPageStr = args[0];
-  const encodedQuery = args[1];
+  const [currentPageStr, encodedQuery, encodedSort, userId] = args;
 
   return {
     userId,
     currentPage: parseInt(currentPageStr, 10),
-    query: encodedQuery ? decodeURIComponent(encodedQuery) : undefined,
+    query:
+      encodedQuery && encodedQuery !== ""
+        ? decodeURIComponent(encodedQuery)
+        : undefined,
+    sort:
+      encodedSort && encodedSort !== ""
+        ? decodeURIComponent(encodedSort)
+        : undefined,
   };
 }

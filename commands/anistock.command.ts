@@ -11,6 +11,7 @@ import { buildAniStockQueryResultCards } from "../modules/finistocks/buildAniSto
 import { buildSingleAniStockCard } from "../modules/finistocks/buildSingleAniStockCard";
 import { queryAnime } from "../modules/finistocks/queryAnime";
 import { createPaginationRow } from "../utilities/pagination/pagination";
+import { AnimeSortOptions } from "../modules/finistocks/determineSort";
 
 export const data = new SlashCommandBuilder()
   .setName("anistock")
@@ -31,6 +32,20 @@ export const data = new SlashCommandBuilder()
             "The title, MAL ID, or record ID of the anime to search for",
           )
           .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("sort")
+          .setDescription("The field to sort results by")
+          .setRequired(false)
+          .addChoices(
+            ["title", "cheapest", "expensive", "hype", "latest", "oldest"].map(
+              (field) => ({
+                name: field,
+                value: field,
+              }),
+            ),
+          ),
       ),
   );
 
@@ -44,8 +59,13 @@ export const execute = async (
     switch (subcommand) {
       case "query": {
         const query = interaction.options.getString("query") || undefined;
+        const sort = interaction.options.getString("sort") || undefined;
 
-        const results = await queryAnime(query);
+        const results = await queryAnime(
+          query,
+          undefined,
+          sort as AnimeSortOptions,
+        );
 
         if (results.items.length === 0) {
           /* There are no results to show */
@@ -76,6 +96,7 @@ export const execute = async (
             userId: interaction.user.id,
             namespace: "anistock_query",
             query: query || "",
+            sort: sort || "",
           });
 
           await interaction.reply({
