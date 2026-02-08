@@ -1,25 +1,41 @@
-import { ButtonStyle, ContainerBuilder } from "discord.js";
+import {
+  ButtonStyle,
+  ContainerBuilder,
+  SectionBuilder,
+  TextDisplayBuilder,
+} from "discord.js";
 import { AnimeRecord } from "./stockData";
 
 type BuildAniStockQueryResultCardsParams = {
-  QueryResults: AnimeRecord[];
-  UserId: string;
+  queryResults: AnimeRecord[];
+  userId: string;
+  query?: string;
+  sort?: string;
 };
 
 /**
  * Utility function to build Discord message components for anime stock query results.
  */
 export const buildAniStockQueryResultCards = ({
-  QueryResults,
-  UserId,
+  queryResults,
+  userId,
+  query,
+  sort,
 }: BuildAniStockQueryResultCardsParams) => {
-  if (QueryResults.length === 0) {
+  if (queryResults.length === 0) {
     throw new Error("No anime found for the given query");
   }
 
-  const animeResultsComponents: ContainerBuilder[] = [];
+  const animeResultsComponents: (ContainerBuilder | TextDisplayBuilder)[] = [];
 
-  QueryResults.slice(0, 5).forEach((anime) => {
+  const titleText = new TextDisplayBuilder().setContent(
+    `**Anime Stock Results**\n${
+      query ? `Queried: "${query}"` : "All Results"
+    } ${sort ? `by ${sort}` : ""}`,
+  );
+  animeResultsComponents.push(titleText);
+
+  queryResults.slice(0, 5).forEach((anime, index) => {
     const resultContainer = new ContainerBuilder();
 
     resultContainer
@@ -36,7 +52,7 @@ export const buildAniStockQueryResultCards = ({
           )
           .setButtonAccessory((button) =>
             button
-              .setCustomId(`view_anistock_details:${anime.id}:${UserId}`)
+              .setCustomId(`view_anistock_details:${anime.id}:${userId}`)
               .setLabel("See More")
               .setStyle(ButtonStyle.Secondary),
           ),

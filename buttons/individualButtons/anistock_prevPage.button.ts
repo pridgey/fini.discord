@@ -22,8 +22,10 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     );
 
     const animeResultsComponents = buildAniStockQueryResultCards({
-      QueryResults: result.items,
-      UserId: userId,
+      queryResults: result.items,
+      userId: userId,
+      query,
+      sort,
     });
 
     const pageRow = createPaginationRow({

@@ -86,8 +86,10 @@ export const execute = async (
         } else {
           /* There are multiple results to show */
           const animeResultsComponents = buildAniStockQueryResultCards({
-            QueryResults: results.items,
-            UserId: interaction.user.id,
+            queryResults: results.items,
+            userId: interaction.user.id,
+            query,
+            sort,
           });
 
           const pageRow = createPaginationRow({
