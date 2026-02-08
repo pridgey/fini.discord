@@ -1,13 +1,16 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
   ButtonStyle,
   ChatInputCommandInteraction,
   MessageFlags,
   PermissionFlagsBits,
-  SectionBuilder,
-  ContainerBuilder,
 } from "discord.js";
-import { queryAnime } from "../modules/finistocks/utilities";
+import { buildAniStockQueryResultCards } from "../modules/finistocks/buildAniStockQueryResultCards";
+import { buildSingleAniStockCard } from "../modules/finistocks/buildSingleAniStockCard";
+import { queryAnime } from "../modules/finistocks/queryAnime";
+import { createPaginationRow } from "../utilities/pagination/pagination";
 
 export const data = new SlashCommandBuilder()
   .setName("anistock")
@@ -44,79 +47,39 @@ export const execute = async (
 
         const results = await queryAnime(query);
 
-        if (results.length === 0) {
+        if (results.items.length === 0) {
+          /* There are no results to show */
           await interaction.reply({
             content: `No anime found for query: "${query || "all"}"`,
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral],
           });
-        } else if (results.length === 1) {
-          const anime = results[0];
+        } else if (results.items.length === 1) {
+          /* There is a single result to show */
+          const anime = results.items[0];
+
+          const cardDetail = buildSingleAniStockCard({ anime });
+
           await interaction.reply({
-            content: `Found anime: **${anime.title}** (MAL ID: ${anime.mal_id}, Record ID: ${anime.id})`,
-            ephemeral: true,
+            components: [cardDetail],
+            flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
           });
         } else {
-          const animeResultsComponents: ContainerBuilder[] = [];
-
-          results.slice(0, 5).forEach((anime) => {
-            const resultContainer = new ContainerBuilder();
-
-            resultContainer
-              .addTextDisplayComponents((text) =>
-                text.setContent(`## ${anime.title}`),
-              )
-              .addSectionComponents((section) =>
-                section
-                  .addTextDisplayComponents((text) =>
-                    text.setContent(`
-                  **MAL ID:** ${
-                    anime.mal_id
-                  } • **Current Price:** $${anime.initial_stock_price.toFixed(
-                      2,
-                    )} • **Hype Score:** ${anime.initial_hype_score}`),
-                  )
-                  .setButtonAccessory((button) =>
-                    button
-                      .setCustomId(
-                        `view_anistock_details:${anime.id}:${interaction.user.id}`,
-                      )
-                      .setLabel("See More")
-                      .setStyle(ButtonStyle.Secondary),
-                  ),
-              );
-
-            // const animeResultsSection = new SectionBuilder();
-
-            // animeResultsSection
-            //   .addTextDisplayComponents((textDisplay) =>
-            //     textDisplay.setContent(
-            //       `### **${anime.title}**\n **MAL ID:** ${
-            //         anime.mal_id
-            //       } • **Current Price:** $${anime.initial_stock_price.toFixed(
-            //         2,
-            //       )} • **Hype Score:** ${anime.initial_hype_score}`,
-            //     ),
-            //   )
-            //   .setButtonAccessory((button) =>
-            //     button
-            //       .setCustomId(
-            //         `view_anistock_details:${anime.id}:${interaction.user.id}`,
-            //       )
-            //       .setLabel("See More")
-            //       .setStyle(ButtonStyle.Secondary),
-            //   )
-            //   .addTextDisplayComponents((text) =>
-            //     text.setContent("-----------------------"),
-            //   );
-            animeResultsComponents.push(resultContainer);
+          /* There are multiple results to show */
+          const animeResultsComponents = buildAniStockQueryResultCards({
+            QueryResults: results.items,
+            UserId: interaction.user.id,
           });
 
-          console.log("Anime results components:", {
-            length: animeResultsComponents.length,
+          const pageRow = createPaginationRow({
+            currentPage: results.currentPage,
+            totalPages: results.totalPages,
+            userId: interaction.user.id,
+            namespace: "anistock_query",
+            query: query || "",
           });
 
           await interaction.reply({
-            components: animeResultsComponents,
+            components: [...animeResultsComponents, pageRow],
             flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
           });
         }
@@ -127,7 +90,7 @@ export const execute = async (
       default:
         await interaction.reply({
           content: "Unknown subcommand",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         });
     }
   } catch (err) {

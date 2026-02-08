@@ -21,7 +21,7 @@ export const determinePersonality = async (
     foundPersonalities.length > 0 ? foundPersonalities[0] : undefined;
 
   const personalityPrompt = foundPersonality
-    ? `You are ${foundPersonality.personality_name} with the personality of ${foundPersonality.prompt}`
+    ? `You are ${foundPersonality.personality_name} with the personality of ${foundPersonality.prompt}.`
     : "";
 
   return personalityPrompt;

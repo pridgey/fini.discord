@@ -1,10 +1,5 @@
-import {
-  ButtonInteraction,
-  SectionBuilder,
-  ButtonStyle,
-  MessageFlags,
-  ContainerBuilder,
-} from "discord.js";
+import { ButtonInteraction, MessageFlags } from "discord.js";
+import { buildSingleAniStockCard } from "../../modules/finistocks/buildSingleAniStockCard";
 import { queryAnime } from "../../modules/finistocks/utilities";
 
 export const namespace = "view_anistock_details";
@@ -32,63 +27,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
     const anime = queryResult[0];
 
-    const cardDetail = new ContainerBuilder()
-      .setAccentColor(0x0099ff)
-      .addTextDisplayComponents((text) => text.setContent(`## ${anime.title}`))
-      .addMediaGalleryComponents((media) =>
-        media.addItems((item) =>
-          item.setURL(anime.image_url).setDescription(`${anime.title} Image`),
-        ),
-      )
-      .addTextDisplayComponents((text) =>
-        text.setContent(
-          `**Season:** ${anime.season || "N/A"} • **Year:** ${
-            anime.year || "N/A"
-          } • **Status:** ${anime.status}`,
-        ),
-      )
-      .addSeparatorComponents((sep) => sep)
-      .addTextDisplayComponents((text) =>
-        text.setContent(
-          `**Current AniStock Price:** ${anime.initial_stock_price.toFixed(
-            2,
-          )}\n**Hype Score:** ${
-            anime.initial_hype_score
-          }\n**Volatility Rating:** ${anime.volatility_rating}\n**Rating:** ${
-            anime.initial_popularity
-          }`,
-        ),
-      );
-
-    // Create a detailed card-like view
-    const detailSection = new SectionBuilder().addTextDisplayComponents(
-      (textDisplay) =>
-        textDisplay.setContent(
-          `# ${anime.title}\n\n` +
-            `**Season** ${anime.season || "N/A"} • **Year** ${
-              anime.year || "N/A"
-            } • **Status** ${anime.status}\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `**📊 Stock Information**\n` +
-            `• MAL ID: \`${anime.mal_id}\`\n` +
-            `• Current Price: \`$${anime.initial_stock_price.toFixed(2)}\`\n` +
-            `• Rating: \`${anime.initial_popularity}\`\n` +
-            `• Hype Score: \`${anime.initial_hype_score}\`\n` +
-            `• Volatility: \`${anime.volatility_rating}\`\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `*Requested by ${interaction.user.username}*`,
-        ),
-    );
-
-    // // Back button section - explicitly return the button
-    // const backSection = new SectionBuilder()
-    //   .addTextDisplayComponents((textDisplay) => textDisplay.setContent(`—`))
-    //   .setButtonAccessory((button) => {
-    //     return button
-    //       .setCustomId(`back_to_anistock_list:${userId}`)
-    //       .setLabel("← Back to Results")
-    //       .setStyle(ButtonStyle.Secondary);
-    //   });
+    const cardDetail = buildSingleAniStockCard({ anime });
 
     await interaction.update({
       components: [cardDetail],

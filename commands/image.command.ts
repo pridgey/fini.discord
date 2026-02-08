@@ -156,7 +156,7 @@ export const execute = async (
     files.push(imageAttachment);
 
     await interaction.editReply({
-      content: `**Prompt:** ${prompt}`,
+      content: `**Prompt (${model}):** ${prompt}`,
       files,
     });
 
