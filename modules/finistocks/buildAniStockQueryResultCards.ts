@@ -48,7 +48,9 @@ export const buildAniStockQueryResultCards = ({
                     anime.mal_id
                   } • **Current Price:** $${anime.initial_stock_price.toFixed(
               2,
-            )} • **Hype Score:** ${anime.initial_hype_score}`),
+            )} • **Hype Score:** ${anime.initial_hype_score}\n${trimSynopsis(
+              anime.synopsis,
+            )}`),
           )
           .setButtonAccessory((button) =>
             button
@@ -61,4 +63,11 @@ export const buildAniStockQueryResultCards = ({
   });
 
   return animeResultsComponents;
+};
+
+const trimSynopsis = (synopsis: string | null, maxLength: number = 200) => {
+  if (!synopsis) return "No synopsis available.";
+  return synopsis.length > maxLength
+    ? synopsis.slice(0, maxLength) + "..."
+    : synopsis;
 };

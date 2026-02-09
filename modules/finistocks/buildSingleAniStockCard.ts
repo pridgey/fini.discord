@@ -23,20 +23,14 @@ export const buildSingleAniStockCard = ({
       text.setContent(
         `**Season:** ${anime.season || "N/A"} • **Year:** ${
           anime.year || "N/A"
-        } • **Status:** ${anime.status}`,
+        } • **Status:** ${
+          anime.status
+        } • **Price:** $${anime.initial_stock_price.toFixed(2)}`,
       ),
     )
     .addSeparatorComponents((sep) => sep)
     .addTextDisplayComponents((text) =>
-      text.setContent(
-        `**Current AniStock Price:** ${anime.initial_stock_price.toFixed(
-          2,
-        )}\n**Hype Score:** ${
-          anime.initial_hype_score
-        }\n**Volatility Rating:** ${anime.volatility_rating}\n**Rating:** ${
-          anime.initial_popularity
-        }`,
-      ),
+      text.setContent(`${anime.synopsis || "No synopsis available."}`),
     );
 
   return cardDetail;

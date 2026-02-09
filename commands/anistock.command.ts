@@ -1,17 +1,14 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   ChatInputCommandInteraction,
   MessageFlags,
   PermissionFlagsBits,
 } from "discord.js";
 import { buildAniStockQueryResultCards } from "../modules/finistocks/buildAniStockQueryResultCards";
 import { buildSingleAniStockCard } from "../modules/finistocks/buildSingleAniStockCard";
+import { AnimeSortOptions } from "../modules/finistocks/determineSort";
 import { queryAnime } from "../modules/finistocks/queryAnime";
 import { createPaginationRow } from "../utilities/pagination/pagination";
-import { AnimeSortOptions } from "../modules/finistocks/determineSort";
 
 export const data = new SlashCommandBuilder()
   .setName("anistock")

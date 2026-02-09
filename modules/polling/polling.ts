@@ -8,18 +8,14 @@ import OpenAI from "openai";
 import Replicate from "replicate";
 import { splitBigString } from "../../utilities/splitBigString";
 import { find } from "geo-tz";
-import {
-  getOngoingAnimeStockData,
-  getUpcomingStockData,
-} from "../finistocks/stockData";
+import { syncAllSeasons } from "../finistocks/stockData";
 import { ClientResponseError } from "pocketbase";
 import { checkMonitoredServices } from "./monitoring";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
   checkWeatherReports(cl);
-  pollUpcomingAnime();
-  pollCurrentAnime();
+  syncAndUpdateAnimeRecords();
   checkMonitoredServices(cl);
   // checkJobs(cl);
   // checkHealthPings(cl);
@@ -27,34 +23,8 @@ export const runPollTasks = (cl: Client) => {
 
 // #region Polling Jobs
 
-// Check for upcoming anime to add to the stock system
-const pollUpcomingAnime = async () => {
-  // Current time to check
-  const now = new Date();
-  // Check at midnight every month
-
-  if (now.getDate() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
-    console.log("===== Polling Upcoming Anime =====");
-    try {
-      await getUpcomingStockData();
-      console.log("===== Finished Polling Upcoming Anime =====");
-    } catch (err) {
-      if (err instanceof ClientResponseError) {
-        console.error("Pocketbase Error Data:", {
-          status: err.status,
-          originalError: err.originalError,
-          message: err.message,
-          data: err.data,
-        });
-      } else if (err instanceof Error) {
-        console.error("Error during polling upcoming anime:", err.message);
-      }
-    }
-  }
-};
-
-// Check for current anime to update stock data
-const pollCurrentAnime = async () => {
+// Ping the anime API to update stock data
+const syncAndUpdateAnimeRecords = async () => {
   // Current time to check
   const now = new Date();
   // Check at midnight and noon every day
@@ -62,22 +32,7 @@ const pollCurrentAnime = async () => {
     (now.getHours() === 0 || now.getHours() === 12) &&
     now.getMinutes() === 0
   ) {
-    console.log("===== Polling Current Anime =====");
-    try {
-      await getOngoingAnimeStockData();
-      console.log("===== Finished Polling Current Anime =====");
-    } catch (err) {
-      if (err instanceof ClientResponseError) {
-        console.error("Pocketbase Error Data:", {
-          status: err.status,
-          originalError: err.originalError,
-          message: err.message,
-          data: err.data,
-        });
-      } else if (err instanceof Error) {
-        console.error("Error during polling current anime:", err.message);
-      }
-    }
+    await syncAllSeasons();
   }
 };
 
@@ -132,7 +87,7 @@ const checkReminders = async (cl: Client) => {
   reminderRecords.forEach(async (reminder) => {
     // Pull channel from client
     const channel: TextChannel = (await cl.channels.fetch(
-      reminder.channel_id
+      reminder.channel_id,
     )) as TextChannel;
 
     // Original reminder date
@@ -140,7 +95,7 @@ const checkReminders = async (cl: Client) => {
 
     // Send the reminder
     await channel.send(
-      `${reminder.original_message}\n<@${reminder.user_id}>, here is your reminder: ${reminder.reminder_text}`
+      `${reminder.original_message}\n<@${reminder.user_id}>, here is your reminder: ${reminder.reminder_text}`,
     );
 
     // Delete the reminder
@@ -165,7 +120,7 @@ const checkWeatherReports = async (cl: Client) => {
 
         // First grab the weather report
         const tomorrowResponse = await fetch(
-          `https://api.tomorrow.io/v4/weather/forecast?location=${weatherRecords[i].city}&timesteps=1d&&units=imperial&apikey=${process.env.TOMORROW_WEATHER_API_KEY}`
+          `https://api.tomorrow.io/v4/weather/forecast?location=${weatherRecords[i].city}&timesteps=1d&&units=imperial&apikey=${process.env.TOMORROW_WEATHER_API_KEY}`,
         );
         if (!tomorrowResponse.ok) {
           console.error("Error retrieving weather data", {
@@ -191,11 +146,11 @@ const checkWeatherReports = async (cl: Client) => {
         const rain = todayWeatherData.rainAccumulationAvg;
         const snow = todayWeatherData.snowAccumulationAvg;
         const sunrise = new Date(
-          todayWeatherData.sunriseTime
+          todayWeatherData.sunriseTime,
         ).toLocaleTimeString("en-US", { timeZone: timezone });
         const sunset = new Date(todayWeatherData.sunsetTime).toLocaleTimeString(
           "en-US",
-          { timeZone: timezone }
+          { timeZone: timezone },
         );
         const temperature = todayWeatherData.temperatureAvg;
         const temperatureFeelsLike = todayWeatherData.temperatureApparentAvg;
@@ -213,13 +168,13 @@ const checkWeatherReports = async (cl: Client) => {
         // Formatted to be readable
         const formattedData = {
           "High / Low": `High ${tempHigh} F (${toCelsius(
-            tempHigh
+            tempHigh,
           )} C) | Low ${tempLow} F (${toCelsius(tempLow)} C)`,
           Temperature: `${temperature} F (${Math.round(
-            (5 / 9) * (temperature - 32)
+            (5 / 9) * (temperature - 32),
           ).toPrecision(2)} C)`,
           "Feels Like": `${temperatureFeelsLike} F (${Math.round(
-            (5 / 9) * (temperatureFeelsLike - 32)
+            (5 / 9) * (temperatureFeelsLike - 32),
           ).toPrecision(2)} C)`,
           Humidity: `${humidity}% (Dew Point: ${dewPoint} F)`,
           Precipitation: rain,
@@ -236,7 +191,7 @@ const checkWeatherReports = async (cl: Client) => {
           "Temperature (Celsius)": Math.round((5 / 9) * (temperature - 32)),
           "Feels like": temperatureFeelsLike,
           "Feels like (Celsius)": Math.round(
-            (5 / 9) * (temperatureFeelsLike - 32)
+            (5 / 9) * (temperatureFeelsLike - 32),
           ),
           Humidity: humidity,
           "Dew Point": dewPoint,
@@ -264,7 +219,7 @@ const checkWeatherReports = async (cl: Client) => {
                 {
                   type: "text",
                   text: `Given the data about today's weather, please generate 2 sentences summarizing what the weather might feel like. User will be provided with the full stats, your response will be supplemental to the data. Do not list data points. Ensure your response is well condensed to be easily readable. All units will be imperial. Today's Data: ${JSON.stringify(
-                    includedData
+                    includedData,
                   )}. ${
                     weatherRecords[i].additional_prompt
                       ? `Please generate an additional few sentences for this custom prompt: ${weatherRecords[i].additional_prompt}`
@@ -284,7 +239,7 @@ const checkWeatherReports = async (cl: Client) => {
 
         // Grab a random choice
         const rand = Math.round(
-          Math.random() * (openaiResponse.choices.length - 1)
+          Math.random() * (openaiResponse.choices.length - 1),
         );
         const randomChoice = openaiResponse.choices.at(rand);
 
@@ -295,20 +250,20 @@ const checkWeatherReports = async (cl: Client) => {
           {
             input: {
               prompt: `A landscape depicting from the following description: ${JSON.stringify(
-                randomChoice?.message.content
+                randomChoice?.message.content,
               )}`,
               disable_safety_checker: true,
               safety_tolerance: 5,
               aspect_ratio: "16:9",
             },
-          }
+          },
         );
 
         const imageAttachment = new AttachmentBuilder(
           replicateResponse[0] || "",
           {
             name: "image.jpg",
-          }
+          },
         );
 
         // AI Summary Content
