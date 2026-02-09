@@ -52,6 +52,10 @@ export const execute = async (
     userID: interaction.user.id,
     message: prompt,
     server: interaction.guild?.id ?? "unknown server id",
+    options: {
+      skipHistory: true,
+      skipSave: true,
+    },
   });
 
   await interaction.editReply(response);

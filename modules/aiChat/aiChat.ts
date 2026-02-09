@@ -6,15 +6,23 @@ import { determinePersonality } from "./determinePersonality";
 import { formatHistoryForChat } from "./formatHistoryForChat";
 import { getChatHistory } from "./getChatHistory";
 import { saveChatMessage } from "./saveChatMessage";
+import { ChatRecord } from "../../types/PocketbaseTables";
 
 const MAX_CHAT_TOKENS = 2000;
 const CURRENT_MODEL: Model = "claude-sonnet-4-5-20250929";
+
+type AIConverseOptions = {
+  skipSave?: boolean;
+  skipHistory?: boolean;
+  skipPersonality?: boolean;
+};
 
 type AIConverseProps = {
   userID: string;
   message: string;
   server: string;
   attachment?: Attachment;
+  options?: AIConverseOptions;
 };
 
 export const converseWithAI = async ({
@@ -22,6 +30,7 @@ export const converseWithAI = async ({
   message,
   server,
   attachment,
+  options = {},
 }: AIConverseProps) => {
   try {
     console.group("Run chatWithUser()");
@@ -31,16 +40,19 @@ export const converseWithAI = async ({
     const anthropic = new Anthropic();
 
     // Retrieve the user chat history
-    const userHistory = await getChatHistory(userID, server, "anthropic");
-    console.log("Retrieved User History of length:", userHistory.length);
+    let userHistory: ChatRecord[] = [];
+    if (!options.skipHistory) {
+      userHistory = await getChatHistory(userID, server, "anthropic");
+      console.log("Retrieved User History of length:", userHistory.length);
+    }
 
     // Format history for the AI
     type BetaMessageParam = Beta.Messages.BetaMessageParam;
-    let formattedHistory: BetaMessageParam[] = await formatHistoryForChat(
-      userHistory,
-      anthropic,
-    );
-    console.log("Formatted History for AI length:", formattedHistory.length);
+    let formattedHistory: BetaMessageParam[] = [];
+    if (!options.skipHistory) {
+      formattedHistory = await formatHistoryForChat(userHistory, anthropic);
+      console.log("Formatted History for AI length:", formattedHistory.length);
+    }
 
     // Upload any attachment URL to Anthropic storage
     let anthropicFileID = "";
@@ -65,7 +77,10 @@ export const converseWithAI = async ({
     }
 
     // Find any personality the user would like us to use
-    const personalityPrompt = await determinePersonality(userID, server);
+    let personalityPrompt = "";
+    if (!options.skipPersonality) {
+      personalityPrompt = await determinePersonality(userID, server);
+    }
 
     // Append the current message to the history
     if (anthropicFileID) {
@@ -121,29 +136,31 @@ export const converseWithAI = async ({
         .join("") || "";
 
     // Save the user message to history
-    await saveChatMessage(
-      {
-        author: "user",
-        chatType: "anthropic",
-        message: message,
-        server_id: server,
-        user_id: userID,
-        attachment: anthropicFileID,
-      },
-      anthropic,
-    );
+    if (!options.skipSave) {
+      await saveChatMessage(
+        {
+          author: "user",
+          chatType: "anthropic",
+          message: message,
+          server_id: server,
+          user_id: userID,
+          attachment: anthropicFileID,
+        },
+        anthropic,
+      );
 
-    // Save the bot response to history
-    await saveChatMessage(
-      {
-        author: "bot",
-        chatType: "anthropic",
-        message: anthropicResponseText,
-        server_id: server,
-        user_id: userID,
-      },
-      anthropic,
-    );
+      // Save the bot response to history
+      await saveChatMessage(
+        {
+          author: "bot",
+          chatType: "anthropic",
+          message: anthropicResponseText,
+          server_id: server,
+          user_id: userID,
+        },
+        anthropic,
+      );
+    }
 
     console.log("Completed converseWithAI()");
     console.groupEnd();

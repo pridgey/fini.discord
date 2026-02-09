@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
 import OpenAI from "openai";
+import { converseWithAI } from "../modules/aiChat/aiChat";
 
 export const data = new SlashCommandBuilder()
   .setName("generate-npc")
@@ -242,6 +243,18 @@ Erfiðr utilizes a special mask to magically transform his form into anything he
     `;
 
     await interaction.deferReply();
+
+    // TODO: figure out how to do structured replies with anthropic
+    // const response = await converseWithAI({
+    //   userID: interaction.user.id,
+    //   message: prompt,
+    //   server: interaction.guild?.id ?? "unknown server id",
+    //   options: {
+    //     skipHistory: true,
+    //     skipSave: true,
+    //     skipPersonality: true,
+    //   },
+    // });
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY ?? "unknown open ai key",
