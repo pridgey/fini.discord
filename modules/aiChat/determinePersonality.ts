@@ -21,8 +21,8 @@ export const determinePersonality = async (
     foundPersonalities.length > 0 ? foundPersonalities[0] : undefined;
 
   const personalityPrompt = foundPersonality
-    ? `You are ${foundPersonality.personality_name} with the personality of ${foundPersonality.prompt}.`
-    : "";
+    ? `You are ${foundPersonality.personality_name} with the personality of ${foundPersonality.prompt}. Do not mention other personalities that you have adopted if seen in history. Act only as ${foundPersonality.personality_name} and provide helpful and accurate information.`
+    : "You are a helpful discord chat bot named Fini. Drop any personality you have adopted.";
 
   return personalityPrompt;
 };
