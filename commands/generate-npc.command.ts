@@ -1,7 +1,12 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
+import {
+  AttachmentBuilder,
+  ChatInputCommandInteraction,
+  MessageFlags,
+} from "discord.js";
 import OpenAI from "openai";
 import { converseWithAI } from "../modules/aiChat/aiChat";
+import Anthropic from "@anthropic-ai/sdk";
 
 export const data = new SlashCommandBuilder()
   .setName("generate-npc")
@@ -27,7 +32,7 @@ export const execute = async (
     const additionalInfo =
       interaction.options.get("prompt")?.value?.toString() || "";
     const isEphemeral: boolean = Boolean(
-      interaction.options.get("ephemeral")?.value?.toString() || false,
+      interaction.options.get("ephemeral")?.value === true,
     );
 
     const prompt = `You are a helpful assistant who will generate a wiki style page entry for my D&D world. You will generate this in markdown for use in Obsidian, adhering to the following template:
@@ -244,69 +249,58 @@ Erfiðr utilizes a special mask to magically transform his form into anything he
 
     await interaction.deferReply();
 
-    // TODO: figure out how to do structured replies with anthropic
-    // const response = await converseWithAI({
-    //   userID: interaction.user.id,
-    //   message: prompt,
-    //   server: interaction.guild?.id ?? "unknown server id",
-    //   options: {
-    //     skipHistory: true,
-    //     skipSave: true,
-    //     skipPersonality: true,
-    //   },
-    // });
-
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY ?? "unknown open ai key",
-    });
+    const anthropic = new Anthropic();
 
     const userMessage = `Here is all known information about this npc for you to use in the generation of this character. All other information should be created during generation: ${additionalInfo}`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-5-20250929",
+      system: prompt,
       messages: [
-        {
-          role: "system",
-          content: [
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
         {
           role: "user",
           content: userMessage,
         },
       ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "characterMarkdown",
-          strict: true,
+      output_config: {
+        format: {
+          type: "json_schema",
           schema: {
             type: "object",
             properties: {
-              markdown: {
-                type: "string",
-                description: "The markdown representation of a character.",
-              },
+              markdown: { type: "string" },
             },
             required: ["markdown"],
             additionalProperties: false,
           },
         },
       },
-      temperature: 1,
       max_tokens: 2048,
-      top_p: 1,
-      frequency_penalty: 0,
-      presence_penalty: 0,
     });
 
-    const responseData = JSON.parse(
-      response.choices[0].message.content ?? "{ markdown: ''}",
+    console.log("Debug - Raw response from Anthropic:", response);
+
+    if (!response || !response.content.length) {
+      throw new Error("No content in response from Anthropic");
+    }
+
+    if (response.content.some((block) => block.type !== "text")) {
+      console.error("Unexpected block types in response:", response.content);
+      throw new Error("Unexpected block types in response from Anthropic");
+    }
+
+    const firstTextBlock = response.content.find(
+      (block) => block.type === "text",
     );
+    if (!firstTextBlock) {
+      console.error(
+        "No text block found in response content:",
+        response.content,
+      );
+      throw new Error("No text block found in response from Anthropic");
+    }
+
+    const responseData = JSON.parse(firstTextBlock.text);
 
     if (responseData.markdown.length > 0) {
       const buffer = Buffer.from(responseData.markdown, "utf-8");
@@ -318,9 +312,6 @@ Erfiðr utilizes a special mask to magically transform his form into anything he
 
       await interaction.editReply({
         files: [attachment],
-        options: {
-          ephemeral: isEphemeral,
-        },
       });
     } else {
       await interaction.editReply("Error during npc generation.");
