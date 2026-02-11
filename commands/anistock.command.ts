@@ -74,7 +74,7 @@ export const execute = async (
           /* There is a single result to show */
           const anime = results.items[0];
 
-          const cardDetail = buildSingleAniStockCard({ anime });
+          const cardDetail = await buildSingleAniStockCard({ anime });
 
           await interaction.reply({
             components: [cardDetail],

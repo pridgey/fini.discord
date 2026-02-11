@@ -1,16 +1,20 @@
 import { ContainerBuilder } from "discord.js";
-import { AnimeRecord } from "./stockData";
+import { AniStock_Detail } from "../../types/PocketbaseTables";
 
 type BuildSingleAniStockCardParams = {
-  anime: AnimeRecord;
+  anime: AniStock_Detail;
 };
 
 /**
  * Utility function to build a detailed Discord message component for a single anime stock.
  */
-export const buildSingleAniStockCard = ({
+export const buildSingleAniStockCard = async ({
   anime,
 }: BuildSingleAniStockCardParams) => {
+  if (!anime.id) {
+    throw new Error("Anime record must have an ID to fetch stock details.");
+  }
+
   const cardDetail = new ContainerBuilder()
     .setAccentColor(0x0099ff)
     .addTextDisplayComponents((text) => text.setContent(`## ${anime.title}`))
@@ -21,11 +25,11 @@ export const buildSingleAniStockCard = ({
     )
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `**Season:** ${anime.season || "N/A"} • **Year:** ${
-          anime.year || "N/A"
-        } • **Status:** ${
+        `**Price:** $${anime.latest_price.toFixed(2)} • **Season:** ${
+          anime.season || "N/A"
+        } • **Year:** ${anime.year || "N/A"} • **Status:** ${
           anime.status
-        } • **Price:** $${anime.initial_stock_price.toFixed(2)}`,
+        } • **Rank:** ${anime.latest_rank}`,
       ),
     )
     .addSeparatorComponents((sep) => sep)

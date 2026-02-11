@@ -1,6 +1,6 @@
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { buildSingleAniStockCard } from "../../modules/finistocks/buildSingleAniStockCard";
-import { queryAnime } from "../../modules/finistocks/utilities";
+import { queryAnime } from "../../modules/finistocks/queryAnime";
 
 export const namespace = "view_anistock_details";
 
@@ -17,7 +17,8 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     }
 
     const queryResult = await queryAnime(animeId);
-    if (queryResult.length === 0) {
+
+    if (queryResult.items.length === 0) {
       await interaction.reply({
         content: "❌ Anime not found",
         flags: [MessageFlags.Ephemeral],
@@ -25,9 +26,9 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
-    const anime = queryResult[0];
+    const anime = queryResult.items[0];
 
-    const cardDetail = buildSingleAniStockCard({ anime });
+    const cardDetail = await buildSingleAniStockCard({ anime });
 
     await interaction.update({
       components: [cardDetail],

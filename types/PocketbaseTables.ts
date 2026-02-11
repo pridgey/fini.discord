@@ -160,3 +160,39 @@ export type ConfigRecord = {
   bot_channel: string;
   identifier: string;
 };
+
+export type AnimeSeason = "winter" | "spring" | "summer" | "fall";
+export type AnimeStatus = "upcoming" | "ongoing" | "finished";
+
+export type AniStock_Stock = {
+  id?: string;
+  anime: string;
+  popularity: number;
+  members: number;
+  favorites: number;
+  score: number;
+  rank: number;
+  stock_price: number;
+  hype_score: number;
+  performance_score: number;
+  created?: string;
+  updated?: string;
+};
+
+export type AniStock_Detail = {
+  id?: string;
+  title: string;
+  image_url: string;
+  mal_id: number;
+  season: AnimeSeason;
+  year: number;
+  status: AnimeStatus;
+  latest_price: number;
+  latest_popularity: number;
+  latest_members: number;
+  latest_favorites: number;
+  latest_rank: number;
+  latest_score: number;
+  price_updated_at: string;
+  synopsis: string;
+};

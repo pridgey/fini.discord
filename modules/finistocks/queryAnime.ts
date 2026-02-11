@@ -5,6 +5,7 @@ import {
 } from "../../utilities/pagination/pagination";
 import { AnimeRecord } from "./stockData";
 import { AnimeSortOptions, determineSortOption } from "./determineSort";
+import { AniStock_Detail } from "../../types/PocketbaseTables";
 
 /**
  * Queries the anime database for a specific anime or all anime if no query is provided
@@ -16,7 +17,7 @@ export const queryAnime = async (
   query?: string,
   pagination: PaginationParams = {},
   sort?: AnimeSortOptions,
-): Promise<PaginatedResult<AnimeRecord>> => {
+): Promise<PaginatedResult<AniStock_Detail>> => {
   // Grab, or default, pagination parameters
   const { page = 1, perPage = 5 } = pagination;
 
@@ -26,7 +27,7 @@ export const queryAnime = async (
   if (!query) {
     try {
       const result = await pb
-        .collection<AnimeRecord>("anistock_anime")
+        .collection<AniStock_Detail>("anistock_details")
         .getList(page, perPage, {
           sort: sortOption,
         });
@@ -56,7 +57,7 @@ export const queryAnime = async (
       // Query by mal_id
       try {
         const animeByMalId = await pb
-          .collection<AnimeRecord>("anistock_anime")
+          .collection<AniStock_Detail>("anistock_details")
           .getList(page, perPage, {
             filter: `mal_id = ${Number(query)}`,
           });
@@ -82,7 +83,7 @@ export const queryAnime = async (
       // Not number shaped, query by title
       try {
         const animeByTitle = await pb
-          .collection<AnimeRecord>("anistock_anime")
+          .collection<AniStock_Detail>("anistock_details")
           .getList(page, perPage, {
             filter: query
               .split(/\s+/)
@@ -112,7 +113,7 @@ export const queryAnime = async (
       // If no results by title, try querying by database id
       try {
         const animeById = await pb
-          .collection<AnimeRecord>("anistock_anime")
+          .collection<AniStock_Detail>("anistock_details")
           .getList(page, perPage, {
             filter: `id = "${query}"`,
           });

@@ -5,9 +5,10 @@ import {
   TextDisplayBuilder,
 } from "discord.js";
 import { AnimeRecord } from "./stockData";
+import { AniStock_Detail } from "../../types/PocketbaseTables";
 
 type BuildAniStockQueryResultCardsParams = {
-  queryResults: AnimeRecord[];
+  queryResults: AniStock_Detail[];
   userId: string;
   query?: string;
   sort?: string;
@@ -44,13 +45,11 @@ export const buildAniStockQueryResultCards = ({
         section
           .addTextDisplayComponents((text) =>
             text.setContent(`
-                  **MAL ID:** ${
-                    anime.mal_id
-                  } • **Current Price:** $${anime.initial_stock_price.toFixed(
-              2,
-            )} • **Hype Score:** ${anime.initial_hype_score}\n${trimSynopsis(
-              anime.synopsis,
-            )}`),
+                  **Current Price:** $${anime.latest_price.toFixed(
+                    2,
+                  )} • **MAL ID:** ${anime.mal_id} •  **Rank:** ${
+              anime.latest_rank
+            }\n${trimSynopsis(anime.synopsis)}`),
           )
           .setButtonAccessory((button) =>
             button
