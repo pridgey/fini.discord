@@ -39,7 +39,7 @@ export const data = new SlashCommandBuilder()
           .setDescription("The field to sort results by")
           .setRequired(false)
           .addChoices(
-            ["title", "cheapest", "expensive", "hype", "latest", "oldest"].map(
+            ["title", "cheapest", "expensive", "latest", "oldest"].map(
               (field) => ({
                 name: field,
                 value: field,
@@ -89,7 +89,7 @@ export const execute = async (
             interaction.user.id,
             "anistock_query",
             query,
-            undefined, // sort
+            sort, // sort
             undefined, // filters
           );
 

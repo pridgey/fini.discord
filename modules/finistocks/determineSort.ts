@@ -2,7 +2,6 @@ export type AnimeSortOptions =
   | "title"
   | "cheapest"
   | "expensive"
-  | "hype"
   | "latest"
   | "oldest";
 
@@ -14,11 +13,9 @@ export const determineSortOption = (sort?: AnimeSortOptions) => {
     case "title":
       return "title";
     case "cheapest":
-      return "initial_stock_price";
+      return "latest_price";
     case "expensive":
-      return "-initial_stock_price";
-    case "hype":
-      return "-initial_hype_score";
+      return "-latest_price";
     case "latest":
       return "-created";
     case "oldest":

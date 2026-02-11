@@ -205,4 +205,5 @@ export type PaginationContext = {
   sort: string;
   filters: string;
   current_page: number;
+  updated?: string;
 };

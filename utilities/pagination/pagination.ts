@@ -33,11 +33,10 @@ export async function savePaginationContext(
   sort?: string,
   filters?: Record<string, any>,
 ): Promise<string> {
-  // Set expiration to 24 hours from now
-  const expiresAt = new Date();
-  expiresAt.setHours(expiresAt.getHours() + 24);
-
   try {
+    // Delete all expired contexts before creating a new one
+    await deleteExpiredPaginationContexts();
+
     // Try to find existing context for this user and type
     const existing = await pb
       .collection<PaginationContext>("pagination_context")
@@ -56,7 +55,6 @@ export async function savePaginationContext(
           sort,
           filters,
           current_page: 1, // Reset to page 1
-          expires_at: expiresAt.toISOString(),
         });
       return updated.id!;
     } else {
@@ -70,13 +68,36 @@ export async function savePaginationContext(
           sort,
           filters,
           current_page: 1,
-          expires_at: expiresAt.toISOString(),
         });
       return created.id!;
     }
   } catch (error) {
     console.error("Error saving pagination context:", error);
     throw error;
+  }
+}
+
+/**
+ * Deletes pagination contexts that have not been updated in the last 15 minutes
+ */
+export async function deleteExpiredPaginationContexts(): Promise<void> {
+  try {
+    const expirationTime = new Date(Date.now() - 15 * 60 * 1000).toISOString(); // 15 minutes ago
+
+    const expiredContexts = await pb
+      .collection<PaginationContext>("pagination_context")
+      .getList(1, 100, {
+        filter: `updated < "${expirationTime}"`,
+        requestKey: "get-expired-contexts",
+      });
+
+    for (const context of expiredContexts.items) {
+      await pb
+        .collection<PaginationContext>("pagination_context")
+        .delete(context.id!, { requestKey: `delete-context-${context.id}` });
+    }
+  } catch (error) {
+    console.error("Error deleting expired pagination contexts:", error);
   }
 }
 
