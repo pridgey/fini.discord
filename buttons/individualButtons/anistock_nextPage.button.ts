@@ -4,6 +4,8 @@ import { queryAnime } from "../../modules/finistocks/queryAnime";
 import {
   parsePaginationState,
   createPaginationRow,
+  getPaginationContext,
+  updatePaginationPage,
 } from "../../utilities/pagination/pagination";
 import { AnimeSortOptions } from "../../modules/finistocks/determineSort";
 
@@ -11,31 +13,44 @@ export const namespace = "anistock_query_next_page";
 
 export async function execute(interaction: ButtonInteraction, args: string[]) {
   try {
-    const { userId, currentPage, query, sort } = parsePaginationState(args);
+    const { contextId, userId } = parsePaginationState(args);
+
+    // Retrieve pagination context from database
+    const context = await getPaginationContext(contextId);
+
+    if (!context) {
+      await interaction.reply({
+        content: "❌ This pagination session has expired. Please search again.",
+        flags: [MessageFlags.Ephemeral],
+      });
+      return;
+    }
 
     // Fetch next page
-    const nextPage = currentPage + 1;
+    const nextPage = context.current_page + 1;
     const result = await queryAnime(
-      query,
+      context.query,
       { page: nextPage, perPage: 5 },
-      sort as AnimeSortOptions,
+      context.sort as AnimeSortOptions,
     );
+
+    // Update context with new page
+    await updatePaginationPage(contextId, nextPage);
 
     // Build components
     const animeResultsComponents = buildAniStockQueryResultCards({
       queryResults: result.items,
       userId: userId,
-      query,
-      sort,
+      query: context.query,
+      sort: context.sort,
     });
 
     const pageRow = createPaginationRow({
       userId,
       currentPage: result.currentPage,
       totalPages: result.totalPages,
-      query,
       namespace: "anistock_query",
-      sort,
+      contextId,
     });
 
     // Update the interaction

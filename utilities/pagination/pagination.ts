@@ -1,4 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { PaginationContext } from "../../types/PocketbaseTables";
+import { pb } from "../pocketbase";
 
 export interface PaginationParams {
   page?: number;
@@ -13,31 +15,119 @@ export interface PaginatedResult<T> {
   perPage: number;
 }
 
-export interface PaginationContext {
+export interface PaginationState {
   userId: string;
   currentPage: number;
   totalPages: number;
-  query?: string;
   namespace: string;
-  sort?: string;
 }
 
 /**
- * Utility function to create a pagination row with "Previous" and "Next" buttons, along with a page indicator.
- * Is generic and can be used across different paginated views by providing the appropriate context and namespace for button custom IDs.
+ * Creates or updates a pagination context in the database
+ * Returns the context ID to use in button customIds
+ */
+export async function savePaginationContext(
+  userId: string,
+  contextType: string,
+  query?: string,
+  sort?: string,
+  filters?: Record<string, any>,
+): Promise<string> {
+  // Set expiration to 24 hours from now
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + 24);
+
+  try {
+    // Try to find existing context for this user and type
+    const existing = await pb
+      .collection<PaginationContext>("pagination_context")
+      .getFirstListItem(
+        `user_id = "${userId}" && context_type = "${contextType}"`,
+        { requestKey: `find-context-${userId}-${contextType}` },
+      )
+      .catch(() => null);
+
+    if (existing) {
+      // Update existing context
+      const updated = await pb
+        .collection<PaginationContext>("pagination_context")
+        .update(existing.id!, {
+          query,
+          sort,
+          filters,
+          current_page: 1, // Reset to page 1
+          expires_at: expiresAt.toISOString(),
+        });
+      return updated.id!;
+    } else {
+      // Create new context
+      const created = await pb
+        .collection<PaginationContext>("pagination_context")
+        .create({
+          user_id: userId,
+          context_type: contextType,
+          query,
+          sort,
+          filters,
+          current_page: 1,
+          expires_at: expiresAt.toISOString(),
+        });
+      return created.id!;
+    }
+  } catch (error) {
+    console.error("Error saving pagination context:", error);
+    throw error;
+  }
+}
+
+/**
+ * Retrieves pagination context from the database
+ */
+export async function getPaginationContext(
+  contextId: string,
+): Promise<PaginationContext | null> {
+  try {
+    const context = await pb
+      .collection<PaginationContext>("pagination_context")
+      .getOne(contextId, { requestKey: `get-context-${contextId}` });
+
+    return context;
+  } catch (error) {
+    console.error("Error getting pagination context:", error);
+    return null;
+  }
+}
+
+/**
+ * Updates the current page in a pagination context
+ */
+export async function updatePaginationPage(
+  contextId: string,
+  newPage: number,
+): Promise<void> {
+  try {
+    await pb
+      .collection<PaginationContext>("pagination_context")
+      .update(contextId, {
+        current_page: newPage,
+      });
+  } catch (error) {
+    console.error("Error updating pagination page:", error);
+    throw error;
+  }
+}
+
+/**
+ * Creates pagination buttons with just the context ID
  */
 export function createPaginationRow(
-  context: PaginationContext,
+  context: PaginationState & { contextId: string },
 ): ActionRowBuilder<ButtonBuilder> {
-  const { userId, currentPage, totalPages, query, namespace, sort } = context;
+  const { userId, currentPage, totalPages, namespace, contextId } = context;
 
-  // Namespace+Identifier:Page:Query:Sort:UserId
-  const stateString = `${currentPage}:${encodeURIComponent(
-    query || "",
-  )}:${encodeURIComponent(sort || "")}:${userId}`;
-
+  // Super simple customId - just namespace, contextId, and userId
   const prevButton = new ButtonBuilder()
-    .setCustomId(`${namespace}_prev_page:${stateString}`)
+    .setCustomId(`${namespace}_prev_page:${contextId}:${userId}`)
     .setLabel("◀ Previous")
     .setStyle(ButtonStyle.Secondary)
     .setDisabled(currentPage === 1);
@@ -49,7 +139,7 @@ export function createPaginationRow(
     .setDisabled(true);
 
   const nextButton = new ButtonBuilder()
-    .setCustomId(`${namespace}_next_page:${stateString}`)
+    .setCustomId(`${namespace}_next_page:${contextId}:${userId}`)
     .setLabel("Next ▶")
     .setStyle(ButtonStyle.Secondary)
     .setDisabled(currentPage >= totalPages);
@@ -61,26 +151,12 @@ export function createPaginationRow(
 }
 
 /**
- * Utility function to parse the pagination state from button interaction arguments.
+ * Parses pagination state from button args
  */
 export function parsePaginationState(args: string[]): {
+  contextId: string;
   userId: string;
-  currentPage: number;
-  query?: string;
-  sort?: string;
 } {
-  const [currentPageStr, encodedQuery, encodedSort, userId] = args;
-
-  return {
-    userId,
-    currentPage: parseInt(currentPageStr, 10),
-    query:
-      encodedQuery && encodedQuery !== ""
-        ? decodeURIComponent(encodedQuery)
-        : undefined,
-    sort:
-      encodedSort && encodedSort !== ""
-        ? decodeURIComponent(encodedSort)
-        : undefined,
-  };
+  const [contextId, userId] = args;
+  return { contextId, userId };
 }

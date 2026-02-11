@@ -196,3 +196,13 @@ export type AniStock_Detail = {
   price_updated_at: string;
   synopsis: string;
 };
+
+export type PaginationContext = {
+  id?: string;
+  user_id: string;
+  query_type: string;
+  query: string;
+  sort: string;
+  filters: string;
+  current_page: number;
+};

@@ -8,7 +8,10 @@ import { buildAniStockQueryResultCards } from "../modules/finistocks/buildAniSto
 import { buildSingleAniStockCard } from "../modules/finistocks/buildSingleAniStockCard";
 import { AnimeSortOptions } from "../modules/finistocks/determineSort";
 import { queryAnime } from "../modules/finistocks/queryAnime";
-import { createPaginationRow } from "../utilities/pagination/pagination";
+import {
+  createPaginationRow,
+  savePaginationContext,
+} from "../utilities/pagination/pagination";
 
 export const data = new SlashCommandBuilder()
   .setName("anistock")
@@ -81,6 +84,15 @@ export const execute = async (
             flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
           });
         } else {
+          // Save pagination context to database
+          const contextId = await savePaginationContext(
+            interaction.user.id,
+            "anistock_query",
+            query,
+            undefined, // sort
+            undefined, // filters
+          );
+
           /* There are multiple results to show */
           const animeResultsComponents = buildAniStockQueryResultCards({
             queryResults: results.items,
@@ -90,12 +102,11 @@ export const execute = async (
           });
 
           const pageRow = createPaginationRow({
+            userId: interaction.user.id,
             currentPage: results.currentPage,
             totalPages: results.totalPages,
-            userId: interaction.user.id,
             namespace: "anistock_query",
-            query: query || "",
-            sort: sort || "",
+            contextId,
           });
 
           await interaction.reply({
