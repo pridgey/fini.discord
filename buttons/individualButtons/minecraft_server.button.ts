@@ -30,7 +30,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       );
 
       await interaction.update({
-        content: `The Fini Minecraft server is currently offline. <@${userId}> has requested to start it. A second user must agree.`,
+        content: `The Fini Minecraft server is currently offline. <@${interaction.user.id}> has requested to start it. A second user must agree.`,
         components: [buttonRow],
       });
       return;
@@ -55,7 +55,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
         try {
           await new Promise<void>((resolve, reject) => {
             exec(
-              "cd /opt/minecraft/AllTheMons && screen -dmS minecraft ./startserver.sh",
+              "cd /opt/minecraft/AllTheMons && ATM10_RESTART=false screen -dmS minecraft ./startserver.sh",
               (error) => {
                 if (error) reject(error);
                 else resolve();
