@@ -15,6 +15,14 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
   try {
     const { contextId, userId } = parsePaginationState(args);
 
+    if (userId && userId !== interaction.user.id) {
+      await interaction.reply({
+        content: "❌ This button is not for you!",
+        ephemeral: true,
+      });
+      return;
+    }
+
     // Retrieve pagination context from database
     const context = await getPaginationContext(contextId);
 

@@ -24,16 +24,6 @@ export async function handleButtonInteraction(interaction: ButtonInteraction) {
   // Parse customId: "namespace:data:userId"
   const [namespace, ...args] = interaction.customId.split(":");
 
-  // Security: Check if button is for this user
-  const userId = args[args.length - 1];
-  if (userId && userId !== interaction.user.id) {
-    await interaction.reply({
-      content: "❌ This button is not for you!",
-      ephemeral: true,
-    });
-    return;
-  }
-
   // Get handler from collection
   const handler = buttonHandlers.get(namespace);
 
