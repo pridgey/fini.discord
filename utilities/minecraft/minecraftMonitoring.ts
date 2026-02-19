@@ -79,50 +79,49 @@ export class MinecraftMonitor {
       // Single player
       if (this.currentState === "EMPTY_COUNTDOWN") {
         // Was empty, now has 1 player
-        console.log(
-          "Player joined empty server, starting single player countdown",
-        );
+        console.log("Player joined empty server, canceling empty countdown");
         this.cancelShutdown();
       }
 
-      if (this.currentState !== "SINGLE_PLAYER_COUNTDOWN") {
-        // Start single player countdown
-        console.log("Single player detected, starting 1 hour countdown");
-        this.currentState = "SINGLE_PLAYER_COUNTDOWN";
-        this.singlePlayerStartTime = Date.now();
-        await this.sendMinecraftMessage(
-          "§eYou are the only player online. Server will shut down in 1 hour if no one else joins.",
-        );
+      /* No longer handling single player countdown */
+      // if (this.currentState !== "SINGLE_PLAYER_COUNTDOWN") {
+      //   // Start single player countdown
+      //   console.log("Single player detected, starting 1 hour countdown");
+      //   this.currentState = "SINGLE_PLAYER_COUNTDOWN";
+      //   this.singlePlayerStartTime = Date.now();
+      //   await this.sendMinecraftMessage(
+      //     "§eYou are the only player online. Server will shut down in 1 hour if no one else joins.",
+      //   );
 
-        // Schedule shutdown in 1 hour
-        this.shutdownTimer = setTimeout(() => {
-          console.log("Single player timeout reached, shutting down server");
-          this.stopServer(
-            "Server shutting down - no other players joined in the last hour.",
-          );
-        }, 60 * 60 * 1000); // 1 hour
-      } else {
-        // Already in single player countdown, check for warnings
-        const elapsed = Date.now() - (this.singlePlayerStartTime ?? 0);
-        const remaining = 60 * 60 * 1000 - elapsed;
+      //   // Schedule shutdown in 1 hour
+      //   this.shutdownTimer = setTimeout(() => {
+      //     console.log("Single player timeout reached, shutting down server");
+      //     this.stopServer(
+      //       "Server shutting down - no other players joined in the last hour.",
+      //     );
+      //   }, 60 * 60 * 1000); // 1 hour
+      // } else {
+      //   // Already in single player countdown, check for warnings
+      //   const elapsed = Date.now() - (this.singlePlayerStartTime ?? 0);
+      //   const remaining = 60 * 60 * 1000 - elapsed;
 
-        // Send warning at 15, 10, 5, 1 minutes remaining
-        if (remaining <= 15 * 60 * 1000 && remaining > 14.5 * 60 * 1000) {
-          await this.sendMinecraftMessage(
-            "§e15 minutes until server shutdown. Invite friends to keep playing!",
-          );
-        } else if (remaining <= 10 * 60 * 1000 && remaining > 9.5 * 60 * 1000) {
-          await this.sendMinecraftMessage(
-            "§610 minutes until server shutdown.",
-          );
-        } else if (remaining <= 5 * 60 * 1000 && remaining > 4.5 * 60 * 1000) {
-          await this.sendMinecraftMessage("§c5 minutes until server shutdown!");
-        } else if (remaining <= 1 * 60 * 1000 && remaining > 0.5 * 60 * 1000) {
-          await this.sendMinecraftMessage(
-            "§c§l1 MINUTE until server shutdown!",
-          );
-        }
-      }
+      //   // Send warning at 15, 10, 5, 1 minutes remaining
+      //   if (remaining <= 15 * 60 * 1000 && remaining > 14.5 * 60 * 1000) {
+      //     await this.sendMinecraftMessage(
+      //       "§e15 minutes until server shutdown. Invite friends to keep playing!",
+      //     );
+      //   } else if (remaining <= 10 * 60 * 1000 && remaining > 9.5 * 60 * 1000) {
+      //     await this.sendMinecraftMessage(
+      //       "§610 minutes until server shutdown.",
+      //     );
+      //   } else if (remaining <= 5 * 60 * 1000 && remaining > 4.5 * 60 * 1000) {
+      //     await this.sendMinecraftMessage("§c5 minutes until server shutdown!");
+      //   } else if (remaining <= 1 * 60 * 1000 && remaining > 0.5 * 60 * 1000) {
+      //     await this.sendMinecraftMessage(
+      //       "§c§l1 MINUTE until server shutdown!",
+      //     );
+      //   }
+      // }
     } else if (playerCount === 0) {
       // No players
       if (this.currentState === "SINGLE_PLAYER_COUNTDOWN") {

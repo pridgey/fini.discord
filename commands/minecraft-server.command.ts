@@ -40,7 +40,7 @@ export const execute = async (
   if (!isRunning) {
     const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
-        .setCustomId(`minecraft_server:offline:${interaction.user.id}`)
+        .setCustomId(`minecraft_server:${interaction.user.id}`)
         .setLabel("Start Server")
         .setStyle(ButtonStyle.Primary),
     );
