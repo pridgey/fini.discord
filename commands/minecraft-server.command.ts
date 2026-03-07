@@ -14,19 +14,7 @@ import { getServerPlayers } from "../utilities/minecraft/getServerPlays";
 
 export const data = new SlashCommandBuilder()
   .setName("minecraft-server")
-  .setDescription("Checks the state of the Fini minecraft server")
-  .addBooleanOption((option) =>
-    option
-      .setName("start")
-      .setDescription("Request to start the server if it's offline")
-      .setRequired(false),
-  )
-  .addBooleanOption((option) =>
-    option
-      .setName("list-players")
-      .setDescription("List current players on the server")
-      .setRequired(false),
-  );
+  .setDescription("Checks the state of the Fini minecraft server");
 
 export const execute = async (
   interaction: ChatInputCommandInteraction,
@@ -35,7 +23,6 @@ export const execute = async (
   await interaction.deferReply();
 
   const isRunning = await getServerStatus();
-  const requestStart = interaction.options.getBoolean("start");
 
   if (!isRunning) {
     const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -45,11 +32,9 @@ export const execute = async (
         .setStyle(ButtonStyle.Primary),
     );
 
-    const startAction = requestStart ? [buttonRow] : [];
-
     await interaction.editReply({
       content: "The Fini Minecraft server is currently offline.",
-      components: startAction,
+      components: [buttonRow],
     });
     logCommand();
     return;
@@ -80,12 +65,10 @@ export const execute = async (
 
   replyText += ` (\`${publicIP}:${MINECRAFT_PORT}\`)`;
 
-  if (listPlayers) {
-    if (playerList.length > 0) {
-      replyText += `\n\nCurrent players online:\n- ${playerList.join("\n- ")}`;
-    } else {
-      replyText += `\nNo players are currently online.`;
-    }
+  if (playerList.length > 0) {
+    replyText += `\n\nCurrent players online:\n- ${playerList.join("\n- ")}`;
+  } else {
+    replyText += `\nNo players are currently online.`;
   }
 
   await interaction.editReply(replyText);

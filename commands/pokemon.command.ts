@@ -1,5 +1,10 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
+import {
+  AttachmentBuilder,
+  ChatInputCommandInteraction,
+  ContainerBuilder,
+  MessageFlags,
+} from "discord.js";
 import { calculatePokemonTypeEffectiveness } from "../utilities/pokemonTypes/typeEffective";
 import { toCapitalize } from "../utilities/strings/toCapitalize";
 
@@ -35,39 +40,72 @@ export const execute = async (
     if (pokemonResponse.ok) {
       const data = await pokemonResponse.json();
 
-      // Build pokemon response
-      const imageAttachment = new AttachmentBuilder(
-        data.sprites.other.home.front_default || "",
-        {
-          name: `${pokemonTag}.jpg`,
-        },
-      );
-
       const pokemonTypeEffectiveness = calculatePokemonTypeEffectiveness(
         data.types.map((t) => t.type.name),
       );
 
-      const WeakToString = `\r\n*Weak To:* ${pokemonTypeEffectiveness.WeakTo.map(
+      const WeakToString = `\r\n**Weak To:** ${pokemonTypeEffectiveness.WeakTo.map(
         (t) => `${t.type} (${t.effective}x)`,
       ).join(", ")}`;
 
-      const ImmuneToString = `\r\n*Immune To:* ${pokemonTypeEffectiveness.ImmuneTo.map(
+      const ImmuneToString = `\r\n**Immune To:** ${pokemonTypeEffectiveness.ImmuneTo.map(
         (t) => `${t.type} (${t.effective}x)`,
       ).join(", ")}`;
 
-      const NeutralToString = `\r\n*Neutral To:* ${pokemonTypeEffectiveness.NeutralTo.map(
+      const NeutralToString = `\r\n**Neutral To:** ${pokemonTypeEffectiveness.NeutralTo.map(
         (t) => `${t.type} (${t.effective}x)`,
       ).join(", ")}`;
 
-      const ResistantToString = `\r\n*Resistant To:* ${pokemonTypeEffectiveness.ResistantTo.map(
+      const ResistantToString = `\r\n**Resistant To:** ${pokemonTypeEffectiveness.ResistantTo.map(
         (t) => `${t.type} (${t.effective}x)`,
       ).join(", ")}`;
+
+      // Build pokemon response
+      const cardDetail = new ContainerBuilder()
+        .setAccentColor(0x9090ff)
+        .addTextDisplayComponents((text) =>
+          text.setContent(`## ${toCapitalize(data.name)}`),
+        )
+        .addTextDisplayComponents((text) =>
+          text.setContent(
+            `**Type:** ${data.types
+              .map((t) => toCapitalize(t.type.name))
+              .join(" / ")}`,
+          ),
+        )
+        .addTextDisplayComponents((text) =>
+          text.setContent(
+            `**Abilities:** ${data.abilities
+              .map((a) => toCapitalize(a.ability.name))
+              .join(" / ")}`,
+          ),
+        )
+        .addMediaGalleryComponents((media) =>
+          media.addItems((item) =>
+            item
+              .setURL(data.sprites.other.home.front_default)
+              .setDescription(`${data.name} Image`),
+          ),
+        )
+        .addTextDisplayComponents((text) =>
+          text.setContent(
+            `**Stats:** ${data.stats
+              .map((s) => `${s.stat.name} • ${s.base_stat}`)
+              .join(" | ")}`,
+          ),
+        )
+        .addSeparatorComponents((sep) => sep)
+        .addTextDisplayComponents((text) => text.setContent(WeakToString))
+        .addSeparatorComponents((sep) => sep)
+        .addTextDisplayComponents((text) => text.setContent(ImmuneToString))
+        .addSeparatorComponents((sep) => sep)
+        .addTextDisplayComponents((text) => text.setContent(ResistantToString))
+        .addSeparatorComponents((sep) => sep)
+        .addTextDisplayComponents((text) => text.setContent(NeutralToString));
 
       await interaction.editReply({
-        content: `**${toCapitalize(
-          pokemonTag,
-        )}** (Pokemon)${NeutralToString}${WeakToString}${ImmuneToString}${ResistantToString}`,
-        files: [imageAttachment],
+        components: [cardDetail],
+        flags: [MessageFlags.IsComponentsV2],
       });
     } else {
       // Try /ability
