@@ -1,16 +1,17 @@
 import { ButtonInteraction, MessageFlags } from "discord.js";
-import { buildAniStockQueryResultCards } from "../../modules/finistocks/buildAniStockQueryResultCards";
-import { queryAnime } from "../../modules/finistocks/queryAnime";
+import { QueryHandler } from "../../queries/QueryHandler";
 import {
-  parsePaginationState,
   createPaginationRow,
   getPaginationContext,
+  parsePaginationState,
   updatePaginationPage,
 } from "../../utilities/pagination/pagination";
-import { AnimeSortOptions } from "../../modules/finistocks/determineSort";
 
-export const namespace = "anistock_query_next_page";
+export const namespace = "next_page";
 
+/*
+  Generic button handler for pagination
+*/
 export async function execute(interaction: ButtonInteraction, args: string[]) {
   try {
     const { contextId, userId } = parsePaginationState(args);
@@ -36,38 +37,40 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
     // Fetch next page
     const nextPage = context.current_page + 1;
-    const result = await queryAnime(
-      context.query,
-      { page: nextPage, perPage: 5 },
-      context.sort as AnimeSortOptions,
-    );
+
+    const query = QueryHandler(context.query_id);
+    const result = await query.query({
+      queryString: context.query,
+      page: nextPage,
+      perPage: 5,
+      sortOption: context.sort,
+    });
 
     // Update context with new page
     await updatePaginationPage(contextId, nextPage);
 
     // Build components
-    const animeResultsComponents = buildAniStockQueryResultCards({
-      queryResults: result.items,
+    const resultComponents = await query.buildResults({
+      items: result.items,
       userId: userId,
-      query: context.query,
-      sort: context.sort,
+      queryString: context.query,
+      sortOption: context.sort,
     });
 
     const pageRow = createPaginationRow({
       userId,
       currentPage: result.currentPage,
       totalPages: result.totalPages,
-      namespace: "anistock_query",
       contextId,
     });
 
     // Update the interaction
     await interaction.update({
-      components: [...animeResultsComponents, pageRow],
+      components: [...resultComponents, pageRow],
       flags: [MessageFlags.IsComponentsV2],
     });
   } catch (error) {
-    console.error("Error handling anistock query next page:", error);
+    console.error("Error handling query next page:", error, { args });
     await interaction.reply({
       content: "❌ Failed to load next page",
       flags: [MessageFlags.Ephemeral],

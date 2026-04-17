@@ -25,7 +25,7 @@ export const buildSingleAniStockCard = async ({
     )
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `**Price:** $${anime.latest_price.toFixed(2)} • **Season:** ${
+        `**Price:** ${anime.latest_price.toFixed(2)} Finicoin • **Season:** ${
           anime.season || "N/A"
         } • **Year:** ${anime.year || "N/A"} • **Status:** ${
           anime.status

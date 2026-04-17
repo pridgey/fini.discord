@@ -200,7 +200,7 @@ export type AniStock_Detail = {
 export type PaginationContext = {
   id?: string;
   user_id: string;
-  query_type: string;
+  query_id: string;
   query: string;
   sort: string;
   filters: string;

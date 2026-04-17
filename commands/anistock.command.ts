@@ -7,10 +7,10 @@ import {
 import { buildAniStockQueryResultCards } from "../modules/finistocks/buildAniStockQueryResultCards";
 import { buildSingleAniStockCard } from "../modules/finistocks/buildSingleAniStockCard";
 import { AnimeSortOptions } from "../modules/finistocks/determineSort";
-import { queryAnime } from "../modules/finistocks/queryAnime";
+import { QueryHandler } from "../queries/QueryHandler";
 import {
+  createPaginationContext,
   createPaginationRow,
-  savePaginationContext,
 } from "../utilities/pagination/pagination";
 
 export const data = new SlashCommandBuilder()
@@ -57,15 +57,18 @@ export const execute = async (
     const subcommand = interaction.options.getSubcommand();
 
     switch (subcommand) {
+      /* Query Subcommand */
       case "query": {
         const query = interaction.options.getString("query") || undefined;
         const sort = interaction.options.getString("sort") || undefined;
 
-        const results = await queryAnime(
-          query,
-          undefined,
-          sort as AnimeSortOptions,
-        );
+        const animeDetailsQuery = QueryHandler("anistock_details");
+        const results = await animeDetailsQuery.query({
+          queryString: query,
+          page: 1,
+          perPage: 5,
+          sortOption: sort as AnimeSortOptions,
+        });
 
         if (results.items.length === 0) {
           /* There are no results to show */
@@ -85,13 +88,20 @@ export const execute = async (
           });
         } else {
           // Save pagination context to database
-          const contextId = await savePaginationContext(
-            interaction.user.id,
-            "anistock_query",
+          console.log("Saving pagination context with data:", {
+            userId: interaction.user.id,
+            queryId: animeDetailsQuery.id,
+            query,
+            sort,
+          });
+          const contextId = await createPaginationContext({
+            userId: interaction.user.id,
+            queryId: animeDetailsQuery.id,
             query,
             sort, // sort
-            undefined, // filters
-          );
+            filters: undefined, // filters
+          });
+          console.log("Saved pagination context with ID:", contextId);
 
           /* There are multiple results to show */
           const animeResultsComponents = buildAniStockQueryResultCards({
@@ -105,13 +115,12 @@ export const execute = async (
             userId: interaction.user.id,
             currentPage: results.currentPage,
             totalPages: results.totalPages,
-            namespace: "anistock_query",
             contextId,
           });
 
           await interaction.reply({
             components: [...animeResultsComponents, pageRow],
-            flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
+            flags: [MessageFlags.IsComponentsV2],
           });
         }
 

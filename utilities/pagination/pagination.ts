@@ -22,55 +22,41 @@ export interface PaginationState {
   namespace: string;
 }
 
+interface PaginationContextData {
+  userId: string;
+  queryId: string;
+  query?: string;
+  sort?: string;
+  filters?: Record<string, any>;
+}
+
 /**
- * Creates or updates a pagination context in the database
+ * Creates a pagination context in the database
  * Returns the context ID to use in button customIds
  */
-export async function savePaginationContext(
-  userId: string,
-  contextType: string,
-  query?: string,
-  sort?: string,
-  filters?: Record<string, any>,
-): Promise<string> {
+export async function createPaginationContext({
+  userId,
+  queryId,
+  query,
+  sort,
+  filters,
+}: PaginationContextData): Promise<string> {
   try {
     // Delete all expired contexts before creating a new one
     await deleteExpiredPaginationContexts();
 
-    // Try to find existing context for this user and type
-    const existing = await pb
+    // Create new context
+    const created = await pb
       .collection<PaginationContext>("pagination_context")
-      .getFirstListItem(
-        `user_id = "${userId}" && context_type = "${contextType}"`,
-        { requestKey: `find-context-${userId}-${contextType}` },
-      )
-      .catch(() => null);
-
-    if (existing) {
-      // Update existing context
-      const updated = await pb
-        .collection<PaginationContext>("pagination_context")
-        .update(existing.id!, {
-          query,
-          sort,
-          filters,
-          current_page: 1, // Reset to page 1
-        });
-      return updated.id!;
-    } else {
-      // Create new context
-      const created = await pb
-        .collection<PaginationContext>("pagination_context")
-        .create({
-          user_id: userId,
-          context_type: contextType,
-          query,
-          sort,
-          filters,
-          current_page: 1,
-        });
-      return created.id!;
-    }
+      .create({
+        user_id: userId,
+        query_id: queryId,
+        query,
+        sort,
+        filters,
+        current_page: 1,
+      });
+    return created.id!;
   } catch (error) {
     console.error("Error saving pagination context:", error);
     throw error;
@@ -82,7 +68,9 @@ export async function savePaginationContext(
  */
 export async function deleteExpiredPaginationContexts(): Promise<void> {
   try {
-    const expirationTime = new Date(Date.now() - 15 * 60 * 1000).toISOString(); // 15 minutes ago
+    const expirationTime = new Date(Date.now() - 15 * 60 * 1000)
+      .toISOString()
+      .replace("T", " "); // 15 minutes ago
 
     const expiredContexts = await pb
       .collection<PaginationContext>("pagination_context")
@@ -142,13 +130,14 @@ export async function updatePaginationPage(
  * Creates pagination buttons with just the context ID
  */
 export function createPaginationRow(
-  context: PaginationState & { contextId: string },
+  // omit namespace because it's pagination - namespace will just be "prev_page" or "next_page"
+  context: Omit<PaginationState, "namespace"> & { contextId: string },
 ): ActionRowBuilder<ButtonBuilder> {
-  const { userId, currentPage, totalPages, namespace, contextId } = context;
+  const { userId, currentPage, totalPages, contextId } = context;
 
   // Super simple customId - just namespace, contextId, and userId
   const prevButton = new ButtonBuilder()
-    .setCustomId(`${namespace}_prev_page:${contextId}:${userId}`)
+    .setCustomId(`prev_page:${contextId}:${userId}`)
     .setLabel("◀ Previous")
     .setStyle(ButtonStyle.Secondary)
     .setDisabled(currentPage === 1);
@@ -160,7 +149,7 @@ export function createPaginationRow(
     .setDisabled(true);
 
   const nextButton = new ButtonBuilder()
-    .setCustomId(`${namespace}_next_page:${contextId}:${userId}`)
+    .setCustomId(`next_page:${contextId}:${userId}`)
     .setLabel("Next ▶")
     .setStyle(ButtonStyle.Secondary)
     .setDisabled(currentPage >= totalPages);
