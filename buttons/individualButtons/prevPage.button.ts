@@ -1,5 +1,6 @@
 import { ButtonInteraction, MessageFlags } from "discord.js";
-import { QueryHandler } from "../../queries/QueryHandler";
+import { buildAniStockQueryResultCards } from "../../modules/finistocks/buildAniStockQueryResultCards";
+import { QueryHandler, QueryMap } from "../../queries/QueryHandler";
 import {
   createPaginationRow,
   getPaginationContext,
@@ -7,11 +8,8 @@ import {
   updatePaginationPage,
 } from "../../utilities/pagination/pagination";
 
-export const namespace = "next_page";
+export const namespace = "prev_page";
 
-/*
-  Generic button handler for pagination
-*/
 export async function execute(interaction: ButtonInteraction, args: string[]) {
   try {
     const { contextId, userId } = parsePaginationState(args);
@@ -35,22 +33,22 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
-    // Fetch next page
-    const nextPage = context.current_page + 1;
+    // Fetch previous page
+    const prevPage = context.current_page - 1;
 
-    const query = QueryHandler(context.query_id);
+    const query = QueryHandler(context.query_id as keyof QueryMap);
     const result = await query.query({
       queryString: context.query,
-      page: nextPage,
-      perPage: 5,
+      page: prevPage,
+      perPage: context.per_page,
       sortOption: context.sort,
     });
 
     // Update context with new page
-    await updatePaginationPage(contextId, nextPage);
+    await updatePaginationPage(contextId, prevPage);
 
     // Build components
-    const resultComponents = await query.buildResults({
+    const { components: resultComponents, files } = await query.buildResults({
       items: result.items,
       userId: userId,
       queryString: context.query,
@@ -66,13 +64,14 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
     // Update the interaction
     await interaction.update({
-      components: [...resultComponents, pageRow],
+      components: [...(resultComponents ?? []), pageRow],
+      files: files ?? [],
       flags: [MessageFlags.IsComponentsV2],
     });
   } catch (error) {
-    console.error("Error handling query next page:", error, { args });
+    console.error("Error handling query previous page:", error, { args });
     await interaction.reply({
-      content: "❌ Failed to load next page",
+      content: "❌ Failed to load previous page",
       flags: [MessageFlags.Ephemeral],
     });
   }

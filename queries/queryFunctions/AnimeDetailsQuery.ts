@@ -4,8 +4,30 @@ import {
   determineSortOption,
 } from "../../modules/finistocks/determineSort";
 import { AniStock_Detail } from "../../types/PocketbaseTables";
-import { QueryFunction, QueryParams } from "../../types/QueryTypes";
+import {
+  QueryFunction,
+  QueryParams,
+  ResultsBuilder,
+} from "../../types/QueryTypes";
 import { pb } from "../../utilities/pocketbase";
+
+const buildAnimeDetailsResults = async ({
+  items,
+  userId,
+  queryString,
+  sortOption,
+}: ResultsBuilder<AniStock_Detail>) => {
+  const cards = await buildAniStockQueryResultCards({
+    queryResults: items,
+    userId: userId ?? "",
+    query: queryString,
+    sort: sortOption,
+  });
+
+  return {
+    components: cards,
+  };
+};
 
 export const animeDetailsQuery: QueryFunction<AniStock_Detail> = {
   query: async ({
@@ -31,16 +53,6 @@ export const animeDetailsQuery: QueryFunction<AniStock_Detail> = {
       // Not gonna bother with database-id querying for now. Will likely make a separate query function for that
     })();
 
-    console.log("Debug - Querying anime with params:", {
-      queryString,
-      page,
-      perPage,
-      sortOption,
-      filterOption,
-      sortClause,
-      filterClause,
-    });
-
     const result = await pb
       .collection<AniStock_Detail>("anistock_details")
       .getList(page, perPage, {
@@ -57,12 +69,5 @@ export const animeDetailsQuery: QueryFunction<AniStock_Detail> = {
     };
   },
   id: "anistock_details",
-  buildResults: async ({ items, userId, queryString, sortOption }) => {
-    return await buildAniStockQueryResultCards({
-      queryResults: items,
-      userId,
-      query: queryString,
-      sort: sortOption,
-    });
-  },
+  buildResults: buildAnimeDetailsResults,
 };

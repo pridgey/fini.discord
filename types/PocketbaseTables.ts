@@ -107,6 +107,9 @@ export type UserCardRecord = {
   server_id: string;
   identifier: string;
   card: string;
+  expand?: {
+    card: CardDefinitionRecord;
+  };
 };
 
 // Helpful for identifying user by name in database
@@ -205,5 +208,6 @@ export type PaginationContext = {
   sort: string;
   filters: string;
   current_page: number;
+  per_page: number;
   updated?: string;
 };

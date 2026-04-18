@@ -25,6 +25,7 @@ export interface PaginationState {
 interface PaginationContextData {
   userId: string;
   queryId: string;
+  perPage: number;
   query?: string;
   sort?: string;
   filters?: Record<string, any>;
@@ -37,6 +38,7 @@ interface PaginationContextData {
 export async function createPaginationContext({
   userId,
   queryId,
+  perPage,
   query,
   sort,
   filters,
@@ -54,6 +56,7 @@ export async function createPaginationContext({
         query,
         sort,
         filters,
+        per_page: perPage,
         current_page: 1,
       });
     return created.id!;

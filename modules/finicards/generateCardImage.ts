@@ -14,7 +14,7 @@ import { createGifOverlay } from "./createGifOverlay";
 
 // Function to create the card image used in discord
 export const createCardImage = async (
-  cardDefinitionRecord: CardDefinitionRecord
+  cardDefinitionRecord: CardDefinitionRecord,
 ) => {
   try {
     // Get the card template svg code
@@ -22,15 +22,15 @@ export const createCardImage = async (
       join(
         __dirname,
         "card templates",
-        cardLayoutDictionary[cardDefinitionRecord.rarity]
-      )
+        cardLayoutDictionary[cardDefinitionRecord.rarity],
+      ),
     );
     let templateSVG = templateFileContents.toString();
 
     // Get the card's image
-    const imageUrl = pb.files.getUrl(
+    const imageUrl = pb.files.getURL(
       cardDefinitionRecord,
-      cardDefinitionRecord.image
+      cardDefinitionRecord.image,
     );
     const res = await fetch(imageUrl);
     const data = await res.arrayBuffer();
@@ -48,7 +48,7 @@ export const createCardImage = async (
       .toBuffer();
 
     const base64String = `data:image/png;base64,${resizedBuffer.toString(
-      "base64"
+      "base64",
     )}`;
 
     // Card color type
@@ -57,7 +57,7 @@ export const createCardImage = async (
     // Card Name
     templateSVG = templateSVG.replace(
       "{card_name}",
-      cardDefinitionRecord.card_name
+      cardDefinitionRecord.card_name,
     );
     // Card Color
     templateSVG = templateSVG.replace("{color_start}", colorType.start);
@@ -69,56 +69,56 @@ export const createCardImage = async (
     // Card Id
     templateSVG = templateSVG.replace(
       "{card_id}",
-      cardDefinitionRecord.id ?? "unknown id"
+      cardDefinitionRecord.id ?? "unknown id",
     );
     // Rarity
     templateSVG = templateSVG.replace(
       "{rarity}",
-      cardDefinitionRecord.rarity.toUpperCase()
+      cardDefinitionRecord.rarity.toUpperCase(),
     );
     // Set Number
     templateSVG = templateSVG.replace(
       "{set}",
-      cardDefinitionRecord.set.toLocaleString()
+      cardDefinitionRecord.set.toLocaleString(),
     );
     // Strength
     const strengthScore = determineAbilityGrade(cardDefinitionRecord.strength);
     templateSVG = templateSVG.replace("{strength}", strengthScore);
     templateSVG = templateSVG.replace(
       "{strength_color}",
-      strengthScore === "S" ? "url(#paint1_linear_383_359)" : "white"
+      strengthScore === "S" ? "url(#paint1_linear_383_359)" : "white",
     );
     // Agility
     const agilityScore = determineAbilityGrade(cardDefinitionRecord.agility);
     templateSVG = templateSVG.replace("{agility}", agilityScore);
     templateSVG = templateSVG.replace(
       "{agility_color}",
-      agilityScore === "S" ? "url(#paint1_linear_383_359)" : "white"
+      agilityScore === "S" ? "url(#paint1_linear_383_359)" : "white",
     );
     // Endurance
     const enduranceScore = determineAbilityGrade(
-      cardDefinitionRecord.endurance
+      cardDefinitionRecord.endurance,
     );
     templateSVG = templateSVG.replace("{endurance}", enduranceScore);
     templateSVG = templateSVG.replace(
       "{endurance_color}",
-      enduranceScore === "S" ? "url(#paint1_linear_383_359)" : "white"
+      enduranceScore === "S" ? "url(#paint1_linear_383_359)" : "white",
     );
     // Intellect
     const intellectScore = determineAbilityGrade(
-      cardDefinitionRecord.intellect
+      cardDefinitionRecord.intellect,
     );
     templateSVG = templateSVG.replace("{intellect}", intellectScore);
     templateSVG = templateSVG.replace(
       "{intellect_color}",
-      intellectScore === "S" ? "url(#paint1_linear_383_359)" : "white"
+      intellectScore === "S" ? "url(#paint1_linear_383_359)" : "white",
     );
     // Luck
     const luckScore = determineAbilityGrade(cardDefinitionRecord.luck);
     templateSVG = templateSVG.replace("{luck}", luckScore);
     templateSVG = templateSVG.replace(
       "{luck_color}",
-      luckScore === "S" ? "url(#paint1_linear_383_359)" : "white"
+      luckScore === "S" ? "url(#paint1_linear_383_359)" : "white",
     );
 
     // Card Image
@@ -128,7 +128,7 @@ export const createCardImage = async (
     if (["i", "ri"].includes(cardDefinitionRecord.rarity)) {
       templateSVG = templateSVG.replace(
         "{card_description}",
-        cardDefinitionRecord.description
+        cardDefinitionRecord.description,
       );
     }
 
@@ -141,8 +141,8 @@ export const createCardImage = async (
           "strength",
           strengthScore,
           cardDefinitionRecord.rarity as "c" | "u",
-          cardDefinitionRecord.color
-        )
+          cardDefinitionRecord.color,
+        ),
       );
 
       // Agility
@@ -152,8 +152,8 @@ export const createCardImage = async (
           "agility",
           agilityScore,
           cardDefinitionRecord.rarity as "c" | "u",
-          cardDefinitionRecord.color
-        )
+          cardDefinitionRecord.color,
+        ),
       );
 
       // Endurance
@@ -163,8 +163,8 @@ export const createCardImage = async (
           "endurance",
           enduranceScore,
           cardDefinitionRecord.rarity as "c" | "u",
-          cardDefinitionRecord.color
-        )
+          cardDefinitionRecord.color,
+        ),
       );
 
       // Intellect
@@ -174,8 +174,8 @@ export const createCardImage = async (
           "intellect",
           intellectScore,
           cardDefinitionRecord.rarity as "c" | "u",
-          cardDefinitionRecord.color
-        )
+          cardDefinitionRecord.color,
+        ),
       );
 
       // Luck
@@ -185,8 +185,8 @@ export const createCardImage = async (
           "luck",
           luckScore,
           cardDefinitionRecord.rarity as "c" | "u",
-          cardDefinitionRecord.color
-        )
+          cardDefinitionRecord.color,
+        ),
       );
     }
 
@@ -215,7 +215,7 @@ export const createCardImage = async (
       try {
         const gifBuffer = await createGifOverlay(
           imageBuffer,
-          path.join(__dirname, "generated card images", "doggo.gif")
+          path.join(__dirname, "generated card images", "doggo.gif"),
         );
 
         console.log("Debug Gif Buffer:", gifBuffer.slice(0, 15));
@@ -241,7 +241,7 @@ const generateAbilityPipsSVG = (
   abilityName: string,
   ability: string,
   rarity: "c" | "u",
-  color: CardDefinitionRecord["color"]
+  color: CardDefinitionRecord["color"],
 ) => {
   let resultingSvg = "";
 

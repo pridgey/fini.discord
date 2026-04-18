@@ -100,6 +100,7 @@ export const execute = async (
             query,
             sort, // sort
             filters: undefined, // filters
+            perPage: 5,
           });
           console.log("Saved pagination context with ID:", contextId);
 

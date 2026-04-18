@@ -5,7 +5,6 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ChatInputCommandInteraction,
-  ComponentType,
 } from "discord.js";
 import path from "path";
 import { generateBoosterPack } from "../modules/finicards/generateBoosterPack";
@@ -49,53 +48,13 @@ export const execute = async (
         serverName: interaction.guild?.name ?? "unknown guild name",
       });
 
-      // state for the current displayed image
-      let currentImageIndex = -1;
-
-      // Small helper function to build the discord attachment
-      const getImageAttachment = (buffer?: Buffer) => {
-        // Get parameter or default to current interaction index
-        const workingBuffer = buffer ?? packImages[currentImageIndex].buffer;
-
-        // Generate image attachment
-        const image = new AttachmentBuilder(workingBuffer, {
-          name: "image.jpg",
-        });
-
-        return image;
-      };
-
       const openPackButton = new ButtonBuilder()
-        .setCustomId("open-pack")
+        .setCustomId(`booster_pack_open:${interaction.user.id}`)
         .setLabel("Open Pack")
         .setStyle(ButtonStyle.Secondary);
 
       const openPackRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         openPackButton,
-      );
-
-      const button1 = new ButtonBuilder()
-        .setCustomId("button-prev")
-        .setLabel("<- Prev Card")
-        .setStyle(ButtonStyle.Secondary);
-
-      const button2 = new ButtonBuilder()
-        .setCustomId("button-next")
-        .setLabel("Next Card ->")
-        .setStyle(ButtonStyle.Secondary);
-
-      const finishButton = new ButtonBuilder()
-        .setCustomId("finish")
-        .setLabel("Show All")
-        .setStyle(ButtonStyle.Secondary);
-
-      const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        button1,
-        button2,
-      );
-
-      const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-        finishButton,
       );
 
       // Initial image (booster pack cover)
@@ -104,8 +63,7 @@ export const execute = async (
       );
 
       // Initial response
-      const interactionResponse = await interaction.editReply({
-        content: `Here is your ${packImages.length} card booster pack:`,
+      await interaction.editReply({
         components: [openPackRow],
         files: [coverImage],
       });
@@ -129,82 +87,6 @@ export const execute = async (
           `Uh oh, looks like you only got ${packImages.length} cards.\r\nSince you're missing ${numCardsMissing}, I've reimbursed you ${reimbursement} finicoin.`,
         );
       }
-
-      // Filter ensures only the original user can interact with the buttons
-      const collectorFilter = (i) => i.user.id === interaction.user.id;
-
-      const collector = interactionResponse.createMessageComponentCollector({
-        componentType: ComponentType.Button,
-        filter: collectorFilter,
-        time: 600_000, // 10 min
-      });
-
-      // Event that fires when the collector times out
-      collector.on("end", async (i) => {
-        const endedInteraction = i.at(0);
-
-        // Build all attachments
-        const imageAttachments = packImages.map((img) =>
-          getImageAttachment(img.buffer),
-        );
-
-        await endedInteraction?.editReply({
-          content: `${endedInteraction.user} pulled ${packImages.length} cards:`,
-          files: imageAttachments,
-          components: [],
-        });
-      });
-
-      // Event that fires when a user interacts with the buttons
-      collector.on("collect", async (i) => {
-        // Finish button
-        if (i.customId === "finish") {
-          // Build all attachments
-          const imageAttachments = packImages.map((img) =>
-            getImageAttachment(img.buffer),
-          );
-
-          await i.update({
-            content: `${interaction.user} pulled ${packImages.length} cards:`,
-            files: imageAttachments,
-            components: [],
-          });
-
-          return;
-        }
-
-        // Opening the pack
-        if (i.customId === "open-pack") {
-          currentImageIndex = 0;
-        }
-
-        // Using the arrows
-        if (i.customId === "button-prev") {
-          if (currentImageIndex <= 0) {
-            currentImageIndex = packImages.length - 1;
-          } else {
-            currentImageIndex = currentImageIndex - 1;
-          }
-        }
-
-        if (i.customId === "button-next") {
-          if (currentImageIndex >= packImages.length - 1) {
-            currentImageIndex = 0;
-          } else {
-            currentImageIndex = currentImageIndex + 1;
-          }
-        }
-
-        await interactionResponse.edit({
-          content: `Card ${currentImageIndex + 1} of ${packImages.length}: ${
-            packImages[currentImageIndex].card_name
-          }:`,
-          components: [row, row2],
-          files: [getImageAttachment()],
-        });
-
-        await i.update({});
-      });
     } else {
       interaction.editReply(
         "You do not have enough finicoin to run these command.",

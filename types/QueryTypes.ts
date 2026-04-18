@@ -1,10 +1,19 @@
-import { ContainerBuilder, TextDisplayBuilder } from "discord.js";
+import {
+  AttachmentBuilder,
+  ContainerBuilder,
+  TextDisplayBuilder,
+} from "discord.js";
 
 export type ResultsBuilder<T> = {
   items: T[];
-  userId: string;
-  queryString: string;
+  userId?: string;
+  queryString?: string;
   sortOption?: string;
+};
+
+export type ResultsBuilderReturn = {
+  components?: (ContainerBuilder | TextDisplayBuilder)[];
+  files?: AttachmentBuilder[];
 };
 
 export type QueryFunction<T> = {
@@ -16,9 +25,7 @@ export type QueryFunction<T> = {
     perPage: number;
   }>;
   id: string;
-  buildResults: (
-    params: ResultsBuilder<T>,
-  ) => Promise<(ContainerBuilder | TextDisplayBuilder)[]>;
+  buildResults: (params: ResultsBuilder<T>) => Promise<ResultsBuilderReturn>;
 };
 
 export type QueryParams = {
@@ -27,4 +34,5 @@ export type QueryParams = {
   perPage: number;
   sortOption?: string;
   filterOption?: string;
+  additionalData?: Record<string, unknown>;
 };
