@@ -67,6 +67,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       currentPage: result.currentPage,
       totalPages: context.total_pages_override || result.totalPages,
       contextId,
+      wrap: context.wrap,
     });
 
     // Update the interaction

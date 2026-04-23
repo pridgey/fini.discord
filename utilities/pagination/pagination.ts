@@ -20,6 +20,7 @@ export interface PaginationState {
   currentPage: number;
   totalPages: number;
   namespace: string;
+  wrap?: boolean;
 }
 
 interface PaginationContextData {
@@ -30,6 +31,7 @@ interface PaginationContextData {
   sort?: string;
   filter?: string;
   totalPagesOverride?: number;
+  wrap?: boolean;
 }
 
 /**
@@ -44,6 +46,7 @@ export async function createPaginationContext({
   sort,
   filter,
   totalPagesOverride,
+  wrap,
 }: PaginationContextData): Promise<string> {
   try {
     // Delete all expired contexts before creating a new one
@@ -61,6 +64,7 @@ export async function createPaginationContext({
         per_page: perPage,
         current_page: 1,
         total_pages_override: totalPagesOverride,
+        wrap,
       });
     return created.id!;
   } catch (error) {
@@ -139,14 +143,14 @@ export function createPaginationRow(
   // omit namespace because it's pagination - namespace will just be "prev_page" or "next_page"
   context: Omit<PaginationState, "namespace"> & { contextId: string },
 ): ActionRowBuilder<ButtonBuilder> {
-  const { userId, currentPage, totalPages, contextId } = context;
+  const { userId, currentPage, totalPages, contextId, wrap } = context;
 
   // Super simple customId - just namespace, contextId, and userId
   const prevButton = new ButtonBuilder()
     .setCustomId(`prev_page:${contextId}:${userId}`)
     .setLabel("◀ Previous")
     .setStyle(ButtonStyle.Secondary)
-    .setDisabled(currentPage === 1);
+    .setDisabled(currentPage === 1 && !wrap);
 
   const pageIndicator = new ButtonBuilder()
     .setCustomId("page_indicator")
@@ -158,7 +162,7 @@ export function createPaginationRow(
     .setCustomId(`next_page:${contextId}:${userId}`)
     .setLabel("Next ▶")
     .setStyle(ButtonStyle.Secondary)
-    .setDisabled(currentPage >= totalPages);
+    .setDisabled(currentPage >= totalPages && !wrap);
 
   const row = new ActionRowBuilder<ButtonBuilder>();
   row.setComponents([prevButton, pageIndicator, nextButton]);

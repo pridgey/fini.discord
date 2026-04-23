@@ -209,6 +209,7 @@ export type PaginationContext = {
   filter: string;
   current_page: number;
   per_page: number;
+  wrap?: boolean;
   total_pages_override?: number;
   updated?: string;
 };

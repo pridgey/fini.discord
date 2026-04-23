@@ -88,21 +88,14 @@ export const execute = async (
           });
         } else {
           // Save pagination context to database
-          console.log("Saving pagination context with data:", {
-            userId: interaction.user.id,
-            queryId: animeDetailsQuery.id,
-            query,
-            sort,
-          });
           const contextId = await createPaginationContext({
             userId: interaction.user.id,
             queryId: animeDetailsQuery.id,
             query,
             sort, // sort
-            filters: undefined, // filters
+            filter: undefined, // filters
             perPage: 5,
           });
-          console.log("Saved pagination context with ID:", contextId);
 
           /* There are multiple results to show */
           const animeResultsComponents = buildAniStockQueryResultCards({

@@ -1,4 +1,4 @@
-import { Attachment, AttachmentBuilder } from "discord.js";
+import { AttachmentBuilder } from "discord.js";
 import { createCardImage } from "../../modules/finicards/generateCardImage";
 import { UserCardRecord } from "../../types/PocketbaseTables";
 import {

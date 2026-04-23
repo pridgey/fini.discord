@@ -1,15 +1,10 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
+import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import { QueryHandler } from "../queries/QueryHandler";
 import {
-  ActionRowBuilder,
-  AttachmentBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  ChatInputCommandInteraction,
-  ComponentType,
-} from "discord.js";
-import { createCardImage } from "../modules/finicards/generateCardImage";
-import { getUserCollection } from "../modules/finicards/getUserCollection";
-import type { CardDefinitionRecord } from "../types/PocketbaseTables";
+  createPaginationContext,
+  createPaginationRow,
+} from "../utilities/pagination/pagination";
 
 export const data = new SlashCommandBuilder()
   .setName("card-collection")
@@ -41,226 +36,107 @@ export const execute = async (
 
     await interaction.deferReply();
 
-    // Get all user cards
-    const userCards = await getUserCollection(
-      userCollection?.id || interaction.user.id,
-      interaction.guildId ?? "unknown guild id",
-    );
+    const queryFilter = `user_id = "${
+      userCollection?.id || interaction.user.id
+    }" && server_id = "${interaction.guildId}"`;
 
-    if (userCards.length === 0) {
-      interaction.editReply("You've not opened any booster packs yet.");
-    } else {
-      if (listCards) {
-        // list cards in text form
-        const cardList = userCards.map(
-          (uc) =>
-            `**${uc.card_name}** [${uc.rarity}] (${
-              uc.userCardID ?? "unknown card id"
-            })`,
-        );
+    if (listCards) {
+      /* ========== List all cards by text ========== */
+      const cardsPerPage = 10;
 
-        const pageSize = 15;
-        const maxPages = Math.ceil(cardList.length / pageSize) - 1;
-        let currentPage = 0;
+      const cardCollectionListQuery = QueryHandler("card_collection_list");
+      const queryResults = await cardCollectionListQuery.query({
+        page: 1,
+        perPage: cardsPerPage,
+        filterOption: queryFilter,
+      });
 
-        // Navigation buttons
-        const nextButton = new ButtonBuilder()
-          .setCustomId("page-next")
-          .setLabel("Next Page ->")
-          .setStyle(ButtonStyle.Secondary);
-        const prevButton = new ButtonBuilder()
-          .setCustomId("page-prev")
-          .setLabel("<- Prev Page")
-          .setStyle(ButtonStyle.Secondary);
-
-        const pageRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          prevButton,
-          nextButton,
-        );
-
-        const interactionResponse = await interaction.editReply({
-          content: `${userCollection || interaction.user} Collection (${
-            currentPage * pageSize + 1
-          }-${Math.min(
-            userCards.length,
-            currentPage * pageSize + pageSize,
-          )} of ${userCards.length})
-          \r\n${cardList
-            .slice(currentPage * pageSize, currentPage * pageSize + pageSize)
-            .join("\r\n")}`,
-          components: [pageRow],
+      if (queryResults.items.length === 0) {
+        /* There are no results to show */
+        await interaction.editReply({
+          content: `${
+            userCollection?.displayName || "You"
+          } have no cards in their collection yet.`,
         });
 
-        // Listen for interactions
-        // Filter ensures only the original user can interact with the buttons
-        const collectorFilter = (i) => i.user.id === interaction.user.id;
-
-        const collector = interactionResponse.createMessageComponentCollector({
-          componentType: ComponentType.Button,
-          filter: collectorFilter,
-          time: 600_000, // 10 min
-        });
-
-        // Event that fires when the collector times out
-        collector.on("end", async (i) => {
-          await interaction.editReply({
-            content: `${userCollection || interaction.user} Collection (${
-              currentPage * pageSize + 1
-            }-${Math.min(
-              userCards.length,
-              currentPage * pageSize + pageSize,
-            )} of ${userCards.length})
-            \r\n${cardList
-              .slice(currentPage * pageSize, currentPage * pageSize + pageSize)
-              .join("\r\n")}`,
-          });
-        });
-
-        // Event that fires when a user interacts with the buttons
-        collector.on("collect", async (i) => {
-          // Using the arrows
-          if (i.customId === "page-prev") {
-            if (currentPage <= 0) {
-              currentPage = maxPages;
-            } else {
-              currentPage = currentPage - 1;
-            }
-          }
-
-          if (i.customId === "page-next") {
-            if (currentPage >= maxPages) {
-              currentPage = 0;
-            } else {
-              currentPage = currentPage + 1;
-            }
-          }
-
-          await interactionResponse.edit({
-            content: `${userCollection || interaction.user} Collection (${
-              currentPage * pageSize + 1
-            }-${Math.min(
-              userCards.length,
-              currentPage * pageSize + pageSize,
-            )} of ${userCards.length})
-            \r\n${cardList
-              .slice(currentPage * pageSize, currentPage * pageSize + pageSize)
-              .join("\r\n")}`,
-            components: [pageRow],
-          });
-
-          await i.update({});
-        });
-      } else {
-        // default case, show cards as images
-        // state for the current displayed image
-        let currentImageIndex = 0;
-
-        // Small helper function to build the discord attachment
-        const getImageAttachment = async (card: CardDefinitionRecord) => {
-          const buffer = await createCardImage(card);
-
-          if (buffer) {
-            // Generate image attachment
-            const image = new AttachmentBuilder(buffer, {
-              name: "image.jpg",
-            });
-
-            return image;
-          } else {
-            return new AttachmentBuilder("");
-          }
-        };
-
-        // Navigation buttons
-        const button1 = new ButtonBuilder()
-          .setCustomId("button-prev")
-          .setLabel("<- Prev Card")
-          .setStyle(ButtonStyle.Secondary);
-
-        const button2 = new ButtonBuilder()
-          .setCustomId("button-next")
-          .setLabel("Next Card ->")
-          .setStyle(ButtonStyle.Secondary);
-
-        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-          button1,
-          button2,
-        );
-
-        // Initial image
-        const currentImageAttachment = await getImageAttachment(
-          userCards[currentImageIndex],
-        );
-
-        // Initial response
-        const interactionResponse = await interaction.editReply({
-          content: `${userCollection || interaction.user} Collection\nCard ${
-            currentImageIndex + 1
-          } of ${userCards.length}: ${userCards[currentImageIndex].card_name}:`,
-          components: [row],
-          files: [currentImageAttachment],
-        });
-
-        // Filter ensures only the original user can interact with the buttons
-        const collectorFilter = (i) => i.user.id === interaction.user.id;
-
-        const collector = interactionResponse.createMessageComponentCollector({
-          componentType: ComponentType.Button,
-          filter: collectorFilter,
-          time: 600_000, // 10 min
-        });
-
-        // Event that fires when the collector times out
-        collector.on("end", async (i) => {
-          const endedInteraction = i.at(0);
-
-          await endedInteraction?.editReply({
-            content: `${userCollection || interaction.user} Collection\nCard ${
-              currentImageIndex + 1
-            } of ${userCards.length}: ${
-              userCards[currentImageIndex].card_name
-            }:`,
-            components: [],
-          });
-        });
-
-        // Event that fires when a user interacts with the buttons
-        collector.on("collect", async (i) => {
-          // Using the arrows
-          if (i.customId === "button-prev") {
-            if (currentImageIndex <= 0) {
-              currentImageIndex = userCards.length - 1;
-            } else {
-              currentImageIndex = currentImageIndex - 1;
-            }
-          }
-
-          if (i.customId === "button-next") {
-            if (currentImageIndex >= userCards.length - 1) {
-              currentImageIndex = 0;
-            } else {
-              currentImageIndex = currentImageIndex + 1;
-            }
-          }
-
-          // Get navigated card image
-          const navigatedImageAttachment = await getImageAttachment(
-            userCards[currentImageIndex],
-          );
-
-          await interactionResponse.edit({
-            content: `${userCollection || interaction.user} Collection\nCard ${
-              currentImageIndex + 1
-            } of ${userCards.length}: ${
-              userCards[currentImageIndex].card_name
-            }:`,
-            components: [row],
-            files: [navigatedImageAttachment],
-          });
-
-          await i.update({});
-        });
+        return;
       }
+
+      const { components } = await cardCollectionListQuery.buildResults({
+        items: queryResults.items,
+        userId: interaction.user.id,
+      });
+
+      if (!components || components.length === 0) {
+        await interaction.editReply({
+          content: "Error building card collection list components.",
+        });
+        return;
+      }
+
+      // Create pagination row
+      const contextId = await createPaginationContext({
+        userId: interaction.user.id,
+        queryId: cardCollectionListQuery.id,
+        filter: queryFilter,
+        perPage: cardsPerPage,
+      });
+
+      const pageRow = createPaginationRow({
+        userId: interaction.user.id,
+        currentPage: queryResults.currentPage,
+        totalPages: queryResults.totalPages,
+        contextId,
+      });
+
+      await interaction.editReply({
+        components: [...components, pageRow],
+        flags: [MessageFlags.IsComponentsV2],
+      });
+    } else {
+      /* ========== Card by Card Paginated ========== */
+      const cardCollectionQuery = QueryHandler("card_collection");
+      const queryResults = await cardCollectionQuery.query({
+        page: 1,
+        perPage: 1,
+        filterOption: queryFilter,
+      });
+
+      if (queryResults.items.length === 0) {
+        /* There are no results to show */
+        await interaction.editReply({
+          content: `${
+            userCollection?.displayName || "You"
+          } have no cards in their collection yet.`,
+        });
+
+        return;
+      }
+
+      /* Show the collection */
+      const contextId = await createPaginationContext({
+        userId: interaction.user.id,
+        queryId: cardCollectionQuery.id,
+        filter: queryFilter,
+        perPage: 1,
+      });
+
+      const pageRow = createPaginationRow({
+        userId: interaction.user.id,
+        currentPage: queryResults.currentPage,
+        totalPages: queryResults.totalPages,
+        contextId,
+      });
+
+      const { files } = await cardCollectionQuery.buildResults({
+        items: queryResults.items,
+        userId: interaction.user.id,
+      });
+
+      await interaction.editReply({
+        components: [pageRow],
+        files,
+      });
     }
   } catch (err) {
     console.error("Error during user collection", err);
