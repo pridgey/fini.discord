@@ -12,7 +12,6 @@ const queryBoosterPack = async ({
   page,
   perPage,
   filterOption,
-  additionalData,
 }: QueryParams) => {
   const results = await pb
     .collection<UserCardRecord>("user_card")
@@ -22,12 +21,10 @@ const queryBoosterPack = async ({
       expand: "card",
     });
 
-  const { totalCards } = additionalData || {};
-
   return {
     items: results.items,
-    totalItems: totalCards as number,
-    totalPages: totalCards as number,
+    totalItems: results.totalItems,
+    totalPages: results.totalPages,
     currentPage: results.page,
     perPage: results.perPage,
   };

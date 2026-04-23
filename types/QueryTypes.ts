@@ -14,6 +14,7 @@ export type ResultsBuilder<T> = {
 export type ResultsBuilderReturn = {
   components?: (ContainerBuilder | TextDisplayBuilder)[];
   files?: AttachmentBuilder[];
+  useComponentsV2?: boolean;
 };
 
 export type QueryFunction<T> = {

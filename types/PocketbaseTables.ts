@@ -206,8 +206,9 @@ export type PaginationContext = {
   query_id: string;
   query: string;
   sort: string;
-  filters: string;
+  filter: string;
   current_page: number;
   per_page: number;
+  total_pages_override?: number;
   updated?: string;
 };

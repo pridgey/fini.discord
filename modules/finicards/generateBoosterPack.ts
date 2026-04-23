@@ -10,6 +10,7 @@ import { selectAvailableCard } from "./selectAvailableCard";
 
 type CardDefinitionWithBuffer = CardDefinitionRecord & {
   buffer: Buffer;
+  userCardId: string;
 };
 
 type GenerateBoosterPackProps = {
@@ -24,7 +25,7 @@ type GenerateBoosterPackProps = {
  * @returns array of selected cards with their image buffer to display in discord
  */
 export const generateBoosterPack = async (
-  options: GenerateBoosterPackProps
+  options: GenerateBoosterPackProps,
 ): Promise<CardDefinitionWithBuffer[]> => {
   // Get all card definitions
   const cardDefinitions = await pb
@@ -49,8 +50,8 @@ export const generateBoosterPack = async (
   // Generate pack rarities
   const packRarities = await generateBoosterPackRarities(options.serverId);
 
-  // Array of resulting selections
-  const images: CardDefinitionWithBuffer[] = [];
+  // Results array
+  const results: CardDefinitionWithBuffer[] = [];
 
   // For each rarity generated, select a card
   for (const rarity of packRarities) {
@@ -59,11 +60,11 @@ export const generateBoosterPack = async (
     try {
       selectedCard = await selectAvailableCard(
         cardsByRarity[rarity as keyof typeof cardsByRarity],
-        populationCounts
+        populationCounts,
       );
 
       console.log(
-        `${options.username} pulled ${selectedCard?.card_name} [${selectedCard?.rarity}]`
+        `${options.username} pulled ${selectedCard?.card_name} [${selectedCard?.rarity}]`,
       );
 
       if (selectedCard) {
@@ -79,18 +80,22 @@ export const generateBoosterPack = async (
 
         // If all is well, add to the carousel
         if (buffer) {
-          images.push({
-            ...selectedCard,
-            buffer,
-          });
-
           // Add card to user
-          pb.collection<UserCardRecord>("user_card").create({
-            user_id: options.userId,
-            server_id: options.serverId,
-            identifier: `${options.username}-${options.serverName}`,
-            card: cardId,
-          });
+          const userCard = await pb
+            .collection<UserCardRecord>("user_card")
+            .create({
+              user_id: options.userId,
+              server_id: options.serverId,
+              identifier: `${options.username}-${options.serverName}`,
+              card: cardId,
+            });
+          if (userCard.id) {
+            results.push({
+              ...selectedCard,
+              buffer,
+              userCardId: userCard.id,
+            });
+          }
         }
       }
     } catch (error) {
@@ -100,5 +105,5 @@ export const generateBoosterPack = async (
     }
   }
 
-  return images;
+  return results;
 };

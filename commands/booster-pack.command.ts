@@ -9,6 +9,7 @@ import {
 import path from "path";
 import { generateBoosterPack } from "../modules/finicards/generateBoosterPack";
 import { addCoin, getUserBalance } from "../modules/finicoin";
+import { createPaginationContext } from "../utilities/pagination/pagination";
 
 const COMMAND_COST = 25;
 const EXPECTED_CARDS = 5;
@@ -41,15 +42,28 @@ export const execute = async (
       );
 
       // Generate the cards of the booster pack and save to user account
-      const packImages = await generateBoosterPack({
+      const packData = await generateBoosterPack({
         userId: interaction.user.id,
         serverId: interaction.guildId ?? "unknown guild id",
         username: interaction.user.username,
         serverName: interaction.guild?.name ?? "unknown guild name",
       });
+      const cardIds = packData.map((card) => card.userCardId);
+      const queryCardIdFilter = cardIds
+        .map((id) => `id = "${id}"`)
+        .join(" || ");
+
+      const paginationContext = await createPaginationContext({
+        userId: interaction.user.id,
+        queryId: "user_card",
+        perPage: 1,
+        filter: queryCardIdFilter,
+      });
 
       const openPackButton = new ButtonBuilder()
-        .setCustomId(`booster_pack_open:${interaction.user.id}`)
+        .setCustomId(
+          `booster_pack_open:${interaction.user.id}:${paginationContext}`,
+        )
         .setLabel("Open Pack")
         .setStyle(ButtonStyle.Secondary);
 
@@ -69,8 +83,8 @@ export const execute = async (
       });
 
       // Check if the user got fewer than 5 cards for whatever reason
-      if (packImages.length < EXPECTED_CARDS) {
-        const numCardsMissing = EXPECTED_CARDS - packImages.length;
+      if (packData.length < EXPECTED_CARDS) {
+        const numCardsMissing = EXPECTED_CARDS - packData.length;
         const reimbursement = numCardsMissing * 5;
 
         // Reimburse user for missing cards
@@ -84,7 +98,7 @@ export const execute = async (
         );
 
         await interaction.followUp(
-          `Uh oh, looks like you only got ${packImages.length} cards.\r\nSince you're missing ${numCardsMissing}, I've reimbursed you ${reimbursement} finicoin.`,
+          `Uh oh, looks like you only got ${packData.length} cards.\r\nSince you're missing ${numCardsMissing}, I've reimbursed you ${reimbursement} finicoin.`,
         );
       }
     } else {

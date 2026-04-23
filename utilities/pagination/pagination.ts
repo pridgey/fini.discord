@@ -28,7 +28,8 @@ interface PaginationContextData {
   perPage: number;
   query?: string;
   sort?: string;
-  filters?: Record<string, any>;
+  filter?: string;
+  totalPagesOverride?: number;
 }
 
 /**
@@ -41,7 +42,8 @@ export async function createPaginationContext({
   perPage,
   query,
   sort,
-  filters,
+  filter,
+  totalPagesOverride,
 }: PaginationContextData): Promise<string> {
   try {
     // Delete all expired contexts before creating a new one
@@ -55,9 +57,10 @@ export async function createPaginationContext({
         query_id: queryId,
         query,
         sort,
-        filters,
+        filter,
         per_page: perPage,
         current_page: 1,
+        total_pages_override: totalPagesOverride,
       });
     return created.id!;
   } catch (error) {

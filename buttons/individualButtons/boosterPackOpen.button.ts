@@ -1,16 +1,15 @@
 import { ButtonInteraction, MessageFlags } from "discord.js";
-import {
-  createPaginationContext,
-  createPaginationRow,
-  PaginationState,
-} from "../../utilities/pagination/pagination";
 import { QueryHandler } from "../../queries/QueryHandler";
+import {
+  createPaginationRow,
+  getPaginationContext,
+} from "../../utilities/pagination/pagination";
 
 export const namespace = "booster_pack_open";
 
 export async function execute(interaction: ButtonInteraction, args: string[]) {
   try {
-    const [userId] = args;
+    const [userId, contextId] = args;
 
     if (interaction.user.id !== userId) {
       await interaction.reply({
@@ -20,46 +19,40 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
-    const paginationState: PaginationState = {
-      userId,
-      currentPage: 1,
-      totalPages: 5,
-      namespace: "user_card",
-    };
+    const context = await getPaginationContext(contextId);
 
-    const paginationContext = await createPaginationContext({
-      userId,
-      queryId: "user_card",
-      perPage: 1,
-    });
+    if (!context) {
+      await interaction.reply({
+        content: "❌ This pagination session has expired.",
+        flags: [MessageFlags.Ephemeral],
+      });
+      return;
+    }
 
     const boosterPackQuery = QueryHandler("user_card");
     const queryResult = await boosterPackQuery.query({
       page: 1,
       perPage: 1,
-      filterOption: `user_id = "${userId}" && server_id = "${interaction.guildId}"`,
-      additionalData: { totalCards: 1 },
+      filterOption: context.filter,
     });
     const boosterPackResults = await boosterPackQuery.buildResults({
       items: queryResult.items,
       userId,
     });
 
-    console.log("debug - booster pack query result:", {
-      queryResult,
-      boosterPackResults,
-      file: boosterPackResults.files?.[0],
-    });
-
     const paginationRow = createPaginationRow({
-      ...paginationState,
-      contextId: paginationContext,
+      userId,
+      currentPage: context.current_page || 1,
+      totalPages: queryResult.totalPages,
+      contextId,
     });
 
     await interaction.update({
       components: [paginationRow],
       files: boosterPackResults.files,
-      flags: [MessageFlags.IsComponentsV2],
+      ...(boosterPackResults.useComponentsV2 && {
+        flags: [MessageFlags.IsComponentsV2],
+      }),
     });
   } catch (error) {
     console.error("Error handling booster pack open button actions:", error);

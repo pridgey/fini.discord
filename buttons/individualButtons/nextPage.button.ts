@@ -43,6 +43,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       queryString: context.query,
       page: nextPage,
       perPage: context.per_page,
+      filterOption: context.filter,
       sortOption: context.sort,
     });
 
@@ -50,7 +51,11 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     await updatePaginationPage(contextId, nextPage);
 
     // Build components
-    const { components: resultComponents, files } = await query.buildResults({
+    const {
+      components: resultComponents,
+      files,
+      useComponentsV2,
+    } = await query.buildResults({
       items: result.items,
       userId: userId,
       queryString: context.query,
@@ -60,7 +65,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     const pageRow = createPaginationRow({
       userId,
       currentPage: result.currentPage,
-      totalPages: result.totalPages,
+      totalPages: context.total_pages_override || result.totalPages,
       contextId,
     });
 
@@ -68,7 +73,9 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     await interaction.update({
       components: [...(resultComponents ?? []), pageRow],
       files: files ?? [],
-      flags: [MessageFlags.IsComponentsV2],
+      ...(useComponentsV2 && {
+        flags: [MessageFlags.IsComponentsV2],
+      }),
     });
   } catch (error) {
     console.error("Error handling query next page:", error, { args });
