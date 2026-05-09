@@ -12,7 +12,7 @@ export const getCommandFiles = async () => {
   const importedFiles = await Promise.all(
     commandFiles
       .filter((file) => !file.includes("archived"))
-      .map((file) => import(`./../../${file}`))
+      .map((file) => import(`./../../${file}`)),
   );
 
   return { commandFiles, importedFiles };
@@ -29,8 +29,25 @@ export const getButtonFiles = async () => {
   const importedFiles = await Promise.all(
     buttonFiles
       .filter((file) => !file.includes("archived"))
-      .map((file) => import(`./../../${file}`))
+      .map((file) => import(`./../../${file}`)),
   );
 
   return { buttonFiles, importedFiles };
+};
+
+/**
+ * Dynamicly finds all of the modal files in the modals directory
+ * @returns A list of modal files and their imported modules
+ */
+export const getModalFiles = async () => {
+  const modalFiles = await glob("**/modals/individualModals/*.modal.ts");
+
+  // Map files to format the rest registration needs
+  const importedFiles = await Promise.all(
+    modalFiles
+      .filter((file) => !file.includes("archived"))
+      .map((file) => import(`./../../${file}`)),
+  );
+
+  return { modalFiles, importedFiles };
 };

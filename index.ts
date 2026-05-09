@@ -13,7 +13,7 @@ import { runPollTasks } from "./modules/polling";
 import { getCommandFiles } from "./utilities/interactionFiles/getInteractionFiles";
 import { splitBigString } from "./utilities/splitBigString";
 const { exec } = require("child_process");
-import { exists, readFile, writeFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { initializeServerBank } from "./modules/finicoin/initialize";
 import { chatWithUser_Llama } from "./modules/llama/converse";
 import {
@@ -21,6 +21,11 @@ import {
   loadButtonHandlers,
 } from "./buttons/buttonHandler";
 import { converseWithAI } from "./modules/aiChat/aiChat";
+import {
+  handleModalInteraction,
+  loadModalHandlers,
+} from "./modals/modalHandler";
+import { fileExists } from "./utilities/files/fileUtilities";
 
 // Initialize client and announce intents
 const client = new Client({
@@ -41,6 +46,8 @@ client.once("clientReady", async (cl) => {
 
   // Load button files for handling
   await loadButtonHandlers();
+  // Load modal files for handling
+  await loadModalHandlers();
 
   // Initialize connected guilds to ensure they have the proper bank records
   for (const guild of cl.guilds.cache.values()) {
@@ -57,8 +64,8 @@ client.once("clientReady", async (cl) => {
 
   // Read update.txt for update logs and announce them
   const fileName = "update.txt";
-  const fileExists = await exists(fileName);
-  if (fileExists) {
+  const fileExistsFlag = await fileExists(fileName);
+  if (fileExistsFlag) {
     // What does the file say?
     const fileContents = await readFile(fileName);
 
@@ -289,6 +296,9 @@ client.on("interactionCreate", async (interaction) => {
   } else if (interaction.isButton()) {
     // Handle button interactions
     await handleButtonInteraction(interaction);
+  } else if (interaction.isModalSubmit()) {
+    // Handle modal interactions
+    await handleModalInteraction(interaction);
   }
 });
 

@@ -1,12 +1,18 @@
-import { AniStock_Detail, UserCardRecord } from "../types/PocketbaseTables";
+import {
+  AniStock_Detail,
+  AniStock_Holdings,
+  UserCardRecord,
+} from "../types/PocketbaseTables";
 import { QueryFunction } from "../types/QueryTypes";
 import { animeDetailsQuery } from "./queryFunctions/AnimeDetails.query";
+import { animeHoldingQuery } from "./queryFunctions/AnimeHolding.query";
 import { boosterPackQuery } from "./queryFunctions/BoosterPack.query";
 import { cardCollectionQuery } from "./queryFunctions/CardCollection.query";
 import { cardCollectionListQuery } from "./queryFunctions/cardCollectionList.query";
 
 const queryDictionary = {
   anistock_details: animeDetailsQuery,
+  anistock_portfolio: animeHoldingQuery,
   user_card: boosterPackQuery,
   card_collection: cardCollectionQuery,
   card_collection_list: cardCollectionListQuery,
@@ -14,6 +20,7 @@ const queryDictionary = {
 
 export type QueryMap = {
   anistock_details: AniStock_Detail;
+  anistock_portfolio: AniStock_Holdings;
   user_card: UserCardRecord;
   card_collection: UserCardRecord;
   card_collection_list: UserCardRecord;

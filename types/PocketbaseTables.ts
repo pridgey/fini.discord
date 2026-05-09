@@ -167,6 +167,25 @@ export type ConfigRecord = {
 export type AnimeSeason = "winter" | "spring" | "summer" | "fall";
 export type AnimeStatus = "upcoming" | "ongoing" | "finished";
 
+export type AniStock_Anime = {
+  id?: string;
+  mal_id: number;
+  title: string;
+  image_url: string;
+  season: AnimeSeason;
+  year: number;
+  status: AnimeStatus;
+  initial_popularity: number;
+  initial_members: number;
+  initial_favorites: number;
+  initial_hype_score: number;
+  initial_stock_price: number;
+  volatility_rating: string;
+  synopsis: string;
+  created?: string;
+  updated?: string;
+};
+
 export type AniStock_Stock = {
   id?: string;
   anime: string;
@@ -198,6 +217,38 @@ export type AniStock_Detail = {
   latest_score: number;
   price_updated_at: string;
   synopsis: string;
+};
+
+export type AniStock_Transaction = {
+  id?: string;
+  anime: string;
+  shares: number;
+  price: number;
+  action: "BUY" | "SELL";
+  user_id: string;
+  server_id: string;
+  identifier: string;
+  created?: string;
+  updated?: string;
+};
+
+export type AniStock_Holdings = {
+  id?: string;
+  user_id: string;
+  server_id: string;
+  anime: string;
+  shares_owned: number;
+  total_invested: number;
+  total_shares_bought: number;
+  avg_buy_price: number;
+  current_value: number;
+  current_price: number;
+  title: string;
+  image_url: string;
+  season: AnimeSeason;
+  year: number;
+  status: AnimeStatus;
+  expand?: AniStock_Anime;
 };
 
 export type PaginationContext = {

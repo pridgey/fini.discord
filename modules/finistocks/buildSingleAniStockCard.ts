@@ -1,8 +1,14 @@
-import { ContainerBuilder } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ContainerBuilder,
+} from "discord.js";
 import { AniStock_Detail } from "../../types/PocketbaseTables";
 
 type BuildSingleAniStockCardParams = {
   anime: AniStock_Detail;
+  userID: string;
 };
 
 /**
@@ -10,10 +16,19 @@ type BuildSingleAniStockCardParams = {
  */
 export const buildSingleAniStockCard = async ({
   anime,
+  userID,
 }: BuildSingleAniStockCardParams) => {
   if (!anime.id) {
     throw new Error("Anime record must have an ID to fetch stock details.");
   }
+
+  const buyButton = new ButtonBuilder()
+    .setCustomId(`anistock_buy:${anime.id}:${userID}`)
+    .setLabel("Buy")
+    .setStyle(ButtonStyle.Primary);
+
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  row.setComponents([buyButton]);
 
   const cardDetail = new ContainerBuilder()
     .setAccentColor(0x0099ff)
@@ -35,7 +50,8 @@ export const buildSingleAniStockCard = async ({
     .addSeparatorComponents((sep) => sep)
     .addTextDisplayComponents((text) =>
       text.setContent(`${anime.synopsis || "No synopsis available."}`),
-    );
+    )
+    .addActionRowComponents(() => row);
 
   return cardDetail;
 };

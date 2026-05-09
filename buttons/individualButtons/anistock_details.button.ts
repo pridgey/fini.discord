@@ -28,7 +28,10 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
     const anime = queryResult.items[0];
 
-    const cardDetail = await buildSingleAniStockCard({ anime });
+    const cardDetail = await buildSingleAniStockCard({
+      anime,
+      userID: interaction.user.id,
+    });
 
     await interaction.update({
       components: [cardDetail],

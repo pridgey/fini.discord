@@ -47,6 +47,11 @@ export const data = new SlashCommandBuilder()
             ),
           ),
       ),
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("portfolio")
+      .setDescription("View your anime stock portfolio"),
   );
 
 export const execute = async (
@@ -80,7 +85,10 @@ export const execute = async (
           /* There is a single result to show */
           const anime = results.items[0];
 
-          const cardDetail = await buildSingleAniStockCard({ anime });
+          const cardDetail = await buildSingleAniStockCard({
+            anime,
+            userID: interaction.user.id,
+          });
 
           await interaction.reply({
             components: [cardDetail],
@@ -118,6 +126,38 @@ export const execute = async (
           });
         }
 
+        break;
+      }
+      /* Portfolio Subcommand */
+      case "portfolio": {
+        const query = QueryHandler("anistock_portfolio");
+        const results = await query.query({
+          page: 1,
+          perPage: 1,
+        });
+        if (results.totalItems === 0) {
+          await interaction.reply({
+            content: "You do not have any anime stocks in your portfolio.",
+            flags: [MessageFlags.Ephemeral],
+          });
+          return;
+        }
+
+        const { components: holdingsComponents } = await query.buildResults({
+          items: results.items,
+        });
+
+        const paginationRow = createPaginationRow({
+          userId: interaction.user.id,
+          currentPage: 1,
+          contextId: "anistock_portfolio",
+          totalPages: results.totalPages,
+        });
+
+        await interaction.reply({
+          components: [...(holdingsComponents ?? []), paginationRow],
+          flags: [MessageFlags.IsComponentsV2],
+        });
         break;
       }
 
