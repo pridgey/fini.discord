@@ -1,4 +1,9 @@
-import { ContainerBuilder } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ContainerBuilder,
+} from "discord.js";
 import { AniStock_Holdings } from "../../types/PocketbaseTables";
 import {
   QueryFunction,
@@ -38,10 +43,29 @@ const buildAnimeHoldingCard = async ({
     throw new Error("No holding found in ani stock holdings query results");
   }
 
-  console.log("Debug - Building anime holding card for item:", {
-    holdingItem,
-    expand: holdingItem.expand,
-  });
+  const sellButton = new ButtonBuilder()
+    .setCustomId(
+      `anistock_sell:${holdingItem.id}:${holdingItem.user_id.slice(1)}`,
+    )
+    .setLabel("Sell")
+    .setStyle(ButtonStyle.Secondary);
+
+  const sellActionRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    sellButton,
+  );
+
+  const investedTotal = holdingItem.total_invested;
+  const currentTotal = holdingItem.current_value;
+  const profitLoss = currentTotal - investedTotal;
+  const profitLossPercent =
+    investedTotal === 0 ? 0 : (profitLoss / investedTotal) * 100;
+  const profitLossString =
+    profitLoss >= 0
+      ? `+${profitLoss.toLocaleString()}`
+      : profitLoss.toLocaleString();
+  const percentageString = `(${
+    profitLossPercent >= 0 ? "+" : ""
+  }${profitLossPercent.toFixed(2)}%)`;
 
   const holdingDetail = new ContainerBuilder()
     .setAccentColor(0x0099ff)
@@ -57,9 +81,7 @@ const buildAnimeHoldingCard = async ({
     )
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `**Latest Price:** ${holdingItem.current_price.toFixed(
-          2,
-        )} Finicoin • **Season:** ${holdingItem.season || "N/A"} • **Year:** ${
+        `**Season:** ${holdingItem.season || "N/A"} • **Year:** ${
           holdingItem.year || "N/A"
         } • **Status:** ${holdingItem.status || "N/A"}`,
       ),
@@ -67,11 +89,20 @@ const buildAnimeHoldingCard = async ({
     .addSeparatorComponents((sep) => sep)
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `**Current Value:** ${holdingItem.current_value.toLocaleString()} • **Shares Owned:** ${
+        `**Latest Price:** ${holdingItem.current_price.toFixed(
+          2,
+        )} • **Shares Owned:** ${
           holdingItem.shares_owned
         } • **Avg Buy Price:** ${holdingItem.avg_buy_price.toLocaleString()}`,
       ),
-    );
+    )
+    .addSeparatorComponents((sep) => sep)
+    .addTextDisplayComponents((text) =>
+      text.setContent(
+        `**Current Value:** ${holdingItem.current_value.toLocaleString()} • **Overall Change:** ${profitLossString} ${percentageString}`,
+      ),
+    )
+    .addActionRowComponents(() => sellActionRow);
 
   return {
     components: [holdingDetail],

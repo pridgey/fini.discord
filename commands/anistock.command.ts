@@ -147,10 +147,16 @@ export const execute = async (
           items: results.items,
         });
 
+        const paginationContext = await createPaginationContext({
+          userId: interaction.user.id,
+          queryId: query.id,
+          perPage: 1,
+        });
+
         const paginationRow = createPaginationRow({
           userId: interaction.user.id,
           currentPage: 1,
-          contextId: "anistock_portfolio",
+          contextId: paginationContext,
           totalPages: results.totalPages,
         });
 

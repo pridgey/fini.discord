@@ -1,5 +1,5 @@
 import { MessageFlags, ModalSubmitInteraction } from "discord.js";
-import { buyStock } from "../../modules/finistocks/buyStock";
+import { buyStock } from "../../modules/finistocks/actionStock";
 import { addCoin, getUserBalance } from "../../modules/finicoin";
 
 export const namespace = "anistock_buy_modal";
