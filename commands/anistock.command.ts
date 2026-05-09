@@ -18,7 +18,6 @@ export const data = new SlashCommandBuilder()
   .setDescription(
     "Manage your Anime Stocks portfolio and view anime stock info",
   )
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addSubcommand((subcommand) =>
     subcommand
       .setName("query")
