@@ -133,6 +133,7 @@ export const execute = async (
         const results = await query.query({
           page: 1,
           perPage: 1,
+          filterOption: `user_id = "u${interaction.user.id}" && server_id = "s${interaction.guildId}"`,
         });
         if (results.totalItems === 0) {
           await interaction.reply({
