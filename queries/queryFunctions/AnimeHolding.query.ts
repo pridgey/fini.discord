@@ -55,8 +55,8 @@ const buildAnimeHoldingCard = async ({
   );
 
   const investedTotal = holdingItem.total_invested;
-  const currentTotal = holdingItem.current_value;
-  const profitLoss = currentTotal - investedTotal;
+  const costBasis = holdingItem.total_spent - holdingItem.total_received;
+  const profitLoss = holdingItem.current_value - costBasis;
   const profitLossPercent =
     investedTotal === 0 ? 0 : (profitLoss / investedTotal) * 100;
   const profitLossString =

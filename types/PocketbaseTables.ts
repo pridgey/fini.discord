@@ -238,6 +238,8 @@ export type AniStock_Holdings = {
   server_id: string;
   anime: string;
   shares_owned: number;
+  total_spent: number;
+  total_received: number;
   total_invested: number;
   total_shares_bought: number;
   avg_buy_price: number;
