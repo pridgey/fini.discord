@@ -151,6 +151,7 @@ export const execute = async (
           userId: interaction.user.id,
           queryId: query.id,
           perPage: 1,
+          filter: `user_id = "u${interaction.user.id}" && server_id = "s${interaction.guildId}"`,
         });
 
         const paginationRow = createPaginationRow({
