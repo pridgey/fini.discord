@@ -22,6 +22,7 @@ type AIConverseProps = {
   message: string;
   server: string;
   attachment?: Attachment;
+  replyText?: string;
   options?: AIConverseOptions;
 };
 
@@ -30,6 +31,7 @@ export const converseWithAI = async ({
   message,
   server,
   attachment,
+  replyText,
   options = {},
 }: AIConverseProps) => {
   try {
@@ -110,6 +112,14 @@ export const converseWithAI = async ({
       formattedHistory.push({
         role: "user",
         content: `${personalityPrompt} ${message}`,
+      });
+    }
+
+    // Adding the message being replied to, if it exists, as context for the AI
+    if (replyText) {
+      formattedHistory.unshift({
+        role: "assistant",
+        content: `The user is adding additional context: ${replyText}`,
       });
     }
 

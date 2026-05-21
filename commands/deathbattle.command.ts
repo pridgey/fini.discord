@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import { converseWithAI } from "../modules/aiChat/aiChat";
+import { splitBigString } from "../utilities/splitBigString";
 
 export const data = new SlashCommandBuilder()
   .setName("deathbattle")
@@ -58,6 +59,17 @@ export const execute = async (
     },
   });
 
-  await interaction.editReply(response);
+  let responded = false;
+  const splitResponse = splitBigString(response);
+
+  for (const chunk of splitResponse) {
+    if (!responded) {
+      await interaction.editReply(chunk);
+      responded = true;
+    } else {
+      await interaction.followUp(chunk);
+    }
+  }
+
   logCommand();
 };

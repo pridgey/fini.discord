@@ -148,10 +148,15 @@ client.on("messageCreate", async (message: Message) => {
     let response: string;
     let command = "hey fini";
 
+    const messageReply = await message.fetchReference();
+    const replyText = messageReply?.content?.replaceAll("hey fini", "").trim();
+    console.log("Debug - Message Reference:", { replyText });
+
     // New AI Conversion logic
     response = await converseWithAI({
       userID: messageUser,
       message: messageText.replace(command, ""),
+      replyText: replyText,
       server: message.guildId ?? "unknown",
       attachment: message.attachments.at(0),
     });
