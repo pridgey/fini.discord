@@ -45,11 +45,11 @@ export const buildAniStockQueryResultCards = ({
         section
           .addTextDisplayComponents((text) =>
             text.setContent(`
-                  **Current Price:** $${anime.latest_price.toFixed(
-                    2,
-                  )} • **MAL ID:** ${anime.mal_id} •  **Rank:** ${
-              anime.latest_rank
-            }\n${trimSynopsis(anime.synopsis)}`),
+                  **Status:** ${anime.status} • **MAL ID:** ${
+              anime.mal_id
+            } •  **Rank:** ${anime.latest_rank}\n${trimSynopsis(
+              anime.synopsis,
+            )}\n**Current Price:** $${anime.latest_price.toFixed(2)}`),
           )
           .setButtonAccessory((button) =>
             button

@@ -17,9 +17,9 @@ export const determineSortOption = (sort?: AnimeSortOptions) => {
     case "expensive":
       return "-latest_price";
     case "latest":
-      return "-created";
+      return "-status";
     case "oldest":
-      return "created";
+      return "status";
     default:
       return "-created"; // Default sort by latest
   }

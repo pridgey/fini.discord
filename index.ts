@@ -148,7 +148,14 @@ client.on("messageCreate", async (message: Message) => {
     let response: string;
     let command = "hey fini";
 
-    const messageReply = await message.fetchReference();
+    let messageReply;
+    if (message.reference?.messageId) {
+      try {
+        messageReply = await message.fetchReference();
+      } catch (err) {
+        console.error("Error fetching message reference:", err);
+      }
+    }
     const replyText = messageReply?.content?.replaceAll("hey fini", "").trim();
     console.log("Debug - Message Reference:", { replyText });
 

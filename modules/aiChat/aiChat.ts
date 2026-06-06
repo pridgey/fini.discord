@@ -84,6 +84,14 @@ export const converseWithAI = async ({
       personalityPrompt = await determinePersonality(userID, server);
     }
 
+    // Adding the message being replied to, if it exists, as context for the AI
+    if (replyText) {
+      formattedHistory.push({
+        role: "assistant",
+        content: `The user has specified this message as context and would like you to reply to it: ${replyText}`,
+      });
+    }
+
     // Append the current message to the history
     if (anthropicFileID) {
       // Determine the file type for the attachment and build message param
@@ -112,14 +120,6 @@ export const converseWithAI = async ({
       formattedHistory.push({
         role: "user",
         content: `${personalityPrompt} ${message}`,
-      });
-    }
-
-    // Adding the message being replied to, if it exists, as context for the AI
-    if (replyText) {
-      formattedHistory.unshift({
-        role: "assistant",
-        content: `The user is adding additional context: ${replyText}`,
       });
     }
 
