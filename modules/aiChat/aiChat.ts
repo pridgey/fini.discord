@@ -36,7 +36,14 @@ export const converseWithAI = async ({
 }: AIConverseProps) => {
   try {
     console.group("Run chatWithUser()");
-    console.log("Initializing Chat", { userID, message, server, attachment });
+    console.log("Initializing Chat", {
+      userID,
+      message,
+      server,
+      attachment,
+      replyText,
+      options,
+    });
 
     // Initialize the AI agent
     const anthropic = new Anthropic();
@@ -78,18 +85,18 @@ export const converseWithAI = async ({
       console.log("Uploaded Attachment to Anthropic:", uploadResponse);
     }
 
-    // Find any personality the user would like us to use
-    let personalityPrompt = "";
-    if (!options.skipPersonality) {
-      personalityPrompt = await determinePersonality(userID, server);
-    }
+    let finalMessage = message;
 
     // Adding the message being replied to, if it exists, as context for the AI
-    if (replyText) {
-      formattedHistory.push({
-        role: "assistant",
-        content: `The user has specified this message as context and would like you to reply to it: ${replyText}`,
-      });
+    if (replyText?.length) {
+      const replyContext = `The user has included another message as context for this conversation: ${replyText}\n`;
+      finalMessage = `${replyContext} ${finalMessage}`;
+    }
+
+    // Find any personality the user would like us to use
+    if (!options.skipPersonality) {
+      const personalityPrompt = await determinePersonality(userID, server);
+      finalMessage = `${personalityPrompt} ${finalMessage}`;
     }
 
     // Append the current message to the history
@@ -104,7 +111,7 @@ export const converseWithAI = async ({
         content: [
           {
             type: "text",
-            text: `${personalityPrompt} ${message}`,
+            text: finalMessage,
           },
           {
             type: fileType,
@@ -119,7 +126,7 @@ export const converseWithAI = async ({
       // No attachment, simple message
       formattedHistory.push({
         role: "user",
-        content: `${personalityPrompt} ${message}`,
+        content: finalMessage,
       });
     }
 
@@ -132,7 +139,7 @@ export const converseWithAI = async ({
       });
     }
 
-    console.log("Submitting to Anthropic for response");
+    console.log("Submitting to Anthropic for response", { finalMessage });
     const anthropicMessageResponse = await anthropic.beta.messages.create({
       model: CURRENT_MODEL,
       max_tokens: MAX_CHAT_TOKENS,
