@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="744" height="1042" viewBox="0 0 320 448" font-family="Archivo, &#39;Archivo&#39;, sans-serif">
+<defs>
+
+<clipPath id="face"><rect x="8" y="8" width="304" height="432" rx="10"></rect></clipPath>
+<pattern id="hatch" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="18" height="18" fill="#edeff8"></rect><rect width="9" height="18" fill="#e3e6f4"></rect>
+</pattern>
+<pattern id="hatchDark" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="18" height="18" fill="#2a2d4d"></rect><rect width="9" height="18" fill="#23264a"></rect>
+</pattern>
+
+<linearGradient id="foilPrism" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffffff"></stop><stop offset="0.12" stop-color="#ffd9ec"></stop><stop offset="0.26" stop-color="#c3c8f7"></stop><stop offset="0.38" stop-color="#ffffff"></stop><stop offset="0.52" stop-color="#b7f0e2"></stop><stop offset="0.64" stop-color="#ffffff"></stop><stop offset="0.78" stop-color="#d9c3f7"></stop><stop offset="0.9" stop-color="#ffe9c3"></stop><stop offset="1" stop-color="#ffffff"></stop></linearGradient>
+<linearGradient id="scrimSP" x1="0.2" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#ffd9ec" stop-opacity="0.18"></stop><stop offset="0.34" stop-color="#0b0c16" stop-opacity="0"></stop><stop offset="0.62" stop-color="#0b0c16" stop-opacity="0.45"></stop><stop offset="0.84" stop-color="#0b0c16" stop-opacity="0.88"></stop><stop offset="1" stop-color="#0b0c16" stop-opacity="0.96"></stop>
+</linearGradient>
+<linearGradient id="sheenSP" x1="0" y1="1" x2="1" y2="0">
+  <stop offset="0.38" stop-color="#ffffff" stop-opacity="0"></stop><stop offset="0.47" stop-color="#ffffff" stop-opacity="0.16"></stop><stop offset="0.56" stop-color="#ffffff" stop-opacity="0"></stop></linearGradient>
+<linearGradient id="nameRuleSP" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F28BA6"></stop><stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop></linearGradient>
+</defs>
+<rect id="foil-border" width="320" height="448" rx="16" fill="url(#foilPrism)"></rect>
+<rect id="card-face" x="4" y="4" width="312" height="440" rx="13" fill="#0b0c16"></rect>
+<g clip-path="url(#face)">
+  <g id="art-window">
+  <rect id="ART" x="4" y="4" width="312" height="440" fill="url(#hatchDark)"></rect>
+  <text x="160" y="227" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="1" fill="#7b83b5">CHARACTER ART</text>
+</g>
+  <rect x="4" y="4" width="312" height="440" fill="url(#scrimSP)"></rect>
+  <g id="sparkle" fill="#ffffff">
+    <circle cx="42" cy="84" r="1.4" opacity="0.95"></circle><circle cx="200" cy="44" r="1.1" opacity="0.8"></circle>
+    <circle cx="278" cy="130" r="1.5" opacity="0.9"></circle><circle cx="110" cy="200" r="1" opacity="0.7"></circle>
+    <circle cx="235" cy="278" r="1.3" opacity="0.85"></circle><circle cx="66" cy="322" r="1" opacity="0.6"></circle>
+  </g>
+  <rect x="4" y="4" width="312" height="440" fill="url(#sheenSP)"></rect>
+  <g id="header">
+    <text x="21" y="34" font-size="10" font-weight="800" letter-spacing="2" fill="#ffffff" opacity="0.72">BEACON</text>
+    <text x="299" y="35" text-anchor="end" font-size="15" font-weight="800" font-style="italic" fill="#ffffff" opacity="0.9">SP</text>
+  </g>
+  <text id="name" x="20" y="278" font-size="31" font-weight="800" font-style="italic" fill="#ffffff" letter-spacing="-0.9">Yui Hoshizora</text>
+  <text id="professions" x="20" y="296" font-size="9" font-weight="700" letter-spacing="1.3" fill="#ffffff" opacity="0.66">IDOL  ·  ASTRONOMER</text>
+  <rect x="20" y="307" width="200" height="1" fill="url(#nameRuleSP)"></rect>
+  <text id="ability" font-size="10" fill="#ffffff" opacity="0.86">
+    <tspan x="20" y="326"><tspan font-weight="800" opacity="1">Encore, Starlight</tspan> — When this card would</tspan>
+    <tspan x="20" y="340">leave play, return it to your hand instead.</tspan>
+    <tspan x="20" y="354">Once per game.</tspan>
+  </text>
+  <g id="stat-line">
+    <text x="20" y="387" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.1" fill="#ffffff" fill-opacity="0.45">STR</text>
+    <text x="20" y="410" font-size="22" font-weight="800" fill="#ffffff" fill-opacity="0.85">4</text>
+    <text x="70" y="387" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.1" fill="#ffffff" fill-opacity="0.45">WIT</text>
+    <text x="70" y="410" font-size="22" font-weight="800" fill="#ffffff" fill-opacity="0.85">7</text>
+    <rect x="112" y="386" width="1" height="26" fill="#ffffff" opacity="0.2"></rect>
+    <text x="126" y="385" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.3" fill="#F28BA6">HEART</text>
+    <text x="126" y="412" font-size="30" font-weight="800" font-style="italic" fill="#ffffff">10</text>
+  </g>
+  <g id="footer" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="0.7" fill="#ffffff" fill-opacity="0.42">
+  <text x="22" y="430">ECH-SP03</text><text x="298" y="430" text-anchor="end">ART / placeholder</text></g>
+</g>
+</svg>

@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="744" height="1042" viewBox="0 0 320 448" font-family="Archivo, &#39;Archivo&#39;, sans-serif">
+<defs>
+
+<clipPath id="face"><rect x="8" y="8" width="304" height="432" rx="10"></rect></clipPath>
+<pattern id="hatch" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="18" height="18" fill="#edeff8"></rect><rect width="9" height="18" fill="#e3e6f4"></rect>
+</pattern>
+<pattern id="hatchDark" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="18" height="18" fill="#2a2d4d"></rect><rect width="9" height="18" fill="#23264a"></rect>
+</pattern>
+
+<linearGradient id="foilHolo" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#ffeef5"></stop><stop offset="0.16" stop-color="#f7c3d6"></stop><stop offset="0.3" stop-color="#ffffff"></stop><stop offset="0.46" stop-color="#c3c8f7"></stop><stop offset="0.6" stop-color="#ffffff"></stop><stop offset="0.78" stop-color="#ffd6e5"></stop><stop offset="1" stop-color="#f5b7cc"></stop>
+</linearGradient>
+<linearGradient id="scrimRR" x1="0" y1="0" x2="0" y2="1">
+  <stop offset="0" stop-color="#F28BA6" stop-opacity="0.24"></stop><stop offset="0.3" stop-color="#0f1020" stop-opacity="0"></stop><stop offset="0.6" stop-color="#0f1020" stop-opacity="0.55"></stop><stop offset="0.82" stop-color="#0f1020" stop-opacity="0.93"></stop><stop offset="1" stop-color="#0f1020" stop-opacity="0.98"></stop>
+</linearGradient>
+<linearGradient id="heartLeadRR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F28BA6"></stop><stop offset="1" stop-color="#d95d80"></stop></linearGradient>
+</defs>
+<rect id="foil-border" width="320" height="448" rx="16" fill="url(#foilHolo)"></rect>
+<rect id="card-face" x="6" y="6" width="308" height="436" rx="12" fill="#0f1020"></rect>
+<g clip-path="url(#face)">
+  <g id="art-window">
+  <rect id="ART" x="6" y="6" width="308" height="436" fill="url(#hatchDark)"></rect>
+  <text x="160" y="227" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="1" fill="#7b83b5">CHARACTER ART</text>
+</g>
+  <rect x="6" y="6" width="308" height="436" fill="url(#scrimRR)"></rect>
+  <g id="sparkle" fill="#ffffff">
+    <circle cx="62" cy="102" r="1" opacity="0.9"></circle><circle cx="238" cy="67" r="1.4" opacity="0.75"></circle>
+    <circle cx="136" cy="233" r="1" opacity="0.6"></circle><circle cx="277" cy="180" r="1.2" opacity="0.8"></circle>
+  </g>
+  <g id="header">
+    <rect x="20" y="18" width="86" height="22" rx="3" fill="#ffffff" opacity="0.14"></rect>
+    <rect x="20" y="18" width="3" height="22" fill="#F28BA6"></rect>
+    <text x="31" y="32.5" font-size="10.5" font-weight="800" letter-spacing="1.9" fill="#ffffff">BEACON</text>
+    <text x="300" y="33" text-anchor="end" font-size="14" font-weight="800" font-style="italic" fill="#f7c3d6">RR</text>
+  </g>
+  <text id="name" x="22" y="296" font-size="27" font-weight="800" fill="#ffffff" letter-spacing="-0.7">Yui Hoshizora</text>
+  <g id="professions">
+    <rect x="22" y="305" width="34" height="15" rx="2" fill="#F28BA6"></rect>
+    <text x="28" y="315.5" font-size="8" font-weight="700" letter-spacing="0.6" fill="#3a0f1e">IDOL</text>
+    <rect x="60" y="305" width="72" height="15" rx="2" fill="#ffffff" opacity="0.13"></rect>
+    <text x="66" y="315.5" font-size="8" font-weight="700" letter-spacing="0.6" fill="#ffd9e5">ASTRONOMER</text>
+  </g>
+  <rect id="ability-panel" x="22" y="330" width="276" height="58" rx="6" fill="#ffffff" fill-opacity="0.09" stroke="#ffffff" stroke-opacity="0.16"></rect>
+  <text id="ability" font-size="10.5" fill="#f2e6ea">
+    <tspan x="33" y="348"><tspan font-weight="800" fill="#ffffff">Encore, Starlight</tspan> — When this card would</tspan>
+    <tspan x="33" y="363">leave play, return it to your hand instead. Once per game.</tspan>
+  </text>
+  <g id="stat-bar">
+  <rect x="22" y="394" width="72.4" height="34" rx="4" fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.14"></rect>
+  <text x="31.0" y="414" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.1" fill="#ffffff" fill-opacity="0.6">STR</text>
+  <text x="85.4" y="418" text-anchor="end" font-weight="800" font-size="18" fill="#ffffff">4</text>
+<rect x="98.43243243243244" y="394" width="72.4" height="34" rx="4" fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.14"></rect>
+  <text x="107.4" y="414" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.1" fill="#ffffff" fill-opacity="0.6">WIT</text>
+  <text x="161.9" y="418" text-anchor="end" font-weight="800" font-size="18" fill="#ffffff">7</text>
+<rect x="174.86486486486487" y="394" width="123.1" height="34" rx="4" fill="url(#heartLeadRR)" stroke="none"></rect>
+  <text x="183.9" y="414" font-family="JetBrains Mono, monospace" font-size="8.5" letter-spacing="1.4" fill="#3a0f1e" fill-opacity="0.75">HEART</text>
+  <text x="289.0" y="418" text-anchor="end" font-weight="800" font-size="24" fill="#ffffff">10</text>
+</g>
+  <g id="footer" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="0.7" fill="#ffffff" fill-opacity="0.5">
+  <text x="22" y="434">ECH-140 · RR</text><text x="298" y="434" text-anchor="end">ART / placeholder</text></g>
+</g>
+</svg>

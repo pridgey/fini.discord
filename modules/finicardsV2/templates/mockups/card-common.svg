@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="744" height="1042" viewBox="0 0 320 448" font-family="Archivo, &#39;Archivo&#39;, sans-serif">
+<defs>
+
+<clipPath id="face"><rect x="8" y="8" width="304" height="432" rx="10"></rect></clipPath>
+<pattern id="hatch" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="18" height="18" fill="#edeff8"></rect><rect width="9" height="18" fill="#e3e6f4"></rect>
+</pattern>
+<pattern id="hatchDark" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="18" height="18" fill="#2a2d4d"></rect><rect width="9" height="18" fill="#23264a"></rect>
+</pattern>
+
+<linearGradient id="foilSilver" x1="0" y1="0" x2="1" y2="1">
+  <stop offset="0" stop-color="#f4f5fa"></stop><stop offset="0.24" stop-color="#dcdfe9"></stop><stop offset="0.4" stop-color="#ffffff"></stop><stop offset="0.62" stop-color="#d3d7e4"></stop><stop offset="1" stop-color="#fbfbfd"></stop>
+</linearGradient>
+<linearGradient id="heartLead" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#E15C7E"></stop><stop offset="1" stop-color="#B33A5C"></stop></linearGradient>
+<pattern id="dashRose" width="12" height="2" patternUnits="userSpaceOnUse"><rect width="6" height="2" fill="#E15C7E"></rect></pattern>
+</defs>
+<rect id="foil-border" width="320" height="448" rx="16" fill="url(#foilSilver)"></rect>
+<rect id="card-face" x="8" y="8" width="304" height="432" rx="10" fill="#ffffff"></rect>
+<g clip-path="url(#face)">
+  <text id="watermark" x="302" y="352" text-anchor="end" font-size="100" font-weight="800" fill="#E15C7E" opacity="0.045" letter-spacing="-5">B</text>
+  <g id="header">
+    <rect x="14" y="21.5" width="8" height="8" fill="#E15C7E" transform="rotate(45 18 25.5)"></rect>
+    <text x="29" y="29.5" font-size="11" font-weight="800" letter-spacing="2" fill="#B33A5C">BEACON</text>
+    <text x="301" y="29.5" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1.3" fill="#b6a2a9">C</text>
+  </g>
+  <rect x="8" y="43" width="304" height="2" fill="url(#dashRose)"></rect>
+  <g id="art-window">
+  <rect id="ART" x="22" y="56" width="279" height="158" fill="url(#hatch)"></rect>
+  <text x="161.5" y="138" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="1" fill="#9aa1c4">CHARACTER ART</text>
+</g>
+  <text id="name" x="22" y="239" font-size="19" font-weight="800" fill="#14162a" letter-spacing="-0.3">Ren Kasugai</text>
+  <text id="professions" x="22" y="256" font-size="8" font-weight="700" letter-spacing="0.6"><tspan fill="#B33A5C">BAKER</tspan><tspan fill="#e0c3cc">  •  </tspan><tspan fill="#9c7d87">NIGHT SHIFT</tspan></text>
+  <line x1="22" y1="268" x2="301" y2="268" stroke="#f0dfe4"></line>
+  <line x1="22" y1="362" x2="301" y2="362" stroke="#f0dfe4"></line>
+  <text id="ability" x="22" font-size="10.5" fill="#2b2e4a">
+    <tspan x="22" y="283"><tspan font-weight="800" fill="#B33A5C">Opening Shift</tspan> — When this card enters your</tspan>
+    <tspan x="22" y="298">line, the next card you play this turn costs 1 less.</tspan>
+  </text>
+  <text id="flavour" x="22" y="352" font-size="9.5" font-style="italic" fill="#9c8f94">&#34;Dough waits for nobody. Neither do I.&#34;</text>
+  <g id="stat-bar">
+  <rect x="22" y="371" width="73.2" height="34" rx="4" fill="none" stroke="#e8e9f1"></rect>
+  <text x="31.0" y="391" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.1" fill="#9aa1c4">STR</text>
+  <text x="86.2" y="395" text-anchor="end" font-weight="800" font-size="18" fill="#3f4262">6</text>
+<rect x="99.24324324324324" y="371" width="73.2" height="34" rx="4" fill="none" stroke="#e8e9f1"></rect>
+  <text x="108.2" y="391" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="1.1" fill="#9aa1c4">WIT</text>
+  <text x="163.5" y="395" text-anchor="end" font-weight="800" font-size="18" fill="#3f4262">4</text>
+<rect x="176.48648648648648" y="371" width="124.5" height="34" rx="4" fill="url(#heartLead)" stroke="none"></rect>
+  <text x="185.5" y="391" font-family="JetBrains Mono, monospace" font-size="8.5" letter-spacing="1.4" fill="#ffffff" fill-opacity="0.9">HEART</text>
+  <text x="292.0" y="395" text-anchor="end" font-weight="800" font-size="24" fill="#ffffff">7</text>
+</g>
+  <g id="footer" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="0.7" fill="#a2a8c8">
+  <text x="22" y="430">ECH-014 · C</text><text x="298" y="430" text-anchor="end">ART / placeholder</text></g>
+</g>
+</svg>

@@ -11,12 +11,14 @@ import { find } from "geo-tz";
 import { syncAllSeasons } from "../finistocks/stockData";
 import { ClientResponseError } from "pocketbase";
 import { checkMonitoredServices } from "./monitoring";
+import { expireStaleV2Battles } from "../finicardsV2/expireBattles";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
   checkWeatherReports(cl);
   syncAndUpdateAnimeRecords();
   checkMonitoredServices(cl);
+  expireStaleV2Battles(cl);
   // checkJobs(cl);
   // checkHealthPings(cl);
 };
