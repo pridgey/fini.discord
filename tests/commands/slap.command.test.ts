@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach, spyOn } from "bun:test";
+import { afterEach, describe, it, expect, mock, beforeEach, spyOn } from "bun:test";
 
 // Mock logHammerspaceUsage utility
 const mockLogHammerspaceUsage = mock(() => Promise.resolve());
@@ -49,6 +49,12 @@ describe("slap command", () => {
       },
       reply: mock(() => Promise.resolve()),
     };
+  });
+
+  afterEach(() => {
+    // Math.random is global: without restoring it, this spy leaks into every
+    // test file that runs afterwards and quietly makes their randomness fixed.
+    mathRandomSpy?.mockRestore();
   });
 
   describe("Basic slap functionality", () => {

@@ -18,9 +18,9 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
   const battle = await getBattle(battleId);
 
-  // Only an unanswered challenge can be declined - once both hands are on the
-  // table the battle belongs to the expiry sweep, not to a decline button.
-  if (!battle || battle.state !== "awaiting_defender_selection") {
+  // Only an unanswered challenge can be declined - once the hands are dealt the
+  // battle belongs to the expiry sweep, not to a decline button.
+  if (!battle || battle.state !== "awaiting_defender") {
     await interaction.reply({
       content: "❌ That battle is no longer open.",
       flags: [MessageFlags.Ephemeral],

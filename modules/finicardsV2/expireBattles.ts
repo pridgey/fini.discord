@@ -55,8 +55,8 @@ export const expireStaleV2Battles = async (
     }
 
     /* Who has money in escrow depends on how far the battle got. The challenger
-       stakes when they issue the challenge; the defender stakes when they commit
-       their cards, which is exactly the transition into `awaiting_orders`. */
+       stakes when they issue the challenge; the defender stakes when they accept,
+       which is exactly the transition into `awaiting_lineups`. */
     if (battle.wager > 0) {
       const owed = [
         {
@@ -67,7 +67,7 @@ export const expireStaleV2Battles = async (
         },
       ];
 
-      if (stateAtExpiry === "awaiting_orders") {
+      if (stateAtExpiry === "awaiting_lineups") {
         owed.push({
           userId: battle.defender_id,
           serverId: battle.server_id,
@@ -96,8 +96,8 @@ export const expireStaleV2Battles = async (
 
       if (channel?.isTextBased()) {
         const stalledAt =
-          stateAtExpiry === "awaiting_orders"
-            ? "nobody locked in a slot order"
+          stateAtExpiry === "awaiting_lineups"
+            ? "nobody locked in a lineup"
             : "no answer";
 
         await channel.send(

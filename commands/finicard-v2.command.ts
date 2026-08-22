@@ -1,7 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
   ActionRowBuilder,
-  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChatInputCommandInteraction,
@@ -9,10 +8,26 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import {
-  cardImageName,
-  renderCardAttachments,
-  renderCardImage,
-} from "../modules/finicardsV2/cardArt";
+  buildCardMessage,
+  buildPackMessage,
+  compositionString,
+} from "../modules/finicardsV2/ui";
+import {
+  MAX_DECK_SIZE,
+  MIN_DECK_SIZE,
+  autoBuildDeck,
+  deleteDeck,
+  findDeckByName,
+  getDecks,
+  loadDeck,
+  updateDeckCards,
+} from "../modules/finicardsV2/decks";
+import {
+  HAND_SIZE,
+  MAX_HAND_SIZE,
+  MIN_HAND_SIZE,
+  clampHandSize,
+} from "../modules/finicardsV2/draw";
 import {
   collectionComposition,
   getCardDefinitions,
@@ -30,7 +45,6 @@ import { convertLegacyPool } from "../modules/finicardsV2/convertLegacyCards";
 import { KEYWORDS } from "../modules/finicardsV2/keywords";
 import { openPack, PACK_SIZE } from "../modules/finicardsV2/packs";
 import {
-  compositionString,
   renderCardFace,
   renderCollectionPage,
 } from "../modules/finicardsV2/renderBattle";
@@ -42,6 +56,11 @@ import {
 import { canAfford, stakeWager } from "../modules/finicardsV2/wagers";
 import { addCoin, getUserBalance } from "../modules/finicoin";
 import type { CardDefinitionRecord } from "../types/PocketbaseTables";
+import type {
+  CardRarity,
+  CardType,
+  V2DeckRecord,
+} from "../types/PocketbaseTablesV2";
 import { pb } from "../utilities/pocketbase";
 import { splitBigString } from "../utilities/splitBigString";
 
@@ -100,7 +119,7 @@ export const data = new SlashCommandBuilder()
     sub
       .setName("battle")
       .setDescription(
-        `Challenge someone - bring ${RULES.rounds} cards (order is chosen later)`,
+        `Challenge someone - ${HAND_SIZE} cards are dealt from the deck you bring`,
       )
       .addUserOption((option) =>
         option
@@ -110,21 +129,19 @@ export const data = new SlashCommandBuilder()
       )
       .addStringOption((option) =>
         option
-          .setName("card1")
-          .setDescription("A card you're bringing")
-          .setRequired(true),
+          .setName("deck")
+          .setDescription("Which deck to bring (blank uses your only deck)")
+          .setRequired(false),
       )
-      .addStringOption((option) =>
+      .addIntegerOption((option) =>
         option
-          .setName("card2")
-          .setDescription("A card you're bringing")
-          .setRequired(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName("card3")
-          .setDescription("A card you're bringing")
-          .setRequired(true),
+          .setName("draw")
+          .setDescription(
+            `Cards dealt to each side (${MIN_HAND_SIZE}-${MAX_HAND_SIZE}, default ${HAND_SIZE})`,
+          )
+          .setMinValue(MIN_HAND_SIZE)
+          .setMaxValue(MAX_HAND_SIZE)
+          .setRequired(false),
       )
       .addIntegerOption((option) =>
         option
@@ -141,6 +158,117 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub.setName("record").setDescription("Your v2 battle record"),
+  )
+  .addSubcommandGroup((group) =>
+    group
+      .setName("deck")
+      .setDescription("Build and manage the decks your battles draw from")
+      .addSubcommand((sub) =>
+        sub.setName("list").setDescription("List your decks"),
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("build")
+          .setDescription("Build a deck automatically from your collection")
+          .addStringOption((option) =>
+            option
+              .setName("name")
+              .setDescription("Name for the deck")
+              .setRequired(true),
+          )
+          .addIntegerOption((option) =>
+            option
+              .setName("size")
+              .setDescription(`How many cards (${MIN_DECK_SIZE}-${MAX_DECK_SIZE}, default 20)`)
+              .setMinValue(MIN_DECK_SIZE)
+              .setMaxValue(MAX_DECK_SIZE)
+              .setRequired(false),
+          )
+          .addStringOption((option) =>
+            option
+              .setName("type")
+              .setDescription("Only cards of this type")
+              .setRequired(false)
+              .addChoices(
+                { name: "power", value: "power" },
+                { name: "wit", value: "wit" },
+                { name: "heart", value: "heart" },
+              ),
+          )
+          .addStringOption((option) =>
+            option
+              .setName("rarity")
+              .setDescription("Only cards of this rarity")
+              .setRequired(false)
+              .addChoices(
+                { name: "common", value: "common" },
+                { name: "uncommon", value: "uncommon" },
+                { name: "full art", value: "full_art" },
+              ),
+          )
+          .addStringOption((option) =>
+            option
+              .setName("tag")
+              .setDescription("Only cards carrying this tag")
+              .setRequired(false),
+          ),
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("show")
+          .setDescription("Show a deck's cards")
+          .addStringOption((option) =>
+            option
+              .setName("name")
+              .setDescription("Which deck")
+              .setRequired(true),
+          ),
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("add")
+          .setDescription("Add a card to a deck")
+          .addStringOption((option) =>
+            option
+              .setName("name")
+              .setDescription("Which deck")
+              .setRequired(true),
+          )
+          .addStringOption((option) =>
+            option
+              .setName("card")
+              .setDescription("Card id from /finicard-v2 collection")
+              .setRequired(true),
+          ),
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("remove")
+          .setDescription("Remove a card from a deck")
+          .addStringOption((option) =>
+            option
+              .setName("name")
+              .setDescription("Which deck")
+              .setRequired(true),
+          )
+          .addStringOption((option) =>
+            option
+              .setName("card")
+              .setDescription("Card id to remove")
+              .setRequired(true),
+          ),
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName("delete")
+          .setDescription("Delete a deck")
+          .addStringOption((option) =>
+            option
+              .setName("name")
+              .setDescription("Which deck")
+              .setRequired(true),
+          ),
+      ),
   )
   .addSubcommand((sub) =>
     sub
@@ -195,6 +323,18 @@ export const execute = async (
   await interaction.deferReply();
 
   try {
+    /* The deck group is dispatched first - `getSubcommand()` returns the leaf
+       name either way, so without this a `deck list` would fall through to the
+       flat cases. */
+    if (interaction.options.getSubcommandGroup(false) === "deck") {
+      await handleDeckSubcommand(interaction, {
+        serverId,
+        serverName,
+        identifier,
+      });
+      return;
+    }
+
     switch (interaction.options.getSubcommand()) {
       /* ---------------------------------------------------------- pack ---- */
       case "pack": {
@@ -233,43 +373,27 @@ export const execute = async (
 
         if (shortfall > 0) {
           // Refund at the per-card rate, the way /booster-pack does.
-          const reimbursement = Math.round(
-            (PACK_COST / PACK_SIZE) * shortfall,
-          );
           await addCoin(
             interaction.user.id,
             serverId,
-            reimbursement,
+            Math.round((PACK_COST / PACK_SIZE) * shortfall),
             interaction.user.username,
             serverName,
             "Reserve",
           );
         }
 
-        const lines = pulls.map((owned) => {
-          const definition = owned.definition;
-          return `${TYPE_EMOJI[definition.card_type]} **${definition.card_name}**${
-            owned.foil ? " ✨" : ""
-          } · ${RARITY_LABEL[definition.rarity]} · \`${definition.power}/${definition.wit}/${definition.heart}\` · \`${owned.id}\``;
-        });
+        const reimbursement =
+          shortfall > 0 ? Math.round((PACK_COST / PACK_SIZE) * shortfall) : 0;
 
-        const footer =
-          shortfall > 0
-            ? `\n\n_${shortfall} card(s) couldn't be pulled - the pool is out of room. You've been reimbursed._`
-            : "";
-
-        /* Discord takes ten attachments per message and a pack is five, so the
-           whole pull can be revealed in one go. */
-        const images = await renderCardAttachments(
-          pulls.map((owned) => toBattleCard(owned)),
+        await interaction.editReply(
+          await buildPackMessage({
+            cards: pulls.map((owned) => toBattleCard(owned)),
+            cost: PACK_COST,
+            shortfall,
+            reimbursement,
+          }),
         );
-
-        await interaction.editReply({
-          content: `### v2 pack — ${pulls.length} card(s)\n${lines.join("\n")}\n\n_Stats read power/wit/heart. Use the ids with \`/finicard-v2 battle\`._${footer}`,
-          files: images.map(
-            (image) => new AttachmentBuilder(image.buffer, { name: image.name }),
-          ),
-        });
         return;
       }
 
@@ -329,21 +453,16 @@ export const execute = async (
           return;
         }
 
-        /* Show the rendered card, and keep the text face as the fallback so a
-           render failure still answers the question the user asked. */
-        const image = await renderCardImage(cards[0]);
+        /* The rendered card carries the name, stats, tags and ability, so the
+           text face is only needed when the render fails. */
+        const message = await buildCardMessage(cards[0]);
 
-        if (!image) {
+        if (!message) {
           await interaction.editReply(renderCardFace(cards[0]));
           return;
         }
 
-        await interaction.editReply({
-          content: renderCardFace(cards[0]),
-          files: [
-            new AttachmentBuilder(image, { name: cardImageName(cards[0]) }),
-          ],
-        });
+        await interaction.editReply(message);
         return;
       }
 
@@ -351,6 +470,10 @@ export const execute = async (
       case "battle": {
         const opponent = interaction.options.getUser("opponent", true);
         const wager = interaction.options.getInteger("wager") ?? 0;
+        const deckName = interaction.options.getString("deck");
+        const handSize = clampHandSize(
+          interaction.options.getInteger("draw") ?? HAND_SIZE,
+        );
 
         if (opponent.id === interaction.user.id) {
           await interaction.editReply("You can't challenge yourself.");
@@ -358,38 +481,40 @@ export const execute = async (
         }
         if (opponent.bot) {
           await interaction.editReply(
-            "Bots don't have collections. Challenge a person.",
+            "Bots don't have decks. Challenge a person.",
           );
           return;
         }
 
-        const rawSelection = [
-          interaction.options.getString("card1", true),
-          interaction.options.getString("card2", true),
-          interaction.options.getString("card3", true),
-        ];
+        const decks = await getDecks(interaction.user.id, serverId);
 
-        const { cards, errors } = await resolveLineup(
-          interaction.user.id,
-          serverId,
-          rawSelection,
-          RULES.rounds,
-        );
-
-        if (errors.length > 0 || cards.length !== RULES.rounds) {
+        if (decks.length === 0) {
           await interaction.editReply(
-            `Couldn't bring those cards:\n${errors.map((error) => `• ${error}`).join("\n")}`,
+            `You have no decks. Build one with \`/finicard-v2 deck build name:Main\` - a battle deals ${HAND_SIZE} cards from it.`,
           );
           return;
         }
 
-        const defenderCollection = await getUserCollection(
-          opponent.id,
-          serverId,
-        );
-        if (defenderCollection.length < RULES.rounds) {
+        const deck = deckName
+          ? await findDeckByName(interaction.user.id, serverId, deckName)
+          : decks.length === 1
+            ? decks[0]
+            : null;
+
+        if (!deck) {
           await interaction.editReply(
-            `${opponent.displayName} only has ${defenderCollection.length} v2 card(s) and needs at least ${RULES.rounds} to answer a challenge.`,
+            deckName
+              ? `You have no deck called **${deckName}**. Yours: ${decks.map((d) => `**${d.name}**`).join(", ")}.`
+              : `You have several decks - say which one: ${decks.map((d) => `**${d.name}**`).join(", ")}.`,
+          );
+          return;
+        }
+
+        const opponentDecks = await getDecks(opponent.id, serverId);
+
+        if (opponentDecks.length === 0) {
+          await interaction.editReply(
+            `${opponent.displayName} has no decks yet, so they can't answer a challenge.`,
           );
           return;
         }
@@ -408,25 +533,31 @@ export const execute = async (
           return;
         }
 
-        await stakeWager(party, wager);
-
-        const battle = await createChallenge({
+        const created = await createChallenge({
           serverId,
           channelId: interaction.channelId,
           challengerId: interaction.user.id,
           challengerName: interaction.user.displayName,
           defenderId: opponent.id,
           defenderName: opponent.displayName,
-          challengerSelection: cards.map((card) => card.instanceId),
+          deck,
           wager,
+          handSize,
         });
 
+        if (!created.ok) {
+          await interaction.editReply(created.reason);
+          return;
+        }
+
+        await stakeWager(party, wager);
+
         const acceptButton = new ButtonBuilder()
-          .setCustomId(`v2_battle_select:${battle.id}:${opponent.id}`)
-          .setLabel("Bring your cards")
+          .setCustomId(`v2_battle_accept:${created.battle.id}:${opponent.id}`)
+          .setLabel("Accept")
           .setStyle(ButtonStyle.Primary);
         const declineButton = new ButtonBuilder()
-          .setCustomId(`v2_battle_decline:${battle.id}:${opponent.id}`)
+          .setCustomId(`v2_battle_decline:${created.battle.id}:${opponent.id}`)
           .setLabel("Decline")
           .setStyle(ButtonStyle.Secondary);
 
@@ -435,17 +566,16 @@ export const execute = async (
           declineButton,
         );
 
-        /* Both selections are made blind, so nothing about the challenger's
-           three cards goes in this message - not even the type composition.
-           Everything is revealed at once when the defender commits. */
+        /* The challenger's hand is dealt now but shown to nobody - not even to
+           them - until the defender accepts. That is what stops a challenger
+           cancelling and re-issuing until they like their draw. */
         await interaction.editReply({
           content: [
             `## ${interaction.user.displayName} challenges ${opponent}`,
-            `${interaction.user.displayName} has brought ${RULES.rounds} cards, face down.`,
+            `Bringing **${deck.name}**. ${handSize} cards are already dealt, face down.`,
             wager > 0 ? `**Wager:** ${wager} fc each` : "**Friendly** (no wager)",
             "",
-            `${opponent}, bring ${RULES.rounds} cards of your own. Both hands are revealed once you do, and *then* you both secretly choose your slot order.`,
-            `Find your card ids with \`/finicard-v2 collection\`.`,
+            `${opponent}, accept with a deck of your own. Both hands are revealed the moment you do, and *then* you each pick ${RULES.rounds} of your ${handSize} in secret.`,
           ].join("\n"),
           components: [row],
         });
@@ -467,7 +597,7 @@ export const execute = async (
         const shown = pending.slice(0, MAX_PENDING_SHOWN);
 
         const rows = shown.map((battle) => {
-          const awaitingCards = battle.state === "awaiting_defender_selection";
+          const awaitingCards = battle.state === "awaiting_defender";
           const opponentName =
             battle.challenger_id === interaction.user.id
               ? battle.defender_name
@@ -476,13 +606,13 @@ export const execute = async (
           const action = awaitingCards
             ? new ButtonBuilder()
                 .setCustomId(
-                  `v2_battle_select:${battle.id}:${interaction.user.id}`,
+                  `v2_battle_accept:${battle.id}:${interaction.user.id}`,
                 )
-                .setLabel(`Bring cards vs ${opponentName}`.slice(0, 80))
+                .setLabel(`Accept ${opponentName}`.slice(0, 80))
                 .setStyle(ButtonStyle.Primary)
             : new ButtonBuilder()
-                .setCustomId(`v2_order_open:${battle.id}`)
-                .setLabel(`Choose order vs ${opponentName}`.slice(0, 80))
+                .setCustomId(`v2_lineup_open:${battle.id}`)
+                .setLabel(`Set lineup vs ${opponentName}`.slice(0, 80))
                 .setStyle(ButtonStyle.Primary);
 
           const buttons = [action];
@@ -508,9 +638,9 @@ export const execute = async (
               ? battle.defender_name
               : battle.challenger_name;
           const need =
-            battle.state === "awaiting_defender_selection"
-              ? "bring cards"
-              : "choose your order";
+            battle.state === "awaiting_defender"
+              ? "accept with a deck"
+              : "set your lineup";
           return `• **${opponentName}** — ${need}${battle.wager > 0 ? ` · ${battle.wager} fc` : ""}`;
         });
 
@@ -668,5 +798,195 @@ export const execute = async (
     }
   } finally {
     logCommand();
+  }
+};
+
+/* -------------------------------------------------------------------------- */
+/* Decks                                                                      */
+/* -------------------------------------------------------------------------- */
+
+type DeckContext = {
+  serverId: string;
+  serverName: string;
+  identifier: string;
+};
+
+/**
+ * The `deck` subcommand group.
+ *
+ * `build` is the path that matters: it assembles a deck from the collection with
+ * optional filters, so a player never has to type a card id to get playing. The
+ * manual `add` / `remove` are there for tuning afterwards.
+ */
+const handleDeckSubcommand = async (
+  interaction: ChatInputCommandInteraction,
+  context: DeckContext,
+) => {
+  const { serverId, serverName, identifier } = context;
+  const userId = interaction.user.id;
+
+  const describeDeck = async (deck: V2DeckRecord) => {
+    const contents = await loadDeck(deck, serverId);
+    const composition = { power: 0, wit: 0, heart: 0 };
+    for (const card of contents.cards) composition[card.type] += 1;
+
+    return [
+      `### ${deck.name} — ${contents.cards.length} cards ${compositionString(composition)}`,
+      contents.missing.length > 0
+        ? `_${contents.missing.length} card(s) in this deck are no longer in your collection._`
+        : "",
+      contents.cards
+        .map(
+          (card) =>
+            `${TYPE_EMOJI[card.type]} **${card.name}**${card.foil ? " ✨" : ""} \`${card.stats.power}/${card.stats.wit}/${card.stats.heart}\` · ${RARITY_LABEL[card.rarity]} · \`${card.instanceId}\``,
+        )
+        .join("\n"),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  };
+
+  switch (interaction.options.getSubcommand()) {
+    case "list": {
+      const decks = await getDecks(userId, serverId);
+
+      if (decks.length === 0) {
+        await interaction.editReply(
+          `You have no decks. Build one with \`/finicard-v2 deck build name:Main\` — a battle deals ${HAND_SIZE} cards from it.`,
+        );
+        return;
+      }
+
+      const lines = decks.map(
+        (deck) =>
+          `• **${deck.name}** — ${(deck.cards ?? []).length} cards${
+            (deck.cards ?? []).length < HAND_SIZE ? " ⚠️ too small to battle" : ""
+          }`,
+      );
+
+      await interaction.editReply(
+        `### Your decks\n${lines.join("\n")}\n\n_Bring one with \`/finicard-v2 battle deck:<name>\`._`,
+      );
+      return;
+    }
+
+    case "build": {
+      const name = interaction.options.getString("name", true);
+      const size = interaction.options.getInteger("size") ?? undefined;
+      const type = interaction.options.getString("type") as
+        | CardType
+        | null;
+      const rarity = interaction.options.getString("rarity") as
+        | CardRarity
+        | null;
+      const tag = interaction.options.getString("tag") ?? undefined;
+
+      const result = await autoBuildDeck({
+        userId,
+        serverId,
+        identifier,
+        name,
+        filter: {
+          size,
+          tag,
+          ...(type ? { type } : {}),
+          ...(rarity ? { rarity } : {}),
+        },
+      });
+
+      if (!result.ok) {
+        await interaction.editReply(result.reason);
+        return;
+      }
+
+      await interaction.editReply(
+        `Built **${result.deck.name}** with ${result.taken} of your ${result.eligible} cards.\n\n${await describeDeck(result.deck)}`,
+      );
+      return;
+    }
+
+    case "show": {
+      const deck = await findDeckByName(
+        userId,
+        serverId,
+        interaction.options.getString("name", true),
+      );
+
+      if (!deck) {
+        await interaction.editReply("You have no deck by that name.");
+        return;
+      }
+
+      for (const [index, chunk] of splitBigString(
+        await describeDeck(deck),
+      ).entries()) {
+        if (index === 0) await interaction.editReply(chunk);
+        else await interaction.followUp(chunk);
+      }
+      return;
+    }
+
+    case "add":
+    case "remove": {
+      const isAdd = interaction.options.getSubcommand() === "add";
+      const deck = await findDeckByName(
+        userId,
+        serverId,
+        interaction.options.getString("name", true),
+      );
+
+      if (!deck) {
+        await interaction.editReply("You have no deck by that name.");
+        return;
+      }
+
+      const rawCard = interaction.options.getString("card", true);
+      const { cards, errors } = await resolveLineup(userId, serverId, [rawCard], 1);
+
+      if (cards.length === 0) {
+        await interaction.editReply(
+          errors.join("\n") || `No card of yours matches \`${rawCard}\`.`,
+        );
+        return;
+      }
+
+      const card = cards[0];
+      const updated = await updateDeckCards(
+        deck,
+        isAdd
+          ? { add: [card.instanceId] }
+          : { remove: [card.instanceId] },
+      );
+
+      if (!updated.ok) {
+        await interaction.editReply(updated.reason);
+        return;
+      }
+
+      await interaction.editReply(
+        `${isAdd ? "Added" : "Removed"} **${card.name}** ${isAdd ? "to" : "from"} **${deck.name}** (${(updated.deck.cards ?? []).length} cards).`,
+      );
+      return;
+    }
+
+    case "delete": {
+      const deck = await findDeckByName(
+        userId,
+        serverId,
+        interaction.options.getString("name", true),
+      );
+
+      if (!deck) {
+        await interaction.editReply("You have no deck by that name.");
+        return;
+      }
+
+      await deleteDeck(deck.id!);
+      await interaction.editReply(`Deleted **${deck.name}**.`);
+      return;
+    }
+
+    default:
+      await interaction.editReply("Unknown deck subcommand.");
   }
 };

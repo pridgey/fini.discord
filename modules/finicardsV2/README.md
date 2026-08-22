@@ -21,9 +21,9 @@ when you want it, is retiring the v1 commands — not migrating data.
    # then restart Pocketbase - unapplied migrations run on boot
    ```
 
-   Three migrations: they create `v2_card_definition`, `v2_user_card` and
-   `v2_battle`, then add the Stadium selection fields and the `flavour` /
-   `artist` columns the templates use. Copies are already in `pb_migrations/`
+   Four migrations: they create `v2_card_definition`, `v2_user_card` and
+   `v2_battle`, add the `flavour` / `artist` columns the templates use, and add
+   `v2_deck` plus the dealt-hand fields. Copies are already in `pb_migrations/`
    and apply the next time Pocketbase restarts.
 
 2. **Register the command.** `bun run register-commands` — `/finicard-v2` is
@@ -45,7 +45,9 @@ when you want it, is retiring the v1 commands — not migrating data.
    /finicard-v2 pack                             # 25 fc, five cards
    /finicard-v2 grant who:@someone count:10      # admin, free, for testing
    /finicard-v2 collection                       # card ids live here
-   /finicard-v2 battle opponent:@them card1:<id> card2:<id> card3:<id>
+   /finicard-v2 deck build name:Main             # required before battling
+   /finicard-v2 battle opponent:@them            # no card ids anywhere
+   /finicard-v2 battle opponent:@them draw:4     # try a different draw size
    /finicard-v2 pending                          # whatever is waiting on you
    ```
 
@@ -79,79 +81,116 @@ Both are one constant / one function if you want to retune them.
 ## Match structure
 
 Modelled on Pokémon Stadium: **both players know the cards, neither knows the
-order.**
+lineup.** Nothing is typed at any point.
 
 ```
-1. CHALLENGE   Challenger brings 3 cards, face down.
-                 → nothing about them is public, not even type composition
+1. CHALLENGE   Challenger brings a deck. 5 cards are dealt from it, face down.
+                 → not even the challenger sees them yet
 
-2. ANSWER      Defender brings 3 cards, also blind.
-                 → neither player saw the other's picks, so no one had an edge
+2. ACCEPT      Defender accepts with a deck of their own and is dealt 5.
+                 → one click if they have one deck, a deck picker if several
 
-3. REVEAL      Both hands are shown in full: stats, keywords, everything.
-                 → order is still undecided by either side
+3. REVEAL      Both hands are shown in full: stats, keywords, card images.
 
-4. ORDER       Both players secretly pick their slot order.
-                 → one public button, a private picker each
+4. LINEUP      Each player privately clicks 3 of their 5, in slot order.
+                 → two cards get left behind; which two is the decision
 
-5. RESOLVE     The second order in triggers the match.
+5. RESOLVE     The second lineup in resolves the match.
 ```
+
+**Nobody sees their own hand until both are dealt.** That is deliberate: if the
+challenger saw their five first they could cancel and re-issue until they liked
+the draw, and a fishable draw is worse than no draw at all.
 
 Every step is asynchronous — nothing waits on a Discord collector, so a battle
-survives a bot restart, and the two players never need to be online together.
+survives a bot restart and the two players never need to be online together.
 
-**Ordering is the whole game, and it is load-bearing.** In the end-to-end test,
-one player's six possible orderings against a *fixed* opposing order produced
-scorelines of `3-0`, `1-1`, `1-2`, `0-2` and `0-3` — the same six cards, swinging
-from a shutout win to a shutout loss on the ordering alone.
+The lineup picker is three clicks from your own five cards. Progress lives in the
+button custom ids (`v2_lineup_pick:<battle>:<picked>:<next>`) rather than the
+database, so an abandoned pick leaves no row to clean up and a stale ephemeral
+can never desync from stored state. There is a "start over" button for misclicks.
 
-Two consequences worth knowing:
+Lineups are validated against the dealt hand, so a player can only play cards
+they were actually dealt, and a locked lineup cannot be changed.
 
-- **Orders are validated as a permutation of the revealed hand**, so nobody can
-  swap in a card they never showed, and an order cannot be changed once locked.
-- **The doc's defender advantage is gone.** §3 gave the defender second-mover
-  information as "compensation for not choosing when the fight happens." This
-  structure is symmetric instead, so if that compensation still matters it needs
-  to come from somewhere else.
+## Decks
 
-The order picker is buttons rather than typing: three cards is six orderings,
-which fits comfortably. It supports up to 4 cards (24 orderings); at 5 it would
-be 120, so `orderingsFitInButtons` refuses out loud rather than truncating.
+A battle draws from a deck, not from the whole collection, and **that distinction
+is doing real work.** Measured over 4000 matches, a 120-card collection beats a
+6-card one:
 
-### Tuning
+| draw source | deep collection's win rate |
+| --- | --- |
+| free pick 3 from the collection | 100% — a shutout, depth decides everything |
+| draw 5 from the **collection** | **50%** — dead even, depth worth nothing |
+| draw 5 from a **deck you built** | **75%** — a real edge that's still beatable |
 
-```bash
-bun run scripts/finicards_v2_simulate.ts                    # sweep the multiplier
-bun run scripts/finicards_v2_simulate.ts --matches 5000 --keywords
-bun test tests/finicardsV2/                                 # 141 tests
+Drawing straight off the collection doesn't reduce the value of collecting, it
+*deletes* it: five random cards from 300 are statistically the same as five from
+six. Drawing from a deck restores it, because a deep collection builds a better
+deck. This is also what the doc describes — §5 draws from *"their deck"*, and
+says outright *"you need a deep, redundant deck rather than six perfect cards."*
+
+Decks are also how a player organises a collection, so they may overlap freely -
+the same copy can sit in several, and only one deck is used per battle.
+
+```
+/finicard-v2 deck build name:Main                   # from your best cards
+/finicard-v2 deck build name:Hearts type:heart      # filter by type,
+/finicard-v2 deck build name:Rares rarity:full_art  # rarity,
+/finicard-v2 deck build name:Shonen tag:shonen      # or tag
+/finicard-v2 deck list | show | add | remove | delete
 ```
 
----
+`build` is the path that matters — it assembles a deck from the collection so a
+player never has to type a card id to get playing. `add` / `remove` are for
+tuning afterwards. Limits: 5-40 cards, 10 decks per player. Rebuilding a name
+replaces that deck in place rather than duplicating it.
+
+A deck stores specific copies, so selling a card leaves a hole; `loadDeck`
+reports those, and a deck that can no longer fill a hand is caught before the
+battle starts rather than mid-deal.
 
 ## What the sweep says about the dials
 
-Seeded, 2000 matches per cell, keywords off. `fa vs answer` is three full-arts
-against commons that answer the visible composition.
+Seeded, 2000 matches per cell, keywords off, modelling the real structure -
+decks built from a collection, five dealt, both hands revealed, three picked.
 
-| mult  | depth wins | fa vs blind | fa vs answer | mono-type | level rounds |
+| mult | depth wins | fa vs blind | fa vs answer | mono-type | level rounds |
 | ----- | ---------- | ----------- | ------------ | --------- | ------------ |
-| 1.0   | 59.3%      | 100.0%      | 99.8%        | 34.6%     | 19.1%        |
-| 1.25  | 90.0%      | 99.7%       | 92.8%        | 8.2%      | 14.3%        |
-| **1.5** | **98.9%** | **91.7%**  | **25.1%**    | **0.8%**  | **11.3%**    |
-| 1.75  | 99.8%      | 84.4%       | 3.4%         | 0.1%      | 8.6%         |
-| 2.0   | 100.0%     | 75.1%       | 0.0%         | 0.0%      | 6.7%         |
+| 1.0 | 93.8% | 100.0% | 100.0% | 28.5% | 16.3% |
+| 1.25 | 86.5% | 100.0% | 99.7% | 1.4% | 16.1% |
+| **1.5** | **75.1%** | **90.5%** | **91.9%** | **0.0%** | **11.3%** |
+| 1.75 | 71.0% | 79.3% | 84.2% | 0.0% | 8.6% |
+| 2.0 | 67.3% | 74.9% | 74.9% | 0.0% | 6.9% |
 
-The doc's default of **1.5 is the right call**, and the two full-art columns are
-why: a full-art beats a common that isn't pointed at it 92% of the time, and
-loses to a common that *is* 75% of the time. That gap — 92% down to 25% — is
-exactly "beating the best card in the game requires a specific answer." At 1.25
-the answer barely matters; at 1.75 owning the answer is the whole game.
+**1.5 holds up on three of the four pillars.** Depth is worth a solid 75%,
+mono-type decks lose essentially every match with no rule enforcing it, and only
+11% of matches fall through to the damage tiebreaker.
 
-Mono-type lineups lose ~99% at 1.5 with no rule enforcing it, and a deep
-collection beats a six-card collection 98.9% of the time. Both design pillars
-hold up.
+**The fourth is a real problem.** An all-full-art deck beats an all-common deck
+~90% of the time *whether or not the commons player can read their hand* - so
+"rarer is more exciting, not more powerful" does not currently hold. The
+arithmetic says why: a common's spike caps at 7, and
 
----
+```
+common 3/5/7 (Heart) vs full-art 12/2/1 (Power)
+  common:    7 x 1.5 = 10  - 1 = 9
+  full-art:  12          - 3 = 9     -> a draw
+```
+
+A *perfectly countering* common can only draw with a full-art, never beat it.
+Lowering the full-art ceiling to 10 - which the doc's own tuning table names,
+"12: how extreme full-arts get. 10 is tamer" - flips it:
+
+```
+common 3/5/7 (Heart) vs full-art 10/3/2 (Power)
+  common:    7 x 1.5 = 10  - 2 = 8
+  full-art:  10          - 3 = 7     -> the common wins
+```
+
+That is one number in `RULES.spikeCeiling`. Left at 12 because it is a game-feel
+decision the doc made deliberately, not a bug.
 
 ## Files
 
@@ -164,19 +203,24 @@ hold up.
 | `convertLegacyCards.ts` | Pure v1 → v2 mapping. |
 | `cardStore.ts` | Pocketbase boundary for cards, collections, lineups and the pool import. |
 | `battleStore.ts` | The two-phase challenge lifecycle and its state machine. |
-| `orderings.ts` | Slot-order permutations and their button labels. |
+| `decks.ts` | Deck CRUD, auto-building with filters, and loading a deck for play. |
+| `draw.ts` | Dealing a hand and validating a lineup against it. |
+| `lineupPicker.ts` | The three-click lineup picker and its custom-id encoding. |
+| `battleFlow.ts` | The shared accept-and-reveal step. |
 | `packs.ts` | Pack odds, foil rolls, population limits. |
 | `wagers.ts` | Finicoin escrow, the jackpot rake and pot splitting. |
 | `expireBattles.ts` | The defender-timeout sweep, run from the minute poll. |
-| `renderBattle.ts` | Discord text presentation. |
+| `ui/` | Discord message building: containers, galleries, accents, and the copy that explains the mechanics. |
+| `cardArt/handStrip.ts` | The one-image-per-hand landscape layout. |
+| `renderBattle.ts` | The two text renderers components can't improve on: the monospace card face (image-render fallback) and the id-bearing collection list. |
 | `cardArt/` | Card image rendering: palettes, per-template geometry, text fitting, generated blocks. |
 | `templates/` | The five card templates. `templates/mockups/` holds the original designs. |
 | `migrations/` | Tracked copies of the Pocketbase migrations. |
 
 Surface files outside the module: `commands/finicard-v2.command.ts`,
-`buttons/individualButtons/v2Battle{Select,Decline}.button.ts`,
-`buttons/individualButtons/v2Order{Open,Pick}.button.ts`,
-`modals/individualModals/v2BattleSelection.modal.ts`,
+`buttons/individualButtons/v2Battle{Accept,Decline}.button.ts`,
+`buttons/individualButtons/v2DeckPick.button.ts`,
+`buttons/individualButtons/v2Lineup{Open,Pick}.button.ts`,
 `types/PocketbaseTablesV2.ts`, `scripts/finicards_v2_simulate.ts`,
 `tests/finicardsV2/`.
 
@@ -299,9 +343,9 @@ back to neutral.
 
 **Composition reveal order** — §3 step 1 says the bot shows the *defender's*
 composition before the challenger picks, but step 3 has the defender picking
-last, so there was nothing to show yet. Superseded by the Stadium structure
-above: both hands are committed blind, then revealed in full, then ordered in
-secret. See **Match structure**.
+last, so there was nothing to show yet. Superseded: hands are *dealt* from decks
+and revealed in full, and the hidden information is which three each side plays.
+See **Match structure**.
 
 **Damage rounding** — the doc's worked examples floor the multiplied attack
 (`7 × 1.5 − 3 = 7`, `9 × 1.5 − 2 = 11`), so `attackValue = floor(stat × mult)`.
@@ -318,6 +362,99 @@ wagered battle is a net *sink* for the players while the coin stays in
 circulation — it comes back through `rollJackpot`. Nothing is minted:
 `jackpotCut + payout === pot`, which `tests/finicardsV2/wagers.test.ts` pins.
 Draws return both stakes unraked by default (`RAKE.rakeDraws`). Default wager 0.
+
+---
+
+## Message UX
+
+Everything a player sees is built with Discord's Components V2 - containers with
+accent colours, image galleries, separators - in `ui/`. Three rules the surfaces
+follow:
+
+**One block per owner, coloured by side.** The reveal used to post ten loose card
+images in a flat message, which stacked down the channel and made it impossible
+to tell whose five were whose. Each hand now gets its own bordered container with
+its own accent colour (`SIDE_ACCENT`) and its own gallery, plus one text line per
+card - gallery thumbnails are too small to read a stat line off.
+
+**Say why, but say it small.** This has been through both failure modes. The
+first result view showed only `7 × 1.5 − 3 = 7`, so a player could see a card hit
+for 7 but not why. Spelling it out fixed that and produced five lines a round -
+correct, complete, and far too much to read three times over.
+
+The layout now splits by *need*. The headline of each round carries who won and
+by how much; the derivation sits underneath in small text you can skip:
+
+```
+`R1` **Fen +2** · 🟢 Oathbound Knight **7** – 5 Storm Caller 🔴
+-# 🟢 Heart beats 🔴 Power — ×1.5 to Fen · 7×1.5=10 − 3 Heart vs 9 − 4 Power
+```
+
+All three rounds live in one block with one separator - three bordered sections
+for three rounds reads as three times the content. The full sentence-by-sentence
+working is still available behind a **Full breakdown** button, ephemeral, so
+asking for it costs nobody else any screen space.
+
+Two details worth keeping: the round's winner leads the line (an earlier version
+marked every round `✅`, which read as "you won this one" regardless of who did),
+and negative damage is parenthesised, because `4 – -4` is hard to parse.
+
+**Never make them scroll to decide.** The lineup picker repeats the opposing hand
+as a compact line (`🔴 Vegeta 10 · 🔵 Bulma 9 · …`), because the read is the whole
+decision and the reveal may be several messages up by then.
+
+### One constraint worth knowing
+
+A message created with `IsComponentsV2` **cannot** carry a plain `content` field,
+and cannot be converted back. The lineup picker is edited on every click, so it
+is V2 from its first reply and every update path - including each error - goes
+through a container. `ui/notice.ts` exists for exactly those one-line paths.
+
+### Hand size
+
+Set per battle: `/finicard-v2 battle draw:4`. Range is `MIN_HAND_SIZE`
+(= `RULES.rounds`, below which there is nothing to choose) to `MAX_HAND_SIZE` of
+8, and it is **stored on the battle** rather than read from a constant - the two
+hands are dealt at different times and validated later still, so all three have
+to agree on the number the battle was created with.
+
+`HAND_SIZE` in `draw.ts` is only the default. What the sizes cost:
+
+| hand | depth wins | decisive | pick mattered |
+| --- | --- | --- | --- |
+| 3 | 77.0% | 98.7% | — (no choice, order only) |
+| 4 | 78.6% | 98.9% | 66% |
+| **5** | **75.6%** | **98.9%** | **77%** |
+| 6 | 73.2% | 99.1% | 77% |
+
+All are balance-viable. "Pick mattered" is how often reading the opponent's hand
+changed which three cards got played - at 3 the set is forced and only ordering
+remains, which is worth feeling before committing to it.
+
+### Hand images
+
+A hand is **one wide image**, not one image per card (`cardArt/handStrip.ts`).
+
+That is a Discord constraint, not a card design problem: a gallery divides its
+width between items, so five portrait cards each get a fifth of the message and
+their stats become unreadable - you have to click every card, which defeats the
+point of showing them. A *single* gallery item gets the full width, so a hand is
+rendered as one image with a landscape strip per card stacked vertically. Each
+strip then has the full width for a name, a type spine, an art thumbnail and
+three stat boxes with the card's own type emphasised.
+
+Portrait cards are still the real card: `/finicard-v2 card` and pack pulls use
+them. The strip exists purely for the read-a-whole-hand-at-a-glance job.
+
+Two things that bit while building it, both worth knowing before editing:
+
+- **SVG ids are document-global.** Nesting an `<svg>` per strip does *not* scope
+  them, so a single `id="lead"` gradient painted every card's lead box the first
+  card's colour. Ids are suffixed per strip.
+- The image is oversampled to `HAND_STRIP_WIDTH` (1140px) because Discord
+  downscales it; rendering at display size looks soft.
+
+Cost: 2 files and ~120-200 KB per reveal, against 10 files and ~550 KB before.
 
 ---
 
@@ -392,7 +529,10 @@ the point there.
 - **Decks, cooldowns, dungeons, set completion, trading.** Phases 3–6. The
   schema carries `cost`, `tags`, `keyword` and `set_piece` from day one, so none
   of them needs a migration across a live collection.
-- **Select-menu lineup picking.** `index.ts` routes buttons and modals but not
-  select menus, and a v2 test feature has no business changing the shared
-  interaction router. Lineups are typed as card ids — which `/sell-card` already
-  trains players to do — and `resolveLineup` accepts any unambiguous id prefix.
+- **Mulligans.** The doc offers one free redraw and lists extra redraws as a
+  Finicoin sink. Left out because a redraw after the reveal leaks information -
+  you would be rerolling against a known hand - and a redraw before it reopens
+  the draw-fishing hole that dealing both hands together closes. Worth designing
+  deliberately rather than bolting on.
+- **Deck cost budgets and cooldowns.** Phase 3. `cost` is populated on every
+  card, so neither needs a migration.

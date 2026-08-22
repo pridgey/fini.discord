@@ -8,7 +8,16 @@
  * and expects extended tuning, so this exists to answer the tuning question with
  * numbers instead of vibes. It touches no database and no Discord - it builds a
  * synthetic pool through the same `normalizeSpread` the real cards go through,
- * then plays out four experiments at each multiplier, one per design pillar:
+ * then plays out four experiments at each multiplier, one per design pillar.
+ *
+ * It models the real match structure: a deck is built from the collection, a hand
+ * of `HAND_SIZE` is dealt from the deck, both hands are revealed, and each side
+ * picks `RULES.rounds` of their hand knowing what the other is holding. Modelling
+ * free choice from the whole collection instead - which is what an earlier
+ * version did - overstates depth enormously, because being able to name any card
+ * you own is a completely different game from playing the hand you were dealt.
+ *
+ * The experiments:
  *
  *   1. Depth beats power     - a deep collection that can answer a composition
  *                              vs a six-card collection that cannot.
@@ -18,8 +27,10 @@
  */
 
 import { resolveMatch } from "../modules/finicardsV2/battleEngine";
+import { buildDeckCards } from "../modules/finicardsV2/decks";
+import { HAND_SIZE, dealHand } from "../modules/finicardsV2/draw";
 import { keywordsForRarity } from "../modules/finicardsV2/keywords";
-import { RULES, TYPE_PRIORITY } from "../modules/finicardsV2/rules";
+import { RULES, TYPE_BEATS, TYPE_PRIORITY } from "../modules/finicardsV2/rules";
 import { normalizeSpread } from "../modules/finicardsV2/statBudget";
 import type { BattleCard } from "../modules/finicardsV2/types";
 import type { CardRarity, CardType } from "../types/PocketbaseTablesV2";
@@ -139,9 +150,6 @@ const ofType = (type: CardType) => POOL.filter((card) => card.type === type);
 /* Lineup strategies                                                          */
 /* -------------------------------------------------------------------------- */
 
-const randomLineup = (pool: BattleCard[], random: () => number): BattleCard[] =>
-  Array.from({ length: RULES.rounds }, () => pick(pool, random));
-
 /** Power > Wit > Heart > Power - what beats the given type. */
 const counterOf: Record<CardType, CardType> = {
   power: "heart",
@@ -149,22 +157,73 @@ const counterOf: Record<CardType, CardType> = {
   heart: "wit",
 };
 
+const typeStat = (card: BattleCard) => card.stats[card.type];
+
 /**
- * What a deep collection actually buys you: the challenger sees the opponent's
- * *composition* but not their order, so the best available play is to field the
- * counter to each type they are known to be bringing. A shallow collection
- * simply may not own those cards.
+ * A deck built from a collection, the way `/finicard-v2 deck build` builds it.
+ *
+ * This is where collection depth actually pays: a deep collection produces a
+ * stronger 20-card deck, and every hand is then dealt from that better deck.
  */
-const answeringLineup = (
-  pool: BattleCard[],
-  opposing: BattleCard[],
+const deckFrom = (collection: BattleCard[], size = 20): BattleCard[] => {
+  const asOwned = collection.map((card) => ({
+    id: card.instanceId,
+    definition: {
+      card_type: card.type,
+      rarity: card.rarity,
+      tags: card.tags,
+      power: card.stats.power,
+      wit: card.stats.wit,
+      heart: card.stats.heart,
+      cost: card.cost,
+      card_name: card.name,
+      series: card.series,
+      keyword: card.keyword,
+      art_url: "",
+      legacy_card: "",
+      set_piece: "",
+      population: 0,
+      active: true,
+    },
+    foil: card.foil,
+  })) as any[];
+
+  const chosen = new Set(buildDeckCards(asOwned, { size }));
+  return collection.filter((card) => chosen.has(card.instanceId));
+};
+
+/**
+ * Picking a lineup from a dealt hand, knowing the opponent's hand.
+ *
+ * Both hands are face up at this point, so the read is: which of my five best
+ * answer the types they are holding? Cards that counter something in their hand
+ * are worth more than raw stats, which is the whole point of the type wheel.
+ */
+const pickFromHand = (
+  hand: BattleCard[],
+  opposingHand: BattleCard[],
+  rounds: number,
+): BattleCard[] => {
+  const threat: Record<CardType, number> = { power: 0, wit: 0, heart: 0 };
+  for (const card of opposingHand) threat[card.type] += 1;
+
+    // A card is worth more when the opponent is holding what it *beats*.
+  // `counterOf[t]` is what beats t, so using it here would have rewarded a card
+  // for facing its own predator - exactly backwards.
+  const score = (card: BattleCard) =>
+    typeStat(card) + 4 * threat[TYPE_BEATS[card.type]];
+
+  return [...hand].sort((a, b) => score(b) - score(a)).slice(0, rounds);
+};
+
+/** Deals a hand from a deck and picks a lineup out of it. */
+const playFrom = (
+  deck: BattleCard[],
+  opposingHand: BattleCard[],
+  rounds: number,
   random: () => number,
 ): BattleCard[] =>
-  opposing.map((opponentCard) => {
-    const wanted = counterOf[opponentCard.type];
-    const answers = pool.filter((card) => card.type === wanted);
-    return answers.length > 0 ? pick(answers, random) : pick(pool, random);
-  });
+  pickFromHand(dealHand(deck, HAND_SIZE, random), opposingHand, rounds);
 
 /* -------------------------------------------------------------------------- */
 /* Experiments                                                                */
@@ -215,69 +274,78 @@ const runSeries = (
 };
 
 const SHALLOW_SIZE = 6;
+const DEEP_SIZE = 120;
+
+/** Deals both hands, then lets each side pick knowing the other's hand. */
+const playMatch = (
+  challengerDeck: BattleCard[],
+  defenderDeck: BattleCard[],
+  random: () => number,
+) => {
+  const challengerHand = dealHand(challengerDeck, HAND_SIZE, random);
+  const defenderHand = dealHand(defenderDeck, HAND_SIZE, random);
+  return {
+    challenger: pickFromHand(challengerHand, defenderHand, RULES.rounds),
+    defender: pickFromHand(defenderHand, challengerHand, RULES.rounds),
+  };
+};
 
 const experiments = (multiplier: number) => {
-  /* 1. Deep collection (whole pool, can answer) vs a fixed six cards. */
+  /* 1. A deep collection's deck against a six-card collection's deck. */
   const depth = runSeries(
     multiplier,
     (random) => {
-      const shallowPool = Array.from({ length: SHALLOW_SIZE }, () =>
+      const deep = deckFrom(
+        Array.from({ length: DEEP_SIZE }, () => pick(POOL, random)),
+      );
+      const shallow = Array.from({ length: SHALLOW_SIZE }, () =>
         pick(POOL, random),
       );
-      const defender = randomLineup(shallowPool, random);
-      return {
-        challenger: answeringLineup(POOL, defender, random),
-        defender,
-      };
+      return playMatch(deep, shallow, random);
     },
     1001,
   );
 
-  /* 2a. Three full-arts vs three commons picked blind. */
+  /* 2a. A full-art deck against a common deck, neither able to read the other. */
   const rarityBlind = runSeries(
     multiplier,
-    (random) => ({
-      challenger: randomLineup(ofRarity("full_art"), random),
-      defender: randomLineup(ofRarity("common"), random),
-    }),
+    (random) => {
+      const fullArt = dealHand(ofRarity("full_art"), HAND_SIZE, random);
+      const common = dealHand(ofRarity("common"), HAND_SIZE, random);
+      return {
+        challenger: [...fullArt]
+          .sort((a, b) => typeStat(b) - typeStat(a))
+          .slice(0, RULES.rounds),
+        defender: [...common]
+          .sort((a, b) => typeStat(b) - typeStat(a))
+          .slice(0, RULES.rounds),
+      };
+    },
     2002,
   );
 
-  /* 2b. The same, except the commons player answers the composition they can
-         see. This is the doc's actual claim - "beating the best card in the game
-         requires a specific answer" - so it is the number that matters. */
+  /* 2b. The same, with both hands revealed - the doc's actual claim, that a
+         common pointed the right way answers a full-art. */
   const rarityAnswered = runSeries(
     multiplier,
-    (random) => {
-      const challenger = randomLineup(ofRarity("full_art"), random);
-      return {
-        challenger,
-        defender: answeringLineup(ofRarity("common"), challenger, random),
-      };
-    },
+    (random) => playMatch(ofRarity("full_art"), ofRarity("common"), random),
     2012,
   );
 
-  /* 3. Mono-type vs its counter. */
+  /* 3. A mono-type deck against its counter. */
   const monoType = runSeries(
     multiplier,
     (random) => {
       const type = pick(TYPE_PRIORITY, random);
-      return {
-        challenger: randomLineup(ofType(type), random),
-        defender: randomLineup(ofType(counterOf[type]), random),
-      };
+      return playMatch(ofType(type), ofType(counterOf[type]), random);
     },
     3003,
   );
 
-  /* 4. Two even, unstrategic players - a baseline for how decisive matches feel. */
+  /* 4. Two even decks - a baseline for how decisive matches feel. */
   const baseline = runSeries(
     multiplier,
-    (random) => ({
-      challenger: randomLineup(POOL, random),
-      defender: randomLineup(POOL, random),
-    }),
+    (random) => playMatch(POOL, POOL, random),
     4004,
   );
 

@@ -66,11 +66,27 @@ export type V2UserCardRecord = {
   };
 };
 
+/**
+ * A named deck. Decks are both what a battle draws from and a way of organising
+ * a collection, so they may overlap freely - the same copy can sit in several.
+ */
+export type V2DeckRecord = {
+  id?: string;
+  user_id: string;
+  server_id: string;
+  identifier: string;
+  name: string;
+  /** Ordered list of v2_user_card ids. */
+  cards: string[];
+  created?: string;
+  updated?: string;
+};
+
 export type V2BattleState =
-  /** Challenger has picked three cards; waiting on the defender to pick theirs. */
-  | "awaiting_defender_selection"
-  /** Both sets are revealed; waiting on one or both secret orders. */
-  | "awaiting_orders"
+  /** Waiting on the defender to accept and choose a deck. */
+  | "awaiting_defender"
+  /** Both hands are dealt and revealed; waiting on one or both lineups. */
+  | "awaiting_lineups"
   | "resolved"
   | "declined"
   | "expired";
@@ -78,13 +94,16 @@ export type V2BattleState =
 /**
  * A PvP match, run on the Stadium structure:
  *
- *   1. Both players commit an unordered *set* of three cards, blind.
- *   2. Both sets are revealed in full - stats, keywords, everything.
- *   3. Both players secretly commit an *order* for their own three.
- *   4. Resolve.
+ *   1. Challenger picks a deck. Five cards are dealt from it, face down.
+ *   2. Defender accepts with a deck of their own and is dealt five.
+ *   3. Both hands are revealed in full - stats, keywords, everything.
+ *   4. Each player privately picks three of their five, in slot order.
+ *   5. Resolve.
  *
- * The only hidden information at the point of decision is the ordering, and
- * neither player has an information edge over the other at any stage.
+ * Neither player sees their own hand until both are dealt, which is what stops
+ * a challenger cancelling and re-issuing until they like their draw. From the
+ * reveal on, the only hidden information is which three each side will play and
+ * in what order.
  */
 export type V2BattleRecord = {
   id?: string;
@@ -94,10 +113,21 @@ export type V2BattleRecord = {
   challenger_name: string;
   defender_id: string;
   defender_name: string;
-  /** The unordered three cards the challenger brought. */
-  challenger_selection: string[];
-  /** The unordered three cards the defender brought, empty until they pick. */
-  defender_selection: string[];
+  /** The five cards dealt to the challenger. */
+  challenger_hand: string[];
+  /** The five dealt to the defender, empty until they accept. */
+  defender_hand: string[];
+  /** v2_deck id each side brought. */
+  challenger_deck: string;
+  defender_deck: string;
+  /**
+   * How many cards this battle deals each side.
+   *
+   * Stored per battle rather than read from a constant: the two hands are dealt
+   * at different times and validated later still, so they all have to agree on
+   * the number the battle was created with.
+   */
+  hand_size: number;
   /** The challenger's committed order, empty until they submit it. */
   challenger_lineup: string[];
   /** The defender's committed order, empty until they submit it. */

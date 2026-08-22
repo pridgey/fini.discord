@@ -1,21 +1,32 @@
-import type { V2BattleRecord } from "../../types/PocketbaseTablesV2";
+import type { V2BattleRecord, V2DeckRecord } from "../../types/PocketbaseTablesV2";
 import { pb } from "../../utilities/pocketbase";
 import { resolveMatch } from "./battleEngine";
 import { V2_BATTLE, loadLineupByIds } from "./cardStore";
+import { loadDeck } from "./decks";
+import {
+  HAND_SIZE,
+  clampHandSize,
+  dealHandFromDeck,
+  isLegalLineup,
+} from "./draw";
 import { RULES } from "./rules";
 import type { MatchResult, Side } from "./types";
 
 /**
- * Challenge lifecycle for v2 PvP, on the Stadium match structure:
+ * Challenge lifecycle for v2 PvP.
  *
- *   1. Both players commit an unordered *set* of three cards, blind.
- *   2. Both sets are revealed in full.
- *   3. Both players secretly commit an *order* for their own three.
- *   4. Resolve.
+ *   1. Challenger picks a deck. Five cards are dealt from it, face down.
+ *   2. Defender accepts with a deck of their own and is dealt five.
+ *   3. Both hands are revealed in full.
+ *   4. Each player privately picks three of their five, in slot order.
+ *   5. The second lineup in resolves the match.
  *
- * Fully asynchronous at every step - nothing waits on a Discord collector, so a
- * battle survives a bot restart. Neither player ever has an information edge:
- * selections are blind, and orders are secret until both are locked in.
+ * Nobody sees their own hand until both are dealt. That is deliberate: if the
+ * challenger saw their five first they could cancel and re-issue until they liked
+ * the draw, and a fishable draw is worse than no draw at all.
+ *
+ * Every step is asynchronous - nothing waits on a Discord collector, so a battle
+ * survives a bot restart and the two players never need to be online together.
  *
  * Finicoin never moves in this file; wagers are settled by the command layer so
  * the store stays a pure persistence boundary.
@@ -31,29 +42,55 @@ export type CreateChallengeInput = {
   challengerName: string;
   defenderId: string;
   defenderName: string;
-  /** The unordered three cards the challenger brings. */
-  challengerSelection: string[];
+  /** The deck the challenger is bringing. */
+  deck: V2DeckRecord;
   wager?: number;
+  /** Cards dealt to each side. Defaults to `HAND_SIZE`. */
+  handSize?: number;
 };
+
+export type CreateChallengeOutcome =
+  | { ok: true; battle: V2BattleRecord }
+  | { ok: false; reason: string };
 
 export const createChallenge = async (
   input: CreateChallengeInput,
-): Promise<V2BattleRecord> =>
-  pb.collection<V2BattleRecord>(V2_BATTLE).create({
+): Promise<CreateChallengeOutcome> => {
+  const handSize = clampHandSize(input.handSize);
+  const contents = await loadDeck(input.deck, input.serverId);
+
+  if (contents.cards.length < handSize) {
+    return {
+      ok: false,
+      reason: `**${input.deck.name}** can only field ${contents.cards.length} cards and this battle deals ${handSize}.${
+        contents.missing.length > 0
+          ? ` ${contents.missing.length} of its cards are no longer in your collection.`
+          : ""
+      }`,
+    };
+  }
+
+  const battle = await pb.collection<V2BattleRecord>(V2_BATTLE).create({
     server_id: input.serverId,
     channel_id: input.channelId,
     challenger_id: input.challengerId,
     challenger_name: input.challengerName,
     defender_id: input.defenderId,
     defender_name: input.defenderName,
-    challenger_selection: input.challengerSelection,
-    defender_selection: [],
+    challenger_deck: input.deck.id ?? "",
+    defender_deck: "",
+    challenger_hand: dealHandFromDeck(contents.cards, handSize),
+    defender_hand: [],
+    hand_size: handSize,
     challenger_lineup: [],
     defender_lineup: [],
-    state: "awaiting_defender_selection",
+    state: "awaiting_defender",
     result: null,
     wager: input.wager ?? 0,
   });
+
+  return { ok: true, battle };
+};
 
 export const getBattle = async (
   battleId: string,
@@ -81,138 +118,122 @@ export const sideForUser = (
   return null;
 };
 
-export const selectionFor = (
-  battle: V2BattleRecord,
-  side: Side,
-): string[] =>
-  side === "challenger"
-    ? (battle.challenger_selection ?? [])
-    : (battle.defender_selection ?? []);
+/** The draw size a battle was created with, falling back for older rows. */
+export const handSizeOf = (battle: V2BattleRecord): number =>
+  clampHandSize(battle.hand_size || HAND_SIZE);
 
-export const orderFor = (battle: V2BattleRecord, side: Side): string[] =>
+export const handFor = (battle: V2BattleRecord, side: Side): string[] =>
+  side === "challenger"
+    ? (battle.challenger_hand ?? [])
+    : (battle.defender_hand ?? []);
+
+export const lineupFor = (battle: V2BattleRecord, side: Side): string[] =>
   side === "challenger"
     ? (battle.challenger_lineup ?? [])
     : (battle.defender_lineup ?? []);
 
 /* -------------------------------------------------------------------------- */
-/* Phase 2 - the defender brings their three cards                            */
+/* Phase 2 - the defender accepts with a deck, and both hands are dealt        */
 /* -------------------------------------------------------------------------- */
 
-export type SelectionOutcome =
+export type AcceptOutcome =
   | { ok: true; battle: V2BattleRecord }
   | { ok: false; reason: string };
 
-/**
- * Records the defender's set and moves the battle to the reveal.
- *
- * The defender's cards are never compared against the challenger's before this
- * point, so there is nothing to leak: both selections were made blind.
- */
-export const submitDefenderSelection = async (
+export const acceptChallenge = async (
   battleId: string,
-  selection: string[],
-): Promise<SelectionOutcome> => {
+  deck: V2DeckRecord,
+): Promise<AcceptOutcome> => {
   const battle = await getBattle(battleId);
 
   if (!battle) return { ok: false, reason: "That battle no longer exists." };
-  if (battle.state !== "awaiting_defender_selection") {
+  if (battle.state !== "awaiting_defender") {
     return {
       ok: false,
       reason: `That battle is already ${battle.state.replace(/_/g, " ")}.`,
     };
   }
-  if (selection.length !== RULES.rounds) {
+
+  /* The challenger's draw size governs, so both hands match even if the default
+     changed after the challenge was issued. */
+  const handSize = handSizeOf(battle);
+  const contents = await loadDeck(deck, battle.server_id);
+
+  if (contents.cards.length < handSize) {
     return {
       ok: false,
-      reason: `You need to bring exactly ${RULES.rounds} cards.`,
+      reason: `**${deck.name}** can only field ${contents.cards.length} cards and this battle deals ${handSize}.`,
     };
   }
 
   const updated = await pb
     .collection<V2BattleRecord>(V2_BATTLE)
     .update(battleId, {
-      defender_selection: selection,
-      state: "awaiting_orders",
+      defender_deck: deck.id ?? "",
+      defender_hand: dealHandFromDeck(contents.cards, handSize),
+      state: "awaiting_lineups",
     });
 
   return { ok: true, battle: updated };
 };
 
 /* -------------------------------------------------------------------------- */
-/* Phase 3 - both sides secretly order their own three                        */
+/* Phase 3 - each side privately picks three of their five, in order           */
 /* -------------------------------------------------------------------------- */
 
-export type OrderOutcome =
+export type LineupOutcome =
   | { ok: false; reason: string }
-  /** Order stored, still waiting on the opponent. */
+  /** Lineup stored, still waiting on the opponent. */
   | { ok: true; resolved: false; battle: V2BattleRecord; waitingOn: Side }
-  /** Both orders in - the match resolved. */
-  | {
-      ok: true;
-      resolved: true;
-      battle: V2BattleRecord;
-      result: MatchResult;
-    };
-
-/** True when `order` is a permutation of `selection` - no smuggling cards in. */
-const isPermutationOf = (order: string[], selection: string[]): boolean => {
-  if (order.length !== selection.length) return false;
-  const remaining = [...selection];
-  for (const id of order) {
-    const index = remaining.indexOf(id);
-    if (index === -1) return false;
-    remaining.splice(index, 1);
-  }
-  return true;
-};
+  /** Both lineups in - the match resolved. */
+  | { ok: true; resolved: true; battle: V2BattleRecord; result: MatchResult };
 
 /**
- * Stores one side's secret order, and resolves the match once both are in.
+ * Stores one side's lineup, and resolves the match once both are in.
  *
- * Re-reads both lineups from the database at resolution time, so a card sold or
- * traded away mid-battle invalidates the match rather than resolving with stale
- * stats. The order is validated as a permutation of that side's own revealed
- * selection, so a player cannot swap in a card they never showed.
+ * The lineup is checked against that side's dealt hand, so a player can only
+ * play cards they were actually dealt. Both lineups are re-read from the
+ * database at resolution time, so a card sold mid-battle invalidates the match
+ * rather than resolving with stale stats.
  */
-export const submitOrder = async (
+export const submitLineup = async (
   battleId: string,
   side: Side,
-  order: string[],
-): Promise<OrderOutcome> => {
+  lineup: string[],
+): Promise<LineupOutcome> => {
   const battle = await getBattle(battleId);
 
   if (!battle) return { ok: false, reason: "That battle no longer exists." };
-  if (battle.state !== "awaiting_orders") {
+  if (battle.state !== "awaiting_lineups") {
     return {
       ok: false,
       reason:
-        battle.state === "awaiting_defender_selection"
-          ? `${battle.defender_name} hasn't brought their cards yet.`
+        battle.state === "awaiting_defender"
+          ? `${battle.defender_name} hasn't accepted yet.`
           : `That battle is already ${battle.state.replace(/_/g, " ")}.`,
     };
   }
-  if (orderFor(battle, side).length === RULES.rounds) {
-    return { ok: false, reason: "You've already locked in your order." };
+  if (lineupFor(battle, side).length === RULES.rounds) {
+    return { ok: false, reason: "You've already locked in your lineup." };
   }
-  if (!isPermutationOf(order, selectionFor(battle, side))) {
+  if (!isLegalLineup(lineup, handFor(battle, side), RULES.rounds)) {
     return {
       ok: false,
-      reason: "That order doesn't match the cards you brought.",
+      reason: `Pick ${RULES.rounds} different cards from your own hand.`,
     };
   }
 
   const field = side === "challenger" ? "challenger_lineup" : "defender_lineup";
   let updated = await pb
     .collection<V2BattleRecord>(V2_BATTLE)
-    .update(battleId, { [field]: order });
+    .update(battleId, { [field]: lineup });
 
-  const challengerOrder = orderFor(updated, "challenger");
-  const defenderOrder = orderFor(updated, "defender");
+  const challengerLineup = lineupFor(updated, "challenger");
+  const defenderLineup = lineupFor(updated, "defender");
 
-  // Still waiting on the other side.
   if (
-    challengerOrder.length !== RULES.rounds ||
-    defenderOrder.length !== RULES.rounds
+    challengerLineup.length !== RULES.rounds ||
+    defenderLineup.length !== RULES.rounds
   ) {
     return {
       ok: true,
@@ -222,8 +243,8 @@ export const submitOrder = async (
     };
   }
 
-  const challengerCards = await loadLineupByIds(challengerOrder);
-  const defenderCards = await loadLineupByIds(defenderOrder);
+  const challengerCards = await loadLineupByIds(challengerLineup);
+  const defenderCards = await loadLineupByIds(defenderLineup);
 
   if (
     challengerCards.length !== RULES.rounds ||
@@ -232,7 +253,7 @@ export const submitOrder = async (
     return {
       ok: false,
       reason:
-        "One of these cards is no longer owned by the player who brought it, so this battle can't resolve.",
+        "One of these cards is no longer owned by the player who played it, so this battle can't resolve.",
     };
   }
 
@@ -261,7 +282,7 @@ export const getPendingBattlesForUser = async (
   const safeServer = filterSafe(serverId);
 
   const open = await pb.collection<V2BattleRecord>(V2_BATTLE).getFullList({
-    filter: `server_id = "${safeServer}" && (state = "awaiting_defender_selection" || state = "awaiting_orders") && (challenger_id = "${safeUser}" || defender_id = "${safeUser}")`,
+    filter: `server_id = "${safeServer}" && (state = "awaiting_defender" || state = "awaiting_lineups") && (challenger_id = "${safeUser}" || defender_id = "${safeUser}")`,
     sort: "-created",
   });
 
@@ -269,10 +290,8 @@ export const getPendingBattlesForUser = async (
   return open.filter((battle) => {
     const side = sideForUser(battle, userId);
     if (!side) return false;
-    if (battle.state === "awaiting_defender_selection") {
-      return side === "defender";
-    }
-    return orderFor(battle, side).length !== RULES.rounds;
+    if (battle.state === "awaiting_defender") return side === "defender";
+    return lineupFor(battle, side).length !== RULES.rounds;
   });
 };
 
@@ -291,7 +310,7 @@ export const findStaleBattles = async (
     .replace("T", " ");
 
   return pb.collection<V2BattleRecord>(V2_BATTLE).getFullList({
-    filter: `(state = "awaiting_defender_selection" || state = "awaiting_orders") && created < "${cutoff}"`,
+    filter: `(state = "awaiting_defender" || state = "awaiting_lineups") && created < "${cutoff}"`,
     sort: "created",
   });
 };
