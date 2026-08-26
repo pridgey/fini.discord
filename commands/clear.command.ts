@@ -1,5 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
+import { ALL_CHAT_TYPES } from "../modules/aiChat/chatTypes";
 import { clearHistory } from "../utilities/chatHistory";
 
 export const data = new SlashCommandBuilder()
@@ -11,35 +12,18 @@ export const execute = async (
   logCommand: () => void,
 ) => {
   try {
-    // Clear each history individually, catching errors to continue even if one fails
-    try {
-      await clearHistory(
-        interaction.user.id,
-        interaction.guildId ?? "unknown",
-        "openai",
-      );
-    } catch (err) {
-      console.error("Error clearing openai history:", err);
-    }
-
-    try {
-      await clearHistory(
-        interaction.user.id,
-        interaction.guildId ?? "unknown",
-        "anthropic",
-      );
-    } catch (err) {
-      console.error("Error clearing anthropic history:", err);
-    }
-
-    try {
-      await clearHistory(
-        interaction.user.id,
-        interaction.guildId ?? "unknown",
-        "ollama",
-      );
-    } catch (err) {
-      console.error("Error clearing ollama history:", err);
+    // Clear each history individually, catching errors so one unreachable
+    // backend doesn't leave the rest of the user's history behind
+    for (const chatType of ALL_CHAT_TYPES) {
+      try {
+        await clearHistory(
+          interaction.user.id,
+          interaction.guildId ?? "unknown",
+          chatType,
+        );
+      } catch (err) {
+        console.error(`Error clearing ${chatType} history:`, err);
+      }
     }
 
     try {

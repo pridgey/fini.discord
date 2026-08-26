@@ -9,10 +9,13 @@ const MAX_CHAT_HISTORY = 200;
 /**
  * Adds a new record to the user's chat history
  * @param chatRecord All encompassing record
+ * @param anthropic Only needed for backends that upload attachments to
+ * Anthropic's file store, so trimmed history can delete them too. The local
+ * llama.cpp backend inlines attachments per-request and passes nothing.
  */
 export const saveChatMessage = async (
   chatRecord: ChatRecord,
-  anthropic: Anthropic,
+  anthropic?: Anthropic,
 ) => {
   // Add the new record(s)
   const bigStrings = splitBigString(chatRecord.message, 4000);
@@ -43,7 +46,7 @@ export const saveChatMessage = async (
           .collection<ChatRecord>("chat")
           .delete(record.id ?? "", { requestKey: record.id.toString() });
       }
-      if (record.attachment) {
+      if (record.attachment && anthropic) {
         await anthropic.beta.files.delete(record.attachment);
       }
     }

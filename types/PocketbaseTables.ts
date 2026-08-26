@@ -157,6 +157,23 @@ export type MonitorRecord = {
   failing_since: string;
 };
 
+/** Which AI backend a user's "hey fini" messages get routed to. */
+export type ChatModel = "llama-gemma" | "claude";
+
+/**
+ * A single user's chat preferences for one server. Absent record means the
+ * user has never run /chat-config, which is read as the default model.
+ */
+export type ChatConfigRecord = {
+  id?: string;
+  user_id: string;
+  server_id: string;
+  model: ChatModel;
+  identifier: string;
+  created?: string;
+  updated?: string;
+};
+
 export type ConfigRecord = {
   id?: string;
   server_id: string;

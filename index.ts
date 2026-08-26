@@ -21,6 +21,7 @@ import {
   loadButtonHandlers,
 } from "./buttons/buttonHandler";
 import { converseWithAI } from "./modules/aiChat/aiChat";
+import { ReplyContext } from "./modules/aiChat/formatReplyContext";
 import {
   handleModalInteraction,
   loadModalHandlers,
@@ -157,13 +158,32 @@ client.on("messageCreate", async (message: Message) => {
       }
     }
     const replyText = messageReply?.content?.replaceAll("hey fini", "").trim();
-    console.log("Debug - Message Reference:", { replyText });
 
-    // New AI Conversion logic
+    // Who wrote the quoted message changes what the user is asking for, so
+    // pass the attribution along rather than just the text. Prefer the server
+    // nickname - that's the name the rest of the channel is using for them.
+    const reply: ReplyContext | undefined =
+      messageReply && replyText?.length
+        ? {
+            text: replyText,
+            authorName:
+              messageReply.member?.displayName ||
+              messageReply.author.displayName ||
+              messageReply.author.username,
+            authorIsUser: messageReply.author.id === messageUser,
+            authorIsSelf: messageReply.author.id === message.client.user.id,
+            authorIsBot: messageReply.author.bot,
+          }
+        : undefined;
+
+    console.log("Debug - Message Reference:", { reply });
+
+    // New AI Conversion logic. converseWithAI reads the user's /chat-config
+    // preference and routes to local llama.cpp (default) or Claude.
     response = await converseWithAI({
       userID: messageUser,
       message: messageText.replace(command, ""),
-      replyText: replyText,
+      reply,
       server: message.guildId ?? "unknown",
       attachment: message.attachments.at(0),
     });

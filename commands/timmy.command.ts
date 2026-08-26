@@ -31,6 +31,9 @@ export const execute = async (
     options: {
       skipHistory: true,
       skipSave: true,
+      // Pinned rather than following /chat-config: this prompt is tuned for
+      // Claude and shouldn't change quality when someone switches chat models.
+      model: "claude",
     },
   });
 

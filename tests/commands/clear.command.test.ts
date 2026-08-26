@@ -9,6 +9,7 @@ mock.module("../../utilities/chatHistory", () => ({
 
 // Import after mocking
 const { execute } = await import("../../commands/clear.command");
+const { ALL_CHAT_TYPES } = await import("../../modules/aiChat/chatTypes");
 
 describe("clear command", () => {
   let mockInteraction: any;
@@ -31,22 +32,14 @@ describe("clear command", () => {
     it("should clear all AI chat histories", async () => {
       await execute(mockInteraction, mockLogCommand);
 
-      expect(mockClearHistory).toHaveBeenCalledTimes(3);
-      expect(mockClearHistory).toHaveBeenCalledWith(
-        "user123",
-        "guild456",
-        "openai",
-      );
-      expect(mockClearHistory).toHaveBeenCalledWith(
-        "user123",
-        "guild456",
-        "anthropic",
-      );
-      expect(mockClearHistory).toHaveBeenCalledWith(
-        "user123",
-        "guild456",
-        "ollama",
-      );
+      expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
+      for (const chatType of ALL_CHAT_TYPES) {
+        expect(mockClearHistory).toHaveBeenCalledWith(
+          "user123",
+          "guild456",
+          chatType,
+        );
+      }
       expect(mockInteraction.reply).toHaveBeenCalledWith(
         "Your chat history has been cleared.",
       );
@@ -151,19 +144,18 @@ describe("clear command", () => {
       await execute(mockInteraction, mockLogCommand);
 
       // Should continue clearing other histories
-      expect(mockClearHistory).toHaveBeenCalledTimes(3);
+      expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
       expect(mockLogCommand).toHaveBeenCalled();
     });
 
     it("should handle multiple clearHistory failures", async () => {
-      mockClearHistory
-        .mockRejectedValueOnce(new Error("OpenAI failed"))
-        .mockRejectedValueOnce(new Error("Anthropic failed"))
-        .mockRejectedValueOnce(new Error("Ollama failed"));
+      for (const chatType of ALL_CHAT_TYPES) {
+        mockClearHistory.mockRejectedValueOnce(new Error(`${chatType} failed`));
+      }
 
       await execute(mockInteraction, mockLogCommand);
 
-      expect(mockClearHistory).toHaveBeenCalledTimes(3);
+      expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
       expect(mockLogCommand).toHaveBeenCalled();
     });
 
@@ -187,28 +179,27 @@ describe("clear command", () => {
     });
 
     it("should handle partial failures gracefully", async () => {
+      // First succeeds, second fails, the rest succeed - the failure must not
+      // stop the backends queued behind it.
       mockClearHistory
-        .mockResolvedValueOnce(undefined) // openai succeeds
-        .mockRejectedValueOnce(new Error("Anthropic failed"))
-        .mockResolvedValueOnce(undefined); // ollama succeeds
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new Error("Anthropic failed"));
 
       await execute(mockInteraction, mockLogCommand);
 
-      // All three should still be called
-      expect(mockClearHistory).toHaveBeenCalledTimes(3);
+      // Every backend should still be attempted
+      expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
       expect(mockInteraction.reply).toHaveBeenCalled();
       expect(mockLogCommand).toHaveBeenCalled();
     });
   });
 
   describe("Call order", () => {
-    it("should clear histories in correct order: openai, anthropic, ollama", async () => {
+    it("should clear histories in the order ALL_CHAT_TYPES declares", async () => {
       await execute(mockInteraction, mockLogCommand);
 
-      const calls = mockClearHistory.mock.calls;
-      expect(calls[0][2]).toBe("openai");
-      expect(calls[1][2]).toBe("anthropic");
-      expect(calls[2][2]).toBe("ollama");
+      const clearedTypes = mockClearHistory.mock.calls.map((call) => call[2]);
+      expect(clearedTypes).toEqual([...ALL_CHAT_TYPES]);
     });
 
     it("should reply after clearing all histories", async () => {
@@ -220,7 +211,7 @@ describe("clear command", () => {
 
       await execute(mockInteraction, mockLogCommand);
 
-      expect(clearHistoryCalled).toBe(3);
+      expect(clearHistoryCalled).toBe(ALL_CHAT_TYPES.length);
       expect(mockInteraction.reply).toHaveBeenCalled();
     });
 
@@ -272,7 +263,7 @@ describe("clear command", () => {
 
       await execute(mockInteraction, mockLogCommand);
 
-      expect(clearOrder).toEqual(["openai", "anthropic", "ollama"]);
+      expect(clearOrder).toEqual([...ALL_CHAT_TYPES]);
     });
 
     it("should always call logCommand once", async () => {
@@ -282,16 +273,13 @@ describe("clear command", () => {
     });
 
     it("should clear all histories even if one is slow", async () => {
-      mockClearHistory
-        .mockImplementationOnce(
-          () => new Promise((resolve) => setTimeout(resolve, 10)),
-        )
-        .mockResolvedValueOnce(undefined)
-        .mockResolvedValueOnce(undefined);
+      mockClearHistory.mockImplementationOnce(
+        () => new Promise((resolve) => setTimeout(resolve, 10)),
+      );
 
       await execute(mockInteraction, mockLogCommand);
 
-      expect(mockClearHistory).toHaveBeenCalledTimes(3);
+      expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
       expect(mockLogCommand).toHaveBeenCalled();
     });
   });

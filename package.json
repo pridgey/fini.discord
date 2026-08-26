@@ -8,7 +8,7 @@
     "prestart-archived": "./pocketbase serve",
     "prebuild": "rm -rf dist",
     "build": "tsc",
-    "start": "concurrently \"./pocketbase serve\" \"bun --env-file=.env run index.ts\"",
+    "start": "concurrently --kill-others-on-fail --names \"pb,llama,bot\" \"./pocketbase serve\" \"llama serve -hf ggml-org/gemma-4-E2B-it-GGUF:Q8_0 --host 0.0.0.0 --port 8081 --mcp-servers-config mcp-servers.json\" \"bun --env-file=.env run index.ts\"",
     "blah": "bun --env-file=.env run index.ts",
     "start-archived": "concurrently \"./pocketbase serve\" \"node --env-file=.env --experimental-specifier-resolution=node --trace-warnings --unhandled-rejections=strict dist/index.js\"",
     "delete-commands": "bun --env-file=.env run command_scripts/delete.ts",

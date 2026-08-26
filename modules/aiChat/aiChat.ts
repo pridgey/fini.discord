@@ -1,199 +1,30 @@
-import Anthropic, { toFile } from "@anthropic-ai/sdk";
-import { Beta, Model } from "@anthropic-ai/sdk/resources";
-import { Attachment } from "discord.js";
-import { determineAnthropicFileType } from "./determineAnthropicFileType";
-import { determinePersonality } from "./determinePersonality";
-import { formatHistoryForChat } from "./formatHistoryForChat";
-import { getChatHistory } from "./getChatHistory";
-import { saveChatMessage } from "./saveChatMessage";
-import { ChatRecord } from "../../types/PocketbaseTables";
+import { ChatModel } from "../../types/PocketbaseTables";
+import { getUserChatModel } from "./chatModel";
+import { converseWithClaude } from "./converseWithClaude";
+import { converseWithLlama } from "./converseWithLlama";
+import { AIConverseProps } from "./types";
 
-const MAX_CHAT_TOKENS = 2000;
-const CURRENT_MODEL: Model = "claude-sonnet-4-5-20250929";
+export type { AIConverseOptions, AIConverseProps } from "./types";
 
-type AIConverseOptions = {
-  skipSave?: boolean;
-  skipHistory?: boolean;
-  skipPersonality?: boolean;
-};
+/**
+ * Entry point for every AI conversation.
+ *
+ * Picks a backend and hands off. Callers that care which model answers pass
+ * `options.model`; callers that don't - "hey fini" being the one that matters -
+ * leave it off and get whatever the user chose with /chat-config.
+ */
+export const converseWithAI = async (props: AIConverseProps) => {
+  const { userID, server, options = {} } = props;
 
-type AIConverseProps = {
-  userID: string;
-  message: string;
-  server: string;
-  attachment?: Attachment;
-  replyText?: string;
-  options?: AIConverseOptions;
-};
+  const model: ChatModel =
+    options.model ?? (await getUserChatModel(userID, server));
 
-export const converseWithAI = async ({
-  userID,
-  message,
-  server,
-  attachment,
-  replyText,
-  options = {},
-}: AIConverseProps) => {
-  try {
-    console.group("Run chatWithUser()");
-    console.log("Initializing Chat", {
-      userID,
-      message,
-      server,
-      attachment,
-      replyText,
-      options,
-    });
+  console.log("Routing conversation to model:", { model, userID, server });
 
-    // Initialize the AI agent
-    const anthropic = new Anthropic();
-
-    // Retrieve the user chat history
-    let userHistory: ChatRecord[] = [];
-    if (!options.skipHistory) {
-      userHistory = await getChatHistory(userID, server, "anthropic");
-      console.log("Retrieved User History of length:", userHistory.length);
-    }
-
-    // Format history for the AI
-    type BetaMessageParam = Beta.Messages.BetaMessageParam;
-    let formattedHistory: BetaMessageParam[] = [];
-    if (!options.skipHistory) {
-      formattedHistory = await formatHistoryForChat(userHistory, anthropic);
-      console.log("Formatted History for AI length:", formattedHistory.length);
-    }
-
-    // Upload any attachment URL to Anthropic storage
-    let anthropicFileID = "";
-    if (attachment) {
-      // Download the file from discord
-      const response = await fetch(attachment.url);
-      const blob = await response.blob();
-
-      const actualMimeType =
-        response.headers.get("content-type") ||
-        attachment.contentType ||
-        blob.type;
-
-      // Upload to anthropic
-      const uploadResponse = await anthropic.beta.files.upload({
-        file: await toFile(blob, attachment.name || "attachment", {
-          type: actualMimeType || undefined,
-        }),
-      });
-      anthropicFileID = uploadResponse.id;
-      console.log("Uploaded Attachment to Anthropic:", uploadResponse);
-    }
-
-    let finalMessage = message;
-
-    // Adding the message being replied to, if it exists, as context for the AI
-    if (replyText?.length) {
-      const replyContext = `The user has included another message as context for this conversation: ${replyText}\n`;
-      finalMessage = `${replyContext} ${finalMessage}`;
-    }
-
-    // Find any personality the user would like us to use
-    if (!options.skipPersonality) {
-      const personalityPrompt = await determinePersonality(userID, server);
-      finalMessage = `${personalityPrompt} ${finalMessage}`;
-    }
-
-    // Append the current message to the history
-    if (anthropicFileID) {
-      // Determine the file type for the attachment and build message param
-      const fileType = determineAnthropicFileType(
-        attachment?.contentType || "",
-      );
-
-      formattedHistory.push({
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: finalMessage,
-          },
-          {
-            type: fileType,
-            source: {
-              type: "file",
-              file_id: anthropicFileID,
-            },
-          } as Beta.Messages.BetaContentBlockParam,
-        ],
-      });
-    } else {
-      // No attachment, simple message
-      formattedHistory.push({
-        role: "user",
-        content: finalMessage,
-      });
-    }
-
-    // Adding an instruction at the top of the conversation to set the context for the AI
-    if (!options.skipHistory) {
-      formattedHistory.unshift({
-        role: "assistant",
-        content:
-          "You are a helpful and precise assistant for answering questions and providing information. While you have adopted a persona, your mission is still to provide accurate and helpful information to the user. If you don't know the answer to a question, it's better to say you don't know than to make up an answer. Always prioritize being helpful and accurate over maintaining your persona. For reference, Fini coin is a fictional currency for use in this discord server. They can earn it in various ways, but you cannot directly award it to them. Your birthday (the day your coder made you) is March 10. Only use emoji when asked to do so, or strictly necessary. Otherwise respond in plain text.",
-      });
-    }
-
-    console.log("Submitting to Anthropic for response", { finalMessage });
-    const anthropicMessageResponse = await anthropic.beta.messages.create({
-      model: CURRENT_MODEL,
-      max_tokens: MAX_CHAT_TOKENS,
-      messages: formattedHistory,
-      betas: ["files-api-2025-04-14"],
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-          max_uses: 5,
-        },
-      ],
-    });
-    console.log("Anthropic Response:", anthropicMessageResponse);
-
-    const anthropicResponseText =
-      anthropicMessageResponse.content
-        .filter((block) => block.type === "text")
-        ?.map((block) => block.text)
-        .join("") || "";
-
-    // Save the user message to history
-    if (!options.skipSave) {
-      await saveChatMessage(
-        {
-          author: "user",
-          chatType: "anthropic",
-          message: message,
-          server_id: server,
-          user_id: userID,
-          attachment: anthropicFileID,
-        },
-        anthropic,
-      );
-
-      // Save the bot response to history
-      await saveChatMessage(
-        {
-          author: "bot",
-          chatType: "anthropic",
-          message: anthropicResponseText,
-          server_id: server,
-          user_id: userID,
-        },
-        anthropic,
-      );
-    }
-
-    console.log("Completed converseWithAI()");
-    console.groupEnd();
-    return anthropicResponseText;
-  } catch (err) {
-    console.error("Error in converseWithAI:", err);
-    console.groupEnd();
-    return "I'm sorry, I encountered an error while trying to respond.";
+  switch (model) {
+    case "claude":
+      return converseWithClaude(props);
+    case "llama-gemma":
+      return converseWithLlama(props);
   }
 };
