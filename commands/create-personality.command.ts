@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
-import { clearHistory } from "../utilities/chatHistory";
+import { clearAllHistory } from "../utilities/clearAllHistory";
 import { createNewPersonality } from "../modules/personalities/createPersonality";
 import { personalityExistsForUser } from "../modules/personalities/getPersonality";
 import { setPersonalityActive } from "../modules/personalities/setPersonalityActive";
@@ -81,11 +81,7 @@ export const execute = async (
       }
 
       if (clearChat) {
-        await clearHistory(
-          interaction.user.id,
-          interaction.guild?.id ?? "",
-          "anthropic",
-        );
+        await clearAllHistory(interaction.user.id, interaction.guild?.id);
       }
 
       await interaction.reply(

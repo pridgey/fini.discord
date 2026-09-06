@@ -1,5 +1,6 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import type { ChatInputCommandInteraction } from "discord.js";
+import { ALL_CHAT_TYPES } from "../../modules/aiChat/chatTypes";
 import {
   setupPersonalityModuleMocks,
   initPersonalityMocks,
@@ -456,7 +457,10 @@ describe("create-personality command", () => {
       );
     });
 
-    it("should handle errors during clearHistory", async () => {
+    // A failing backend is logged and skipped rather than aborting: the point
+    // of clearAllHistory is that one unreachable service cannot strand the
+    // rest, and the personality itself was already created by this point.
+    it("should survive a backend failing during the clear", async () => {
       mockInteraction.options.get = mock((name: string) => {
         const optionsMap: Record<string, any> = {
           name: { value: "TestPersonality" },
@@ -467,8 +471,9 @@ describe("create-personality command", () => {
         return optionsMap[name];
       });
 
-      const testError = new Error("Failed to clear history");
-      mockClearHistory.mockImplementation(() => Promise.reject(testError));
+      mockClearHistory.mockImplementation(() =>
+        Promise.reject(new Error("Failed to clear history")),
+      );
 
       await execute(
         mockInteraction as ChatInputCommandInteraction,
@@ -482,10 +487,12 @@ describe("create-personality command", () => {
         return String(replyArg);
       }
 
+      // Every backend still attempted, and the user still gets the success
+      // reply rather than an error about a personality that was in fact created
+      expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
       const replyArg = (mockInteraction.reply as any).mock.calls[0][0];
-      expect(getReplyString(replyArg)).toContain(
-        "Error during /create-personality command: Failed to clear history",
-      );
+      expect(getReplyString(replyArg)).toContain("TestPersonality created");
+      expect(mockLogCommand).toHaveBeenCalled();
     });
   });
 

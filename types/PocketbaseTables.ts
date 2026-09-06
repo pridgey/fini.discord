@@ -174,10 +174,33 @@ export type ChatConfigRecord = {
   updated?: string;
 };
 
+/**
+ * A single horse's running tally in one server, for /horsey.
+ *
+ * One row per horse per server. `races` counts every race the horse ran in,
+ * not every race the player won, so wins/races is the horse's strike rate.
+ */
+export type HorseyStatsRecord = {
+  id?: string;
+  server_id: string;
+  /** The horse's 1-based number, as the player bets on it. */
+  horse: number;
+  wins: number;
+  races: number;
+  identifier: string;
+  created?: string;
+  updated?: string;
+};
+
 export type ConfigRecord = {
   id?: string;
   server_id: string;
   bot_channel: string;
+  /**
+   * Comma-separated names for the /horsey field, set by a server admin.
+   * Empty or absent means the built-in names are used.
+   */
+  horsey_names?: string;
   identifier: string;
 };
 

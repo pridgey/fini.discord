@@ -325,6 +325,33 @@ client.on("interactionCreate", async (interaction) => {
         ephemeral: true,
       });
     }
+  } else if (interaction.isAutocomplete()) {
+    /*
+     * Autocomplete is opt-in per command: a command that needs it exports an
+     * `autocomplete` function alongside `execute`. /horsey is the first, and it
+     * needs one because slash command choices are baked in when the command is
+     * registered, so they cannot vary per server - autocomplete is resolved
+     * per interaction and can read that guild's config.
+     *
+     * Discord expects a response within three seconds and there is no way to
+     * defer one, so a failure here has to fall through to an empty list rather
+     * than throw and leave the picker hanging.
+     */
+    try {
+      const { importedFiles: commands } = await getCommandFiles();
+      const commandToRun = commands.find(
+        (c) => c.data.name === interaction.commandName,
+      );
+
+      if (typeof commandToRun?.autocomplete === "function") {
+        await commandToRun.autocomplete(interaction);
+      } else {
+        await interaction.respond([]);
+      }
+    } catch (err) {
+      console.error("Error running autocomplete:", err);
+      await interaction.respond([]).catch(() => undefined);
+    }
   } else if (interaction.isButton()) {
     // Handle button interactions
     await handleButtonInteraction(interaction);

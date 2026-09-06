@@ -4,7 +4,7 @@ import {
   markAllPersonalitiesInactiveForUser,
   setPersonalityActiveByName,
 } from "../modules/personalities/setPersonalityActive";
-import { clearHistory } from "../utilities/chatHistory";
+import { clearAllHistory } from "../utilities/clearAllHistory";
 
 export const data = new SlashCommandBuilder()
   .setName("set-personality")
@@ -55,16 +55,7 @@ export const execute = async (
       }
 
       if (clearChat) {
-        await clearHistory(
-          interaction.user.id,
-          interaction.guild?.id ?? "",
-          "openai",
-        );
-        await clearHistory(
-          interaction.user.id,
-          interaction.guild?.id ?? "",
-          "anthropic",
-        );
+        await clearAllHistory(interaction.user.id, interaction.guild?.id);
       }
 
       await interaction.reply(

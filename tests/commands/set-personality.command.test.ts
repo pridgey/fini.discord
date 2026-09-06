@@ -1,5 +1,6 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
 import type { ChatInputCommandInteraction } from "discord.js";
+import { ALL_CHAT_TYPES } from "../../modules/aiChat/chatTypes";
 import {
   setupPersonalityModuleMocks,
   initPersonalityMocks,
@@ -199,7 +200,10 @@ describe("set-personality command", () => {
     expect(mockLogCommand).toHaveBeenCalled();
   });
 
-  it("should clear both openai and anthropic chat history", async () => {
+  // Previously this cleared only openai and anthropic, so a user who switched
+  // personality with clear:true was told their history was gone while the llama
+  // transcript survived and kept feeding the local model.
+  it("should clear every backend's chat history", async () => {
     mockInteraction.options.get = mock((name: string) => ({
       value: name === "name" ? "TestPersonality" : true,
     }));
@@ -209,17 +213,14 @@ describe("set-personality command", () => {
       mockLogCommand,
     );
 
-    expect(mockClearHistory).toHaveBeenCalledTimes(2);
-    expect(mockClearHistory).toHaveBeenCalledWith(
-      "user123",
-      "guild123",
-      "openai",
-    );
-    expect(mockClearHistory).toHaveBeenCalledWith(
-      "user123",
-      "guild123",
-      "anthropic",
-    );
+    expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
+    for (const chatType of ALL_CHAT_TYPES) {
+      expect(mockClearHistory).toHaveBeenCalledWith(
+        "user123",
+        "guild123",
+        chatType,
+      );
+    }
     expect(mockLogCommand).toHaveBeenCalled();
   });
 
