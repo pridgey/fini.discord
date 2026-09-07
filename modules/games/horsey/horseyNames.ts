@@ -81,9 +81,14 @@ export const getHorseyNames = async (serverId: string): Promise<string[]> => {
 
 /**
  * Renders a horse the way it should read to a player.
+ *
+ * Name only. The number is what the bet is actually placed on, but printing it
+ * alongside every name - in the lanes, the finishing order and the autocomplete
+ * - spent a column on a detail the player never types: autocomplete resolves
+ * the pick, and the lanes are already in horse order top to bottom.
  * @param names One name per horse, as returned by {@link getHorseyNames}
  * @param horseId The horse's 1-based number
- * @returns The name with its number, so the two are always tied together
+ * @returns The horse's name, or a numbered fallback if it has none
  */
 export const labelFor = (names: string[], horseId: number): string =>
-  `#${horseId} ${names[horseId - 1] ?? `Horsey ${horseId}`}`;
+  names[horseId - 1] ?? `Horsey ${horseId}`;

@@ -11,7 +11,7 @@ import {
   labelFor,
 } from "../modules/games/horsey/horseyNames";
 import {
-  formatForm,
+  formFor,
   getHorseyStats,
   recordRaceResult,
 } from "../modules/games/horsey/horseyStats";
@@ -213,14 +213,24 @@ export const execute = async (
 
     await recordRaceResult(guildId, guildName, winners);
 
+    const stats = await getHorseyStats(guildId);
+
+    /*
+     * Placing and record on one line each, so the field is the whole story of
+     * the race rather than half of it. The form guide was a second field
+     * repeating all five names underneath, which made the card long enough to
+     * scroll past the part the player actually opened it for.
+     */
     const finishingOrder = horses
       .map((horse, index) => ({ id: horse.id, place: places[index] }))
       .sort((a, b) => a.place - b.place)
-      .map((entry) => `${ordinal(entry.place)} — ${labelFor(names, entry.id)}`)
+      .map((entry) => {
+        const form = formFor(stats, entry.id);
+        return `${ordinal(entry.place)} — ${labelFor(names, entry.id)}${form ? ` (${form})` : ""}`;
+      })
       .join("\n");
 
     const profit = returned - bet;
-    const form = formatForm(await getHorseyStats(guildId), names);
 
     /*
      * The finished track leads the embed rather than being replaced by it.
@@ -236,21 +246,23 @@ export const execute = async (
       description: [
         finalTrack,
         returnMultiplier > 0
-          ? `**${labelFor(names, pick)}** came in ${ordinal(place)}! That pays ${returnMultiplier}x your stake.`
-          : `**${labelFor(names, pick)}** came in ${ordinal(place)}. No payout this time.`,
+          ? `**${labelFor(names, pick)}** came in ${ordinal(place)} — pays ${returnMultiplier}x your stake.`
+          : `**${labelFor(names, pick)}** came in ${ordinal(place)} — no payout this time.`,
       ].join("\n"),
       fields: [
-        { name: "Finishing Order", value: finishingOrder, inline: false },
-        { name: "Your Bet", value: bet.toLocaleString(), inline: true },
         {
-          name: "Returned",
-          value: returned.toLocaleString(),
-          inline: true,
+          name: "Finishing Order (lifetime wins/races)",
+          value: finishingOrder,
+          inline: false,
         },
-        ...(form ? [{ name: "Form Guide", value: form, inline: false }] : []),
       ],
+      /*
+       * The three numbers a player checks after a race, on the one line the
+       * footer gives us. As inline fields they cost a name and a value row
+       * each; here they read left to right in the order they happen.
+       */
       footer: {
-        text: `New Balance: ${(balance - bet + returned).toLocaleString()}`,
+        text: `Bet ${bet.toLocaleString()} · Returned ${returned.toLocaleString()} · Balance ${(balance - bet + returned).toLocaleString()}`,
       },
     });
 

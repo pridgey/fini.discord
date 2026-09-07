@@ -153,6 +153,9 @@ export const ordinal = (place: number): string => {
  * that, every lane begins at a different column and the field looks staggered
  * before the race has started. Kept short because the track sits in a code
  * block, which does not wrap - an over-wide line is unreadable on mobile.
+ *
+ * This is the whole label now that the horse number has gone, so a name gets
+ * all twelve characters instead of the ten left over after "1 ".
  */
 const LANE_LABEL_WIDTH = 12;
 
@@ -175,7 +178,7 @@ export const drawTrack = (
 
     const name = names?.[horse.id - 1];
     const label = name
-      ? `${horse.id} ${name}`.slice(0, LANE_LABEL_WIDTH).padEnd(LANE_LABEL_WIDTH)
+      ? name.slice(0, LANE_LABEL_WIDTH).padEnd(LANE_LABEL_WIDTH)
       : `${horse.id}`;
 
     return `${label} |${behind}🏇${ahead}|`;

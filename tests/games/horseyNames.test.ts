@@ -89,13 +89,13 @@ describe("serializeHorseyNames", () => {
 });
 
 describe("labelFor", () => {
-  it("ties the name to the number so the two can't be confused", () => {
-    expect(labelFor(["Alpha", "Bravo"], 2)).toBe("#2 Bravo");
+  it("reads as the horse's name on its own", () => {
+    expect(labelFor(["Alpha", "Bravo"], 2)).toBe("Bravo");
   });
 
   // A stats row for a horse outside the current field shouldn't render
-  // "#7 undefined" in the form guide.
+  // "undefined" in the finishing order.
   it("falls back when a horse has no name", () => {
-    expect(labelFor(["Alpha"], 7)).toBe("#7 Horsey 7");
+    expect(labelFor(["Alpha"], 7)).toBe("Horsey 7");
   });
 });

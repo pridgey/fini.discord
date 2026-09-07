@@ -1,6 +1,5 @@
 import { HorseyStatsRecord } from "../../../types/PocketbaseTables";
 import { pb } from "../../../utilities/pocketbase";
-import { labelFor } from "./horseyNames";
 import { HORSE_COUNT } from "./horseyUtilities";
 
 /**
@@ -78,22 +77,22 @@ export const getHorseyStats = async (
 };
 
 /**
- * Renders the form guide as one line per horse, for the result embed.
+ * A horse's record, short enough to sit inside a finishing-order line.
+ *
+ * The form guide used to be its own field listing every horse again underneath
+ * the finishing order, which meant reading the same five names twice to answer
+ * one question. Attaching the record to the placing instead says the same thing
+ * in one pass.
  * @param stats Rows as returned by {@link getHorseyStats}
- * @param names One name per horse, so the guide reads the same as the race did
- * @returns A short summary, or "" when no race has been run here yet
+ * @param horseId The horse's 1-based number
+ * @returns "wins/races", or "" for a horse with no races on record
  */
-export const formatForm = (
+export const formFor = (
   stats: HorseyStatsRecord[],
-  names: string[],
+  horseId: number,
 ): string => {
-  const raced = stats.filter((row) => (row.races ?? 0) > 0);
-  if (!raced.length) return "";
+  const row = stats.find((entry) => entry.horse === horseId);
+  if (!row?.races) return "";
 
-  return raced
-    .map((row) => {
-      const rate = Math.round(((row.wins ?? 0) / row.races) * 100);
-      return `${labelFor(names, row.horse)}: ${row.wins ?? 0}/${row.races} (${rate}%)`;
-    })
-    .join("\n");
+  return `${row.wins ?? 0}/${row.races}`;
 };
