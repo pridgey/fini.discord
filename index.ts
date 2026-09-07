@@ -27,6 +27,7 @@ import {
   loadModalHandlers,
 } from "./modals/modalHandler";
 import { fileExists } from "./utilities/files/fileUtilities";
+import { resetShareDir, startShareServer } from "./modules/fileShare";
 
 /**
  * Recorded as a command's output when its reply cannot be read back - the
@@ -52,6 +53,16 @@ let pollingInterval;
 // WE READY
 client.once("clientReady", async (cl) => {
   console.log("Connected");
+
+  /*
+   * Serves files too large for Discord's uploader. Bound to loopback and
+   * fronted by Tailscale Funnel; off entirely unless FINI_SHARE_BASE_URL is
+   * set. Started before anything can produce a file to share, and the share
+   * directory is emptied first because the token map does not survive a
+   * restart - anything already on disk is unreachable.
+   */
+  await resetShareDir();
+  await startShareServer();
 
   // Load button files for handling
   await loadButtonHandlers();

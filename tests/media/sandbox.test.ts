@@ -1,0 +1,184 @@
+import { afterEach, describe, expect, it } from "bun:test";
+import { mkdtemp, rm, writeFile } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
+import {
+  applySandbox,
+  isSandboxAvailable,
+  sandboxPrefix,
+} from "../../modules/media/sandbox";
+import { runProcess } from "../../modules/media/runProcess";
+
+/**
+ * ffmpeg and yt-dlp parse hostile input as their whole job, and they run as
+ * the bot's own user - the one that can read `.env`, `pb_data` and `~/.ssh`.
+ * These check the confinement actually confines, rather than that the flags
+ * were spelled correctly.
+ */
+
+const WORK_DIR = "/tmp/job-dir";
+
+describe("sandboxPrefix", () => {
+  it("binds exactly one writable directory", () => {
+    const prefix = sandboxPrefix({ workDir: WORK_DIR, network: false });
+    const bindAt = prefix.indexOf("--bind");
+
+    // One --bind, and it is the job's own workspace mapped to itself.
+    expect(prefix.filter((arg) => arg === "--bind")).toHaveLength(1);
+    expect(prefix.slice(bindAt, bindAt + 3)).toEqual([
+      "--bind",
+      WORK_DIR,
+      WORK_DIR,
+    ]);
+  });
+
+  it("mounts the system read-only", () => {
+    const prefix = sandboxPrefix({ workDir: WORK_DIR, network: false });
+
+    expect(prefix).toContain("--ro-bind");
+    expect(prefix.join(" ")).toContain("--ro-bind /usr /usr");
+    expect(prefix.join(" ")).not.toContain("--bind /usr");
+  });
+
+  // ffmpeg follows urls embedded in containers it decodes - an HLS playlist in
+  // a crafted upload is its own SSRF otherwise.
+  it("denies the network unless it is asked for", () => {
+    const offline = sandboxPrefix({ workDir: WORK_DIR, network: false });
+    const online = sandboxPrefix({ workDir: WORK_DIR, network: true });
+
+    expect(offline).toContain("--unshare-all");
+    expect(offline).not.toContain("--share-net");
+    expect(online).toContain("--share-net");
+  });
+
+  it("does not outlive the bot or keep the controlling terminal", () => {
+    const prefix = sandboxPrefix({ workDir: WORK_DIR, network: false });
+
+    expect(prefix).toContain("--die-with-parent");
+    expect(prefix).toContain("--new-session");
+  });
+
+  it("ends with a separator so the command cannot be read as a flag", () => {
+    expect(sandboxPrefix({ workDir: WORK_DIR, network: false }).at(-1)).toBe(
+      "--",
+    );
+  });
+});
+
+describe("applySandbox", () => {
+  it("passes the command through untouched when not sandboxing", () => {
+    expect(applySandbox("ffmpeg", ["-i", "x"], undefined)).toEqual({
+      command: "ffmpeg",
+      args: ["-i", "x"],
+    });
+  });
+
+  it("wraps the command when sandboxing", () => {
+    const wrapped = applySandbox("ffmpeg", ["-i", "x"], {
+      workDir: WORK_DIR,
+      network: false,
+    });
+
+    if (!isSandboxAvailable()) {
+      expect(wrapped.command).toBe("ffmpeg");
+      return;
+    }
+
+    expect(wrapped.command).toBe("bwrap");
+    // Everything after the separator is the real command, untouched.
+    expect(wrapped.args.slice(wrapped.args.indexOf("--") + 1)).toEqual([
+      "ffmpeg",
+      "-i",
+      "x",
+    ]);
+  });
+});
+
+// Skipped where bubblewrap is unavailable rather than failing - the module
+// degrades to running unwrapped there, and so should the suite.
+describe.if(isSandboxAvailable())("the sandbox actually confines", () => {
+  const dirs: string[] = [];
+
+  const workspace = async () => {
+    const dir = await mkdtemp(join(tmpdir(), "fini-sandbox-test-"));
+    dirs.push(dir);
+    return dir;
+  };
+
+  afterEach(async () => {
+    for (const dir of dirs.splice(0)) {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("cannot see the home directory, so cannot read .env or ~/.ssh", async () => {
+    const dir = await workspace();
+
+    const { stdout } = await runProcess(
+      "sh",
+      ["-c", "ls /home 2>&1 || true; ls ~ 2>&1 || true"],
+      { timeoutMs: 15_000, sandbox: { workDir: dir, network: false } },
+    );
+
+    expect(stdout).not.toContain("pridgey");
+    expect(stdout).not.toContain(".ssh");
+  });
+
+  it("can write to its own workspace and nowhere else", async () => {
+    const dir = await workspace();
+
+    const { stdout } = await runProcess(
+      "sh",
+      [
+        "-c",
+        `echo ok > ${dir}/written && cat ${dir}/written; touch /usr/should-fail 2>&1 || echo "usr is read-only"`,
+      ],
+      { timeoutMs: 15_000, sandbox: { workDir: dir, network: false } },
+    );
+
+    expect(stdout).toContain("ok");
+    expect(stdout).toContain("usr is read-only");
+  });
+
+  it("has no network at all when the network is denied", async () => {
+    const dir = await workspace();
+
+    const { stdout } = await runProcess(
+      "sh",
+      [
+        "-c",
+        'curl -s -m 4 -o /dev/null http://1.1.1.1/ 2>&1 && echo REACHED || echo "no network"',
+      ],
+      { timeoutMs: 20_000, sandbox: { workDir: dir, network: false } },
+    );
+
+    expect(stdout).toContain("no network");
+    expect(stdout).not.toContain("REACHED");
+  });
+
+  it("still runs ffmpeg for real", async () => {
+    const dir = await workspace();
+    await writeFile(join(dir, "marker"), "");
+
+    await runProcess(
+      "ffmpeg",
+      [
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc2=s=64x64:d=1",
+        "-frames:v",
+        "1",
+        join(dir, "frame.png"),
+      ],
+      { timeoutMs: 30_000, sandbox: { workDir: dir, network: false } },
+    );
+
+    const { stdout } = await runProcess("ls", [dir], { timeoutMs: 5_000 });
+    expect(stdout).toContain("frame.png");
+  });
+});

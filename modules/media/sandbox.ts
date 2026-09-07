@@ -1,0 +1,146 @@
+import { existsSync } from "fs";
+
+/**
+ * Runs ffmpeg and yt-dlp inside a bubblewrap container.
+ *
+ * These two parse hostile input for a living. Media demuxers are a long-running
+ * source of memory-corruption bugs, and both tools run as the bot's own user -
+ * the same user that can read `.env`, `pb_data`, `~/.ssh`, and the Tailscale
+ * state directory. The gap between "ffmpeg crashed on a weird file" and "ffmpeg
+ * did something interesting with a deliberately weird file" is the entire
+ * bot's credentials.
+ *
+ * The container binds `/usr` and `/etc` read-only, gives the job a private
+ * `/tmp`, and binds exactly one writable directory: the job's own workspace.
+ * `$HOME` does not exist inside it, so none of the above is reachable even if
+ * the process is fully compromised.
+ *
+ * Best-effort by design. If bubblewrap is missing the tools run unwrapped, with
+ * a warning - a bot that works with weaker isolation beats a bot that refuses
+ * to convert anything.
+ */
+
+/** Set `FINI_DISABLE_SANDBOX=1` to run the tools unwrapped. */
+const isDisabled = (): boolean => process.env.FINI_DISABLE_SANDBOX === "1";
+
+let available: boolean | undefined;
+
+/**
+ * Whether bubblewrap can be used.
+ *
+ * Cached, because this is checked on every subprocess and the answer cannot
+ * change while the bot is running.
+ * @returns True when sandboxing is possible and not disabled
+ */
+export const isSandboxAvailable = (): boolean => {
+  if (isDisabled()) return false;
+
+  if (available === undefined) {
+    available = existsSync("/usr/bin/bwrap");
+
+    if (!available) {
+      console.warn(
+        "bubblewrap not found - ffmpeg and yt-dlp will run unsandboxed. Install it with: sudo apt install bubblewrap",
+      );
+    }
+  }
+
+  return available;
+};
+
+export type SandboxOptions = {
+  /** The one directory the job may write to. */
+  workDir: string;
+  /**
+   * Whether the job needs the network.
+   *
+   * False for ffmpeg, which only ever touches local files here - and denying
+   * it closes a real hole rather than a theoretical one. ffmpeg will follow
+   * urls embedded in a container it is decoding (HLS playlists especially),
+   * so a crafted upload to `/convert` is otherwise its own SSRF, independent
+   * of the one in `/ytdlp`.
+   *
+   * True for yt-dlp, which cannot do its job otherwise. Note that sharing the
+   * host's network namespace means loopback inside the sandbox is the host's
+   * loopback, so `urlSafety` is what defends that path, not this.
+   */
+  network: boolean;
+};
+
+/**
+ * Builds the bubblewrap prefix for a command.
+ * @param options Which directory is writable and whether network is needed
+ * @returns Arguments to place before the real command, ending in `--`
+ */
+export const sandboxPrefix = ({
+  workDir,
+  network,
+}: SandboxOptions): string[] => [
+  // Everything the tools need to run, and nothing else.
+  "--ro-bind",
+  "/usr",
+  "/usr",
+  "--ro-bind",
+  "/etc",
+  "/etc",
+  // On a merged-/usr system these are symlinks; recreating them keeps the
+  // dynamic loader's hardcoded paths working.
+  "--symlink",
+  "usr/lib",
+  "/lib",
+  "--symlink",
+  "usr/lib64",
+  "/lib64",
+  "--symlink",
+  "usr/bin",
+  "/bin",
+  "--symlink",
+  "usr/sbin",
+  "/sbin",
+  "--proc",
+  "/proc",
+  "--dev",
+  "/dev",
+  // A private /tmp, so the job cannot see other jobs' workspaces or the
+  // published files in the share directory.
+  "--tmpfs",
+  "/tmp",
+  "--bind",
+  workDir,
+  workDir,
+  // Drop every namespace, then hand back only the network and only if asked.
+  "--unshare-all",
+  ...(network ? ["--share-net"] : []),
+  // Kill the sandbox if the bot dies, rather than leaving an orphan holding a
+  // workspace that is about to be deleted.
+  "--die-with-parent",
+  // Detaches the controlling terminal, which is what stops a TIOCSTI style
+  // escape back into the parent's tty.
+  "--new-session",
+  "--setenv",
+  "HOME",
+  "/tmp",
+  "--chdir",
+  workDir,
+  "--",
+];
+
+/**
+ * Wraps a command in the sandbox, or returns it unchanged.
+ * @param command The executable to run
+ * @param args Its arguments
+ * @param options Sandbox settings, or undefined to skip sandboxing
+ * @returns The command and arguments to actually spawn
+ */
+export const applySandbox = (
+  command: string,
+  args: string[],
+  options: SandboxOptions | undefined,
+): { command: string; args: string[] } => {
+  if (!options || !isSandboxAvailable()) return { command, args };
+
+  return {
+    command: "bwrap",
+    args: [...sandboxPrefix(options), command, ...args],
+  };
+};

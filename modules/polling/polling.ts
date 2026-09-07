@@ -12,6 +12,7 @@ import { syncAllSeasons } from "../finistocks/stockData";
 import { ClientResponseError } from "pocketbase";
 import { checkMonitoredServices } from "./monitoring";
 import { expireStaleV2Battles } from "../finicardsV2/expireBattles";
+import { expireSharedFiles } from "../fileShare";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
@@ -19,8 +20,24 @@ export const runPollTasks = (cl: Client) => {
   syncAndUpdateAnimeRecords();
   checkMonitoredServices(cl);
   expireStaleV2Battles(cl);
+  reapExpiredShares();
   // checkJobs(cl);
   // checkHealthPings(cl);
+};
+
+/**
+ * Delete share links whose time is up, and the files behind them.
+ *
+ * Expiry is enforced on read as well, so this is about reclaiming disk rather
+ * than about access - a link is dead the moment it expires either way.
+ */
+const reapExpiredShares = async () => {
+  try {
+    const removed = await expireSharedFiles();
+    if (removed) console.log(`Expired ${removed} shared file(s)`);
+  } catch (err) {
+    console.error("Error expiring shared files:", { err });
+  }
 };
 
 // #region Polling Jobs
