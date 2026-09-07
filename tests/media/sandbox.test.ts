@@ -63,6 +63,48 @@ describe("sandboxPrefix", () => {
       "--",
     );
   });
+
+  it("mounts extra paths read-only, not writable", () => {
+    // llama-tts needs its own install directory and gigabytes of model weights,
+    // both under $HOME - which is otherwise absent. Read-only so a compromised
+    // decoder cannot rewrite the weights the next invocation loads.
+    const prefix = sandboxPrefix({
+      workDir: WORK_DIR,
+      network: false,
+      readOnlyPaths: ["/opt/llama", "/srv/models"],
+    });
+
+    expect(prefix.join(" ")).toContain("--ro-bind /opt/llama /opt/llama");
+    expect(prefix.join(" ")).toContain("--ro-bind /srv/models /srv/models");
+    // Still exactly one writable mount: the workspace.
+    expect(prefix.filter((arg) => arg === "--bind")).toHaveLength(1);
+  });
+
+  it("mounts extra paths after the tmpfs that would otherwise hide them", () => {
+    // A path under /tmp bound before `--tmpfs /tmp` is shadowed by it, and
+    // weights that vanish look like a model bug rather than a mount ordering
+    // one.
+    const prefix = sandboxPrefix({
+      workDir: WORK_DIR,
+      network: false,
+      readOnlyPaths: ["/srv/models"],
+    });
+
+    expect(prefix.indexOf("/srv/models")).toBeGreaterThan(
+      prefix.indexOf("--tmpfs"),
+    );
+  });
+
+  it("adds nothing when no extra paths are asked for", () => {
+    const withOut = sandboxPrefix({ workDir: WORK_DIR, network: false });
+    const withEmpty = sandboxPrefix({
+      workDir: WORK_DIR,
+      network: false,
+      readOnlyPaths: [],
+    });
+
+    expect(withEmpty).toEqual(withOut);
+  });
 });
 
 describe("applySandbox", () => {
@@ -180,5 +222,47 @@ describe.if(isSandboxAvailable())("the sandbox actually confines", () => {
 
     const { stdout } = await runProcess("ls", [dir], { timeoutMs: 5_000 });
     expect(stdout).toContain("frame.png");
+  });
+
+  it("makes an extra path readable but refuses writes to it", async () => {
+    const dir = await workspace();
+    const models = await workspace();
+    await writeFile(join(models, "model.gguf"), "weights");
+
+    const { stdout } = await runProcess(
+      "sh",
+      [
+        "-c",
+        `cat ${models}/model.gguf; echo; echo tampered > ${models}/model.gguf 2>&1 || echo "weights are read-only"`,
+      ],
+      {
+        timeoutMs: 15_000,
+        sandbox: { workDir: dir, network: false, readOnlyPaths: [models] },
+      },
+    );
+
+    expect(stdout).toContain("weights");
+    expect(stdout).toContain("weights are read-only");
+    // And the file on the host is untouched.
+    expect(await Bun.file(join(models, "model.gguf")).text()).toBe("weights");
+  });
+
+  it("still hides the home directory when an extra path is mounted", async () => {
+    const dir = await workspace();
+    const models = await workspace();
+
+    // Widening the mounts for the weights must not widen them for anything
+    // else - `.env` and `~/.ssh` stay out of reach.
+    const { stdout } = await runProcess(
+      "sh",
+      ["-c", "ls /home 2>&1 || true; ls ~ 2>&1 || true"],
+      {
+        timeoutMs: 15_000,
+        sandbox: { workDir: dir, network: false, readOnlyPaths: [models] },
+      },
+    );
+
+    expect(stdout).not.toContain("pridgey");
+    expect(stdout).not.toContain(".ssh");
   });
 });

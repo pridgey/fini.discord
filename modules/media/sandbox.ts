@@ -65,16 +65,32 @@ export type SandboxOptions = {
    * loopback, so `urlSafety` is what defends that path, not this.
    */
   network: boolean;
+  /**
+   * Extra paths to mount read-only, on top of `/usr` and `/etc`.
+   *
+   * ffmpeg and yt-dlp need nothing here: they live in `/usr` and read only the
+   * workspace. `llama-tts` does not - it is installed under `$HOME` and its
+   * model weights are gigabytes in the Hugging Face cache, and `$HOME` is
+   * deliberately absent inside the container. Binding those two paths
+   * read-only is what lets it run confined at all; the alternative was
+   * copying two gigabytes into every job's workspace.
+   *
+   * Read-only, so a compromised decoder cannot rewrite the weights it is
+   * about to be handed on the next invocation.
+   */
+  readOnlyPaths?: string[];
 };
 
 /**
  * Builds the bubblewrap prefix for a command.
- * @param options Which directory is writable and whether network is needed
+ * @param options Which directory is writable, whether network is needed, and
+ * any extra read-only mounts
  * @returns Arguments to place before the real command, ending in `--`
  */
 export const sandboxPrefix = ({
   workDir,
   network,
+  readOnlyPaths = [],
 }: SandboxOptions): string[] => [
   // Everything the tools need to run, and nothing else.
   "--ro-bind",
@@ -108,6 +124,10 @@ export const sandboxPrefix = ({
   "--bind",
   workDir,
   workDir,
+  // After the tmpfs, not before: a path mounted underneath `/tmp` earlier in
+  // the list would be hidden by it, and silently missing weights look like a
+  // model loading bug rather than a mount ordering one.
+  ...readOnlyPaths.flatMap((path) => ["--ro-bind", path, path]),
   // Drop every namespace, then hand back only the network and only if asked.
   "--unshare-all",
   ...(network ? ["--share-net"] : []),
