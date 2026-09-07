@@ -56,7 +56,26 @@ export const addHistory = async (chatRecord: ChatRecord) => {
 };
 
 /**
+ * How many records are deleted at once.
+ *
+ * Deleting serially cost a round trip per record - and a record with an
+ * attachment costs a second one to Anthropic's files API, roughly 300ms each -
+ * so a long history blew straight past Discord's three second window for
+ * answering an interaction. Batching collapses that to about one round trip
+ * per batch. Bounded rather than unbounded so a thousand record history cannot
+ * open a thousand sockets at once.
+ */
+const DELETE_CONCURRENCY = 20;
+
+/**
  * Utility function to clear the chat history for a specific user, guild and chat type
+ *
+ * Attachment deletions are best effort. Anthropic 404s a file that is already
+ * gone, and that used to abort the loop mid-history: every record after the
+ * bad one survived a clear that had already reported success. A record's own
+ * deletion failing is still worth reporting, but only after the rest of the
+ * history has been cleared - so those are collected and thrown at the end
+ * rather than abandoning the records still in flight.
  * @param userID The user's ID
  * @param guildID The server ID
  * @param chatType Determines which AI history to clear
@@ -69,15 +88,54 @@ export const clearHistory = async (
   // Get all records
   const userHistory = await getHistory(userID, guildID, chatType);
 
-  const anthropic = new Anthropic();
+  if (!userHistory.length) {
+    return;
+  }
 
-  // Delete all of them
-  for (const record of userHistory) {
+  // Only built if a record actually has an attachment to delete
+  let anthropic: Anthropic | undefined;
+
+  const deleteRecord = async (record: (typeof userHistory)[number]) => {
     if (!!record.id) {
       await pb.collection<ChatRecord>("chat").delete(record.id ?? "");
     }
+
     if (record.attachment) {
-      await anthropic.beta.files.delete(record.attachment);
+      anthropic ??= new Anthropic();
+
+      try {
+        await anthropic.beta.files.delete(record.attachment);
+      } catch (err) {
+        console.error(
+          `Error deleting attachment ${record.attachment}:`,
+          err,
+        );
+      }
     }
+  };
+
+  const failures: unknown[] = [];
+
+  // Delete all of them, a bounded batch at a time
+  for (let i = 0; i < userHistory.length; i += DELETE_CONCURRENCY) {
+    const batch = userHistory.slice(i, i + DELETE_CONCURRENCY);
+
+    const results = await Promise.allSettled(batch.map(deleteRecord));
+
+    for (const result of results) {
+      if (result.status === "rejected") {
+        failures.push(result.reason);
+      }
+    }
+  }
+
+  if (failures.length) {
+    console.error(`Failed to delete ${failures.length} ${chatType} records`, {
+      failures,
+    });
+
+    throw new Error(
+      `Failed to delete ${failures.length} of ${userHistory.length} ${chatType} chat records`,
+    );
   }
 };

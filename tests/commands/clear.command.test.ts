@@ -24,6 +24,15 @@ describe("clear command", () => {
         id: "user123",
       },
       guildId: "guild456",
+      // discord.js flips these when the interaction is answered, and the
+      // command branches on them to pick reply vs editReply
+      deferred: false,
+      replied: false,
+      deferReply: mock(() => {
+        mockInteraction.deferred = true;
+        return Promise.resolve();
+      }),
+      editReply: mock(() => Promise.resolve()),
       reply: mock(() => Promise.resolve()),
     };
   });
@@ -40,7 +49,7 @@ describe("clear command", () => {
           chatType,
         );
       }
-      expect(mockInteraction.reply).toHaveBeenCalledWith(
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
         "Your chat history has been cleared.",
       );
       expect(mockLogCommand).toHaveBeenCalled();
@@ -160,7 +169,7 @@ describe("clear command", () => {
     });
 
     it("should handle reply errors", async () => {
-      mockInteraction.reply = mock(() =>
+      mockInteraction.editReply = mock(() =>
         Promise.reject(new Error("Reply failed")),
       );
 
@@ -189,7 +198,7 @@ describe("clear command", () => {
 
       // Every backend should still be attempted
       expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
-      expect(mockInteraction.reply).toHaveBeenCalled();
+      expect(mockInteraction.editReply).toHaveBeenCalled();
       expect(mockLogCommand).toHaveBeenCalled();
     });
   });
@@ -212,12 +221,12 @@ describe("clear command", () => {
       await execute(mockInteraction, mockLogCommand);
 
       expect(clearHistoryCalled).toBe(ALL_CHAT_TYPES.length);
-      expect(mockInteraction.reply).toHaveBeenCalled();
+      expect(mockInteraction.editReply).toHaveBeenCalled();
     });
 
     it("should log command after reply", async () => {
       let replyCalled = false;
-      mockInteraction.reply = mock(() => {
+      mockInteraction.editReply = mock(() => {
         replyCalled = true;
         return Promise.resolve();
       });
@@ -233,7 +242,7 @@ describe("clear command", () => {
     it("should display clear confirmation message", async () => {
       await execute(mockInteraction, mockLogCommand);
 
-      expect(mockInteraction.reply).toHaveBeenCalledWith(
+      expect(mockInteraction.editReply).toHaveBeenCalledWith(
         "Your chat history has been cleared.",
       );
     });
@@ -241,13 +250,13 @@ describe("clear command", () => {
     it("should display same message regardless of user", async () => {
       // First user
       await execute(mockInteraction, mockLogCommand);
-      const firstReply = mockInteraction.reply.mock.calls[0][0];
+      const firstReply = mockInteraction.editReply.mock.calls[0][0];
 
       // Second user
-      mockInteraction.reply.mockClear();
+      mockInteraction.editReply.mockClear();
       mockInteraction.user.id = "different-user";
       await execute(mockInteraction, mockLogCommand);
-      const secondReply = mockInteraction.reply.mock.calls[0][0];
+      const secondReply = mockInteraction.editReply.mock.calls[0][0];
 
       expect(firstReply).toBe(secondReply);
     });
@@ -281,6 +290,53 @@ describe("clear command", () => {
 
       expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
       expect(mockLogCommand).toHaveBeenCalled();
+    });
+  });
+
+  describe("Deferral", () => {
+    it("should defer before any clearing starts", async () => {
+      // The whole point of the defer: it has to be in flight before the slow
+      // part, or Discord's three second window closes mid-clear
+      let deferredFirst = false;
+      mockClearHistory.mockImplementation(() => {
+        deferredFirst = mockInteraction.deferReply.mock.calls.length > 0;
+        return Promise.resolve();
+      });
+
+      await execute(mockInteraction, mockLogCommand);
+
+      expect(mockInteraction.deferReply).toHaveBeenCalledTimes(1);
+      expect(deferredFirst).toBe(true);
+    });
+
+    it("should still clear and reply if deferring fails", async () => {
+      mockInteraction.deferReply = mock(() =>
+        Promise.reject(new Error("Defer failed")),
+      );
+
+      await execute(mockInteraction, mockLogCommand);
+
+      expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
+      // Never deferred, so answering falls back to a direct reply
+      expect(mockInteraction.reply).toHaveBeenCalledWith(
+        "Your chat history has been cleared.",
+      );
+      expect(mockLogCommand).toHaveBeenCalled();
+    });
+
+    it("should log the command when the interaction cannot be answered", async () => {
+      // The incident shape: history is gone, but the reply lands on an
+      // interaction Discord has already discarded. Nothing may escape.
+      mockInteraction.editReply = mock(() =>
+        Promise.reject(new Error("Unknown interaction")),
+      );
+
+      await expect(
+        execute(mockInteraction, mockLogCommand),
+      ).resolves.toBeUndefined();
+
+      expect(mockClearHistory).toHaveBeenCalledTimes(ALL_CHAT_TYPES.length);
+      expect(mockLogCommand).toHaveBeenCalledTimes(1);
     });
   });
 

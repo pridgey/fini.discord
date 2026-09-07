@@ -28,6 +28,14 @@ import {
 } from "./modals/modalHandler";
 import { fileExists } from "./utilities/files/fileUtilities";
 
+/**
+ * Recorded as a command's output when its reply cannot be read back - the
+ * interaction expired before the command answered it, so there is no message
+ * to fetch. Written rather than dropping the log so the `log` table shows the
+ * command ran and failed to answer.
+ */
+const NO_REPLY_OUTPUT = "<no reply - interaction expired>";
+
 // Initialize client and announce intents
 const client = new Client({
   intents: [
@@ -301,21 +309,48 @@ client.on("interactionCreate", async (interaction) => {
 
       console.log("Pre-Execute", commandToRun);
 
-      // Execute the command
+      /*
+       * Execute the command. Logging is handed to the command as a callback so
+       * it can decide when the reply exists to be read back, and every command
+       * calls it un-awaited - several from a `finally`. So nothing here may
+       * reject: an unhandled rejection takes the bun process down, and
+       * `--kill-others-on-fail` takes pocketbase and llama with it. A /clear
+       * that outran Discord's three second response window did exactly that -
+       * `fetchReply` threw 10015 Unknown Webhook on an interaction that never
+       * got a reply, and the whole stack restarted.
+       *
+       * A dead interaction also has no reply to read, so the output falls back
+       * to a marker rather than skipping the log. The failed /clear wrote no
+       * row at all, which left the `log` table showing an unbroken run of
+       * successes while users were watching the command fail.
+       */
       await commandToRun.execute(interaction, async () => {
-        createLog({
-          command: `/${commandToRun.data.name}`,
-          input: `Command options:\n${commandToRun.data.options
-            .map((o) => {
-              const optionName = o.name;
-              const optionValue = interaction.options.get(optionName)?.value;
-              return `${optionName}: ${optionValue}`;
-            })
-            .join(",\n")}`,
-          output: (await interaction.fetchReply()).content,
-          server_id: interaction.guild?.id || "unknown",
-          user_id: interaction.user.id,
-        });
+        try {
+          let output = "";
+
+          try {
+            output = (await interaction.fetchReply()).content;
+          } catch (fetchErr) {
+            console.error("Error reading reply for command log:", fetchErr);
+            output = NO_REPLY_OUTPUT;
+          }
+
+          await createLog({
+            command: `/${commandToRun.data.name}`,
+            input: `Command options:\n${commandToRun.data.options
+              .map((o) => {
+                const optionName = o.name;
+                const optionValue = interaction.options.get(optionName)?.value;
+                return `${optionName}: ${optionValue}`;
+              })
+              .join(",\n")}`,
+            output,
+            server_id: interaction.guild?.id || "unknown",
+            user_id: interaction.user.id,
+          });
+        } catch (logErr) {
+          console.error("Error logging command:", logErr);
+        }
       });
     } catch (err) {
       const error: Error = err as Error;
