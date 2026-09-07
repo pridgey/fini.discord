@@ -30,7 +30,9 @@ import {
   isTtsConfigured,
   prepareSpeakerClip,
   stageVoiceSample,
+  stageVoiceTranscript,
   synthesizeSpeech,
+  transcribeReference,
   voiceChoices,
   voiceList,
 } from "../modules/tts";
@@ -38,13 +40,20 @@ import {
 /**
  * `/tts` - speaks text in a preset voice, or in one cloned from a clip.
  *
- * Runs llama.cpp's `llama-tts` against Qwen3-TTS. The interesting property of
+ * Runs qwentts.cpp's `qwen-tts` against Qwen3-TTS. The interesting property of
  * that model for this command is that a voice is not a trained model but a few
  * seconds of reference audio - which is what lets the presets ship in the repo
  * as eight small mp3s, and lets anyone add a voice for one message by attaching
  * a clip.
  *
- * The output is transcoded to mp3 rather than posted as the wav `llama-tts`
+ * A voice is audio *and its transcript*, though, and the transcript is not a
+ * nicety: it is what puts the reference in the model's context as a worked
+ * example rather than collapsing it into a speaker embedding, and it is the
+ * difference between GLaDOS and a woman who is not GLaDOS. Presets ship one.
+ * An upload gets one from whisper, and falls back to the embedding-only voice
+ * when that is unavailable.
+ *
+ * The output is transcoded to mp3 rather than posted as the wav `qwen-tts`
  * writes. 24kHz mono PCM is 48KB per second, so a minute of speech is a 2.8MB
  * wav against about 300KB of mp3 - and Discord plays an mp3 inline where it
  * makes people download a wav.
@@ -53,10 +62,10 @@ import {
 /**
  * Longest prompt accepted.
  *
- * Generation is roughly 0.3x realtime on CPU, so this is the knob that decides
- * whether `/tts` answers in fifteen seconds or four minutes. 600 characters is
- * a long paragraph - around 40 seconds of speech, so about two minutes of
- * compute. `MAX_SPEECH_SECONDS` is the backstop underneath it.
+ * Generation is roughly 0.37x realtime on CPU, so this is the knob that
+ * decides whether `/tts` answers in fifteen seconds or four minutes. 600
+ * characters is a long paragraph - around 40 seconds of speech, so under two
+ * minutes of compute. `MAX_SPEECH_SECONDS` is the backstop underneath it.
  */
 const MAX_TEXT_LENGTH = 600;
 
@@ -71,6 +80,15 @@ const MAX_CLIP_BYTES = 25 * 1024 * 1024;
 
 const FETCH_TIMEOUT_MS = 60_000;
 const CLIP_PREP_TIMEOUT_MS = 60_000;
+/**
+ * Cap on transcribing an uploaded clip.
+ *
+ * Covers both passes - the 16kHz downmix and whisper itself - on at most
+ * `REFERENCE_SECONDS` of audio. Generous because it is bounded work on a box
+ * that may be busy, and because running out of clock here is not fatal: the
+ * generation carries on without a transcript.
+ */
+const TRANSCRIBE_TIMEOUT_MS = 120_000;
 const SYNTHESIS_TIMEOUT_MS = 8 * 60 * 1000;
 const ENCODE_TIMEOUT_MS = 60_000;
 
@@ -198,8 +216,8 @@ export const execute = async (
   const limitBytes = uploadLimitBytes(interaction.guild?.premiumTier);
 
   try {
-    const speakerFile = await resolveSpeakerFile({
-      voiceSample: voice?.samplePath,
+    const { speakerFile, speakerTextFile } = await resolveSpeakerFile({
+      voice,
       clip,
       workDir: workspace.dir,
       deadline,
@@ -224,6 +242,7 @@ export const execute = async (
       outputDir: workspace.dir,
       outputBase,
       speakerFile,
+      speakerTextFile,
       language,
       timeoutMs: deadline.budget(SYNTHESIS_TIMEOUT_MS),
     });
@@ -320,28 +339,37 @@ const quoted = (text: string): string => {
 };
 
 /**
- * Gets the reference clip into the workspace and into the model's format.
+ * Gets the reference clip into the workspace, into the model's format, and
+ * paired with a transcript where there is one to be had.
  *
- * Both sources end up in the same place for the same reason: ffmpeg runs
- * sandboxed with only the workspace mounted, so whatever it normalises has to
- * be inside the workspace first. A preset is copied there by the bot, and an
- * upload is streamed there from Discord's CDN.
- * @returns Path to the normalised clip, or undefined for the default voice
+ * The clip and the transcript both end up in the workspace for the same
+ * reason: ffmpeg and `qwen-tts` run sandboxed with only the workspace
+ * writable, so anything either of them reads has to be inside it first. A
+ * preset is copied there by the bot, and an upload is streamed there from
+ * Discord's CDN.
+ *
+ * The transcript is where the two sources stop being alike. A preset ships one
+ * next to the clip, hand-checked, and staging it costs a file copy. An upload
+ * has only audio, so the words have to be read back out of it - which is
+ * whisper, and which is slow enough to be worth its own line in the reply.
+ * Either way a missing transcript is not an error: it drops the generation to
+ * x-vector-only conditioning, which is a worse voice rather than no voice.
+ * @returns The normalised clip and its transcript, if any
  */
 const resolveSpeakerFile = async ({
-  voiceSample,
+  voice,
   clip,
   workDir,
   deadline,
   interaction,
 }: {
-  voiceSample: string | undefined;
+  voice: { samplePath: string; transcriptPath?: string } | undefined;
   clip: { name: string | null; url: string } | undefined;
   workDir: string;
   deadline: ReturnType<typeof createJobDeadline>;
   interaction: ChatInputCommandInteraction;
-}): Promise<string | undefined> => {
-  if (!voiceSample && !clip) return undefined;
+}): Promise<{ speakerFile?: string; speakerTextFile?: string }> => {
+  if (!voice && !clip) return {};
 
   let staged: string;
 
@@ -360,7 +388,7 @@ const resolveSpeakerFile = async ({
       deadline.budget(FETCH_TIMEOUT_MS),
     );
   } else {
-    staged = await stageVoiceSample(voiceSample!, workDir);
+    staged = await stageVoiceSample(voice!.samplePath, workDir);
   }
 
   const prepared = await prepareSpeakerClip(
@@ -369,13 +397,30 @@ const resolveSpeakerFile = async ({
     deadline.budget(CLIP_PREP_TIMEOUT_MS),
   );
 
-  return prepared.path;
+  if (voice) {
+    return {
+      speakerFile: prepared.path,
+      speakerTextFile: voice.transcriptPath
+        ? await stageVoiceTranscript(voice.transcriptPath, workDir)
+        : undefined,
+    };
+  }
+
+  await interaction.editReply(`Working out what \`${clip!.name}\` says...`);
+
+  const transcript = await transcribeReference(
+    prepared.path,
+    workDir,
+    deadline.budget(TRANSCRIBE_TIMEOUT_MS),
+  );
+
+  return { speakerFile: prepared.path, speakerTextFile: transcript?.path };
 };
 
 /**
  * Turns a failure into something worth reading in the channel.
  *
- * A `ProcessError` from `llama-tts` gets its stderr tail like `/convert` does,
+ * A `ProcessError` from `qwen-tts` gets its stderr tail like `/convert` does,
  * but a timeout is reported as the length problem it almost always is rather
  * than as a generic one - the cap on prompt length is generous enough that the
  * way to hit the clock is a long prompt, and "try a shorter one" is the actual

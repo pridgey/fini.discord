@@ -10,7 +10,7 @@ import { resetVoiceCache } from "../../modules/tts/voices";
 
 /**
  * As with the /convert tests, these cover the guards that run before the
- * command defers - generation itself loads 2.3GB of weights and is exercised
+ * command defers - generation itself loads 2.4GB of weights and is exercised
  * against the real binary by hand.
  *
  * The fixture is built at the top level rather than in `beforeAll`, which runs
@@ -29,12 +29,12 @@ for (const name of ["narrator", "glados"]) {
 
 // Enough for `isTtsConfigured` to pass, so the guards under test are the ones
 // that actually run.
-await writeFile(join(modelDir, "model.gguf"), "");
-await writeFile(join(modelDir, "mmproj.gguf"), "");
+await writeFile(join(modelDir, "talker.gguf"), "");
+await writeFile(join(modelDir, "codec.gguf"), "");
 
 process.env.FINI_TTS_VOICE_DIR = voiceDir;
 process.env.FINI_TTS_MODEL_DIR = modelDir;
-delete process.env.FINI_LLAMA_TTS_BIN;
+delete process.env.FINI_QWEN_TTS_BIN;
 
 // Another test file in the same process may already have scanned a library of
 // its own, and the result is cached for the lifetime of the module.

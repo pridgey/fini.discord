@@ -8,6 +8,7 @@ import {
   availableVoices,
   findVoice,
   findVoiceSample,
+  findVoiceTranscript,
   resetVoiceCache,
   voiceChoices,
   voiceLibraryDir,
@@ -90,6 +91,60 @@ describe("the shipped clips", () => {
     const names = CURATED_VOICES.map((voice) => voice.name);
 
     expect(new Set(names).size).toBe(names.length);
+  });
+});
+
+describe("the shipped transcripts", () => {
+  it("has one for every curated voice", () => {
+    // A transcript is what turns on in-context conditioning, and it is the
+    // difference between a voice that sounds like the character and one that
+    // just sounds like the right kind of person. A missing one is silent -
+    // the voice still works, just worse - so it gets asserted rather than
+    // noticed later.
+    delete process.env.FINI_TTS_VOICE_DIR;
+    resetVoiceCache();
+
+    const missing = availableVoices()
+      .filter((voice) => !voice.transcriptPath)
+      .map((voice) => voice.name);
+
+    expect(missing).toEqual([]);
+  });
+});
+
+describe("findVoiceTranscript", () => {
+  it("pairs a transcript named after the clip", async () => {
+    await installFlat("narrator");
+    await writeFile(join(dir, "narrator.txt"), "the words");
+
+    expect(findVoiceTranscript(join(dir, "narrator.mp3"))).toBe(
+      join(dir, "narrator.txt"),
+    );
+  });
+
+  it("has nothing when the clip ships without one", async () => {
+    await installFlat("narrator");
+
+    expect(findVoiceTranscript(join(dir, "narrator.mp3"))).toBeUndefined();
+  });
+
+  it("treats an empty transcript as absent", async () => {
+    // `qwen-tts` rejects an empty --ref-text outright, so a placeholder
+    // someone meant to fill in later would take the voice down rather than
+    // leave it merely unimproved.
+    await installFlat("narrator");
+    await writeFile(join(dir, "narrator.txt"), "");
+
+    expect(findVoiceTranscript(join(dir, "narrator.mp3"))).toBeUndefined();
+  });
+
+  it("pairs one inside a nested voice directory", async () => {
+    await installNested("narrator", "take.wav");
+    await writeFile(join(dir, "narrator", "take.txt"), "the words");
+
+    expect(findVoiceTranscript(join(dir, "narrator", "take.wav"))).toBe(
+      join(dir, "narrator", "take.txt"),
+    );
   });
 });
 

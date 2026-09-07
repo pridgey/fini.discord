@@ -15,7 +15,7 @@ import { probeMedia } from "../../modules/media/probeMedia";
 /**
  * The normalisation pass is where a user-uploaded clip stops being hostile
  * input, so this runs it for real against generated audio rather than only
- * asserting on flags: what matters is that the file `llama-tts` ends up opening
+ * asserting on flags: what matters is that the file `qwen-tts` ends up opening
  * is mono, at the model's rate, and no longer than the reference window.
  */
 
@@ -166,7 +166,7 @@ describe("prepareSpeakerClip", () => {
     const prepared = await prepareSpeakerClip(mp3, dir, 60_000);
     const probe = await probeMedia(prepared.path);
 
-    // The point of the pass: what llama-tts opens is PCM ffmpeg just wrote,
+    // The point of the pass: what qwen-tts opens is PCM ffmpeg just wrote,
     // not the bytes someone uploaded.
     expect(prepared.path.endsWith(".wav")).toBe(true);
     expect(probe.hasAudio).toBe(true);

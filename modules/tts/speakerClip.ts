@@ -4,33 +4,40 @@ import { runProcess } from "../media/runProcess";
 import { fileSize } from "../media/workspace";
 
 /**
- * Turns whatever audio we were given into the reference clip `llama-tts` wants.
+ * Turns whatever audio we were given into the reference clip `qwen-tts` wants.
  *
  * Two jobs, and the second is the important one.
  *
- * The obvious job is format: Qwen3-TTS conditions on a short mono clip, and the
- * library samples run to two and a half minutes of 22kHz stereo. Handing it all
- * of that is slower and no better - the voice is established in the first few
- * seconds.
+ * The obvious job is format: the model conditions on a mono 24kHz clip, and an
+ * upload can be anything ffmpeg reads - a stereo 48kHz phone recording, an mp3
+ * with cover art in it, a five minute song.
  *
  * The job worth spelling out is that this is where a user-uploaded clip stops
- * being hostile input. `llama-tts` decodes audio through miniaudio, which is
- * not a hardened decoder and is linked into the same process as the model
- * weights. Normalising through ffmpeg first means the file `llama-tts` opens is
- * always one ffmpeg just wrote - re-encoded PCM, not attacker bytes - and
- * ffmpeg does that decode inside bubblewrap where a crash costs nothing. The
- * uploaded file is copied into the job workspace before this runs, so ffmpeg
- * needs no read access outside its own sandbox.
+ * being hostile input. Both `qwen-tts` and whisper decode audio in the same
+ * process as a set of model weights, and neither is a hardened decoder.
+ * Normalising through ffmpeg first means the file they open is always one
+ * ffmpeg just wrote - re-encoded PCM, not attacker bytes - and ffmpeg does
+ * that decode inside bubblewrap where a crash costs nothing. The uploaded file
+ * is copied into the job workspace before this runs, so ffmpeg needs no read
+ * access outside its own sandbox.
  */
 
 /**
  * How much reference audio to keep.
  *
- * Ten seconds is comfortably past where the timbre is established and well
- * inside what the model's conditioning window uses. Longer clips measurably
- * cost prompt-eval time without changing the voice.
+ * Ten seconds was right when the reference was only ever collapsed into a
+ * speaker embedding: timbre is established well inside that, and the rest was
+ * prompt-eval time spent on nothing. In-context conditioning reads the clip as
+ * an example instead, so the extra seconds are extra example - the upstream
+ * cloning sample ships a 17 second reference, and the preset clips here run to
+ * 25.
+ *
+ * Thirty is a cap on the clip rather than a target for it. It bounds how much
+ * codec context a generation carries, which matters because that context is
+ * prefilled on every invocation, and it is comfortably past every clip we
+ * ship.
  */
-export const REFERENCE_SECONDS = 10;
+export const REFERENCE_SECONDS = 30;
 
 /**
  * Sample rate for the reference.
@@ -62,6 +69,30 @@ export const stageVoiceSample = async (
   // by content sniffing.
   const staged = join(workDir, `reference${extname(samplePath).toLowerCase()}`);
   await copyFile(samplePath, staged);
+
+  return staged;
+};
+
+/** Filename of the staged preset transcript inside the workspace. */
+const STAGED_TRANSCRIPT_NAME = "reference.txt";
+
+/**
+ * Copies a preset's transcript into the job workspace.
+ *
+ * Same reason as the clip: `qwen-tts` is sandboxed with only the workspace
+ * writable and the binary and weights mounted read-only, so `clips/` is not
+ * visible to it. Copying the one file the job needs is cheaper than mounting
+ * the library into every generation.
+ * @param transcriptPath Absolute path to the shipped transcript
+ * @param workDir The job's workspace
+ * @returns Path to the copy, inside the workspace
+ */
+export const stageVoiceTranscript = async (
+  transcriptPath: string,
+  workDir: string,
+): Promise<string> => {
+  const staged = join(workDir, STAGED_TRANSCRIPT_NAME);
+  await copyFile(transcriptPath, staged);
 
   return staged;
 };

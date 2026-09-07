@@ -65,7 +65,7 @@ describe("sandboxPrefix", () => {
   });
 
   it("mounts extra paths read-only, not writable", () => {
-    // llama-tts needs its own install directory and gigabytes of model weights,
+    // qwen-tts needs its own install directory and gigabytes of model weights,
     // both under $HOME - which is otherwise absent. Read-only so a compromised
     // decoder cannot rewrite the weights the next invocation loads.
     const prefix = sandboxPrefix({

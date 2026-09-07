@@ -24,6 +24,19 @@ export type RunProcessOptions = {
    * are not parsing untrusted input.
    */
   sandbox?: SandboxOptions;
+  /**
+   * Text to write to the child's stdin, which is then closed.
+   *
+   * Only for commands that read their input from stdin - `qwen-tts` takes the
+   * prompt that way rather than as a flag. Omitted means stdin stays closed,
+   * which is what every other caller wants: ffmpeg blocks forever on its own
+   * overwrite prompt if it finds a readable stdin.
+   *
+   * Worth preferring where a command offers both: text passed here is never an
+   * argv element, so it cannot be mistaken for a flag and does not count
+   * against the argument length limit.
+   */
+  stdin?: string;
 };
 
 export type RunProcessResult = {
@@ -94,7 +107,7 @@ const appendCapped = (existing: string, chunk: string): string => {
 export const runProcess = async (
   command: string,
   args: string[],
-  { timeoutMs, cwd, sandbox }: RunProcessOptions,
+  { timeoutMs, cwd, sandbox, stdin }: RunProcessOptions,
 ): Promise<RunProcessResult> =>
   new Promise((resolve, reject) => {
     // The reported command stays the real one, so a ProcessError still says
@@ -103,11 +116,20 @@ export const runProcess = async (
     const child = spawn(spawned.command, spawned.args, {
       cwd,
       detached: true,
-      // Nothing is ever written to these processes, and leaving stdin open on
-      // an inherited terminal lets ffmpeg block forever on its own prompts
-      // (it asks before overwriting a file).
-      stdio: ["ignore", "pipe", "pipe"],
+      // Closed unless someone asked to write to it: leaving stdin open on an
+      // inherited terminal lets ffmpeg block forever on its own prompts (it
+      // asks before overwriting a file).
+      stdio: [stdin === undefined ? "ignore" : "pipe", "pipe", "pipe"],
     });
+
+    if (stdin !== undefined) {
+      // Closed straight after writing, because a command reading its whole
+      // input from stdin waits for EOF before it starts. An EPIPE here means
+      // the child died before reading, which the exit handler already reports
+      // with its stderr - a second rejection would only mask that.
+      child.stdin?.on("error", () => {});
+      child.stdin?.end(stdin);
+    }
 
     let stdout = "";
     let stderr = "";

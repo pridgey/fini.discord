@@ -1,10 +1,11 @@
 /**
- * Speech synthesis for `/tts`, on top of llama.cpp's `llama-tts`.
+ * Speech synthesis for `/tts`, on top of qwentts.cpp's `qwen-tts`.
  *
  * Layering, innermost first:
- *   voices       - the preset reference clips, and which are installed
+ *   voices       - the preset reference clips and their transcripts
  *   speakerClip  - normalising a clip into what the model conditions on
- *   llamaTts     - locating the model, and the generation itself
+ *   transcribe   - reading the words back out of an uploaded clip
+ *   qwenTts      - locating the model, and the generation itself
  *
  * The subprocess plumbing (`runProcess`, the bubblewrap sandbox, workspaces,
  * admission control) is shared with `/convert` and `/ytdlp` and lives in
@@ -12,6 +13,7 @@
  * so it queues behind the same two slots rather than having its own.
  */
 
-export * from "./llamaTts";
+export * from "./qwenTts";
 export * from "./speakerClip";
+export * from "./transcribe";
 export * from "./voices";

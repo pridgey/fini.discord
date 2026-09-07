@@ -4,14 +4,21 @@ import { extname, join } from "path";
 /**
  * The preset voice list for `/tts`.
  *
- * Qwen3-TTS clones whatever voice it is shown, so a "voice" here is just a few
- * seconds of reference audio - there is no per-voice model to train or ship.
- * Adding a voice is adding an mp3 and a line to `CURATED_VOICES`.
+ * Qwen3-TTS clones whatever voice it is shown, so a "voice" here is a reference
+ * clip and a transcript of it - there is no per-voice model to train or ship.
+ * Adding a voice is adding an mp3, a matching `.txt`, and a line to
+ * `CURATED_VOICES`.
  *
- * The clips ship in the repo, in `clips/`. That is affordable because a
- * reference is a few seconds of speech rather than the minutes-long samples the
- * old Coqui-backed command needed - eight voices come to about 2.4MB - and it
- * means a fresh checkout has working voices with no configuration at all.
+ * The transcript is not optional decoration. It is what lets the model take the
+ * clip as an in-context example instead of collapsing it into a speaker
+ * embedding, and that is the difference between a voice that sounds like the
+ * character and one that merely sounds like the right kind of person. A voice
+ * with no transcript still works, just on the worse path - see `qwenTts.ts`.
+ *
+ * Both ship in the repo, in `clips/`. That is affordable because a reference is
+ * seconds of speech rather than the minutes-long samples the old Coqui-backed
+ * command needed - eight voices and their transcripts come to about 2MB - and
+ * it means a fresh checkout has working voices with no configuration at all.
  * `FINI_TTS_VOICE_DIR` overrides the directory for a host that wants its own
  * set.
  *
@@ -90,6 +97,16 @@ export type Voice = {
   label: string;
   /** Absolute path to the reference clip to clone from. */
   samplePath: string;
+  /**
+   * Absolute path to a transcript of the clip, when one is shipped with it.
+   *
+   * What turns on in-context conditioning, and the difference between a voice
+   * that sounds like the character and one that just sounds like the right
+   * kind of person. Optional because a host pointing `FINI_TTS_VOICE_DIR` at
+   * its own collection will not have written them, and the voice still works
+   * without one.
+   */
+  transcriptPath?: string;
 };
 
 /** `joey_wheeler` reads as a filename; `Joey Wheeler` reads as a voice. */
@@ -149,6 +166,31 @@ export const findVoiceSample = (
   }
 };
 
+/**
+ * Finds the transcript that goes with a clip.
+ *
+ * A `.txt` beside the clip and named after it, which works for both layouts
+ * without a second rule: `narrator.mp3` pairs with `narrator.txt`, and
+ * `narrator/whatever.wav` with `narrator/whatever.txt`.
+ *
+ * An empty file counts as absent. `qwen-tts` rejects an empty `--ref-text`
+ * outright, so a placeholder someone meant to fill in later would otherwise
+ * take the voice down rather than just leave it unimproved.
+ * @param samplePath The clip the transcript should accompany
+ * @returns The transcript path, or undefined when there is not a usable one
+ */
+export const findVoiceTranscript = (samplePath: string): string | undefined => {
+  const transcript = samplePath.replace(/\.[^.]+$/, ".txt");
+
+  try {
+    return existsSync(transcript) && statSync(transcript).size > 0
+      ? transcript
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 let cached: Voice[] | undefined;
 
 /**
@@ -168,7 +210,14 @@ export const availableVoices = (): Voice[] => {
     const samplePath = findVoiceSample(name, libraryDir);
 
     return samplePath
-      ? [{ name, label: label ?? toLabel(name), samplePath }]
+      ? [
+          {
+            name,
+            label: label ?? toLabel(name),
+            samplePath,
+            transcriptPath: findVoiceTranscript(samplePath),
+          },
+        ]
       : [];
   }).slice(0, MAX_VOICE_CHOICES);
 

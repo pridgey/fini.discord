@@ -69,7 +69,7 @@ export type SandboxOptions = {
    * Extra paths to mount read-only, on top of `/usr` and `/etc`.
    *
    * ffmpeg and yt-dlp need nothing here: they live in `/usr` and read only the
-   * workspace. `llama-tts` does not - it is installed under `$HOME` and its
+   * workspace. `qwen-tts` does not - it is installed under `$HOME` and its
    * model weights are gigabytes in the Hugging Face cache, and `$HOME` is
    * deliberately absent inside the container. Binding those two paths
    * read-only is what lets it run confined at all; the alternative was
