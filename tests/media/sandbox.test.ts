@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { realpathSync } from "fs";
 import { mkdtemp, rm, writeFile } from "fs/promises";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
 import {
   applySandbox,
   isSandboxAvailable,
@@ -104,6 +105,51 @@ describe("sandboxPrefix", () => {
     });
 
     expect(withEmpty).toEqual(withOut);
+  });
+});
+
+describe("resolver config", () => {
+  it("gives a networked job somewhere for /etc/resolv.conf to point", () => {
+    // `--share-net` is enough to reach a nameserver but not to find out where
+    // one is: on a systemd-resolved host /etc/resolv.conf is a symlink into
+    // /run, which is not mounted, so every lookup fails with "Name or service
+    // not known" and looks like the network being down.
+    const real = realpathSync("/etc/resolv.conf");
+    const prefix = sandboxPrefix({ workDir: WORK_DIR, network: true });
+
+    if (dirname(real) === "/etc") {
+      // A plain file is already covered by the /etc bind.
+      expect(prefix.filter((arg) => arg === "/etc")).toHaveLength(2);
+      return;
+    }
+
+    const at = prefix.indexOf(dirname(real));
+    expect(at).toBeGreaterThan(-1);
+    expect(prefix.slice(at - 1, at + 2)).toEqual([
+      "--ro-bind",
+      dirname(real),
+      dirname(real),
+    ]);
+  });
+
+  it("does not hand it to a job that asked for no network", () => {
+    const real = realpathSync("/etc/resolv.conf");
+    if (dirname(real) === "/etc") return;
+
+    const prefix = sandboxPrefix({ workDir: WORK_DIR, network: false });
+
+    expect(prefix).not.toContain(dirname(real));
+  });
+
+  it("mounts it after /etc, so it lands on top of the symlink", () => {
+    const real = realpathSync("/etc/resolv.conf");
+    if (dirname(real) === "/etc") return;
+
+    const prefix = sandboxPrefix({ workDir: WORK_DIR, network: true });
+
+    expect(prefix.indexOf(dirname(real))).toBeGreaterThan(
+      prefix.indexOf("/etc"),
+    );
   });
 });
 

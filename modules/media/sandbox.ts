@@ -1,4 +1,5 @@
-import { existsSync } from "fs";
+import { existsSync, realpathSync } from "fs";
+import { dirname } from "path";
 
 /**
  * Runs ffmpeg and yt-dlp inside a bubblewrap container.
@@ -46,6 +47,43 @@ export const isSandboxAvailable = (): boolean => {
   }
 
   return available;
+};
+
+/**
+ * The mount that makes DNS work inside a networked sandbox.
+ *
+ * `--share-net` gives the job the host's network namespace, which is enough to
+ * reach a nameserver but not enough to find out where one is. That comes from
+ * `/etc/resolv.conf`, and on a systemd-resolved host - Ubuntu, Pop!_OS,
+ * Debian - it is a symlink to `/run/systemd/resolve/stub-resolv.conf`. `/run`
+ * is not mounted in here, so the symlink dangles and every lookup fails with
+ * `Name or service not known`, which reads like the network being down rather
+ * than a missing file.
+ *
+ * What gets bound is the directory the real file lives in, not the file over
+ * `/etc/resolv.conf` itself. Binding onto the path cannot work: `/etc` is
+ * mounted read-only, so bubblewrap cannot create a mountpoint there, and it
+ * would have to follow the dangling symlink to try. Mounting the target's
+ * directory instead leaves the symlink alone and gives it something to point
+ * at, which also keeps this layout-agnostic - `/run/systemd/resolve`,
+ * `/run/resolvconf` and anywhere else all work the same way.
+ * @returns Bubblewrap arguments, or nothing when `/etc` already covers it
+ */
+const resolvConfMount = (): string[] => {
+  let real: string;
+
+  try {
+    real = realpathSync("/etc/resolv.conf");
+  } catch {
+    // Either there is no resolver config on the host or the symlink is broken
+    // out here too. Nothing to bind, and nothing this module can do about it.
+    return [];
+  }
+
+  const dir = dirname(real);
+
+  // A plain file in `/etc` is already covered by the bind above.
+  return dir === "/etc" ? [] : ["--ro-bind", dir, dir];
 };
 
 export type SandboxOptions = {
@@ -99,6 +137,10 @@ export const sandboxPrefix = ({
   "--ro-bind",
   "/etc",
   "/etc",
+  // After the `/etc` bind, so it lands on top of the symlink rather than
+  // under it. Only for a job that asked for the network - one that did not has
+  // no use for a nameserver and should not be told where to find one.
+  ...(network ? resolvConfMount() : []),
   // On a merged-/usr system these are symlinks; recreating them keeps the
   // dynamic loader's hardcoded paths working.
   "--symlink",
