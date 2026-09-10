@@ -34,6 +34,28 @@ export const MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024;
 /** yt-dlp writes to this name; the extension is whatever it settles on. */
 const OUTPUT_BASE = "download";
 
+/**
+ * Gives yt-dlp a JavaScript engine for YouTube's challenge.
+ *
+ * YouTube hands out a JS challenge that has to be solved before it will return
+ * a playable player response. yt-dlp farms that out to an external runtime and
+ * enables only deno by default, which is not installed here. With no runtime
+ * it does not fail loudly - it quietly drops to a limited client (`visionos`)
+ * and reports `This video is not available` for anything that client is
+ * refused, which reads like the video is gone rather than like a missing
+ * dependency.
+ *
+ * quickjs is the one that works inside the sandbox. `qjs` lives in `/usr`,
+ * already mounted read-only in the container, whereas node and bun live under
+ * `$HOME` - deliberately absent in there - and would each need a mount of
+ * their own plus a path that survives the next nvm upgrade.
+ *
+ * Most videos still resolve without this, which is why its absence went
+ * unnoticed; it is the ones YouTube refuses to the fallback client that need
+ * it, and that set only grows.
+ */
+const JS_RUNTIME_ARGS = ["--js-runtimes", "quickjs"];
+
 export type UrlProbe = {
   title: string;
   /** Seconds, or 0 when the site does not report one. */
@@ -77,6 +99,7 @@ export const probeUrl = async (
   const { stdout } = await runProcess(
     "yt-dlp",
     [
+      ...JS_RUNTIME_ARGS,
       "--no-playlist",
       // A url that is both a video and a playlist (a YouTube "watch later"
       // link) still resolves to a playlist for some extractors.
@@ -144,6 +167,7 @@ export const buildDownloadArgs = (request: DownloadRequest): string[] => {
   const { url, format, maxHeight, trim } = request;
 
   const args = [
+    ...JS_RUNTIME_ARGS,
     "--no-playlist",
     "-I",
     "1",

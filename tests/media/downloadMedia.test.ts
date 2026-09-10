@@ -53,6 +53,16 @@ describe("buildDownloadArgs", () => {
     expect(args[args.length - 1]).toBe("https://example.com/watch?v=abc");
   });
 
+  // Without a runtime yt-dlp cannot solve YouTube's JS challenge, and rather
+  // than failing it drops to a limited client and calls every video that
+  // client is refused "not available". qjs specifically, because it is the
+  // only one of the three that lives in /usr and is therefore visible inside
+  // the sandbox.
+  it("hands yt-dlp a JavaScript runtime for YouTube's challenge", () => {
+    expect(valueOf(argsFor("mp4"), "--js-runtimes")).toBe("quickjs");
+    expect(valueOf(argsFor("mp3"), "--js-runtimes")).toBe("quickjs");
+  });
+
   // Without --no-simulate, --print makes yt-dlp report the path it would have
   // written and download nothing at all.
   it("turns simulation back off, since --print implies it", () => {
