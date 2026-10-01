@@ -24,6 +24,7 @@
     "@discordjs/builders": "latest",
     "@discordjs/rest": "^0.2.0-canary.0",
     "@giphy/js-fetch-api": "^4.1.2",
+    "@huggingface/transformers": "^4.3.0",
     "@types/intl": "^1.2.0",
     "@types/sqlite3": "^3.1.11",
     "axios": "^1.13.2",

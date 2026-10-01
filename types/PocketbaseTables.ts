@@ -192,6 +192,38 @@ export type HorseyStatsRecord = {
   updated?: string;
 };
 
+/**
+ * A single jackpot win, one row per payout, for `/jackpot history`.
+ *
+ * Ordered and displayed by `won_at` rather than `created`, because rows seeded
+ * from historical `log` records were all inserted on the day the backfill ran.
+ *
+ * `username` is the winner's name as of the win, so history stays readable
+ * after someone leaves the server or renames.
+ */
+export type JackpotWinnerRecord = {
+  id?: string;
+  server_id: string;
+  user_id: string;
+  username: string;
+  amount: number;
+  /** When the win happened, as an ISO-ish PocketBase date string. */
+  won_at: string;
+  /** The winning message, when known. Empty for rows recovered from `log`. */
+  message_id?: string;
+  channel_id?: string;
+  source?: "live" | "backfill-log" | "backfill-discord";
+  identifier: string;
+  created?: string;
+  updated?: string;
+  /**
+   * 1-based position in the full history, computed at query time so a
+   * paginated page can keep numbering from where the previous page left off.
+   * Never persisted.
+   */
+  rank?: number;
+};
+
 export type ConfigRecord = {
   id?: string;
   server_id: string;

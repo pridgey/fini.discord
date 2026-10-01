@@ -2,6 +2,7 @@ import type { Message, PartialMessage } from "discord.js";
 import { addCoin, getUserBalance } from "./finicoin";
 import { randomNumber } from "../../utilities/randomNumber";
 import { createLog } from "../logger";
+import { recordJackpotWin } from "./jackpotWinners";
 
 /**
  * Calculates whether or not the user wins the jackpot
@@ -42,6 +43,18 @@ export const rollJackpot = async (
       message.guild?.name ?? "unknown guild name",
       "Jackpot"
     );
+
+    // Record the win for /jackpot history. Kept separate from the log entry
+    // below: the log is a flat audit trail, this is the queryable history.
+    await recordJackpotWin({
+      userId: authorId,
+      serverId: guildId,
+      username: message.author?.username ?? "unknown username",
+      servername: message.guild?.name ?? "unknown guild name",
+      amount: jackpotBalance,
+      messageId: message.id,
+      channelId: message.channelId,
+    });
 
     // Log the jackpot win
     createLog({
