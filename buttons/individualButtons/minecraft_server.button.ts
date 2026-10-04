@@ -9,6 +9,11 @@ import {
   waitForServerReady,
 } from "../../utilities/minecraft/waitForServerReady";
 import { getPublicIP } from "../../utilities/misc/getPublicIp";
+import {
+  describeOutcome,
+  ensureService,
+  type ServiceName,
+} from "../../utilities/minecraft/serviceHealth";
 
 export const namespace = "minecraft_server";
 
@@ -77,8 +82,34 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
       const publicIp = await getPublicIP();
 
-      await sendStatus(`✅ Minecraft server started successfully in ${minutes} minutes!\nEmpty server shutdown monitoring is active.
-              \nConnect at: \`${publicIp}:${MINECRAFT_PORT}\``);
+      /*
+       * Both helpers are separate long-lived processes that nothing here
+       * launches, and losing one is quiet: a misconfigured monitor left the
+       * server up all night while looking healthy. So start them if needed and
+       * report what state they are actually in, rather than claiming
+       * monitoring is active and hoping.
+       */
+      const services: ServiceName[] = ["monitor", "bot"];
+      const serviceLines: string[] = [];
+      for (const service of services) {
+        try {
+          serviceLines.push(
+            describeOutcome(service, await ensureService(service, process.cwd())),
+          );
+        } catch (error) {
+          console.error(`Failed to check the ${service} service:`, error);
+          serviceLines.push(`❔ Couldn't check the ${service} service`);
+        }
+      }
+
+      await sendStatus(
+        [
+          `✅ Minecraft server started successfully in ${minutes} minutes!`,
+          ...serviceLines,
+          "",
+          `Connect at: \`${publicIp}:${MINECRAFT_PORT}\``,
+        ].join("\n"),
+      );
     } catch (error) {
       console.error("Error starting Minecraft server:", error);
       await sendStatus(

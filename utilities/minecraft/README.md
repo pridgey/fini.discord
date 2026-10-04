@@ -153,6 +153,42 @@ to come back and spawns it again.
 | Walks | aimlessly, on its own feet - no teleporting except to escape terrain |
 | Answers | chat beginning with `hey fini` (`MINECRAFT_CHAT_TRIGGER`) |
 
+### Running it
+
+Two long-lived processes back the Minecraft features, and neither is started by
+the bot itself:
+
+| Unit | Does |
+| --- | --- |
+| `minecraft-monitor.service` | Shuts the server down after 15 min empty |
+| `fini-bot.service` | Fini's in-game presence |
+
+Both have recorded unit files in [`services/systemd/`](../../services/systemd).
+Install the bot one with:
+
+```bash
+sudo cp services/systemd/fini-bot.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now fini-bot.service
+```
+
+**Keep the recorded copies in step with what's installed.** The monitor unit
+existed only on the host for months, so a rebuilt machine would have silently
+lost the empty-server shutdown.
+
+The **Start Server** button now starts both if they aren't running and reports
+their state in its reply, rather than claiming monitoring is active and hoping.
+It prefers `systemctl`, falls back to a detached process when systemd declines
+(no privileges, or no unit installed), and says so - a detached copy won't
+survive a reboot.
+
+It never starts a second copy. That matters: two monitors both race to stop the
+server. Worth knowing if you ever extend the check - `pgrep -f` matches whole
+command lines, so it also matches *the caller* whenever the pattern appears in
+its own arguments. That reported a just-killed service as running, which is why
+`matchesServiceProcess` requires the process to actually *be* `bun` rather than
+a shell mentioning the script.
+
 ### Wandering
 
 `botWander.ts` holds the decision logic, deliberately free of RCON and of any

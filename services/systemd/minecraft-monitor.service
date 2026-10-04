@@ -1,0 +1,16 @@
+# /etc/systemd/system/minecraft-monitor.service
+[Unit]
+Description=Minecraft Server Monitor
+After=network.target
+
+[Service]
+Type=simple
+User=pridgey
+WorkingDirectory=/home/pridgey/Documents/Code/fini.discord/services
+EnvironmentFile=/home/pridgey/Documents/Code/fini.discord/.env
+ExecStart=/bin/bash -c 'source /home/pridgey/.bun/bin/bun-env.sh && bun minecraft-monitor.service.ts'
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
