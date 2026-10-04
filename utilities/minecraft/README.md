@@ -44,6 +44,215 @@ cd /opt/minecraft/AllTheMons && \
 `ATM10_RESTART=false` matters: without it `startserver.sh` relaunches the JVM
 in a loop after every crash, which means a crashed server looks alive forever.
 
+## The empty-server monitor
+
+`services/minecraft-monitor.service.ts` runs as its own **systemd unit**,
+separate from `fini.service` — nothing in `index.ts` or `npm start` launches it.
+
+```bash
+systemctl status minecraft-monitor.service
+journalctl -u minecraft-monitor.service -f      # what it currently sees
+sudo systemctl restart minecraft-monitor.service # after changing its code
+```
+
+A healthy journal prints `Current player count: N` every 30 seconds. The unit
+sets `WorkingDirectory` to `services/` and supplies `MINECRAFT_RCON_PASS` via
+`EnvironmentFile=`, so bun never needs to find `.env` itself. **Restarting the
+unit is required for code changes to take effect** — it is a long-lived process
+holding the state machine in memory.
+
+To run it by hand instead, go through the project root so `.env` is found:
+
+```bash
+bun --env-file=.env run services/minecraft-monitor.service.ts
+```
+
+Launching it as `bun minecraft-monitor.service.ts` from inside `services/`
+leaves `MINECRAFT_RCON_PASS` empty, every `list` fails authentication, and an
+auth failure is indistinguishable from a server that is down — so it would poll
+forever and shut nothing down. The service now refuses to start without the
+password rather than idling. Don't run a manual copy alongside the unit:
+`Restart=always` means systemd already keeps one alive, and two monitors both
+race to stop the server.
+
+### Fini's bots must not keep the server alive
+
+A SiliconeDolls fake player is a real `ServerPlayer`, so `list` counts it like
+a person:
+
+```
+There are 2 of a max of 20 players online: [334] Pridgey, [0] FINI
+```
+
+Counting that would mean the server never looks empty and never shuts down -
+the same symptom as the state bug below, from a different cause. So the monitor
+counts *humans*, via `countHumanPlayers()` in `parsePlayerList.ts`, and names
+listed in `MINECRAFT_BOT_NAMES` (`.env`, default `Fini`) are excluded. The
+journal says `Current player count: N (bots excluded)`.
+
+Verified end to end on 04Oct2026: with only the bot online, the countdown armed
+at 14:10:42 and the server stopped at 14:26:07, saving every dimension.
+
+Two consequences worth knowing:
+
+- The parser errs towards keeping the server up. If the name list can't be read
+  but a count was reported, the reported total is used - a missed shutdown
+  wastes power, a wrong one drops people out of the world mid-session.
+- **The bot gets stopped along with the server.** It can't hold the server open,
+  so it dies whenever the last human leaves, and nothing spawns it back. Any bot
+  worth keeping needs a lifecycle tied to human presence rather than its own.
+
+Note that `rg allowListingFakePlayers false` does *not* help here - it leaves
+`list` unchanged (it appears to govern the client tab list), which is why the
+filtering is done on our side.
+
+### The eleven-hour night of 04Oct2026
+
+The server was found still running the next morning after sitting empty since
+01:56. The monitor was up and polling correctly the whole time — the journal
+holds 1316 consecutive `Current player count: 0` lines — but it never armed a
+shutdown, because a player joining cancelled the countdown without moving
+`currentState` off `EMPTY_COUNTDOWN`:
+
+1. 01:52 server boots empty, countdown armed
+2. 01:55 one player joins — countdown cancelled, **state left on `EMPTY_COUNTDOWN`**
+3. 01:56 that player leaves — the server emptying again looks like a countdown
+   that is already running, so nothing is scheduled
+4. ...and nothing ever schedules one again
+
+The only code that reset the state was inside the single-player countdown
+block, which had been commented out in 83d7204. The fix makes every reading
+above zero return to `MONITORING`; the regression test in
+`tests/minecraft/minecraftMonitoring.test.ts` replays those four steps.
+
+Worth knowing when debugging this class of bug: the state is in memory, so
+`systemctl restart` clears a wedged countdown, and until the fix above the
+service also exited after each shutdown it performed (`stopMonitoring()` drained
+the event loop) and relied on `Restart=always` to come back.
+
+## Fini's in-game bot
+
+`services/fini-bot.service.ts` owns the bot's whole presence: when it exists,
+where it walks, and answering when someone talks to it. Run it from the project
+root, like the monitor:
+
+```bash
+bun --env-file=.env run services/fini-bot.service.ts
+```
+
+It is a **separate process from the monitor** and deliberately never keeps the
+server alive - see [Fini's bots must not keep the server
+alive](#finis-bots-must-not-keep-the-server-alive). An empty server still shuts
+down on schedule, which kills the bot; this process then waits for the server
+to come back and spawns it again.
+
+| | |
+| --- | --- |
+| Appears | when the first person joins, next to them |
+| Goes away | when the last person leaves |
+| Walks | aimlessly, on its own feet - no teleporting except to escape terrain |
+| Answers | chat beginning with `hey fini` (`MINECRAFT_CHAT_TRIGGER`) |
+
+### Wandering
+
+`botWander.ts` holds the decision logic, deliberately free of RCON and of any
+clock so the escalation is unit tested. It is **nearly blind**: aimless
+wandering has no destination, so there is nothing to path *to*, and reacting to
+being stuck gets climbing and swimming for free. The only sensing is a ground
+lookahead, because a fall is the one thing reacting cannot fix.
+
+Three failures found by watching it rather than reading it, all now covered by
+tests:
+
+- **Oscillation read as progress.** Comparing consecutive samples only, a bot
+  trapped in a crevice bounced between two points 1.4 blocks apart, clearing
+  the progress threshold every sample while going nowhere. Progress is now net
+  displacement across a window.
+- **Blocked turns steered back into the wall.** A uniformly random heading
+  points at the obstacle about half the time. Blocked turns are now at least
+  90° off the heading that just failed.
+- **Giving up stopped it forever.** Stopping a stuck bot means only gravity can
+  ever move it again. It now resets course, and only teleports after repeated
+  resets fail.
+
+Measured on this server: roughly 50 blocks of net travel per two minutes, with
+`move forward` sustained at about four blocks a second. It is timid in
+mountains - a steep slope reads as a drop - which `minSafeAhead` tunes.
+
+### In-game `hey fini`
+
+Chat never reaches the server log on this pack: NoChatReports is installed with
+`convertToGameMessage`, so player chat becomes system messages and no
+`<name> message` line is written. Grepping every archived log back to April
+finds not one.
+
+KubeJS *can* see chat, so the bridge is a generated script that echoes matching
+messages to the console, which this side reads back out of `latest.log`:
+
+```bash
+npm run set-bot-chat
+```
+
+**The first install needs a full server restart** - `PlayerEvents.chat` only
+binds at startup, and a script-only reload leaves a new handler silently
+inactive.
+
+Replies go through `converseWithAI`, the same entry point as Discord's
+`hey fini`, keyed on `minecraft:<player>` so in-game conversation keeps its own
+history rather than being mixed into that player's Discord thread. Replies are
+broadcast to everyone, and split to fit Minecraft's chat line limit.
+
+## The bot's skin
+
+A fake player's skin comes from the `textures` property on its GameProfile,
+which SiliconeDolls fills in from the real Mojang account matching the bot's
+**name**. So a bot called `Fini` wears whatever the real `FINI` account wears -
+name and skin are coupled, and that account is not ours.
+
+Replacing the property server-side breaks the coupling. Verified in game: a bot
+named `FINI` wearing Notch's skin, then Dinnerbone's.
+
+```bash
+npm run set-bot-skin -- account:Dinnerbone              # copy an account's skin (signed)
+npm run set-bot-skin -- 'url:https://host/fini.png#slim' # any PNG (unsigned)
+```
+
+That generates `kubejs/server_scripts/fini_skin.js` in the modpack and reloads
+it. **The generated file is disposable** - a pack update deletes `kubejs/`, and
+re-running the command puts it back. `utilities/minecraft/botSkin.ts` is the
+source of truth.
+
+### Three things that will waste your time
+
+**A client that has already seen the bot keeps the skin it first resolved.**
+Removing and re-adding the tab-list entry is not enough to make it re-resolve.
+So a skin change is only visible to clients that connect afterwards - reconnect
+to see it. This caused a long detour: an injection that looked like it had
+worked had actually just landed *before* the only client reconnected, and the
+two following changes appeared to do nothing.
+
+**`ServerEvents.tick` only binds on a full server start.** `/kubejs reload
+server-scripts` reloads the script and re-runs an already-bound handler in
+about a second, but installing this script for the first time needs a restart,
+or it silently never fires.
+
+**Don't use `/reload`.** It blocks the server thread for 90+ seconds on this
+pack, and three in quick succession tripped the watchdog
+(`max-tick-time=180000`) and killed the server. `/kubejs reload
+server-scripts` is the right tool and takes about a second.
+
+### Signed vs unsigned
+
+Only Mojang can sign a profile's textures, so any skin of our own is unsigned.
+`account:` specs borrow a real account's signed property and always work.
+Whether an **unsigned** property renders decides if a skin you draw yourself is
+possible at all - if the client rejects it, the bot falls back to the default
+skin. Judge it by reconnecting after setting one.
+
+Useful to know either way: the URL inside a payload does not have to be
+Mojang's, but `textures.minecraft.net/texture/<hash>` already addresses every
+skin ever uploaded to a Mojang account.
+
 ## Logs
 
 ```bash
@@ -74,7 +283,7 @@ doubles as proof the server is fully up.
 | `minecraft.config.ts` | Server directory, from `MINECRAFT_PATH` |
 | `packUpdate.ts` | Compares the installed pack against the latest CurseForge release |
 | `rcon.config.ts` | RCON host/port/password |
-| `minecraftMonitoring.ts` | Shuts the server down after 15 min empty. Run as its own process via `services/minecraft-monitor.service.ts` |
+| `minecraftMonitoring.ts` | Shuts the server down after 15 min empty. Run as its own process via `services/minecraft-monitor.service.ts` — see [The empty-server monitor](#the-empty-server-monitor) |
 | `neoforgeInstaller.ts` | Installs NeoForge when the pack expects a version that isn't present |
 | `waitForServerReady.ts` | Polls a boot to a definite ready/failed/timeout verdict |
 

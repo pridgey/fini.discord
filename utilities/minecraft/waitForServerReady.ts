@@ -123,8 +123,12 @@ export const getLogMarker = async (): Promise<LogMarker> => {
  * Reads whatever latest.log has gained since `marker`. A new inode (rolled) or
  * a file that shrank (truncated in place) both mean every byte in the file
  * belongs to the current run, so we start from the top.
+ *
+ * Exported because the in-game chat bridge tails the same file: chat never
+ * reaches the log on its own (NoChatReports converts it to system messages),
+ * so a KubeJS script echoes the lines it cares about and this reads them back.
  */
-const readLogSince = async (marker: LogMarker) => {
+export const readLogSince = async (marker: LogMarker) => {
   let inode: number;
   let size: number;
 
