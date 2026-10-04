@@ -9,6 +9,8 @@ import {
   getServerStatus,
   MINECRAFT_PORT,
 } from "../utilities/minecraft/checkServerStatus";
+import { ADMIN_ID } from "../utilities/discord/isAdmin";
+import { checkForPackUpdate } from "../utilities/minecraft/packUpdate";
 import { getPublicIP } from "../utilities/misc/getPublicIp";
 import { getServerPlayers } from "../utilities/minecraft/getServerPlays";
 
@@ -22,19 +24,49 @@ export const execute = async (
 ) => {
   await interaction.deferReply();
 
-  const isRunning = await getServerStatus();
+  const [isRunning, update] = await Promise.all([
+    getServerStatus(),
+    checkForPackUpdate(),
+  ]);
+
+  // Shown to everyone so the server never sits offline waiting on one person,
+  // and so everyone can see when an update is waiting
+  const updateNotice = update?.updateAvailable
+    ? `\n⬆️ Pack update available: \`${update.installed}\` → \`${update.latest}\`${
+        ADMIN_ID ? ` (only <@${ADMIN_ID}> can install it)` : ""
+      }`
+    : "";
 
   if (!isRunning) {
-    const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    const buttons = [
       new ButtonBuilder()
         .setCustomId(`minecraft_server:${interaction.user.id}`)
         .setLabel("Start Server")
         .setStyle(ButtonStyle.Primary),
+    ];
+
+    // Visible to all, admin-only to press - the handler re-checks, since a
+    // custom id is clickable by anyone who can see the message
+    if (update?.updateAvailable) {
+      buttons.push(
+        new ButtonBuilder()
+          .setCustomId(`minecraft_update:${update.latest}`)
+          .setLabel(`Install update ${update.latest}`)
+          .setStyle(ButtonStyle.Secondary)
+          .setEmoji("⬆️"),
+      );
+    }
+
+    const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      ...buttons,
     );
 
     await interaction.editReply({
-      content: "The Fini Minecraft server is currently offline.",
+      content: `The Fini Minecraft server is currently offline.${updateNotice}`,
       components: [buttonRow],
+      // The notice names the admin, but shouldn't ping them every time
+      // somebody checks on the server
+      allowedMentions: { parse: [] },
     });
     logCommand();
     return;
@@ -71,6 +103,9 @@ export const execute = async (
     replyText += `\nNo players are currently online.`;
   }
 
-  await interaction.editReply(replyText);
+  await interaction.editReply({
+    content: replyText + updateNotice,
+    allowedMentions: { parse: [] },
+  });
   logCommand();
 };
