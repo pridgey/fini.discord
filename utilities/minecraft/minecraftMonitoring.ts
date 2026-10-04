@@ -1,22 +1,49 @@
 import { Rcon } from "rcon-client";
 import { exec } from "child_process";
+import { MINECRAFT_BOT_NAMES } from "./minecraft.config";
+import { countHumanPlayers } from "./parsePlayerList";
 import { RconConfig, rconConfig } from "./rcon.config";
 
-type MonitorState =
-  | "IDLE"
-  | "MONITORING"
-  | "EMPTY_COUNTDOWN"
-  | "SINGLE_PLAYER_COUNTDOWN";
+type MonitorState = "IDLE" | "MONITORING" | "EMPTY_COUNTDOWN";
+
+/** How long the server may sit with nobody on it before it is stopped. */
+export const EMPTY_SHUTDOWN_MS = 15 * 60 * 1000;
+
+/** How often the player count is polled. */
+export const CHECK_INTERVAL_MS = 30 * 1000;
+
+/**
+ * A readable reason for an RCON failure.
+ *
+ * rcon-client throws errors with an empty `message` when the socket closes
+ * under it, which produced the useless log line `RCON is not answering ()`.
+ * That line exists to tell "the server is down" apart from "the password is
+ * wrong", so it has to say something.
+ */
+export const describeRconError = (error: unknown): string => {
+  if (error instanceof Error) {
+    return error.message || error.name || "Error with no message";
+  }
+  const described = String(error);
+  return described.length > 0 ? described : "unknown error";
+};
 
 export class MinecraftMonitor {
   private rconConfig: RconConfig;
+  /** Fake-player names that must not count towards keeping the server alive. */
+  private botNames: readonly string[];
   private checkInterval: ReturnType<typeof setInterval> | null = null;
   private shutdownTimer: ReturnType<typeof setTimeout> | null = null;
   private currentState: MonitorState = "IDLE";
-  private singlePlayerStartTime: number | null = null;
+  /** Whether RCON is currently unreachable, so failures are logged once. */
+  private rconFailing = false;
 
-  constructor(rconConfig: RconConfig) {
+  constructor(
+    rconConfig: RconConfig,
+    botNames: readonly string[] = MINECRAFT_BOT_NAMES,
+  ) {
     this.rconConfig = rconConfig;
+    this.botNames = botNames;
   }
 
   private async getPlayerCount(): Promise<number | null> {
@@ -25,13 +52,40 @@ export class MinecraftMonitor {
       const response = await rcon.send("list");
       await rcon.end();
 
-      // Parse response like "There are 0 of a max of 20 players online:"
-      const match = response.match(/There are (\d+)/);
-      const playerCount = match ? parseInt(match[1], 10) : 0;
+      /*
+       * Fini's own bots are real ServerPlayers and appear in `list`, so the
+       * count that drives the shutdown has to exclude them - otherwise a bot
+       * left wandering keeps the server up forever.
+       */
+      const playerCount = countHumanPlayers(response, this.botNames);
+
+      if (playerCount === null) {
+        console.log(`Could not read the player list: ${response}`);
+        return null;
+      }
+
+      if (this.rconFailing) {
+        this.rconFailing = false;
+        console.log("RCON is answering again");
+      }
 
       return playerCount;
     } catch (error) {
-      console.error("Failed to check player count:", error);
+      /*
+       * Usually this just means the server is down, which is a normal state for
+       * the monitor to sit in, so it must not spam the journal every 30
+       * seconds. But it is also what a wrong RCON password looks like, and the
+       * two are worth telling apart, so log the transition into and out of
+       * failure with the reason attached rather than swallowing it.
+       */
+      if (!this.rconFailing) {
+        this.rconFailing = true;
+        console.log(
+          `RCON is not answering (${describeRconError(
+            error,
+          )}). Treating the server as down until it responds again.`,
+        );
+      }
       return null;
     }
   }
@@ -54,94 +108,52 @@ export class MinecraftMonitor {
       const playerCount = await this.getPlayerCount();
 
       if (playerCount === null) {
-        console.log("Could not get player count, retrying...");
+        /*
+         * RCON didn't answer, so the server is down - either it was never up or
+         * this monitor just stopped it. Drop any armed countdown and wait: when
+         * the server is started again the next poll answers and monitoring
+         * picks back up without the service needing to be restarted.
+         */
+        if (this.currentState !== "MONITORING") {
+          console.log("Server is down, waiting for it to come back up");
+          this.cancelShutdown();
+          this.currentState = "MONITORING";
+        }
         return;
       }
 
-      console.log(`Current player count: ${playerCount}`);
+      console.log(`Current player count: ${playerCount} (bots excluded)`);
       await this.handlePlayerCount(playerCount);
-    }, 30000); // Check every 30 seconds
+    }, CHECK_INTERVAL_MS);
   }
 
-  private async handlePlayerCount(playerCount: number): Promise<void> {
-    if (playerCount > 1) {
-      // More than 1 player - cancel any shutdowns and reset
-      if (this.currentState === "SINGLE_PLAYER_COUNTDOWN") {
-        console.log("Multiple players detected, canceling shutdown");
-        await this.sendMinecraftMessage(
-          "§aShutdown canceled! More players have joined.",
-        );
-        this.cancelShutdown();
-      }
-      this.currentState = "MONITORING";
-      this.singlePlayerStartTime = null;
-    } else if (playerCount === 1) {
-      // Single player
+  /**
+   * Drives the state machine from one player-count reading.
+   *
+   * Public so it can be tested without an RCON server. Every path through it
+   * must leave `currentState` consistent with whether a timer is armed -
+   * previously a player joining cancelled the countdown but left the state on
+   * `EMPTY_COUNTDOWN`, so the server emptying again looked like it was already
+   * counting down and no shutdown was ever scheduled again.
+   */
+  public async handlePlayerCount(playerCount: number): Promise<void> {
+    if (playerCount > 0) {
       if (this.currentState === "EMPTY_COUNTDOWN") {
-        // Was empty, now has 1 player
         console.log("Player joined empty server, canceling empty countdown");
         this.cancelShutdown();
       }
+      this.currentState = "MONITORING";
+      return;
+    }
 
-      /* No longer handling single player countdown */
-      // if (this.currentState !== "SINGLE_PLAYER_COUNTDOWN") {
-      //   // Start single player countdown
-      //   console.log("Single player detected, starting 1 hour countdown");
-      //   this.currentState = "SINGLE_PLAYER_COUNTDOWN";
-      //   this.singlePlayerStartTime = Date.now();
-      //   await this.sendMinecraftMessage(
-      //     "§eYou are the only player online. Server will shut down in 1 hour if no one else joins.",
-      //   );
+    if (this.currentState !== "EMPTY_COUNTDOWN") {
+      console.log("Server empty, starting 15 minute countdown");
+      this.currentState = "EMPTY_COUNTDOWN";
 
-      //   // Schedule shutdown in 1 hour
-      //   this.shutdownTimer = setTimeout(() => {
-      //     console.log("Single player timeout reached, shutting down server");
-      //     this.stopServer(
-      //       "Server shutting down - no other players joined in the last hour.",
-      //     );
-      //   }, 60 * 60 * 1000); // 1 hour
-      // } else {
-      //   // Already in single player countdown, check for warnings
-      //   const elapsed = Date.now() - (this.singlePlayerStartTime ?? 0);
-      //   const remaining = 60 * 60 * 1000 - elapsed;
-
-      //   // Send warning at 15, 10, 5, 1 minutes remaining
-      //   if (remaining <= 15 * 60 * 1000 && remaining > 14.5 * 60 * 1000) {
-      //     await this.sendMinecraftMessage(
-      //       "§e15 minutes until server shutdown. Invite friends to keep playing!",
-      //     );
-      //   } else if (remaining <= 10 * 60 * 1000 && remaining > 9.5 * 60 * 1000) {
-      //     await this.sendMinecraftMessage(
-      //       "§610 minutes until server shutdown.",
-      //     );
-      //   } else if (remaining <= 5 * 60 * 1000 && remaining > 4.5 * 60 * 1000) {
-      //     await this.sendMinecraftMessage("§c5 minutes until server shutdown!");
-      //   } else if (remaining <= 1 * 60 * 1000 && remaining > 0.5 * 60 * 1000) {
-      //     await this.sendMinecraftMessage(
-      //       "§c§l1 MINUTE until server shutdown!",
-      //     );
-      //   }
-      // }
-    } else if (playerCount === 0) {
-      // No players
-      if (this.currentState === "SINGLE_PLAYER_COUNTDOWN") {
-        // Was single player, now empty
-        console.log("Last player left, switching to empty countdown");
-        this.cancelShutdown();
-      }
-
-      if (this.currentState !== "EMPTY_COUNTDOWN") {
-        // Start empty countdown
-        console.log("Server empty, starting 15 minute countdown");
-        this.currentState = "EMPTY_COUNTDOWN";
-
-        // Schedule shutdown in 15 minutes
-        this.shutdownTimer = setTimeout(() => {
-          console.log("Empty timeout reached, shutting down server");
-          this.stopServer();
-        }, 15 * 60 * 1000); // 15 minutes
-      }
-      this.singlePlayerStartTime = null;
+      this.shutdownTimer = setTimeout(() => {
+        console.log("Empty timeout reached, shutting down server");
+        this.stopServer();
+      }, EMPTY_SHUTDOWN_MS);
     }
   }
 
@@ -162,9 +174,13 @@ export class MinecraftMonitor {
     this.currentState = "IDLE";
   }
 
-  public async stopServer(
-    message: string = "Server shutting down.",
-  ): Promise<void> {
+  /**
+   * Actually takes the server down. Separated from `stopServer` so tests can
+   * exercise the state machine by overriding it - the `screen` fallback below
+   * reaches the real server on this host no matter what RCON config it was
+   * handed, so a test that calls through to it stops the live world.
+   */
+  protected async sendStopCommand(message: string): Promise<void> {
     try {
       const rcon = await Rcon.connect(this.rconConfig);
       await rcon.send(`say §c${message}`);
@@ -176,11 +192,30 @@ export class MinecraftMonitor {
       // Fallback to screen command
       exec('screen -S minecraft -X stuff "stop\n"');
     }
-    this.stopMonitoring();
+  }
+
+  public async stopServer(
+    message: string = "Server shutting down.",
+  ): Promise<void> {
+    await this.sendStopCommand(message);
+
+    /*
+     * Keep polling rather than stopping the poll loop. The server can be
+     * started again from the Discord button at any time and nothing restarts
+     * this service, so tearing down monitoring here would leave every boot
+     * after the first one unmonitored.
+     */
+    this.cancelShutdown();
+    this.currentState = "MONITORING";
   }
 
   public getState(): MonitorState {
     return this.currentState;
+  }
+
+  /** Whether a shutdown is currently armed. For tests and diagnostics. */
+  public hasPendingShutdown(): boolean {
+    return this.shutdownTimer !== null;
   }
 }
 
