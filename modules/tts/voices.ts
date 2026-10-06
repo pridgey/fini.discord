@@ -63,8 +63,9 @@ export type CuratedVoice = {
  * some.
  *
  * Curated rather than "every file in the directory" so that ordering is a
- * decision rather than whatever `readdir` returns, and because Discord caps a
- * string option at 25 choices.
+ * decision rather than whatever `readdir` returns. The order is also what the
+ * picker falls back on for a server that has not used 25 voices yet - see
+ * `rankVoices` in `savedVoices.ts`.
  */
 export const CURATED_VOICES: CuratedVoice[] = [
   { name: "narrator" },
@@ -77,7 +78,7 @@ export const CURATED_VOICES: CuratedVoice[] = [
   { name: "egirl", label: "E-girl" },
 ];
 
-/** Discord's ceiling on choices for a single string option. */
+/** Discord's ceiling on choices in one autocomplete response. */
 export const MAX_VOICE_CHOICES = 25;
 
 /**
@@ -234,24 +235,3 @@ export const availableVoices = (): Voice[] => {
 export const resetVoiceCache = (): void => {
   cached = undefined;
 };
-
-/**
- * Looks up a voice by its option value.
- * @param value The value sent with the interaction
- * @returns The voice, or undefined when it is not one of ours
- */
-export const findVoice = (value: string | undefined): Voice | undefined =>
-  value ? availableVoices().find((voice) => voice.name === value) : undefined;
-
-/**
- * Builds the choice list for the `voice` option.
- * @returns Discord option choices in curated order
- */
-export const voiceChoices = (): { name: string; value: string }[] =>
-  availableVoices().map((voice) => ({ name: voice.label, value: voice.name }));
-
-/** The installed voice names, for error messages. */
-export const voiceList = (): string =>
-  availableVoices()
-    .map((voice) => voice.name)
-    .join(", ");

@@ -338,3 +338,37 @@ export type PaginationContext = {
   total_pages_override?: number;
   updated?: string;
 };
+
+/**
+ * A voice someone saved for `/tts`. Global rather than per server - a voice
+ * saved in one guild can be used in any of them.
+ */
+export type TtsVoiceRecord = {
+  id?: string;
+  /** Unique, case-insensitively, across saved voices and presets alike. */
+  name: string;
+  /** Filename of the normalised 24kHz mono reference wav. */
+  clip: string;
+  /** What the clip says. Empty when whisper was unavailable or heard nothing. */
+  transcript: string;
+  /** sha256 of the normalised clip, for spotting the same audio saved twice. */
+  clip_hash: string;
+  /** Who saved it, and so who may delete it. */
+  user_id: string;
+  /** Where it was saved, for the record - it is usable everywhere. */
+  server_id: string;
+  created?: string;
+  updated?: string;
+};
+
+/** How often one server has used one `/tts` voice. */
+export type TtsVoiceUsageRecord = {
+  id?: string;
+  server_id: string;
+  /** A saved voice's record id, or `preset:<name>` for a shipped one. */
+  voice: string;
+  uses: number;
+  last_used: string;
+  created?: string;
+  updated?: string;
+};

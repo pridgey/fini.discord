@@ -36,10 +36,13 @@ whisper.cpp and a model under `~/.local/share/whisper.cpp`, then prints the
 | `FINI_TTS_VOICE_DIR` | Preset reference clips. Optional — defaults to `clips/` in this module. |
 
 With the binary or the weights missing, `/tts` says so up front rather than
-deferring and then failing. With no clips at all it still works, offering only
-the model's own default voice — and the `voice` option disappears entirely
-rather than being registered with an empty choice list, which Discord rejects
-outright.
+deferring and then failing. With no clips at all it still works, offering
+saved voices and the model's own default voice.
+
+Saved voices need two Pocketbase collections. The migration is tracked in
+`migrations/` because `/pb_migrations` is gitignored: copy it into
+`pb_migrations/` and restart Pocketbase, which applies unapplied migrations on
+boot.
 
 The build needs cmake, which is less of a given than it sounds: Ubuntu 22.04
 does not ship one, and a Homebrew cmake on a box without Homebrew's gcc dies at
@@ -89,8 +92,8 @@ hand, which was necessary: it heard "three-stop match" for the Smash announcer
 and ran two of the e-girl clip's sentences together.
 
 `CURATED_VOICES` in `voices.ts` is a hand-written list rather than a directory
-listing, for two reasons: Discord caps a string option at 25 choices, and the
-order is a decision rather than whatever `readdir` returns. The list leads with
+listing, because the order is a decision rather than whatever `readdir`
+returns. The list leads with
 the two voices that just read text straight, so someone who wants the audio
 rather than the joke does not have to scroll past the memes.
 
@@ -126,6 +129,44 @@ on it either way. The second is that clip loudness needs to be uniform: the
 shipped set spans about 13dB and works. Normalising the reference is a
 plausible improvement and an untested one.
 
+
+## Saved voices
+
+Anyone can save a voice, either with `/tts save name clip`, or by pressing
+**Save voice** under a `/tts say` reply that used an uploaded clip. A saved
+voice is the normalised clip and its transcript, stored in the `tts_voices`
+collection. It is global: one saved in one server can be used in every server.
+
+Because there can be any number of them, the `voice` option uses autocomplete
+rather than a fixed list of choices, which Discord caps at 25. Before anything
+is typed, the picker shows the 25 voices *this server* uses most, counted in
+`tts_voice_usage`, filled out with the presets and then the newest saves.
+Typing searches the whole catalogue, so a voice outside a server's top 25 is
+one or two letters away. The value is the voice's name, matched
+case-insensitively, so typing a name and sending without picking from the list
+works too. That is why presets and saved voices share one namespace: nobody can
+save a voice called "glados".
+
+The same voice saved under five names would bury the picker, so a save is
+refused when the clip is already saved. Two checks:
+
+- **Hash.** The sha256 of the *normalised* clip, which is deterministic for the
+  same upload. A hash of the raw upload is not, because tags and container
+  details vary between copies of the same audio.
+- **Transcript.** An exact match after lower-casing and stripping punctuation,
+  for 20+ characters. This catches the same clip from a different source,
+  where every byte differs but whisper hears the same sentence. Presets are
+  checked this way too. It is deliberately not fuzzy: missing a duplicate is
+  better than refusing someone's own recording of a famous line.
+
+A `/tts say` reply whose clip matches an existing voice points at that voice
+instead of offering a save button. Unsaved clips are held on disk, in
+`pendingVoices.ts`, for a day behind the button, because the workspace is gone
+by the time anyone presses it.
+
+Only the person who saved a voice can delete it (`/tts delete`). Voices are
+shared across servers, so no one server's admin is obviously entitled to remove
+one.
 ## Sampling: don't
 
 `buildTtsArgs` sets no sampling parameters, and that is deliberate. `qwen-tts`

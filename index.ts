@@ -280,6 +280,35 @@ client.on("messageCreate", async (message: Message) => {
   }
 });
 
+/**
+ * The options a command was run with, for the command log.
+ *
+ * Every declared option is listed, set or not, so a log row shows what was
+ * left at its default. A command with subcommands declares those rather than
+ * options at the top level, so for one of those the options listed are the
+ * ones under whichever subcommand was run, under its name.
+ */
+const describeOptions = (
+  interaction: ChatInputCommandInteraction,
+  declared: { name: string; toJSON: () => unknown }[],
+): string[] => {
+  const subcommand = interaction.options.getSubcommand(false);
+  const options = subcommand
+    ? ((
+        declared.find((o) => o.name === subcommand)?.toJSON() as {
+          options?: { name: string }[];
+        }
+      )?.options ?? [])
+    : declared;
+
+  return [
+    ...(subcommand ? [`subcommand: ${subcommand}`] : []),
+    ...options.map(
+      (o) => `${o.name}: ${interaction.options.get(o.name)?.value}`,
+    ),
+  ];
+};
+
 // If we get a slash command, run the slash command.
 client.on("interactionCreate", async (interaction) => {
   console.log("Interaction Used", {
@@ -348,13 +377,10 @@ client.on("interactionCreate", async (interaction) => {
 
           await createLog({
             command: `/${commandToRun.data.name}`,
-            input: `Command options:\n${commandToRun.data.options
-              .map((o) => {
-                const optionName = o.name;
-                const optionValue = interaction.options.get(optionName)?.value;
-                return `${optionName}: ${optionValue}`;
-              })
-              .join(",\n")}`,
+            input: `Command options:\n${describeOptions(
+              interaction,
+              commandToRun.data.options,
+            ).join(",\n")}`,
             output,
             server_id: interaction.guild?.id || "unknown",
             user_id: interaction.user.id,

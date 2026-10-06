@@ -1,5 +1,12 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
+import {
+  ActionRowBuilder,
+  AttachmentBuilder,
+  AutocompleteInteraction,
+  ButtonBuilder,
+  ChatInputCommandInteraction,
+  MessageFlags,
+} from "discord.js";
 import { join } from "path";
 import {
   ProcessError,
@@ -19,26 +26,41 @@ import {
 } from "../modules/media";
 import { expiryTimestamp, tryPublishFile } from "../modules/fileShare";
 import {
+  CatalogueVoice,
   DEFAULT_LANGUAGE,
   MAX_SPEECH_SECONDS,
+  MAX_VOICE_NAME_LENGTH,
   REFERENCE_SECONDS,
   TTS_LANGUAGES,
   TTS_SETUP_HINT,
   TtsUnavailableError,
-  availableVoices,
-  findVoice,
+  VoiceUsage,
+  deleteSavedVoice,
+  findCatalogueVoice,
+  findDuplicateVoice,
+  getVoiceUsage,
+  hashClip,
   isTtsConfigured,
+  normaliseVoiceName,
   prepareSpeakerClip,
+  rankVoices,
+  recordVoiceUse,
+  saveVoice,
+  stageSavedVoice,
   stageVoiceSample,
   stageVoiceTranscript,
+  stashPendingVoice,
   synthesizeSpeech,
   transcribeReference,
-  voiceChoices,
-  voiceList,
+  voiceCatalogue,
+  voiceChoice,
+  voiceNameProblem,
 } from "../modules/tts";
+import { saveVoiceRow } from "../buttons/individualButtons/tts_save_voice.button";
 
 /**
- * `/tts` - speaks text in a preset voice, or in one cloned from a clip.
+ * `/tts` - speaks text in a preset voice, a saved one, or one cloned from a
+ * clip, and manages the saved ones.
  *
  * Runs qwentts.cpp's `qwen-tts` against Qwen3-TTS. The interesting property of
  * that model for this command is that a voice is not a trained model but a few
@@ -57,6 +79,11 @@ import {
  * writes. 24kHz mono PCM is 48KB per second, so a minute of speech is a 2.8MB
  * wav against about 300KB of mp3 - and Discord plays an mp3 inline where it
  * makes people download a wav.
+ *
+ * Saved voices are shared across every server, and there can be any number of
+ * them, so the `voice` option is autocomplete rather than a fixed choice list.
+ * Before anything is typed it offers the 25 voices this server uses most;
+ * typing searches all of them. See `savedVoices.ts`.
  */
 
 /**
@@ -92,56 +119,163 @@ const TRANSCRIBE_TIMEOUT_MS = 120_000;
 const SYNTHESIS_TIMEOUT_MS = 8 * 60 * 1000;
 const ENCODE_TIMEOUT_MS = 60_000;
 
+/** Longest transcript accepted with `/tts save`. */
+const MAX_TRANSCRIPT_LENGTH = 1000;
+
+/** How much of `/tts voices` fits in one message, leaving room for the footer. */
+const VOICE_LIST_BUDGET = 1800;
+
 /**
- * Built by mutation rather than by chaining, because the `voice` option is
- * conditional: a string option with an empty choice list is rejected outright
- * by Discord's registration endpoint, so a host without the sample library has
- * to ship the command without the option rather than with an empty one. The
- * required `text` option is added first - Discord rejects a command whose
- * required options come after its optional ones.
+ * Every subcommand's required options come first - Discord rejects a command
+ * whose required options come after its optional ones.
  */
 const builder = new SlashCommandBuilder()
   .setName("tts")
-  .setDescription("Create some audio from text");
-
-builder.addStringOption((option) =>
-  option
-    .setName("text")
-    .setDescription("The text you want me to speak")
-    .setRequired(true)
-    .setMaxLength(MAX_TEXT_LENGTH),
-);
-
-if (availableVoices().length) {
-  builder.addStringOption((option) =>
-    option
-      .setName("voice")
-      .setDescription("Whose voice to use")
-      .setRequired(false)
-      .addChoices(...voiceChoices()),
+  .setDescription("Make Fini say things in all kinds of voices")
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("say")
+      .setDescription("Create some audio from text")
+      .addStringOption((option) =>
+        option
+          .setName("text")
+          .setDescription("The text you want me to speak")
+          .setRequired(true)
+          .setMaxLength(MAX_TEXT_LENGTH),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("voice")
+          .setDescription(
+            "Whose voice to use - type to search every saved voice",
+          )
+          .setRequired(false)
+          .setAutocomplete(true),
+      )
+      .addAttachmentOption((option) =>
+        option
+          .setName("clip")
+          .setDescription(
+            `Audio of a voice to imitate instead - the first ${REFERENCE_SECONDS} seconds are used`,
+          )
+          .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("language")
+          .setDescription("What language the text is in (default English)")
+          .setRequired(false)
+          .addChoices(...TTS_LANGUAGES),
+      ),
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("save")
+      .setDescription("Save a voice from a clip, for anyone to use")
+      .addStringOption((option) =>
+        option
+          .setName("name")
+          .setDescription("What to call the voice")
+          .setRequired(true)
+          .setMaxLength(MAX_VOICE_NAME_LENGTH),
+      )
+      .addAttachmentOption((option) =>
+        option
+          .setName("clip")
+          .setDescription(
+            `Audio of the voice - the first ${REFERENCE_SECONDS} seconds are used`,
+          )
+          .setRequired(true),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("transcript")
+          .setDescription(
+            "Exactly what the clip says - I'll work it out if you leave this empty",
+          )
+          .setRequired(false)
+          .setMaxLength(MAX_TRANSCRIPT_LENGTH),
+      ),
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("voices")
+      .setDescription("Browse the saved voices")
+      .addStringOption((option) =>
+        option
+          .setName("search")
+          .setDescription("Only show voices matching this")
+          .setRequired(false),
+      ),
+  )
+  .addSubcommand((subcommand) =>
+    subcommand
+      .setName("delete")
+      .setDescription("Delete a voice you saved")
+      .addStringOption((option) =>
+        option
+          .setName("voice")
+          .setDescription("The voice to delete")
+          .setRequired(true)
+          .setAutocomplete(true),
+      ),
   );
-}
-
-builder.addAttachmentOption((option) =>
-  option
-    .setName("clip")
-    .setDescription(
-      `Audio of a voice to imitate instead - the first ${REFERENCE_SECONDS} seconds are used`,
-    )
-    .setRequired(false),
-);
-
-builder.addStringOption((option) =>
-  option
-    .setName("language")
-    .setDescription("What language the text is in (default English)")
-    .setRequired(false)
-    .addChoices(...TTS_LANGUAGES),
-);
 
 export const data = builder;
 
+/**
+ * Fills in the `voice` option, for `say` and for `delete`.
+ *
+ * `say` offers the whole catalogue through `rankVoices`: this server's most
+ * used voices before anything is typed, the best matches from everywhere
+ * after. `delete` only offers voices the person asking saved, since those are
+ * the only ones it will delete.
+ * @param interaction The autocomplete interaction to respond to
+ */
+export const autocomplete = async (interaction: AutocompleteInteraction) => {
+  const typed = interaction.options.getFocused()?.toString() ?? "";
+  const subcommand = interaction.options.getSubcommand(false);
+
+  const [catalogue, usage] = await Promise.all([
+    voiceCatalogue(),
+    getVoiceUsage(interaction.guildId ?? "unknown").catch((err): VoiceUsage => {
+      console.error("Error reading TTS voice usage:", { err });
+      return new Map();
+    }),
+  ]);
+
+  const offered =
+    subcommand === "delete"
+      ? catalogue.filter(
+          (voice) =>
+            voice.kind === "saved" &&
+            voice.record.user_id === interaction.user.id,
+        )
+      : catalogue;
+
+  await interaction.respond(
+    rankVoices(offered, usage, typed).map((voice) => voiceChoice(voice, usage)),
+  );
+};
+
 export const execute = async (
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
+) => {
+  switch (interaction.options.getSubcommand()) {
+    case "save":
+      return save(interaction, logCommand);
+    case "voices":
+      return listVoices(interaction, logCommand);
+    case "delete":
+      return deleteVoice(interaction, logCommand);
+    default:
+      return say(interaction, logCommand);
+  }
+};
+
+/** `/tts say` - the speech itself. */
+const say = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
@@ -165,14 +299,15 @@ export const execute = async (
     return;
   }
 
-  const voice = findVoice(voiceValue);
+  const voice = voiceValue ? await findCatalogueVoice(voiceValue) : undefined;
 
-  // A stale client can still send a choice the library no longer has, and
+  // The option is free text with suggestions, not a fixed list, so this is
+  // anything from a typo to a voice deleted since the picker showed it - and
   // falling through would silently use the default voice instead of the one
   // that was asked for.
   if (voiceValue && !voice) {
     await interaction.reply(
-      `I don't have a voice called "${voiceValue}". I've got: ${voiceList()}.`,
+      `I don't have a voice called "${voiceValue}". Start typing in \`voice\` to search them, or browse with \`/tts voices\`.`,
     );
     logCommand();
     return;
@@ -182,7 +317,7 @@ export const execute = async (
   // went it would look like the command had misheard.
   if (voice && clip) {
     await interaction.reply(
-      "Pick one - a preset voice or a clip to imitate, not both.",
+      "Pick one - a voice or a clip to imitate, not both.",
     );
     logCommand();
     return;
@@ -216,13 +351,14 @@ export const execute = async (
   const limitBytes = uploadLimitBytes(interaction.guild?.premiumTier);
 
   try {
-    const { speakerFile, speakerTextFile } = await resolveSpeakerFile({
-      voice,
-      clip,
-      workDir: workspace.dir,
-      deadline,
-      interaction,
-    });
+    const { speakerFile, speakerTextFile, transcript } =
+      await resolveSpeakerFile({
+        voice,
+        clip,
+        workDir: workspace.dir,
+        deadline,
+        interaction,
+      });
 
     const describedVoice = voice
       ? voice.label
@@ -265,6 +401,13 @@ export const execute = async (
       fitTargetBytes(limitBytes),
     );
 
+    // Worked out before the reply goes out because it needs the normalised
+    // clip, and the workspace holding it is gone once this returns.
+    const offer =
+      clip && speakerFile
+        ? await saveOffer(speakerFile, transcript)
+        : NO_SAVE_OFFER;
+
     const spokenFor = probe.durationSeconds
       ? ` • ${formatDuration(probe.durationSeconds)}`
       : "";
@@ -282,10 +425,12 @@ export const execute = async (
             shared.url
           }\n-# ${describedVoice} • ${formatBytes(
             shared.bytes,
-          )} — too big to attach, so here's a link. Expires ${expiryTimestamp(
+          )}${offer.note} — too big to attach, so here's a link. Expires ${expiryTimestamp(
             shared.expiresAt,
           )}.`,
+          components: offer.components,
         });
+        await countUse(interaction, voice);
         return;
       }
 
@@ -302,9 +447,12 @@ export const execute = async (
     await interaction.editReply({
       content: `${quoted(text)}\n-# ${describedVoice}${spokenFor} • ${formatBytes(
         encoded.bytes,
-      )}`,
+      )}${offer.note}`,
       files: [attachment],
+      components: offer.components,
     });
+
+    await countUse(interaction, voice);
   } catch (err) {
     console.error("Error running /tts command:", { err });
 
@@ -345,15 +493,16 @@ const quoted = (text: string): string => {
  * The clip and the transcript both end up in the workspace for the same
  * reason: ffmpeg and `qwen-tts` run sandboxed with only the workspace
  * writable, so anything either of them reads has to be inside it first. A
- * preset is copied there by the bot, and an upload is streamed there from
- * Discord's CDN.
+ * preset is copied there by the bot, a saved voice is fetched from Pocketbase,
+ * and an upload is streamed there from Discord's CDN.
  *
- * The transcript is where the two sources stop being alike. A preset ships one
- * next to the clip, hand-checked, and staging it costs a file copy. An upload
- * has only audio, so the words have to be read back out of it - which is
- * whisper, and which is slow enough to be worth its own line in the reply.
- * Either way a missing transcript is not an error: it drops the generation to
- * x-vector-only conditioning, which is a worse voice rather than no voice.
+ * The transcript is where the sources stop being alike. A preset ships one
+ * next to the clip, hand-checked, and a saved voice carries the one it was
+ * saved with. An upload has only audio, so the words have to be read back out
+ * of it - which is whisper, and which is slow enough to be worth its own line
+ * in the reply. Either way a missing transcript is not an error: it drops the
+ * generation to x-vector-only conditioning, which is a worse voice rather than
+ * no voice.
  * @returns The normalised clip and its transcript, if any
  */
 const resolveSpeakerFile = async ({
@@ -363,33 +512,91 @@ const resolveSpeakerFile = async ({
   deadline,
   interaction,
 }: {
-  voice: { samplePath: string; transcriptPath?: string } | undefined;
+  voice: CatalogueVoice | undefined;
   clip: { name: string | null; url: string } | undefined;
   workDir: string;
   deadline: ReturnType<typeof createJobDeadline>;
   interaction: ChatInputCommandInteraction;
-}): Promise<{ speakerFile?: string; speakerTextFile?: string }> => {
-  if (!voice && !clip) return {};
+}): Promise<{
+  speakerFile?: string;
+  speakerTextFile?: string;
+  transcript?: string;
+}> => {
+  if (voice?.kind === "preset") {
+    const prepared = await prepareSpeakerClip(
+      await stageVoiceSample(voice.preset.samplePath, workDir),
+      workDir,
+      deadline.budget(CLIP_PREP_TIMEOUT_MS),
+    );
 
-  let staged: string;
+    return {
+      speakerFile: prepared.path,
+      speakerTextFile: voice.preset.transcriptPath
+        ? await stageVoiceTranscript(voice.preset.transcriptPath, workDir)
+        : undefined,
+    };
+  }
 
-  if (clip) {
-    await interaction.editReply(`Listening to \`${clip.name}\`...`);
-
-    // The extension is kept so ffmpeg's extension-sniffed demuxers still work,
-    // and capped so a 200-character filename cannot produce an unopenable path.
-    const extension = (clip.name?.match(/\.[^.]+$/)?.[0] ?? "").slice(0, 8);
-    staged = join(workDir, `reference${extension}`);
-
-    await downloadToFile(
-      clip.url,
-      staged,
-      MAX_CLIP_BYTES,
+  if (voice?.kind === "saved") {
+    const staged = await stageSavedVoice(
+      voice.record,
+      workDir,
       deadline.budget(FETCH_TIMEOUT_MS),
     );
-  } else {
-    staged = await stageVoiceSample(voice!.samplePath, workDir);
+
+    const prepared = await prepareSpeakerClip(
+      staged.clipPath,
+      workDir,
+      deadline.budget(CLIP_PREP_TIMEOUT_MS),
+    );
+
+    return {
+      speakerFile: prepared.path,
+      speakerTextFile: staged.transcriptPath,
+    };
   }
+
+  if (!clip) return {};
+
+  await interaction.editReply(`Listening to \`${clip.name}\`...`);
+
+  const prepared = await prepareUpload(clip, workDir, deadline);
+
+  await interaction.editReply(`Working out what \`${clip.name}\` says...`);
+
+  const transcript = await transcribeReference(
+    prepared,
+    workDir,
+    deadline.budget(TRANSCRIBE_TIMEOUT_MS),
+  );
+
+  return {
+    speakerFile: prepared,
+    speakerTextFile: transcript?.path,
+    transcript: transcript?.text,
+  };
+};
+
+/**
+ * Downloads an uploaded clip into the workspace and normalises it.
+ * @returns Path to the normalised clip
+ */
+const prepareUpload = async (
+  clip: { name: string | null; url: string },
+  workDir: string,
+  deadline: ReturnType<typeof createJobDeadline>,
+): Promise<string> => {
+  // The extension is kept so ffmpeg's extension-sniffed demuxers still work,
+  // and capped so a 200-character filename cannot produce an unopenable path.
+  const extension = (clip.name?.match(/\.[^.]+$/)?.[0] ?? "").slice(0, 8);
+  const staged = join(workDir, `reference${extension}`);
+
+  await downloadToFile(
+    clip.url,
+    staged,
+    MAX_CLIP_BYTES,
+    deadline.budget(FETCH_TIMEOUT_MS),
+  );
 
   const prepared = await prepareSpeakerClip(
     staged,
@@ -397,24 +604,288 @@ const resolveSpeakerFile = async ({
     deadline.budget(CLIP_PREP_TIMEOUT_MS),
   );
 
-  if (voice) {
-    return {
-      speakerFile: prepared.path,
-      speakerTextFile: voice.transcriptPath
-        ? await stageVoiceTranscript(voice.transcriptPath, workDir)
-        : undefined,
-    };
+  return prepared.path;
+};
+
+type SaveOffer = {
+  /** Appended to the credit line. */
+  note: string;
+  components: ActionRowBuilder<ButtonBuilder>[];
+};
+
+const NO_SAVE_OFFER: SaveOffer = { note: "", components: [] };
+
+/**
+ * What to say under a reply that used an uploaded clip.
+ *
+ * A clip that is already saved gets pointed at the saved voice instead of a
+ * button, which is most of what keeps the same voice from being saved under
+ * five names. Anything else is stashed for a day behind a "Save voice" button.
+ *
+ * Never throws: the speech is the answer, and failing to offer to keep the
+ * voice is no reason not to post it.
+ * @param speakerFile The normalised clip
+ * @param transcript What whisper heard in it
+ * @returns The note and button to attach
+ */
+const saveOffer = async (
+  speakerFile: string,
+  transcript: string | undefined,
+): Promise<SaveOffer> => {
+  try {
+    const clipHash = await hashClip(speakerFile);
+    const duplicate = await findDuplicateVoice({ clipHash, transcript });
+
+    if (duplicate) {
+      return {
+        note: ` • that's **${duplicate.label}**, use \`voice: ${duplicate.name}\` next time`,
+        components: [],
+      };
+    }
+
+    const pendingId = await stashPendingVoice({
+      clipPath: speakerFile,
+      clipHash,
+      transcript,
+    });
+
+    return { note: "", components: [saveVoiceRow(pendingId)] };
+  } catch (err) {
+    console.error("Error offering to save TTS voice:", { err });
+    return NO_SAVE_OFFER;
+  }
+};
+
+/** Counts a use towards this server's picker order. */
+const countUse = async (
+  interaction: ChatInputCommandInteraction,
+  voice: CatalogueVoice | undefined,
+): Promise<void> => {
+  if (voice && interaction.guildId) {
+    await recordVoiceUse(interaction.guildId, voice);
+  }
+};
+
+/**
+ * `/tts save` - saves a clip as a voice without speaking anything first.
+ *
+ * The same work `say` does on an upload, minus the generation: download,
+ * normalise, transcribe. It takes a media slot for the same reason - whisper
+ * is not cheap - but not the TTS model, so it works on a host where only
+ * ffmpeg is installed.
+ */
+const save = async (
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
+) => {
+  const name = normaliseVoiceName(
+    interaction.options.get("name")?.value?.toString() ?? "",
+  );
+  const clip = interaction.options.get("clip")?.attachment;
+  const givenTranscript = interaction.options
+    .get("transcript")
+    ?.value?.toString()
+    .trim();
+
+  // The cheap refusals come before the slot and the defer, so a bad name or a
+  // taken one is answered immediately rather than after a download.
+  const problem =
+    voiceNameProblem(name) ??
+    (!clip ? "I need a clip of the voice." : undefined) ??
+    (clip && clip.size > MAX_CLIP_BYTES
+      ? `That clip is ${formatBytes(clip.size)} and I cap at ${formatBytes(
+          MAX_CLIP_BYTES,
+        )}. I only use the first ${REFERENCE_SECONDS} seconds anyway.`
+      : undefined);
+
+  if (problem) {
+    await interaction.reply(problem);
+    logCommand();
+    return;
   }
 
-  await interaction.editReply(`Working out what \`${clip!.name}\` says...`);
+  const taken = await findCatalogueVoice(name);
+  if (taken) {
+    await interaction.reply(
+      `There's already a voice called **${taken.label}**. Pick another name.`,
+    );
+    logCommand();
+    return;
+  }
 
-  const transcript = await transcribeReference(
-    prepared.path,
-    workDir,
-    deadline.budget(TRANSCRIBE_TIMEOUT_MS),
-  );
+  const release = tryAcquireMediaSlot();
+  if (!release) {
+    await interaction.reply(
+      "I'm already chewing through as much audio as I can handle. Give me a minute and try again.",
+    );
+    logCommand();
+    return;
+  }
 
-  return { speakerFile: prepared.path, speakerTextFile: transcript?.path };
+  await interaction.deferReply();
+
+  const deadline = createJobDeadline();
+  const workspace = await createMediaWorkspace();
+
+  try {
+    await interaction.editReply(`Listening to \`${clip!.name}\`...`);
+
+    const prepared = await prepareUpload(clip!, workspace.dir, deadline);
+
+    let transcript = givenTranscript;
+    if (!transcript) {
+      await interaction.editReply(`Working out what \`${clip!.name}\` says...`);
+
+      transcript = (
+        await transcribeReference(
+          prepared,
+          workspace.dir,
+          deadline.budget(TRANSCRIBE_TIMEOUT_MS),
+        )
+      )?.text;
+    }
+
+    const result = await saveVoice({
+      name,
+      clipPath: prepared,
+      clipHash: await hashClip(prepared),
+      transcript,
+      userId: interaction.user.id,
+      serverId: interaction.guildId ?? "unknown",
+    });
+
+    if (!result.ok) {
+      await interaction.editReply(result.message);
+      return;
+    }
+
+    await interaction.editReply(
+      `🎙️ Saved **${result.voice.label}**. Anyone can use it with \`/tts say voice: ${result.voice.name}\`.${
+        transcript
+          ? ""
+          : "\n-# I couldn't make out what the clip says, so it'll sound less like them. Delete it and save it again with a `transcript` to fix that."
+      }`,
+    );
+  } catch (err) {
+    console.error("Error running /tts save:", { err });
+
+    await interaction
+      .editReply(failureMessage(err))
+      .catch((replyErr) =>
+        console.error("Error reporting /tts save failure:", { replyErr }),
+      );
+  } finally {
+    await workspace.cleanup();
+    release();
+    logCommand();
+  }
+};
+
+/**
+ * `/tts voices` - the catalogue, most used here first.
+ *
+ * Ephemeral, because it is a lookup rather than something the channel needs
+ * to see, and plain text cut at one message rather than paginated: with
+ * hundreds of voices, `search` narrows it faster than paging would.
+ */
+const listVoices = async (
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
+) => {
+  const search = interaction.options.get("search")?.value?.toString() ?? "";
+
+  try {
+    const [catalogue, usage] = await Promise.all([
+      voiceCatalogue(),
+      getVoiceUsage(interaction.guildId ?? "unknown"),
+    ]);
+
+    const voices = rankVoices(catalogue, usage, search, Infinity);
+
+    if (!voices.length) {
+      await interaction.reply({
+        content: search
+          ? `No voices match "${search}".`
+          : "There aren't any voices yet. Save one with `/tts save`.",
+        flags: [MessageFlags.Ephemeral],
+      });
+      return;
+    }
+
+    const lines: string[] = [];
+    let length = 0;
+
+    for (const voice of voices) {
+      const uses = usage.get(voice.key)?.uses ?? 0;
+      const line = `- **${voice.label}**${
+        voice.kind === "preset"
+          ? " · preset"
+          : ` · by <@${voice.record.user_id}>`
+      }${uses ? ` · used ${uses}× here` : ""}`;
+
+      if (length + line.length + 1 > VOICE_LIST_BUDGET) break;
+
+      lines.push(line);
+      length += line.length + 1;
+    }
+
+    const hidden = voices.length - lines.length;
+    const header = search
+      ? `**${voices.length}** voice${voices.length === 1 ? "" : "s"} matching "${search}":`
+      : `**${voices.length}** voices, most used here first:`;
+
+    await interaction.reply({
+      content: [
+        header,
+        ...lines,
+        hidden
+          ? `-# ...and ${hidden} more. Narrow it down with \`search\`.`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      flags: [MessageFlags.Ephemeral],
+      allowedMentions: { parse: [] },
+    });
+  } catch (err) {
+    console.error("Error running /tts voices:", { err });
+    await interaction.reply({
+      content: failureMessage(err),
+      flags: [MessageFlags.Ephemeral],
+    });
+  } finally {
+    logCommand();
+  }
+};
+
+/** `/tts delete` - removes a voice, if the person asking saved it. */
+const deleteVoice = async (
+  interaction: ChatInputCommandInteraction,
+  logCommand: () => void,
+) => {
+  const name = interaction.options.get("voice")?.value?.toString() ?? "";
+
+  try {
+    const outcome = await deleteSavedVoice(name, interaction.user.id);
+
+    await interaction.reply({
+      content: {
+        deleted: `Deleted **${normaliseVoiceName(name)}**.`,
+        missing: `I don't have a voice called "${name}".`,
+        preset: "That one ships with me - it can't be deleted.",
+        "not-yours": "You can only delete voices you saved.",
+      }[outcome],
+      flags: outcome === "deleted" ? [] : [MessageFlags.Ephemeral],
+    });
+  } catch (err) {
+    console.error("Error running /tts delete:", { err });
+    await interaction.reply({
+      content: failureMessage(err),
+      flags: [MessageFlags.Ephemeral],
+    });
+  } finally {
+    logCommand();
+  }
 };
 
 /**

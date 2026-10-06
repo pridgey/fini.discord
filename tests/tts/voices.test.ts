@@ -6,11 +6,9 @@ import {
   CURATED_VOICES,
   MAX_VOICE_CHOICES,
   availableVoices,
-  findVoice,
   findVoiceSample,
   findVoiceTranscript,
   resetVoiceCache,
-  voiceChoices,
   voiceLibraryDir,
 } from "../../modules/tts/voices";
 
@@ -257,35 +255,5 @@ describe("availableVoices", () => {
       "GLaDOS",
       "E-girl",
     ]);
-  });
-});
-
-describe("findVoice", () => {
-  beforeEach(async () => {
-    await installFlat("gojo");
-    resetVoiceCache();
-  });
-
-  it("resolves an installed voice to its clip", () => {
-    expect(findVoice("gojo")?.samplePath).toBe(join(dir, "gojo.mp3"));
-  });
-
-  it("returns nothing for a voice that is not installed", () => {
-    // A stale client can still send a choice the library no longer has, and
-    // the command has to be able to tell.
-    expect(findVoice("narrator")).toBeUndefined();
-  });
-
-  it("returns nothing when no voice was chosen", () => {
-    expect(findVoice(undefined)).toBeUndefined();
-  });
-});
-
-describe("voiceChoices", () => {
-  it("pairs the label with the option value", async () => {
-    await installFlat("glados");
-    resetVoiceCache();
-
-    expect(voiceChoices()).toEqual([{ name: "GLaDOS", value: "glados" }]);
   });
 });
