@@ -1,10 +1,12 @@
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
   ContainerBuilder,
   MessageFlags,
 } from "discord.js";
+import { BATTLE_BOARD_FILE, renderBattleBoard } from "../cardArt";
 import type { PotSplit } from "../wagers";
 import type {
   MatchResult,
@@ -17,15 +19,14 @@ import {
   DRAW_ACCENT,
   SIDE_ACCENT,
   TYPE_NAME,
-  compositionOf,
   explainMultiplier,
-  statLine,
 } from "./theme";
 
 /**
  * The match result.
  *
- * Two lines per round, and the second one is small.
+ * The rounds are an image - the battle board, see `renderBattleBoard` - with
+ * the text rounds kept only as a fallback for when it fails to render.
  *
  * This has been through both failure modes. The first version showed only the
  * arithmetic, so a player could see that a card hit for 7 but not why. The fix
@@ -34,6 +35,10 @@ import {
  * over. So the layout now splits by *need*: the headline of each round carries
  * who fought and who won, and the derivation sits underneath in small text for
  * anyone who wants it. Full working is still available behind a button.
+ *
+ * Even two lines a round was a wall of names, emoji and arithmetic, so the
+ * headline job - who fought whom and who won - moved into the board, where the
+ * winner is lit and the loser dimmed and nothing needs parsing.
  */
 
 export type ResultMessageInput = {
@@ -122,8 +127,15 @@ const multiplierNote = (
   );
 };
 
+/** Keyword triggers, which the board has no room for. Rare while keywords are off. */
+const roundNotes = (result: MatchResult): string[] =>
+  result.rounds.flatMap((round) =>
+    round.notes.map((note) => `-# \`R${round.slot}\` ↳ ${note}`),
+  );
+
 /**
- * One round in two lines: who won it, then the working in small text.
+ * One round in two lines: who won it, then the working in small text. Only
+ * used when the battle board fails to render.
  *
  * The winner leads the line. An earlier version marked every round with a ✅,
  * which read as "you won this one" regardless of who actually did.
@@ -152,12 +164,26 @@ const roundBlock = (
   ].join("\n");
 };
 
-export const buildResultMessage = (
-  input: ResultMessageInput,
-): {
+export type BuiltResultMessage = {
   components: ContainerBuilder[];
+  files: AttachmentBuilder[];
   flags: [MessageFlags.IsComponentsV2];
-} => {
+};
+
+/** Renders the battle board and builds the result around it. */
+export const buildResultMessage = async (
+  input: ResultMessageInput,
+): Promise<BuiltResultMessage> =>
+  composeResultMessage(input, await renderBattleBoard(input.result, input.names));
+
+/**
+ * Builds the result from an already-rendered board, or from none - a null board
+ * falls back to the text rounds. Split out so the fallback is testable.
+ */
+export const composeResultMessage = (
+  input: ResultMessageInput,
+  board: Buffer | null,
+): BuiltResultMessage => {
   const { result, names, userIds, split } = input;
 
   const accent =
@@ -168,51 +194,71 @@ export const buildResultMessage = (
       ? `## 🤝 Draw — ${result.roundsWon.challenger} – ${result.roundsWon.defender}`
       : `## 🏆 ${names[result.winner]} wins ${result.roundsWon.challenger} – ${result.roundsWon.defender}`;
 
-  const challengerCards = result.rounds.map((round) => round.challenger.card);
-  const defenderCards = result.rounds.map((round) => round.defender.card);
-
   const container = new ContainerBuilder()
     .setAccentColor(accent)
     .addTextDisplayComponents((text) =>
       text.setContent(
         [
           headline,
-          `<@${userIds.challenger}> ${compositionOf(challengerCards)} vs ${compositionOf(defenderCards)} <@${userIds.defender}>`,
+          `<@${userIds.challenger}> vs <@${userIds.defender}>`,
         ].join("\n"),
       ),
     );
 
-  /* All rounds in one block with one separator, rather than a separator each -
-     three bordered sections for three rounds reads as three times the content. */
-  container
-    .addSeparatorComponents((separator) => separator)
-    .addTextDisplayComponents((text) =>
-      text.setContent(
-        result.rounds.map((round) => roundBlock(round, names)).join("\n"),
+  if (board) {
+    const notes = roundNotes(result);
+    container.addMediaGalleryComponents((gallery) =>
+      gallery.addItems((item) =>
+        item
+          .setURL(`attachment://${BATTLE_BOARD_FILE}`)
+          .setDescription(
+            `${names.challenger} vs ${names.defender}, ${result.roundsWon.challenger} – ${result.roundsWon.defender}`,
+          ),
       ),
     );
+    if (notes.length > 0) {
+      container.addTextDisplayComponents((text) =>
+        text.setContent(notes.join("\n")),
+      );
+    }
+  } else {
+    /* All rounds in one block with one separator, rather than a separator each -
+       three bordered sections for three rounds reads as three times the content. */
+    container
+      .addSeparatorComponents((separator) => separator)
+      .addTextDisplayComponents((text) =>
+        text.setContent(
+          result.rounds.map((round) => roundBlock(round, names)).join("\n"),
+        ),
+      );
+  }
 
   /* How it was decided, and the money. Total damage is only interesting when it
      actually settled the match, so it is stated plainly in that case and kept as
-     a footnote otherwise. */
+     a footnote otherwise - and the board already carries that footnote. */
   const decided =
     result.decidedBy === "damage"
       ? `**Decided on total damage** — ${names.challenger} ${result.tiebreakDamage.challenger}, ${names.defender} ${result.tiebreakDamage.defender}`
       : result.decidedBy === "rule"
         ? "Rounds *and* total damage both level."
-        : `-# Total damage ${result.tiebreakDamage.challenger} – ${result.tiebreakDamage.defender}`;
+        : board
+          ? ""
+          : `-# Total damage ${result.tiebreakDamage.challenger} – ${result.tiebreakDamage.defender}`;
 
   const pot = split
-    ? `\n**Pot ${split.pot} fc** — ${
+    ? `**Pot ${split.pot} fc** — ${
         result.winner === "draw"
           ? "returned to both sides"
           : `${split.payout} to ${names[result.winner]}`
       }${split.jackpotCut > 0 ? `, ${split.jackpotCut} raked to the jackpot 🎰` : ""}`
     : "";
 
-  container
-    .addSeparatorComponents((separator) => separator)
-    .addTextDisplayComponents((text) => text.setContent(`${decided}${pot}`));
+  const summary = [decided, pot].filter(Boolean).join("\n");
+  if (summary) {
+    container
+      .addSeparatorComponents((separator) => separator)
+      .addTextDisplayComponents((text) => text.setContent(summary));
+  }
 
   /* Detail on demand: the compact view is what everyone reads, and anyone
      learning the maths can ask for the long form without it cluttering the
@@ -228,5 +274,11 @@ export const buildResultMessage = (
     );
   }
 
-  return { components: [container], flags: [MessageFlags.IsComponentsV2] };
+  return {
+    components: [container],
+    files: board
+      ? [new AttachmentBuilder(board, { name: BATTLE_BOARD_FILE })]
+      : [],
+    flags: [MessageFlags.IsComponentsV2],
+  };
 };

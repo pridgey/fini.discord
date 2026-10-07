@@ -1,15 +1,18 @@
 import { findKeyword } from "./keywords";
 import { RARITY_LABEL, TYPE_EMOJI } from "./rules";
-import type { BattleCard, OwnedCard } from "./types";
+import type { BattleCard } from "./types";
 
 /**
  * Text rendering.
  *
  * Almost everything a player sees is now built with Discord components in
- * `ui/` - containers, galleries, accent colours. What is left here is the text
- * that components cannot improve on: a monospace card face for when an image
- * fails to render, and a compact collection listing whose whole job is to be
- * copy-pasteable card ids.
+ * `ui/` - containers, galleries, accent colours. What is left here is the one
+ * thing components cannot improve on: a monospace card face, used when an image
+ * fails to render.
+ *
+ * The collection listing that used to live here is gone - the collection is a
+ * paginated Components V2 surface now, built by
+ * `queries/queryFunctions/v2CardCollection.query.ts`.
  */
 
 /** One card as a monospace face. */
@@ -33,36 +36,3 @@ export const renderCardFace = (card: BattleCard): string => {
   return `${TYPE_EMOJI[card.type]} **${card.name}**\n\`\`\`\n${rows.join("\n")}\n\`\`\``;
 };
 
-/** A compact, ID-bearing collection listing - the ids are what you type into a lineup. */
-export const renderCollectionPage = (
-  cards: OwnedCard[],
-  options?: { page?: number; totalPages?: number; ownerLabel?: string },
-): string => {
-  if (cards.length === 0) {
-    return `${options?.ownerLabel ?? "You"} have no v2 cards yet. Try \`/finicard-v2 pack\`.`;
-  }
-
-  const lines = cards.map((owned) => {
-    const definition = owned.definition;
-    const keyword = findKeyword(definition.keyword);
-    return [
-      `${TYPE_EMOJI[definition.card_type]} **${definition.card_name}**${owned.foil ? " ✨" : ""}`,
-      `\`${definition.power}/${definition.wit}/${definition.heart}\``,
-      RARITY_LABEL[definition.rarity],
-      keyword ? keyword.name : null,
-      `\`${owned.id}\``,
-    ]
-      .filter(Boolean)
-      .join(" · ");
-  });
-
-  const header = options?.ownerLabel
-    ? `### ${options.ownerLabel} — v2 collection`
-    : "### v2 collection";
-  const footer =
-    options?.page && options?.totalPages
-      ? `\n\n_Page ${options.page}/${options.totalPages} · stats read power/wit/heart_`
-      : "\n\n_Stats read power/wit/heart_";
-
-  return `${header}\n${lines.join("\n")}${footer}`;
-};

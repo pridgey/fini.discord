@@ -170,7 +170,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
     if (channel && "send" in channel) {
       await channel.send(
-        buildResultMessage({
+        await buildResultMessage({
           battleId,
           result,
           names,

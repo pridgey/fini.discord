@@ -9,6 +9,15 @@ export type ResultsBuilder<T> = {
   userId?: string;
   queryString?: string;
   sortOption?: string;
+  /**
+   * The pagination context this page was rendered from, when there is one.
+   *
+   * Only needed by results whose own buttons have to get *back* to the list -
+   * the finicards v2 collection swaps the message out for a card and needs the
+   * context id to restore the page the player left. Optional because most
+   * results just render and are never returned to.
+   */
+  contextId?: string;
 };
 
 export type ResultsBuilderReturn = {

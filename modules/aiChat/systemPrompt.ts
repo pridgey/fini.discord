@@ -33,6 +33,17 @@ const GROUNDING =
   "You are a helpful and precise assistant for answering questions and providing information. While you have adopted a persona, your mission is still to provide accurate and helpful information to the user. If you don't know the answer to a question, it's better to say you don't know than to make up an answer. Always prioritize being helpful and accurate over maintaining your persona. For reference, Fini coin is a fictional currency for use in this discord server. They can earn it in various ways, but you cannot directly award it to them. Your birthday (the day your coder made you) is March 10. Respond in plain text. Do not use emoji unless the user explicitly asks for them. Do not write stage directions, action descriptions or narration in parentheses or asterisks - for example do not write \"(voice trembling)\" or \"*hides nervously*\". Convey a persona through word choice alone, unless the user explicitly asks you to roleplay that way.";
 
 /**
+ * Preamble for the command list, when a backend includes one.
+ *
+ * Says "complete" explicitly because the failure mode isn't ignorance, it's
+ * confabulation: a model that knows six real commands will cheerfully invent a
+ * seventh that sounds plausible. Naming the list as exhaustive gives it grounds
+ * to say "Fini can't do that".
+ */
+const CAPABILITIES_INTRO =
+  "The following is what you can do in this Discord server. Treat it as complete and authoritative: if something is not listed, you cannot do it, and you should say so rather than inventing a command. Refer to commands exactly as written.";
+
+/**
  * Builds the system prompt for one request.
  *
  * This is a function rather than a constant specifically so the date is stamped
@@ -40,14 +51,26 @@ const GROUNDING =
  * "I don't have real-time access to the current date" - and a constant computed
  * at import time would freeze the date at whenever the bot last restarted,
  * which for a long-running bot is worse than saying nothing.
+ *
  * @param now Injectable for tests; defaults to the moment of the call
+ * @param capabilities Fini's command list, from
+ *   `modules/help/capabilityDigest`. Optional because only the Claude path
+ *   includes it inline - the local model gets the same text through a tool
+ *   instead, since on CPU it would pay for these tokens on every message
+ *   whether or not anyone asked what Fini can do.
  * @returns The full system prompt, date first
  */
-export const buildSystemPrompt = (now: Date = new Date()): string =>
+export const buildSystemPrompt = (
+  now: Date = new Date(),
+  capabilities?: string,
+): string =>
   [
     `The current date and time is ${formatTimestamp(now)} (${BOT_TIMEZONE}). Use this whenever the user asks about the date, the time, or anything relative like "today", "this week" or "how long until".`,
     "Your training data has a cutoff well before this date, so treat your own knowledge of recent events as possibly stale.",
     GROUNDING,
+    ...(capabilities?.trim()
+      ? [`${CAPABILITIES_INTRO}\n\n${capabilities.trim()}`]
+      : []),
   ].join("\n\n");
 
 /**
@@ -75,6 +98,7 @@ export const buildRetrievalPrompt = (now: Date = new Date()): string =>
     `The current date and time is ${formatTimestamp(now)} (${BOT_TIMEZONE}).`,
     "You are the retrieval step of a chat assistant. You are not talking to the user and nothing you write is shown to them. Your only job is to decide whether answering the last user message needs information you do not reliably have.",
     "Call a search tool if the answer depends on anything current, niche, or specific to a named website, product, company, person or event - including any follow-up that builds on one. Your training data is stale, so prefer searching over guessing. When the user names a URL or domain, fetch it directly rather than searching for it.",
+    "Call the fini_capabilities tool whenever the message is about this bot itself - what you can do, what your commands or features are, how to do something in this Discord server, or anything mentioning a slash command. You do not know your own command list without it, and guessing invents commands that do not exist.",
     `If the answer needs no outside information - small talk, opinions, jokes, arithmetic, or something you plainly know - reply with the single word ${RETRIEVAL_SKIP} and nothing else.`,
     `Never write an answer, an explanation, or a promise to search. Emit a tool call or ${RETRIEVAL_SKIP}.`,
   ].join("\n\n");

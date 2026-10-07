@@ -1,6 +1,7 @@
-import { describe, expect, it } from "bun:test";
+import { beforeAll, describe, expect, it } from "bun:test";
 import { MessageFlags } from "discord.js";
 import { resolveMatch } from "../../modules/finicardsV2/battleEngine";
+import { BATTLE_BOARD_FILE } from "../../modules/finicardsV2/cardArt";
 import {
   MECHANIC_HINT,
   SIDE_ACCENT,
@@ -195,55 +196,37 @@ describe("finicards v2 message UI", () => {
       ],
     });
 
-    const message = buildResultMessage({
-      battleId: "b1",
-      result,
-      names: { challenger: "Fen", defender: "Rho" },
-      userIds: { challenger: "111", defender: "222" },
-      split: { pot: 120, jackpotCut: 12, payout: 108 },
+    let message: Awaited<ReturnType<typeof buildResultMessage>>;
+    let json: any;
+    let text: string;
+
+    beforeAll(async () => {
+      message = await buildResultMessage({
+        battleId: "b1",
+        result,
+        names: { challenger: "Fen", defender: "Rho" },
+        userIds: { challenger: "111", defender: "222" },
+        split: { pot: 120, jackpotCut: 12, payout: 108 },
+      });
+      json = message.components[0].toJSON();
+      text = textOf(json);
     });
-    const json = message.components[0].toJSON() as any;
-    const text = textOf(json);
 
     it("leads with the winner and the scoreline", () => {
       expect(text).toContain("Fen wins 2 – 1");
     });
 
-    it("explains why each round's multiplier applied", () => {
-      // The whole point: a player should learn the wheel from the result.
-      expect(text).toContain("Heart");
-      expect(text).toContain("beats");
-      expect(text).toContain("×1.5");
+    it("shows the rounds as one battle board image", () => {
+      expect(message.files).toHaveLength(1);
+      expect(message.files[0].name).toBe(BATTLE_BOARD_FILE);
+      const gallery = json.components.find((c: any) => c.type === GALLERY);
+      expect(gallery.items[0].media.url).toBe(`attachment://${BATTLE_BOARD_FILE}`);
     });
 
-    it("still shows the working, in small text", () => {
-      expect(text).toContain("7×1.5=10");
-      expect(text).toMatch(/− \d+ (Power|Heart|Wit)/);
-    });
-
-    it("parenthesises negative damage so a scoreline stays readable", () => {
-      // Round 2 of this match has the defender on -4.
-      expect(text).toContain("(-4)");
-    });
-
-    it("keeps every round in one block, not one section each", () => {
-      // Three bordered sections for three rounds reads as three times the work.
-      expect(countOf(json, SEPARATOR)).toBe(2);
-    });
-
-    it("leads each round with who won it and by how much", () => {
-      for (const round of result.rounds) {
-        expect(text).toContain(`\`R${round.slot}\``);
-      }
-      expect(text).toMatch(/Fen \+\d/);
-      expect(text).toMatch(/Rho \+\d/);
-    });
-
-    it("stays short enough to scan - two lines a round", () => {
-      const roundLines = text
-        .split("\n")
-        .filter((line) => /^`R\d`|^-# .*(vs|·)/.test(line));
-      expect(roundLines.length).toBeLessThanOrEqual(result.rounds.length * 2);
+    it("leaves the per-round text to the board and the breakdown", () => {
+      // The text rounds are only a fallback; with the board they'd say it twice.
+      expect(text).not.toContain("`R1`");
+      expect(text).not.toContain("7×1.5=10");
     });
 
     it("offers the full working behind a button rather than inline", () => {
@@ -262,12 +245,12 @@ describe("finicards v2 message UI", () => {
       expect(json.accent_color).toBe(SIDE_ACCENT.challenger);
     });
 
-    it("calls out a damage-decided match explicitly", () => {
+    it("calls out a damage-decided match explicitly", async () => {
       const level = resolveMatch({
         challengerLineup: [card("A", "power", 7, 5, 3), card("B", "wit", 3, 7, 5)],
         defenderLineup: [card("C", "wit", 5, 7, 3), card("D", "power", 7, 5, 3)],
       });
-      const built = buildResultMessage({
+      const built = await buildResultMessage({
         result: level,
         names: { challenger: "Fen", defender: "Rho" },
         userIds: { challenger: "1", defender: "2" },
@@ -279,20 +262,17 @@ describe("finicards v2 message UI", () => {
       }
     });
 
-    it("renders a draw without claiming a winner", () => {
+    it("renders a draw without claiming a winner", async () => {
       const mirror = () => [card("Mirror", "power", 7, 5, 3)];
       const drawn = resolveMatch({
         challengerLineup: mirror(),
         defenderLineup: mirror(),
       });
-      const built = buildResultMessage({
+      const built = await buildResultMessage({
         result: drawn,
         names: { challenger: "Fen", defender: "Rho" },
         userIds: { challenger: "1", defender: "2" },
       });
-      // Assert on the headline block specifically: the round explanation legitimately
-      // contains the word "wins" ("the higher stat wins"), so scanning the whole
-      // message for it proves nothing.
       const headline = (built.components[0].toJSON() as any).components[0].content;
       expect(headline).toContain("Draw");
       expect(headline).not.toContain("wins");

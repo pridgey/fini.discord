@@ -1,11 +1,9 @@
 import { ButtonInteraction, MessageFlags } from "discord.js";
-import { buildAniStockQueryResultCards } from "../../modules/finistocks/buildAniStockQueryResultCards";
-import { QueryHandler, QueryMap } from "../../queries/QueryHandler";
 import {
-  createPaginationRow,
   getPaginationContext,
   parsePaginationState,
-  updatePaginationPage,
+  renderPaginationPage,
+  stepPage,
 } from "../../utilities/pagination/pagination";
 
 export const namespace = "prev_page";
@@ -17,7 +15,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     if (userId && userId !== interaction.user.id) {
       await interaction.reply({
         content: "❌ This button is not for you!",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
       return;
     }
@@ -33,48 +31,23 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
-    // Fetch previous page
-    const prevPage = context.current_page - 1;
-
-    const query = QueryHandler(context.query_id as keyof QueryMap);
-    const result = await query.query({
-      queryString: context.query,
-      page: prevPage,
-      perPage: context.per_page,
-      sortOption: context.sort,
-      filterOption: context.filter,
-    });
-
-    // Update context with new page
-    await updatePaginationPage(contextId, prevPage);
-
-    // Build components
-    const {
-      components: resultComponents,
-      files,
-      useComponentsV2,
-    } = await query.buildResults({
-      items: result.items,
-      userId: userId,
-      queryString: context.query,
-      sortOption: context.sort,
-    });
-
-    const pageRow = createPaginationRow({
-      userId,
-      currentPage: result.currentPage,
-      totalPages: context.total_pages_override || result.totalPages,
+    const page = await renderPaginationPage({
       contextId,
-    });
-
-    // Update the interaction
-    await interaction.update({
-      components: [...(resultComponents ?? []), pageRow],
-      files: files ?? [],
-      ...(useComponentsV2 && {
-        flags: [MessageFlags.IsComponentsV2],
+      page: stepPage(context.current_page, -1, {
+        totalPages: context.total_pages_override,
+        wrap: context.wrap,
       }),
     });
+
+    if (!page) {
+      await interaction.reply({
+        content: "❌ This pagination session has expired. Please search again.",
+        flags: [MessageFlags.Ephemeral],
+      });
+      return;
+    }
+
+    await interaction.update(page);
   } catch (error) {
     console.error("Error handling query previous page:", error, { args });
     await interaction.reply({

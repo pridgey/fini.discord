@@ -1,3 +1,4 @@
+import { getCapabilityDigest } from "../help/capabilityDigest";
 import { LLAMA_API_URL } from "./llamaConfig";
 
 /**
@@ -50,6 +51,47 @@ const TOOL_CACHE_MS = 60_000;
 
 let cachedTools: { tools: LlamaToolDefinition[]; fetchedAt: number } | null =
   null;
+
+/**
+ * The name of the one tool this process implements itself.
+ *
+ * Everything else in the list comes from an MCP server that llama.cpp spawned
+ * and proxies. This one deliberately does not: the data it serves is Fini's own
+ * command list, which lives in this process. Routing it out to an MCP server
+ * would mean a second process and a stdio transport to fetch a string we are
+ * already holding. See {@link executeToolCall} for the dispatch.
+ */
+export const FINI_CAPABILITIES_TOOL_NAME = "fini_capabilities";
+
+/**
+ * Fini's own commands, as a tool rather than as prompt text.
+ *
+ * The digest is around 2.5 KB. In the system prompt it would be re-processed on
+ * every message, on both the retrieval and the answering pass - and prompt
+ * processing on this CPU runs about 12ms per token, so it would cost upward of
+ * fifteen seconds per "hey fini" whether or not the question had anything to do
+ * with Fini's features. As a tool it costs a one-line definition until someone
+ * actually asks.
+ */
+export const FINI_CAPABILITIES_TOOL: LlamaToolDefinition = {
+  type: "function",
+  function: {
+    name: FINI_CAPABILITIES_TOOL_NAME,
+    description:
+      "Look up what Fini (this Discord bot) can do: its slash commands, features and how to use them. Call this for any question about Fini's own capabilities, commands or features.",
+    parameters: {
+      type: "object",
+      properties: {
+        topic: {
+          type: "string",
+          description:
+            "Optional. Narrows the list, e.g. 'cards', 'coin', 'music'. Omit to get every command.",
+        },
+      },
+      required: [],
+    },
+  },
+};
 
 /**
  * Parses the argument blob the model produced.
@@ -122,17 +164,32 @@ export const truncateToolResult = (
     : `${text.slice(0, limit)}\n[...truncated ${text.length - limit} characters]`;
 
 /**
- * Lists the tools llama.cpp is currently exposing.
+ * Lists the tools available to the model.
  *
- * Returns an empty array on any failure, which is also what happens when the
- * server was started without `--mcp-servers-config`. Tools are an enhancement,
- * so losing them must never stop the bot from replying.
- * @returns The available tool definitions, possibly empty
+ * That is whatever llama.cpp is proxying from its MCP servers, plus
+ * {@link FINI_CAPABILITIES_TOOL}, which this process serves itself. A failure
+ * to reach llama.cpp - including the 403 you get when it was started without
+ * `--mcp-servers-config` - degrades to the local tool alone rather than to
+ * nothing. Tools are an enhancement, so losing them must never stop the bot
+ * from replying.
+ *
+ * Note this list is therefore never empty, where it previously could be.
+ * `converseWithLlama` skips the retrieval pass entirely on an empty list, so
+ * retrieval now always runs for a normal chat message. In practice it already
+ * did - the bot is started with an `exa` MCP server configured - and the pass
+ * is capped at `RETRIEVAL_MAX_TOKENS`.
+ * @returns The available tool definitions, never empty
  */
 export const getAvailableTools = async (): Promise<LlamaToolDefinition[]> => {
   if (cachedTools && Date.now() - cachedTools.fetchedAt < TOOL_CACHE_MS) {
     return cachedTools.tools;
   }
+
+  const remember = (tools: LlamaToolDefinition[]): LlamaToolDefinition[] => {
+    const all = [...tools, FINI_CAPABILITIES_TOOL];
+    cachedTools = { tools: all, fetchedAt: Date.now() };
+    return all;
+  };
 
   try {
     const response = await fetch(`${LLAMA_API_URL}/tools`, {
@@ -143,8 +200,7 @@ export const getAvailableTools = async (): Promise<LlamaToolDefinition[]> => {
       // 403 "feature_disabled" is the normal answer when no MCP servers are
       // configured - not worth shouting about.
       console.log(`Tools unavailable from llama.cpp (${response.status})`);
-      cachedTools = { tools: [], fetchedAt: Date.now() };
-      return [];
+      return remember([]);
     }
 
     const listed = (await response.json()) as {
@@ -155,17 +211,17 @@ export const getAvailableTools = async (): Promise<LlamaToolDefinition[]> => {
       .map((entry) => entry.definition)
       .filter((definition): definition is LlamaToolDefinition => !!definition);
 
+    const all = remember(tools);
+
     console.log(
-      "Available llama.cpp tools:",
-      tools.map((tool) => tool.function.name),
+      "Available tools:",
+      all.map((tool) => tool.function.name),
     );
 
-    cachedTools = { tools, fetchedAt: Date.now() };
-    return tools;
+    return all;
   } catch (err) {
     console.error("Error listing llama.cpp tools:", err);
-    cachedTools = { tools: [], fetchedAt: Date.now() };
-    return [];
+    return remember([]);
   }
 };
 
@@ -184,7 +240,23 @@ export const executeToolCall = async (
   const name = toolCall.function.name;
   const args = parseToolArguments(toolCall.function.arguments);
 
-  console.log("Executing llama.cpp tool:", { name, args });
+  console.log("Executing tool:", { name, args });
+
+  /*
+   * The one tool we answer ourselves. Short-circuits before the fetch because
+   * llama.cpp knows nothing about it - it was added to the list in
+   * getAvailableTools, not proxied from an MCP server - so POSTing it would
+   * come back "unknown tool".
+   */
+  if (name === FINI_CAPABILITIES_TOOL_NAME) {
+    try {
+      const topic = typeof args.topic === "string" ? args.topic : undefined;
+      return truncateToolResult(await getCapabilityDigest(topic));
+    } catch (err) {
+      console.error("Error building the capability digest:", err);
+      return "Tool error: could not read Fini's command list.";
+    }
+  }
 
   try {
     const response = await fetch(`${LLAMA_API_URL}/tools`, {

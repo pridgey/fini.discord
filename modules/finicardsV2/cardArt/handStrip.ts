@@ -43,7 +43,7 @@ const round = (value: number): string =>
   Number.isInteger(value) ? String(value) : value.toFixed(2);
 
 /** Crops artwork to a square data URI, or null if it can't be fetched. */
-const squareArt = async (
+export const squareArt = async (
   source: CardArtSource | null,
   pixels: number,
 ): Promise<string | null> => {

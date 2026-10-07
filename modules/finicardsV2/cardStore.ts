@@ -73,6 +73,33 @@ export const getUserCollection = async (
     .map((record) => ({ ...record, definition: record.expand!.card }));
 };
 
+/**
+ * One owned card by its exact id, joined to its definition.
+ *
+ * Unlike {@link resolveLineup} this does no ownership check, because the caller
+ * that needs it - the collection's View button - may be looking at someone
+ * else's collection. Nothing here is secret; the whole page is already on
+ * screen.
+ * @param id A `v2_user_card` id
+ * @returns The card, or null if it no longer exists or lost its definition
+ */
+export const getOwnedCard = async (
+  id: string,
+): Promise<OwnedCard | null> => {
+  try {
+    const record = await pb
+      .collection<V2UserCardRecord>(V2_USER_CARD)
+      .getOne(id, { expand: "card" });
+
+    return record.expand?.card
+      ? { ...record, definition: record.expand.card }
+      : null;
+  } catch {
+    // Sold, traded away, or the id was never real.
+    return null;
+  }
+};
+
 /** Flattens an owned card into the shape the battle engine consumes. */
 export const toBattleCard = (owned: OwnedCard): BattleCard => ({
   instanceId: owned.id ?? "",

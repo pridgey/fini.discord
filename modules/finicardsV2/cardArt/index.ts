@@ -1,3 +1,4 @@
+export * from "./battleBoard";
 export * from "./blocks";
 export * from "./generateCardImage";
 export * from "./handStrip";

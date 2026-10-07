@@ -44,10 +44,7 @@ import {
 import { convertLegacyPool } from "../modules/finicardsV2/convertLegacyCards";
 import { KEYWORDS } from "../modules/finicardsV2/keywords";
 import { openPack, PACK_SIZE } from "../modules/finicardsV2/packs";
-import {
-  renderCardFace,
-  renderCollectionPage,
-} from "../modules/finicardsV2/renderBattle";
+import { renderCardFace } from "../modules/finicardsV2/renderBattle";
 import {
   RARITY_LABEL,
   RULES,
@@ -55,12 +52,18 @@ import {
 } from "../modules/finicardsV2/rules";
 import { canAfford, stakeWager } from "../modules/finicardsV2/wagers";
 import { addCoin, getUserBalance } from "../modules/finicoin";
+import { isAdmin } from "../utilities/discord/isAdmin";
 import type { CardDefinitionRecord } from "../types/PocketbaseTables";
 import type {
   CardRarity,
   CardType,
   V2DeckRecord,
 } from "../types/PocketbaseTablesV2";
+import { QueryHandler } from "../queries/QueryHandler";
+import {
+  createPaginationContext,
+  createPaginationRow,
+} from "../utilities/pagination/pagination";
 import { pb } from "../utilities/pocketbase";
 import { splitBigString } from "../utilities/splitBigString";
 
@@ -75,8 +78,14 @@ import { splitBigString } from "../utilities/splitBigString";
  */
 
 const PACK_COST = 25;
-const COLLECTION_PAGE_SIZE = 15;
+/** Lower than the old text listing: a section with a button is a taller row. */
+const COLLECTION_PAGE_SIZE = 10;
 const MAX_PENDING_SHOWN = 5;
+
+/** Server administrators, plus the bot admin (`ADMIN_ID`) in any server. */
+const canAdminister = (interaction: ChatInputCommandInteraction) =>
+  isAdmin(interaction.user.id) ||
+  !!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
 
 export const data = new SlashCommandBuilder()
   .setName("finicard-v2")
@@ -94,13 +103,6 @@ export const data = new SlashCommandBuilder()
         option
           .setName("who")
           .setDescription("Whose collection to view (blank for your own)")
-          .setRequired(false),
-      )
-      .addIntegerOption((option) =>
-        option
-          .setName("page")
-          .setDescription("Page number")
-          .setMinValue(1)
           .setRequired(false),
       ),
   )
@@ -400,7 +402,6 @@ export const execute = async (
       /* ---------------------------------------------------- collection ---- */
       case "collection": {
         const target = interaction.options.getUser("who") ?? interaction.user;
-        const page = interaction.options.getInteger("page") ?? 1;
 
         const collection = await getUserCollection(target.id, serverId);
 
@@ -411,28 +412,56 @@ export const execute = async (
           return;
         }
 
-        const totalPages = Math.max(
-          1,
-          Math.ceil(collection.length / COLLECTION_PAGE_SIZE),
-        );
-        const safePage = Math.min(page, totalPages);
-        const slice = collection.slice(
-          (safePage - 1) * COLLECTION_PAGE_SIZE,
-          safePage * COLLECTION_PAGE_SIZE,
-        );
+        /*
+         * The whole collection was just read to count it and work out its
+         * composition, but the pages themselves are served by the shared
+         * pagination system rather than sliced here - that's what gives the
+         * listing its prev/next buttons and its per-card View button.
+         *
+         * The heading is stashed in the context's `query` field, which is
+         * threaded through to `buildResults` on every page turn. Otherwise
+         * every click would re-read the entire collection just to say how big
+         * it is.
+         */
+        const ownerLabel = `${target.displayName} — ${collection.length} card${
+          collection.length === 1 ? "" : "s"
+        } ${compositionString(collectionComposition(collection))}`;
 
-        const composition = collectionComposition(collection);
+        const filter = `user_id = "${target.id}" && server_id = "${serverId}"`;
 
-        const body = renderCollectionPage(slice, {
-          page: safePage,
-          totalPages,
-          ownerLabel: `${target.displayName} (${collection.length} cards) ${compositionString(composition)}`,
+        const query = QueryHandler("v2_card_collection");
+        const results = await query.query({
+          page: 1,
+          perPage: COLLECTION_PAGE_SIZE,
+          filterOption: filter,
         });
 
-        for (const [index, chunk] of splitBigString(body).entries()) {
-          if (index === 0) await interaction.editReply(chunk);
-          else await interaction.followUp(chunk);
-        }
+        const contextId = await createPaginationContext({
+          userId: interaction.user.id,
+          queryId: query.id,
+          filter,
+          query: ownerLabel,
+          perPage: COLLECTION_PAGE_SIZE,
+        });
+
+        const { components } = await query.buildResults({
+          items: results.items,
+          userId: interaction.user.id,
+          queryString: ownerLabel,
+          contextId,
+        });
+
+        const pageRow = createPaginationRow({
+          userId: interaction.user.id,
+          currentPage: results.currentPage,
+          totalPages: results.totalPages,
+          contextId,
+        });
+
+        await interaction.editReply({
+          components: [...(components ?? []), pageRow],
+          flags: [MessageFlags.IsComponentsV2],
+        });
         return;
       }
 
@@ -710,9 +739,7 @@ export const execute = async (
 
       /* -------------------------------------------------------- import ---- */
       case "import": {
-        if (
-          !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
-        ) {
+        if (!canAdminister(interaction)) {
           await interaction.editReply(
             "Only an administrator can import the card pool.",
           );
@@ -754,9 +781,7 @@ export const execute = async (
 
       /* --------------------------------------------------------- grant ---- */
       case "grant": {
-        if (
-          !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
-        ) {
+        if (!canAdminister(interaction)) {
           await interaction.editReply(
             "Only an administrator can grant cards.",
           );

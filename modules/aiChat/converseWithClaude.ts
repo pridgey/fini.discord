@@ -6,6 +6,7 @@ import { formatHistoryForChat } from "./formatHistoryForChat";
 import { getChatHistory } from "./getChatHistory";
 import { saveChatMessage } from "./saveChatMessage";
 import { ChatRecord } from "../../types/PocketbaseTables";
+import { getCapabilityDigest } from "../help/capabilityDigest";
 import { AIConverseProps } from "./types";
 import { buildSystemPrompt } from "./systemPrompt";
 import { formatReplyContext } from "./formatReplyContext";
@@ -126,8 +127,16 @@ export const converseWithClaude = async ({
       systemPrompt.push(await determinePersonality(userID, server));
     }
 
+    /*
+     * The command list rides in the system prompt here rather than behind a
+     * tool the way the llama path does it. This call is a single
+     * `messages.create` with no agent loop, so a client-side tool would mean
+     * building one - and at roughly 600 tokens the digest is not worth that
+     * against Claude's prompt pricing. The local model's arithmetic is very
+     * different; see `llamaTools.ts`.
+     */
     if (!options.skipHistory) {
-      systemPrompt.push(buildSystemPrompt());
+      systemPrompt.push(buildSystemPrompt(new Date(), await getCapabilityDigest()));
     }
 
     console.log("Submitting to Anthropic for response", { finalMessage });

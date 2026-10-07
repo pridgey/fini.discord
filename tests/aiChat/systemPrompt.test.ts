@@ -119,3 +119,54 @@ describe("answering-pass reminders", () => {
     expect(NO_FURTHER_RETRIEVAL.toLowerCase()).toContain("say so plainly");
   });
 });
+
+describe("buildSystemPrompt capabilities", () => {
+  it("says nothing about commands when none are passed", () => {
+    // The llama path leaves this off - it gets the same text through a tool.
+    const prompt = buildSystemPrompt(new Date());
+
+    expect(prompt).not.toContain("authoritative");
+  });
+
+  it("includes the command list when one is passed", () => {
+    const prompt = buildSystemPrompt(
+      new Date(),
+      "Finicoin:\n  /balance - How much Finicoin do I have?",
+    );
+
+    expect(prompt).toContain("/balance");
+  });
+
+  it("frames the list as closed, so the model won't invent a command", () => {
+    const prompt = buildSystemPrompt(new Date(), "/balance - check balance");
+
+    expect(prompt.toLowerCase()).toContain("complete and authoritative");
+    expect(prompt.toLowerCase()).toContain("inventing");
+  });
+
+  it("treats a blank capability string as absent", () => {
+    expect(buildSystemPrompt(new Date(), "   ")).not.toContain(
+      "authoritative",
+    );
+  });
+
+  it("keeps the date and grounding ahead of the command list", () => {
+    const prompt = buildSystemPrompt(new Date(), "/balance - check balance");
+
+    expect(prompt.indexOf("current date")).toBeLessThan(
+      prompt.indexOf("/balance"),
+    );
+    expect(prompt).toContain("Fini coin is a fictional currency");
+  });
+});
+
+describe("buildRetrievalPrompt capability routing", () => {
+  it("tells the retrieval step to reach for the capabilities tool", () => {
+    // Without this the local model answers "what can you do?" from its own
+    // idea of a Discord bot and invents commands.
+    const prompt = buildRetrievalPrompt(new Date());
+
+    expect(prompt).toContain("fini_capabilities");
+    expect(prompt).toContain("slash command");
+  });
+});
