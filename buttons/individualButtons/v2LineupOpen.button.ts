@@ -3,10 +3,11 @@ import {
   getBattle,
   handFor,
   lineupFor,
-  sideForUser,
+  sideToPlay,
 } from "../../modules/finicardsV2/battleStore";
 import { loadLineupByIds } from "../../modules/finicardsV2/cardStore";
 import { buildPickerView } from "../../modules/finicardsV2/lineupPicker";
+import { isPractice } from "../../modules/finicardsV2/practice";
 import { RULES } from "../../modules/finicardsV2/rules";
 
 export const namespace = "v2_lineup_open";
@@ -32,7 +33,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     return;
   }
 
-  const side = sideForUser(battle, interaction.user.id);
+  const side = sideToPlay(battle, interaction.user.id);
 
   if (!side) {
     await interaction.reply({
@@ -81,6 +82,11 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       opposingSide === "challenger"
         ? battle.challenger_name
         : battle.defender_name,
+    playingAs: isPractice(battle)
+      ? side === "challenger"
+        ? battle.challenger_name
+        : battle.defender_name
+      : undefined,
   });
 
   /* Components V2 plus Ephemeral. The picker must be V2 from this first reply,

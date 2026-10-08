@@ -1,5 +1,6 @@
 import type { CardType } from "../../../types/PocketbaseTablesV2";
-import { RARITY_LABEL, TYPE_BEATS, TYPE_EMOJI } from "../rules";
+import { findKeyword, type KeywordDefinition } from "../keywords";
+import { RARITY_LABEL, RULES, TYPE_BEATS, TYPE_EMOJI } from "../rules";
 import type { BattleCard, Side } from "../types";
 
 /**
@@ -69,15 +70,80 @@ export const cardLine = (card: BattleCard): string =>
   `${TYPE_EMOJI[card.type]} **${card.name}**${card.foil ? " ✨" : ""} \`${statLine(card)}\` · ${TYPE_NAME[card.type]} ${card.stats[card.type]}`;
 
 /**
- * A very compact form for listing an opponent's hand inside a picker.
+ * The keyword a card will actually fight with, or null.
  *
- * Keeps the name: the emoji alone tells you what types they hold, but choosing a
- * counter means knowing *which* card carries the big number.
+ * Null while keywords are switched off, even on a card that carries one: naming
+ * a keyword that will not fire invites a player to build a lineup around it.
+ */
+export const activeKeyword = (card: BattleCard): KeywordDefinition | null =>
+  RULES.keywordsEnabled ? findKeyword(card.keyword) : null;
+
+/**
+ * One line of an opponent's hand inside a picker.
+ *
+ * The type stat leads, in a fixed-width column, because choosing a counter
+ * means finding the card that carries the big number - and a column of numbers
+ * can be scanned where a run of chips on one wrapped line could not.
  */
 export const cardChip = (card: BattleCard): string => {
-  const name = card.name.length > 12 ? `${card.name.slice(0, 11)}…` : card.name;
-  return `${TYPE_EMOJI[card.type]} ${name} **${card.stats[card.type]}**`;
+  const keyword = activeKeyword(card);
+  const stat = String(card.stats[card.type]).padStart(2, " ");
+  return `${TYPE_EMOJI[card.type]} \`${stat}\` ${card.name}${keyword ? ` · _${keyword.name}_` : ""}`;
 };
+
+/**
+ * What each keyword among `cards` does, one small line apiece and each keyword
+ * once. Cards are tagged with the keyword's name alone; this is the legend.
+ */
+export const keywordGlossary = (cards: BattleCard[]): string[] => {
+  const seen = new Map<string, KeywordDefinition>();
+  for (const card of cards) {
+    const keyword = activeKeyword(card);
+    if (keyword) seen.set(keyword.slug, keyword);
+  }
+  return [...seen.values()].map(
+    (keyword) => `-# **${keyword.name}** — ${keyword.description}`,
+  );
+};
+
+/**
+ * The same legend for a single hand, naming the cards that carry each keyword.
+ *
+ * Used where the hand is an image: the strip can only fit the keyword's name,
+ * so this is where a player reads what it does without leaving the message.
+ */
+export const keywordLegend = (cards: BattleCard[]): string[] => {
+  const carriers = new Map<string, { keyword: KeywordDefinition; names: string[] }>();
+  for (const card of cards) {
+    const keyword = activeKeyword(card);
+    if (!keyword) continue;
+    const entry = carriers.get(keyword.slug) ?? { keyword, names: [] };
+    entry.names.push(card.name);
+    carriers.set(keyword.slug, entry);
+  }
+  return [...carriers.values()].map(
+    ({ keyword, names }) =>
+      `-# **${keyword.name}** · ${names.join(", ")} — ${keyword.description}`,
+  );
+};
+
+/**
+ * Every keyword in a battle, hand by hand - the long form behind the picker's
+ * Keywords button, for when the two hands carry too many to list inline.
+ */
+export const keywordSheet = (
+  hands: { name: string; cards: BattleCard[] }[],
+): string =>
+  [
+    "### Keywords in this battle",
+    ...hands.map(({ name, cards }) => {
+      const legend = keywordLegend(cards);
+      return [
+        `**${name}'s hand**`,
+        ...(legend.length > 0 ? legend : ["-# No keywords."]),
+      ].join("\n");
+    }),
+  ].join("\n\n");
 
 export const rarityLabel = (card: BattleCard): string =>
   RARITY_LABEL[card.rarity];

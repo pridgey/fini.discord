@@ -4,6 +4,7 @@ import {
   Client,
   GatewayIntentBits,
   Message,
+  MessageFlags,
 } from "discord.js";
 import { rollJackpot } from "./modules/finicoin/jackpot";
 import { rewardCoin } from "./modules/finicoin/reward";
@@ -392,10 +393,22 @@ client.on("interactionCreate", async (interaction) => {
     } catch (err) {
       const error: Error = err as Error;
       console.error("Error running interaction:", { error });
-      await interaction.reply({
-        content: `I fucked up D:\n${error.message}`,
-        ephemeral: true,
-      });
+      /* The command may already have deferred or replied, and the interaction
+         may be gone altogether (expired, or the failure *was* the reply) - in
+         which case this throws too, and unhandled it takes the bot down. */
+      try {
+        const message = {
+          content: `I fucked up D:\n${error.message}`,
+          flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral],
+        };
+        if (interaction.replied || interaction.deferred) {
+          await interaction.followUp(message);
+        } else {
+          await interaction.reply(message);
+        }
+      } catch (replyError) {
+        console.error("Couldn't report the interaction error:", replyError);
+      }
     }
   } else if (interaction.isAutocomplete()) {
     /*

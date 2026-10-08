@@ -12,6 +12,8 @@ import {
   cardChip,
   compositionOf,
   explainMultiplier,
+  keywordLegend,
+  keywordReport,
 } from "../../modules/finicardsV2/ui";
 import type { BattleCard } from "../../modules/finicardsV2/types";
 import type { CardType } from "../../types/PocketbaseTablesV2";
@@ -71,10 +73,9 @@ describe("finicards v2 message UI", () => {
       expect(cardChip(card("Vegeta", "power", 10, 3, 2))).toContain("10");
     });
 
-    it("truncates a long name in a chip", () => {
-      const chip = cardChip(card("Bartholomew Wintersworth", "power", 9, 3, 3));
-      expect(chip.length).toBeLessThan(30);
-      expect(chip).toContain("…");
+    it("leads a chip with the type stat, padded so a hand lines up", () => {
+      expect(cardChip(card("Vegeta", "power", 10, 3, 2))).toContain("`10` Vegeta");
+      expect(cardChip(card("Krillin", "power", 6, 3, 2))).toContain("` 6` Krillin");
     });
 
     it("states the type wheel in the mechanic hint", () => {
@@ -317,6 +318,66 @@ describe("finicards v2 message UI", () => {
       expect(text.indexOf("First")).toBeLessThan(text.indexOf("Second"));
       expect(text.indexOf("Second")).toBeLessThan(text.indexOf("Third"));
       expect(text).toContain("Waiting on **Rho**");
+    });
+  });
+
+  describe("keywords", () => {
+    const names = { challenger: "Fen", defender: "Rho" };
+    const rules = { keywordsEnabled: true };
+
+    it("says what a keyword changed, and lists the ones that sat idle", () => {
+      const result = resolveMatch({
+        challengerLineup: [
+          card("Scout", "heart", 3, 4, 8, { keyword: "avenge" }),
+          card("Anchor", "heart", 5, 4, 6, { keyword: "last_stand" }),
+        ],
+        defenderLineup: [
+          card("Wall", "heart", 3, 5, 7),
+          card("Pup", "heart", 4, 5, 6, { keyword: "momentum" }),
+        ],
+        rules,
+      });
+      const report = keywordReport(result, names).join("\n");
+
+      expect(report).toContain("`R2` **Anchor** — Last Stand +3 · Heart 6 → **9**");
+      expect(report).toContain("Didn't trigger: Avenge (Scout) · Momentum (Pup)");
+    });
+
+    it("reports a tiebreak keyword and names the side in a round note", () => {
+      const result = resolveMatch({
+        challengerLineup: [
+          card("Herald", "wit", 3, 9, 3, { keyword: "rally" }),
+          card("Nova", "wit", 4, 16, 1, { keyword: "overwhelm" }),
+        ],
+        defenderLineup: [card("A", "heart", 3, 3, 9), card("B", "power", 5, 5, 5)],
+        rules,
+      });
+      const report = keywordReport(result, names).join("\n");
+
+      expect(report).toContain("`R1` **Herald** — Rally: next Fen card gets +2");
+      expect(report).toContain("`R2` **Nova** — Rally +2 · Wit 16 → **18**");
+      expect(report).toContain("Overwhelm: 13 damage counts as **16**");
+      expect(report).not.toContain("Didn't trigger");
+    });
+
+    it("reports nothing for a match with no keywords", () => {
+      const result = resolveMatch({
+        challengerLineup: [card("A", "power", 9, 3, 3)],
+        defenderLineup: [card("B", "wit", 3, 9, 3)],
+        rules,
+      });
+      expect(keywordReport(result, names)).toEqual([]);
+    });
+
+    it("explains each keyword in a hand once, naming its carriers", () => {
+      const legend = keywordLegend([
+        card("One", "power", 9, 3, 3, { keyword: "avenge" }),
+        card("Two", "wit", 3, 9, 3, { keyword: "avenge" }),
+        card("Three", "heart", 3, 3, 9),
+      ]);
+      expect(legend).toEqual([
+        "-# **Avenge** · One, Two — +3 to type stat if the previous round was a loss",
+      ]);
     });
   });
 });

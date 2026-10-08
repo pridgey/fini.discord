@@ -21,7 +21,7 @@ export type BattleRules = {
   spikeCeiling: Record<CardRarity, number>;
   /** Cards per lineup / rounds per match. */
   rounds: number;
-  /** Whether keyword effects are applied. Phase 1 ships with this off. */
+  /** Whether keyword effects are applied. Off replays Phase 1: pure stats. */
   keywordsEnabled: boolean;
   /** Damage above this counts double toward the tiebreaker for `Overwhelm`. */
   overwhelmThreshold: number;
@@ -40,7 +40,7 @@ export const RULES: BattleRules = {
     full_art: 12,
   },
   rounds: 3,
-  keywordsEnabled: false,
+  keywordsEnabled: true,
   overwhelmThreshold: 10,
   drawResolution: "draw",
 };

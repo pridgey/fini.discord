@@ -14,6 +14,8 @@ import type {
   Side,
   SideCombat,
 } from "../types";
+import { tiebreakDamageOf } from "../battleEngine";
+import { combatKeyword, type KeywordDefinition } from "../keywords";
 import { TYPE_EMOJI } from "../rules";
 import {
   DRAW_ACCENT,
@@ -48,6 +50,8 @@ export type ResultMessageInput = {
   split?: PotSplit | null;
   /** Battle id, for the full-breakdown button. Omitted, no button is shown. */
   battleId?: string;
+  /** One player on both sides, so there is nobody to mention. */
+  practice?: boolean;
 };
 
 /** The full working for every round, for the detail view behind the button. */
@@ -55,7 +59,17 @@ export const buildBreakdown = (
   result: MatchResult,
   names: Record<Side, string>,
 ): string =>
-  result.rounds.map((round) => verboseRound(round, names)).join("\n\n");
+  [
+    ...result.rounds.map((round) => verboseRound(round, names)),
+    // What each keyword in the match does, for reading the bonuses above.
+    ...(keywordsOf(result).length > 0
+      ? [
+          keywordsOf(result)
+            .map((keyword) => `-# **${keyword.name}** — ${keyword.description}`)
+            .join("\n"),
+        ]
+      : []),
+  ].join("\n\n");
 
 /** `7×1.5=10 − 3 Heart` - the working, compressed to fit a small-text line. */
 const workingOf = (combat: SideCombat): string => {
@@ -127,11 +141,118 @@ const multiplierNote = (
   );
 };
 
-/** Keyword triggers, which the board has no room for. Rare while keywords are off. */
-const roundNotes = (result: MatchResult): string[] =>
-  result.rounds.flatMap((round) =>
-    round.notes.map((note) => `-# \`R${round.slot}\` ↳ ${note}`),
-  );
+const SIDES: Side[] = ["challenger", "defender"];
+
+/** Engine notes name the side; players know each other by name. */
+const namedNote = (note: string, names: Record<Side, string>): string =>
+  note.replace(/\b(challenger|defender)\b/g, (side) => names[side as Side]);
+
+const keywordsOf = (result: MatchResult): KeywordDefinition[] => {
+  if (!result.rules.keywordsEnabled) return [];
+  const seen = new Map<string, KeywordDefinition>();
+  for (const round of result.rounds) {
+    for (const side of SIDES) {
+      const keyword = combatKeyword(round[side]);
+      if (keyword) seen.set(keyword.slug, keyword);
+    }
+  }
+  return [...seen.values()];
+};
+
+/**
+ * What the keywords did, round by round.
+ *
+ * The board tags each card with its keyword, but a tag is easy to miss and says
+ * nothing about a keyword that sat idle - which is most of them in any one
+ * match. So every keyword in the match is accounted for here: the ones that
+ * changed a number say what they changed, and the rest are listed as not having
+ * triggered, so a player can tell "did nothing" from "wasn't shown".
+ */
+export const keywordReport = (
+  result: MatchResult,
+  names: Record<Side, string>,
+): string[] => {
+  const fired: string[] = [];
+  const idle: string[] = [];
+  const other = (side: Side): Side =>
+    side === "challenger" ? "defender" : "challenger";
+
+  for (const round of result.rounds) {
+    const claimed = new Set<string>();
+    const keywords = {} as Record<Side, KeywordDefinition | null>;
+    const landed = new Set<Side>();
+    const who = (side: Side) => `\`R${round.slot}\` **${round[side].card.name}**`;
+
+    for (const side of SIDES) {
+      const combat = round[side];
+      const keyword = result.rules.keywordsEnabled ? combatKeyword(combat) : null;
+      keywords[side] = keyword;
+
+      /* Stat and matchup changes. Not all of them are this card's own doing - a
+         `Rally` is handed on and an `Intimidate` is done to it - so the card
+         only counts as having used its keyword if one of them carries its name. */
+      if (combat.bonuses.length > 0) {
+        const stat =
+          combat.attackStat !== combat.baseAttackStat
+            ? ` · ${TYPE_NAME[combat.printedType]} ${combat.baseAttackStat} → **${combat.attackStat}**`
+            : "";
+        fired.push(`${who(side)} — ${combat.bonuses.join(", ")}${stat}`);
+        if (keyword && combat.bonuses.some((bonus) => bonus.startsWith(keyword.name))) {
+          landed.add(side);
+        }
+      }
+
+      if (!keyword) continue;
+
+      // Outcome and hand-on keywords leave a note naming the side instead.
+      for (const note of round.notes) {
+        if (!note.startsWith(`${keyword.name}:`) || !note.includes(side)) continue;
+        claimed.add(note);
+        fired.push(`${who(side)} — ${namedNote(note, names)}`);
+        landed.add(side);
+      }
+    }
+
+    /* Tiebreak keywords change nothing in the round itself, only the total -
+       this card's own count, or (`Mercy`) the opposing card's. */
+    for (const side of SIDES) {
+      const { dealt, own, counted } = tiebreakDamageOf(round, side, result.rules);
+      if (own !== dealt) {
+        fired.push(
+          `${who(side)} — ${keywords[side]?.name}: ${dealt} damage counts as **${own}** toward total damage`,
+        );
+        landed.add(side);
+      }
+      if (counted !== own) {
+        fired.push(
+          `${who(other(side))} — ${keywords[other(side)]?.name}: ${round[side].card.name}'s ${own} damage counts as **${counted}** toward total damage`,
+        );
+        landed.add(other(side));
+      }
+    }
+
+    for (const side of SIDES) {
+      const keyword = keywords[side];
+      if (keyword && !landed.has(side)) {
+        idle.push(`${keyword.name} (${round[side].card.name})`);
+      }
+    }
+
+    // A note no keyword claimed still happened; never drop it.
+    for (const note of round.notes) {
+      if (claimed.has(note)) continue;
+      fired.push(`\`R${round.slot}\` ↳ ${namedNote(note, names)}`);
+    }
+  }
+
+  if (fired.length === 0 && idle.length === 0) return [];
+
+  return [
+    "**Keywords**",
+    ...(fired.length > 0 ? fired : ["No keyword changed a number this match."]),
+    ...(idle.length > 0 ? [`-# Didn't trigger: ${idle.join(" · ")}`] : []),
+  ];
+};
 
 /**
  * One round in two lines: who won it, then the working in small text. Only
@@ -200,13 +321,15 @@ export const composeResultMessage = (
       text.setContent(
         [
           headline,
-          `<@${userIds.challenger}> vs <@${userIds.defender}>`,
+          input.practice
+            ? `-# 🧪 Practice — ${names.challenger} vs ${names.defender} · not recorded`
+            : `<@${userIds.challenger}> vs <@${userIds.defender}>`,
         ].join("\n"),
       ),
     );
 
   if (board) {
-    const notes = roundNotes(result);
+    const notes = keywordReport(result, names);
     container.addMediaGalleryComponents((gallery) =>
       gallery.addItems((item) =>
         item

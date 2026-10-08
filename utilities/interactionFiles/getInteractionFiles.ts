@@ -4,7 +4,7 @@ import { glob } from "glob";
  * Dynamicly finds all of the command files in the commands directory
  * @returns A list of command files and their imported modules
  */
-export const getCommandFiles = async () => {
+const loadCommandFiles = async () => {
   // Grab each command from the commands directory
   const commandFiles = await glob("**/commands/*.command.ts");
 
@@ -16,6 +16,21 @@ export const getCommandFiles = async () => {
   );
 
   return { commandFiles, importedFiles };
+};
+
+let commandFilesPromise: ReturnType<typeof loadCommandFiles> | null = null;
+
+/* Loaded once and reused. This runs before every slash command is deferred,
+   and the glob walks the whole repo: about a second idle, and far longer while
+   image rendering has the thread pool busy - long enough for Discord to expire
+   the interaction (3s) before the command could answer it. The modules are
+   cached by the runtime anyway, so re-globbing never picked up anything new. */
+export const getCommandFiles = () => {
+  commandFilesPromise ??= loadCommandFiles().catch((error) => {
+    commandFilesPromise = null;
+    throw error;
+  });
+  return commandFilesPromise;
 };
 
 /**

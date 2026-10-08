@@ -56,7 +56,7 @@ describe("adding a keyword without touching the engine", () => {
     register({
       name: "Kindred",
       slug: "kindred",
-      tier: "uncommon",
+      grade: "standard",
       description: "+3 if another card in your lineup shares a tag",
       stage: "conditional",
       order: 1,
@@ -97,7 +97,7 @@ describe("adding a keyword without touching the engine", () => {
     register({
       name: "Nemesis",
       slug: "nemesis",
-      tier: "uncommon",
+      grade: "standard",
       description: "+4 if the opposing card's type stat beats yours",
       stage: "conditional",
       order: 1,
@@ -131,7 +131,7 @@ describe("adding a keyword without touching the engine", () => {
     register({
       name: "Comeback",
       slug: "comeback",
-      tier: "full_art",
+      grade: "minor",
       description: "+5 if you have lost every round so far",
       stage: "conditional",
       order: 1,
@@ -173,7 +173,7 @@ describe("adding a keyword without touching the engine", () => {
     register({
       name: "Bleed",
       slug: "bleed",
-      tier: "full_art",
+      grade: "minor",
       description: "Winning a round hands the next opponent card -2 defence",
       stage: "postRound",
       order: 2,
@@ -200,12 +200,18 @@ describe("keyword registration guardrails", () => {
   const stub = {
     name: "Stub",
     slug: "stub_keyword",
-    tier: "uncommon" as CardRarity,
+    grade: "standard" as const,
     description: "test",
     stage: "conditional" as const,
     order: 1,
     apply: () => {},
   };
+
+  it("refuses an unknown grade", () => {
+    expect(() => registerKeyword({ ...stub, grade: "epic" as any })).toThrow(
+      /unknown grade/,
+    );
+  });
 
   it("registers into the shared library and is findable by name or slug", () => {
     const before = KEYWORDS.length;

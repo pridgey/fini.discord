@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 import {
   MAX_ENCODABLE_HAND,
   assertEncodable,
@@ -81,8 +81,8 @@ describe("finicards v2 lineup picker", () => {
       expect(contentOf(view)).toContain("slot 1");
     });
 
-    it("shows every slot as empty", () => {
-      expect(contentOf(view).match(/_empty_/g)).toHaveLength(RULES.rounds);
+    it("lists no slots until one is filled", () => {
+      expect(contentOf(view)).not.toContain("**1.**");
     });
 
     it("encodes no prior picks", () => {
@@ -159,6 +159,100 @@ describe("finicards v2 lineup picker", () => {
           expect((button.label as string).length).toBeLessThanOrEqual(80);
         }
       }
+    });
+  });
+
+  describe("keywords", () => {
+    const shipped = RULES.keywordsEnabled;
+    afterEach(() => {
+      RULES.keywordsEnabled = shipped;
+    });
+
+    const withKeyword = (id: string, keyword: string): BattleCard => ({
+      ...card(id),
+      rarity: "uncommon",
+      keyword,
+    });
+
+    const keyworded = () => [
+      withKeyword("a", "vanguard"),
+      withKeyword("b", "last_stand"),
+      withKeyword("c", "vanguard"),
+      card("d"),
+      card("e"),
+    ];
+
+    const labels = (view: ReturnType<typeof buildPickerView>) =>
+      json(view)
+        .components.filter((component: any) => component.type === 1)
+        .flatMap((row: any) =>
+          row.components.map((button: any) => button.label as string),
+        );
+
+    it("says nothing about a keyword that will not fire", () => {
+      RULES.keywordsEnabled = false;
+      const view = buildPickerView("battle1", keyworded(), [0], {
+        opposing: [withKeyword("x", "guard")],
+      });
+      expect(contentOf(view)).not.toContain("Vanguard");
+      expect(contentOf(view)).not.toContain("Guard");
+      expect(labels(view).join()).not.toContain("Last Stand");
+    });
+
+    it("names the keyword on the button and in the slot", () => {
+      RULES.keywordsEnabled = true;
+      const view = buildPickerView("battle1", keyworded(), [0]);
+      expect(labels(view)).toContain("Card b 7/5/3 · Last Stand");
+      expect(contentOf(view)).toContain("_Vanguard_");
+    });
+
+    it("explains each keyword once, the opponent's included", () => {
+      RULES.keywordsEnabled = true;
+      const content = contentOf(
+        buildPickerView("battle1", keyworded(), [], {
+          opposing: [withKeyword("x", "guard")],
+        }),
+      );
+      expect(content.match(/\*\*Vanguard\*\* —/g)).toHaveLength(1);
+      expect(content).toContain("**Last Stand** —");
+      expect(content).toContain("**Guard** — Opponents get no type multiplier");
+      expect(content).toContain("_Guard_");
+    });
+
+    it("explains only its own hand once the two carry too many, and offers the rest", () => {
+      RULES.keywordsEnabled = true;
+      const mine = ["vanguard", "last_stand", "avenge", "rally", "guard"].map(
+        (keyword, index) => withKeyword(`m${index}`, keyword),
+      );
+      const theirs = ["pierce", "bulwark", "momentum", "guard"].map(
+        (keyword, index) => withKeyword(`t${index}`, keyword),
+      );
+      const view = buildPickerView("battle1", mine, [], {
+        opposing: theirs,
+        opponentName: "Rho",
+      });
+      const content = contentOf(view);
+
+      expect(content).toContain("**Avenge** —");
+      expect(content).not.toContain("**Pierce** —");
+      expect(content).toContain("3 more on Rho's cards");
+      expect(buttonIds(view)).toContain("v2_keywords:battle1");
+    });
+
+    it("offers no keywords button while the legend fits", () => {
+      RULES.keywordsEnabled = true;
+      const view = buildPickerView("battle1", keyworded(), [], {
+        opposing: [withKeyword("x", "guard")],
+      });
+      expect(buttonIds(view)).not.toContain("v2_keywords:battle1");
+    });
+
+    it("keeps a long name's keyword inside the label limit", () => {
+      RULES.keywordsEnabled = true;
+      const long = { ...withKeyword("a", "last_stand"), name: "N".repeat(120) };
+      const [label] = labels(buildPickerView("battle1", [long, card("b"), card("c")], []));
+      expect(label.length).toBeLessThanOrEqual(80);
+      expect(label.endsWith("· Last Stand")).toBe(true);
     });
   });
 });

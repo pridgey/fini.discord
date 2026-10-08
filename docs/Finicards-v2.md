@@ -155,26 +155,64 @@ And the counterplay: had Fen placed the Trickster in slot 3, it would attack Bla
 
 ## 4. Keywords
 
-Commons are pure stats. Uncommons get one keyword. Full-arts get a keyword plus the spiky profile.
+**Rarity buys stats, not keywords.** A rarer card already has the bigger spike, so it is _less_ likely to carry a keyword and far less likely to carry a strong one. Commons almost always get one, and usually a good one. Each keyword has a grade, and each rarity rolls against its own odds:
 
-Design constraint: **every keyword should make slot placement matter.** This creates lineup-building depth with no new resolution math.
+| Rarity   | None  | Minor | Standard | Strong | Mythic |
+| -------- | ----- | ----- | -------- | ------ | ------ |
+| Common   | 4.5%  | 10%   | 50%      | 35%    | 0.5%   |
+| Uncommon | 29.5% | 30%   | 30%      | 10%    | 0.5%   |
+| Full-art | 62.5% | 25%   | 10%      | 2%     | 0.5%   |
 
-| Keyword        | Effect                                                                            | Tier     |
-| -------------- | --------------------------------------------------------------------------------- | -------- |
-| `Vanguard`     | +3 to type stat while in slot 1                                                   | Uncommon |
-| `Last Stand`   | +3 to type stat while in slot 3                                                   | Uncommon |
-| `Rally`        | If this card wins its round, the next card in the lineup gets +2 to its type stat | Uncommon |
-| `Momentum`     | +1 to type stat per round already won this match                                  | Uncommon |
-| `Avenge`       | +3 to type stat if the previous round was a loss                                  | Uncommon |
-| `Guard`        | Opponents get no type multiplier against this card                                | Uncommon |
-| `Bulwark`      | +2 to all three defensive stats                                                   | Uncommon |
-| `Pierce`       | Ignore 3 points of the defender's defensive stat                                  | Uncommon |
-| `First Strike` | If this card would lose its round by 2 or less, the round is a draw instead       | Uncommon |
-| `Underdog`     | +3 to type stat if the opposing card is a higher rarity                           | Uncommon |
-| `Adapt`        | This card's type counts as whatever beats the opposing card's type                | Full-art |
-| `Overwhelm`    | Damage dealt above 10 counts double toward the match tiebreaker                   | Full-art |
+Design constraint: **every keyword should make a lineup decision matter** — which slot a card goes in, what it is likely to face, or which other cards it is played beside. This creates lineup-building depth with no new resolution math.
 
-Implementation note: keywords resolve in a fixed order — placement bonuses (`Vanguard`, `Last Stand`) → conditional bonuses (`Momentum`, `Avenge`, `Underdog`) → type/multiplier modifiers (`Adapt`, `Guard`) → damage calculation → post-round effects (`Rally`). Lock this order early; ambiguity here is where balance bugs live.
+| Keyword | Effect | Grade |
+| --- | --- | --- |
+| `Vanguard` | +3 to type stat while in slot 1 | Standard |
+| `Last Stand` | +3 to type stat while in the final slot | Standard |
+| `Momentum` | +1 to type stat per round already won this match | Minor |
+| `Avenge` | +3 to type stat if the previous round was a loss | Standard |
+| `Underdog` | +3 to type stat if the opposing card is a higher rarity | Standard |
+| `Adapt` | This card's type counts as whatever beats the opposing card's type | Mythic |
+| `Guard` | Opponents get no type multiplier against this card | Strong |
+| `Bulwark` | +2 to all three defensive stats | Strong |
+| `Pierce` | Ignore 3 points of the defender's defensive stat | Strong |
+| `First Strike` | If this card would lose its round by 2 or less, the round is a draw instead | Minor |
+| `Rally` | If this card wins its round, the next card in the lineup gets +2 to its type stat | Minor |
+| `Overwhelm` | Damage dealt above 10 counts double toward the match tiebreaker | Minor |
+| `Anchor` | +3 to type stat while in a middle slot | Standard |
+| `Gambit` | +5 to type stat in slot 1, but −2 in any other slot | Standard |
+| `Closer` | +3 to type stat if the match is level going into this round (not slot 1) | Standard |
+| `Rival` | +3 to type stat against a card of the same type | Standard |
+| `Giant Slayer` | +3 to type stat if the opposing card's printed type stat is higher than this card's | Standard |
+| `Intimidate` | The opposing card gets −2 to its type stat | Strong |
+| `Purist` | +3 to type stat if the opposing card has no keyword in play | Standard |
+| `Brace` | +3 to defence when the opposing card has the type multiplier | Standard |
+| `Mimic` | Fights with the opposing card's keyword instead of its own | Minor |
+| `Silence` | The opposing card's keyword does nothing this round | Standard |
+| `Kinship` | +2 to type stat per other card in your lineup from the same series | Standard |
+| `Trinity` | +3 to type stat if your lineup has all three types | Standard |
+| `Chorus` | +2 to type stat per other card of the same type in your lineup | Standard |
+| `Lone Wolf` | +3 to type stat if no other card in your lineup shares its type | Standard |
+| `Synergy` | +1 to type stat per other card in your lineup sharing a tag | Minor |
+| `Thrifty` | +3 to type stat if your lineup's total cost is 7 or less | Standard |
+| `Grudge` | +2 to type stat per round already lost this match | Standard |
+| `Echo` | Attacks with your previous card's final type stat if that was higher | Standard |
+| `Second Wind` | +3 to type stat if the previous round was a draw | Minor |
+| `Martyr` | If this card loses its round, your next card gets +3 to its type stat | Standard |
+| `Parting Shot` | If this card loses its round, the opponent's next card gets −2 to its type stat | Standard |
+| `Spoiler` | If this card loses its round, the opponent's next card has its keyword switched off | Minor |
+| `Versatile` | +1 to type stat for each of its other two stats that is 5 or higher | Minor |
+| `Glass Cannon` | +4 to type stat, but −3 to all three defensive stats | Standard |
+| `Feint` | Attacks the opposing card's lowest stat instead of the matching one | Strong |
+| `Fortress` | +3 to all three defensive stats, but never gets the type multiplier | Strong |
+| `Edge` | Wins its round if the round would be a draw | Minor |
+| `Grit` | This card's damage counts double toward the match tiebreaker | Minor |
+| `Relentless` | Always counts at least 4 damage toward the match tiebreaker | Minor |
+| `Mercy` | If this card wins its round by 5 or more, the opposing card's damage counts for nothing toward the tiebreaker | Minor |
+
+Grades are measured, not guessed: how often a deck carrying the keyword beats the same deck without it. `Adapt` wins nine in ten, which is why it is alone at Mythic and on about one card in two hundred.
+
+Implementation note: keywords resolve in a fixed order — which keywords are in play (`Mimic` copies, then `Silence` switches off) → placement bonuses (`Vanguard`, `Anchor`, `Last Stand`, `Gambit`) → conditional bonuses (handoffs from the previous round, then the stat bonuses, then `Intimidate`, then `Echo`) → type/multiplier modifiers (`Adapt`, `Guard`, `Fortress`) → defensive modifiers (`Bulwark`, `Feint`, `Pierce`, `Brace`) → damage calculation → outcome (`First Strike`, `Edge`) → post-round effects (`Rally` for the winner; `Martyr`, `Parting Shot`, `Spoiler` for the loser) → tiebreak (`Overwhelm`, `Grit`, `Relentless`, `Mercy`). Lock this order early; ambiguity here is where balance bugs live.
 
 `Rally` illustrates the design goal well: it only pays off in slots 1 or 2. `Last Stand` is dead outside slot 3. A card's value depends on where you put it, which is a second strategic axis layered on top of type matching.
 

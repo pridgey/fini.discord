@@ -3,7 +3,7 @@ import type {
   CardRarity,
   V2CardDefinitionRecord,
 } from "../../types/PocketbaseTablesV2";
-import { keywordsForRarity } from "./keywords";
+import { rollKeyword } from "./keywords";
 import type { BattleRules } from "./rules";
 import { RARITY_COST, RULES } from "./rules";
 import { deriveType, normalizeSpread } from "./statBudget";
@@ -163,22 +163,19 @@ const hashString = (value: string): number => {
   return hash >>> 0;
 };
 
+/** A stable roll in [0, 1) for `seed`. */
+const hashRoll = (seed: string): number => hashString(seed) / 0x100000000;
+
 /**
- * Picks a keyword deterministically from the pool legal for that rarity.
- * Off by default: Phase 1 ships with no keywords, and `RULES.keywordsEnabled`
- * ignores them even if present. Populating them early is free.
+ * Rolls a card's keyword against its rarity's odds (`KEYWORD_ODDS`), seeded by
+ * the card itself so a re-import hands every card the keyword it already had.
+ * Off by default: `RULES.keywordsEnabled` ignores keywords even if present.
  */
-export const assignKeyword = (
-  seed: string,
-  rarity: CardRarity,
-): string => {
-  const pool = keywordsForRarity(rarity);
-  if (pool.length === 0) return "";
-  return pool[hashString(seed) % pool.length].slug;
-};
+export const assignKeyword = (seed: string, rarity: CardRarity): string =>
+  rollKeyword(rarity, hashRoll(`${seed}:grade`), hashRoll(`${seed}:pick`));
 
 export type ConvertOptions = {
-  /** Populate the `keyword` column. Default false - Phase 1 is pure stats. */
+  /** Populate the `keyword` column. Default false, which leaves it blank. */
   assignKeywords?: boolean;
   /** Carried into every converted row. */
   rules?: BattleRules;

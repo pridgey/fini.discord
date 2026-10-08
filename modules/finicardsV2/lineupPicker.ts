@@ -11,8 +11,9 @@ import {
   NEUTRAL_ACCENT,
   TYPE_ACCENT,
   WHEEL_HINT,
+  activeKeyword,
   cardChip,
-  compositionOf,
+  keywordGlossary,
   statLine,
 } from "./ui/theme";
 
@@ -29,6 +30,13 @@ import {
  */
 
 export const MAX_ENCODABLE_HAND = 10;
+
+/**
+ * The most keywords the picker explains inline. Two hands of five can carry ten
+ * different ones, and ten lines of legend bury the prompt; past this the picker
+ * explains the player's own and puts the rest behind a button.
+ */
+export const MAX_INLINE_KEYWORDS = 6;
 
 export const encodePicks = (indices: number[]): string => indices.join("");
 
@@ -47,8 +55,12 @@ export const assertEncodable = (handSize: number): void => {
   }
 };
 
-const cardLabel = (card: BattleCard): string =>
-  `${card.name} ${statLine(card)}`.slice(0, 76);
+/** The keyword goes first in the tail, so a long name truncates the name. */
+const cardLabel = (card: BattleCard): string => {
+  const keyword = activeKeyword(card);
+  const tail = ` ${statLine(card)}${keyword ? ` · ${keyword.name}` : ""}`;
+  return `${card.name.slice(0, 76 - tail.length)}${tail}`;
+};
 
 /**
  * A Components V2 message, not a `content` string.
@@ -66,6 +78,8 @@ export type PickerContext = {
   /** The opposing hand, so the read can be made without scrolling back up. */
   opposing?: BattleCard[];
   opponentName?: string;
+  /** Whose lineup this is, when the player is picking for more than one side. */
+  playingAs?: string;
 };
 
 /**
@@ -87,11 +101,12 @@ export const buildPickerView = (
     .map((card, index) => ({ card, index }))
     .filter((entry) => !picked.includes(entry.index));
 
-  const slots = Array.from({ length: RULES.rounds }, (_, slot) => {
-    const index = picked[slot];
-    if (index === undefined) return `**${slot + 1}.** _empty_`;
+  /* Only the slots already filled: the heading says which one is next, and
+     three lines of "empty" were the first thing on a screen with a lot to read. */
+  const slots = picked.map((index, slot) => {
     const card = hand[index];
-    return `**${slot + 1}.** ${TYPE_EMOJI[card.type]} ${card.name} \`${statLine(card)}\``;
+    const keyword = activeKeyword(card);
+    return `**${slot + 1}.** ${TYPE_EMOJI[card.type]} ${card.name} \`${statLine(card)}\`${keyword ? ` · _${keyword.name}_` : ""}`;
   });
 
   const nextSlot = picked.length + 1;
@@ -112,53 +127,87 @@ export const buildPickerView = (
     );
   }
 
-  // A restart button, since a misclick would otherwise mean an unwanted lineup.
+  /* Most keywords pay off in one slot and are dead in another, so what each one
+     does has to be readable at the moment the slot is chosen. When the two hands
+     carry more than fit, the player's own come first - those are the ones being
+     slotted - and the full list is one click away. */
+  const everyKeyword = keywordGlossary([...hand, ...(context.opposing ?? [])]);
+  const ownKeywords = keywordGlossary(hand);
+  const overflowing = everyKeyword.length > MAX_INLINE_KEYWORDS;
+  const glossary = overflowing
+    ? [
+        ...ownKeywords,
+        `-# …and ${everyKeyword.length - ownKeywords.length} more on ${context.opponentName ?? "their"}${context.opponentName ? "'s" : ""} cards — **Keywords** lists them all.`,
+      ]
+    : everyKeyword;
+
+  /* Utility buttons share a row under the cards: a restart, since a misclick
+     would otherwise mean an unwanted lineup, and the full keyword list. */
+  const utilities: ButtonBuilder[] = [];
   if (picked.length > 0 && picked.length < RULES.rounds) {
-    rows.push(
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-          .setCustomId(`v2_lineup_pick:${battleId}::reset`)
-          .setLabel("Start over")
-          .setStyle(ButtonStyle.Danger),
-      ),
+    utilities.push(
+      new ButtonBuilder()
+        .setCustomId(`v2_lineup_pick:${battleId}::reset`)
+        .setLabel("Start over")
+        .setStyle(ButtonStyle.Danger),
     );
   }
-
-  /* The opposing hand is the whole basis of the decision, and it was posted in
-     the channel - which by now may be several messages up. Repeating it here as
-     one compact line means the read can be made without leaving the picker. */
-  const facing =
-    context.opposing && context.opposing.length > 0
-      ? [
-          `**Facing ${context.opponentName ?? "them"}** ${compositionOf(context.opposing)}`,
-          context.opposing.map(cardChip).join(" · "),
-        ]
-      : [];
+  if (overflowing) {
+    utilities.push(
+      new ButtonBuilder()
+        .setCustomId(`v2_keywords:${battleId}`)
+        .setLabel("Keywords")
+        .setEmoji("📖")
+        .setStyle(ButtonStyle.Secondary),
+    );
+  }
+  if (utilities.length > 0) {
+    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(utilities));
+  }
 
   const done = picked.length === RULES.rounds;
+  const owner = context.playingAs ? `${context.playingAs}'s lineup` : "Your lineup";
 
-  const container = new ContainerBuilder()
-    .setAccentColor(
-      picked.length > 0 ? TYPE_ACCENT[hand[picked[0]].type] : NEUTRAL_ACCENT,
-    )
-    .addTextDisplayComponents((text) =>
-      text.setContent(
-        [
-          done
-            ? "### Your lineup — locking in…"
-            : `### Your lineup — pick slot ${nextSlot} of ${RULES.rounds}`,
-          ...slots,
-        ].join("\n"),
-      ),
-    );
+  const container = new ContainerBuilder().setAccentColor(
+    picked.length > 0 ? TYPE_ACCENT[hand[picked[0]].type] : NEUTRAL_ACCENT,
+  );
 
-  if (facing.length > 0) {
+  /* The opposing hand is the whole basis of the decision, and it was posted in
+     the channel - which by now may be several messages up. Repeating it here,
+     a card a line, means the read can be made without leaving the picker.
+     Heading and roster are separate components for the gap between them. */
+  if (context.opposing && context.opposing.length > 0) {
     container
-      .addSeparatorComponents((separator) => separator)
-      .addTextDisplayComponents((text) => text.setContent(facing.join("\n")));
+      .addTextDisplayComponents((text) =>
+        text.setContent(`**Facing ${context.opponentName ?? "them"}**`),
+      )
+      .addTextDisplayComponents((text) =>
+        text.setContent(context.opposing!.map(cardChip).join("\n")),
+      )
+      .addSeparatorComponents((separator) => separator);
   }
 
-  container.addTextDisplayComponents((text) => text.setContent(WHEEL_HINT));
+  if (glossary.length > 0) {
+    container.addTextDisplayComponents((text) =>
+      text.setContent(glossary.join("\n")),
+    );
+  }
+  container
+    .addTextDisplayComponents((text) => text.setContent(WHEEL_HINT))
+    .addSeparatorComponents((separator) => separator);
+
+  /* The prompt sits last, directly above the buttons it is asking about, so it
+     reads as their label rather than as a title for the reference above. */
+  container.addTextDisplayComponents((text) =>
+    text.setContent(
+      [
+        done
+          ? `### ${owner} — locking in…`
+          : `### ${owner} — pick slot ${nextSlot} of ${RULES.rounds}`,
+        ...slots,
+      ].join("\n"),
+    ),
+  );
 
   for (const row of rows) {
     container.addActionRowComponents(() => row);

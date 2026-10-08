@@ -1,6 +1,10 @@
-import { describe, expect, it } from "bun:test";
+import { afterEach, describe, expect, it } from "bun:test";
 import { resolveMatch } from "../../modules/finicardsV2/battleEngine";
-import { renderBattleBoard } from "../../modules/finicardsV2/cardArt";
+import {
+  keywordTag,
+  renderBattleBoard,
+} from "../../modules/finicardsV2/cardArt";
+import { RULES } from "../../modules/finicardsV2/rules";
 import type { BattleCard } from "../../modules/finicardsV2/types";
 import type { CardType } from "../../types/PocketbaseTablesV2";
 
@@ -81,5 +85,84 @@ describe("finicards v2 battle board", () => {
       names,
     );
     expect(three!.length).toBeGreaterThan(one!.length);
+  });
+
+  describe("keywords", () => {
+    const shipped = RULES.keywordsEnabled;
+    afterEach(() => {
+      RULES.keywordsEnabled = shipped;
+    });
+
+    const keyworded = (name: string, type: CardType, keyword: string) => ({
+      ...card(name, type),
+      rarity: "uncommon" as const,
+      keyword,
+    });
+
+    const play = () =>
+      resolveMatch({
+        challengerLineup: [
+          keyworded("A", "power", "vanguard"),
+          keyworded("B", "power", "vanguard"),
+          keyworded("C", "heart", "adapt"),
+        ],
+        defenderLineup: [
+          keyworded("D", "power", "guard"),
+          card("E", "power"),
+          card("F", "wit"),
+        ],
+        rules: { keywordsEnabled: true },
+      });
+
+    it("spells out a bonus that landed", () => {
+      RULES.keywordsEnabled = true;
+      expect(keywordTag(play().rounds[0], "challenger")).toEqual({
+        label: "VANGUARD +3",
+        short: "VANGUARD",
+        fired: true,
+      });
+    });
+
+    it("shows an idle keyword as idle", () => {
+      RULES.keywordsEnabled = true;
+      expect(keywordTag(play().rounds[1], "challenger")).toEqual({
+        label: "VANGUARD",
+        short: "VANGUARD",
+        fired: false,
+      });
+    });
+
+    it("counts a keyword that only left a round note as landing", () => {
+      RULES.keywordsEnabled = true;
+      const result = resolveMatch({
+        challengerLineup: [
+          keyworded("A", "wit", "rally"),
+          keyworded("B", "power", "last_stand"),
+        ],
+        defenderLineup: [card("D", "heart"), card("E", "heart")],
+        rules: { keywordsEnabled: true },
+      });
+      expect(keywordTag(result.rounds[0], "challenger")?.fired).toBe(true);
+      expect(keywordTag(result.rounds[1], "challenger")).toMatchObject({
+        label: "LAST STAND +3 \u00b7 RALLY +2",
+        short: "LAST STAND \u00b7 RALLY",
+      });
+    });
+
+    it("tags nothing on a card with no keyword, or while keywords are off", () => {
+      const result = play();
+      RULES.keywordsEnabled = true;
+      expect(keywordTag(result.rounds[1], "defender")).toBeNull();
+      RULES.keywordsEnabled = false;
+      expect(keywordTag(result.rounds[1], "challenger")).toBeNull();
+    });
+
+    it("renders a round where Adapt gives both sides the multiplier", async () => {
+      RULES.keywordsEnabled = true;
+      const result = play();
+      expect(result.rounds[2].challenger.multiplier).toBeGreaterThan(1);
+      expect(result.rounds[2].defender.multiplier).toBeGreaterThan(1);
+      expect(await renderBattleBoard(result, names)).not.toBeNull();
+    });
   });
 });

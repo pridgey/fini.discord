@@ -3,6 +3,7 @@
  *
  *   bun run scripts/finicards_v2_simulate.ts
  *   bun run scripts/finicards_v2_simulate.ts --matches 5000 --keywords
+ *   bun run scripts/finicards_v2_simulate.ts --grade
  *
  * The design doc names `typeMultiplier` "the single number defining game feel"
  * and expects extended tuning, so this exists to answer the tuning question with
@@ -29,8 +30,14 @@
 import { resolveMatch } from "../modules/finicardsV2/battleEngine";
 import { buildDeckCards } from "../modules/finicardsV2/decks";
 import { HAND_SIZE, dealHand } from "../modules/finicardsV2/draw";
-import { keywordsForRarity } from "../modules/finicardsV2/keywords";
-import { RULES, TYPE_BEATS, TYPE_PRIORITY } from "../modules/finicardsV2/rules";
+import { assignKeyword } from "../modules/finicardsV2/convertLegacyCards";
+import { GRADE_LABEL, KEYWORDS } from "../modules/finicardsV2/keywords";
+import {
+  RARITY_COST,
+  RULES,
+  TYPE_BEATS,
+  TYPE_PRIORITY,
+} from "../modules/finicardsV2/rules";
 import { normalizeSpread } from "../modules/finicardsV2/statBudget";
 import type { BattleCard } from "../modules/finicardsV2/types";
 import type { CardRarity, CardType } from "../types/PocketbaseTablesV2";
@@ -48,6 +55,7 @@ const argumentValue = (flag: string, fallback: number): number => {
 
 const MATCHES = argumentValue("--matches", 2000);
 const KEYWORDS_ENABLED = process.argv.includes("--keywords");
+const GRADE_MODE = process.argv.includes("--grade");
 const MULTIPLIERS = [1.0, 1.25, 1.5, 1.75, 2.0];
 
 /* -------------------------------------------------------------------------- */
@@ -97,6 +105,8 @@ const SHAPES: Record<CardRarity, number[][]> = {
   ],
 };
 
+const SERIES_COUNT = 12;
+
 const buildPool = (perCombination: number): BattleCard[] => {
   const pool: BattleCard[] = [];
   const rarities: CardRarity[] = ["common", "uncommon", "full_art"];
@@ -116,22 +126,25 @@ const buildPool = (perCombination: number): BattleCard[] => {
           rarity,
         );
 
-        const keywordPool = keywordsForRarity(rarity);
         pool.push({
           instanceId: `${rarity}-${type}-${index}`,
           definitionId: `${rarity}-${type}-${index}`,
           name: `${rarity}/${type}/${index}`,
-          series: "sim",
+          /* Spread over a handful of series and colours, as the real pool is,
+             so the lineup keywords (Kinship, Synergy) fire about as often as
+             they would rather than on every card. */
+          series: `sim-${index % SERIES_COUNT}`,
           rarity,
           type,
           stats: spread,
-          keyword:
-            KEYWORDS_ENABLED && keywordPool.length > 0
-              ? keywordPool[index % keywordPool.length].slug
-              : "",
+          // Rolled the way the import rolls them, so the sweep sees the real
+          // per-rarity odds rather than an even spread of keywords.
+          keyword: KEYWORDS_ENABLED
+            ? assignKeyword(`${rarity}-${type}-${index}`, rarity)
+            : "",
           foil: false,
-          tags: [],
-          cost: 0,
+          tags: [`colour-${index % 4}`, "legacy"],
+          cost: RARITY_COST[rarity],
         });
       }
     }
@@ -140,7 +153,9 @@ const buildPool = (perCombination: number): BattleCard[] => {
   return pool;
 };
 
-const POOL = buildPool(6);
+/* Keywords are rolled against odds as low as 1%, which six cards per
+   combination cannot represent - the pool has to be big enough to hold them. */
+const POOL = buildPool(KEYWORDS_ENABLED ? 60 : 6);
 
 const ofRarity = (rarity: CardRarity) =>
   POOL.filter((card) => card.rarity === rarity);
@@ -351,6 +366,77 @@ const experiments = (multiplier: number) => {
 
   return { depth, rarityBlind, rarityAnswered, monoType, baseline };
 };
+
+/* -------------------------------------------------------------------------- */
+/* Keyword grading                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How much one keyword is worth: two hands are dealt from the same pool and
+ * each side picks a lineup, then the challenger's three cards all carry the
+ * keyword and the defender's carry none. 50% is "does nothing"; a draw counts
+ * as half a win. This is the number a keyword's grade is read off.
+ *
+ * It understates keywords a player has to build or slot for - the picker here
+ * chases type matchups and knows nothing about series or slot order - so those
+ * are a floor, not an estimate.
+ */
+const gradeKeywords = () => {
+  const bare = POOL.map((card) => ({ ...card, keyword: "" }));
+  /* The same pool with keywords rolled at the real odds. Some keywords only
+     mean anything against other keywords (Silence, Mimic, Spoiler, Purist), so
+     each is also measured against a field that has them. */
+  const rolled = POOL.map((card) => ({
+    ...card,
+    keyword: assignKeyword(card.instanceId, card.rarity),
+  }));
+
+  const mirror = (slug: string | null, field: BattleCard[]): number => {
+    const random = makeRandom(7007);
+    let score = 0;
+
+    for (let match = 0; match < MATCHES; match++) {
+      const { challenger, defender } = playMatch(field, field, random);
+      const result = resolveMatch({
+        challengerLineup:
+          slug === null
+            ? challenger
+            : challenger.map((card) => ({ ...card, keyword: slug })),
+        defenderLineup: defender,
+        rules: { keywordsEnabled: true },
+      });
+      score +=
+        result.winner === "challenger" ? 1 : result.winner === "draw" ? 0.5 : 0;
+    }
+
+    return (score / MATCHES) * 100;
+  };
+
+  const rows = KEYWORDS.map((keyword) => ({
+    keyword,
+    bare: mirror(keyword.slug, bare),
+    field: mirror(keyword.slug, rolled),
+  })).sort((a, b) => b.bare + b.field - (a.bare + a.field));
+
+  console.log("Finicards v2 keyword grading");
+  console.log(
+    `pool ${POOL.length} cards · ${MATCHES} matches per cell · the keyword on all three of one side's cards`,
+  );
+  console.log(
+    `vs bare: opponent has no keywords · vs field: opponent's are rolled at the real odds (a rolled lineup scores ${mirror(null, rolled).toFixed(1)}% there)\n`,
+  );
+  console.log(`${"keyword".padEnd(14)}${"vs bare".padStart(8)}${"vs field".padStart(10)}  grade`);
+  for (const { keyword, bare: bareRate, field } of rows) {
+    console.log(
+      `${keyword.name.padEnd(14)}${`${bareRate.toFixed(1)}%`.padStart(8)}${`${field.toFixed(1)}%`.padStart(10)}  ${GRADE_LABEL[keyword.grade]}`,
+    );
+  }
+};
+
+if (GRADE_MODE) {
+  gradeKeywords();
+  process.exit(0);
+}
 
 /* -------------------------------------------------------------------------- */
 /* Report                                                                     */

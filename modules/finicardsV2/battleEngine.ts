@@ -6,7 +6,7 @@ import type {
   OutcomeContext,
   SideState,
 } from "./keywords";
-import { createSideState, findKeyword } from "./keywords";
+import { combatKeyword, createSideState, findKeyword } from "./keywords";
 import type { BattleRules } from "./rules";
 import { RULES, TYPE_BEATEN_BY, typeMultiplierFor } from "./rules";
 import type {
@@ -44,6 +44,8 @@ const createWorkspace = (
   card: BattleCard,
   rules: BattleRules,
 ): CombatWorkspace => ({
+  targetLowest: false,
+  keyword: rules.keywordsEnabled ? findKeyword(card.keyword) : null,
   side,
   card,
   attackStat: card.stats[card.type],
@@ -53,18 +55,6 @@ const createWorkspace = (
   adapted: false,
   bonuses: [],
 });
-
-/** Keywords on a card, filtered to one stage and sorted by locked sub-order. */
-const stageKeywords = (
-  card: BattleCard,
-  stage: KeywordDefinition["stage"],
-  rules: BattleRules,
-): KeywordDefinition[] => {
-  if (!rules.keywordsEnabled) return [];
-  const keyword = findKeyword(card.keyword);
-  if (!keyword || keyword.stage !== stage) return [];
-  return [keyword];
-};
 
 type RoundInput = {
   slot: number;
@@ -128,6 +118,7 @@ export const resolveRound = ({
     slot,
     lineupLength,
     state: states[side],
+    opponentState: states[otherSide(side)],
     rules,
     notes,
     selfLineup: lineups[side],
@@ -135,20 +126,44 @@ export const resolveRound = ({
     history,
   });
 
+  /* The keyword each card is fighting with *now*. Read at the moment a stage
+     runs rather than up front, so a keyword `Mimic` copied takes its turn in the
+     later stages and one `Silence` switched off never does. */
+  const keywordAt = (
+    side: Side,
+    stage: KeywordDefinition["stage"],
+  ): KeywordDefinition | null => {
+    const keyword = workspaces[side].keyword;
+    return keyword?.stage === stage ? keyword : null;
+  };
+
   const runStage = (stage: KeywordDefinition["stage"]) => {
     const queued = sides
-      .flatMap((side) =>
-        stageKeywords(cards[side], stage, rules).map((keyword) => ({
-          side,
-          keyword,
-        })),
-      )
+      .flatMap((side) => {
+        const keyword = keywordAt(side, stage);
+        return keyword ? [{ side, keyword }] : [];
+      })
       .sort((a, b) => a.keyword.order - b.keyword.order);
 
     for (const { side, keyword } of queued) {
       keyword.apply?.(contextFor(side));
     }
   };
+
+  /* 0. Which keywords are in play at all. A `Spoiler` from the last round lands
+        first, then `Mimic` copies, then `Silence` switches off - so a Mimic can
+        copy a Silence, and two Silences cancel each other. */
+  for (const side of sides) {
+    const state = states[side];
+    if (!state.silenceNext) continue;
+    state.silenceNext = false;
+    const lost = workspaces[side].keyword;
+    if (!lost) continue;
+    workspaces[side].keyword = null;
+    notes.push(`Spoiler: ${cards[side].name}'s ${lost.name} is switched off`);
+  }
+  runStage("copy");
+  runStage("suppress");
 
   /* 1. Placement bonuses (Vanguard, Last Stand) */
   runStage("placement");
@@ -161,8 +176,20 @@ export const resolveRound = ({
       workspaces[side].bonuses.push(`Rally +${state.pendingRally}`);
       state.pendingRally = 0;
     }
+    for (const { label, amount } of state.incoming) {
+      workspaces[side].attackStat += amount;
+      workspaces[side].bonuses.push(
+        `${label} ${amount < 0 ? `\u2212${-amount}` : `+${amount}`}`,
+      );
+    }
+    state.incoming = [];
   }
   runStage("conditional");
+
+  // Penalties stack, but a stat never goes below nothing.
+  for (const side of sides) {
+    workspaces[side].attackStat = Math.max(0, workspaces[side].attackStat);
+  }
 
   /* 3. Type / multiplier modifiers. Base multipliers first, then Adapt, then
         Guard - so a Guard card shuts an Adapt card back down to neutral. */
@@ -188,10 +215,14 @@ export const resolveRound = ({
     const defenderCardOfThis = cards[otherSide(side)];
 
     const attackValue = Math.floor(self.attackStat * self.multiplier);
-    // The defender defends with the stat matching the incoming attack.
+    // The defender defends with the stat matching the incoming attack, unless
+    // a `Feint` goes for whichever of the three is weakest.
+    const defendingStat = self.targetLowest
+      ? Math.min(...Object.values(defenderCardOfThis.stats))
+      : defenderCardOfThis.stats[attackType];
     const defenseFaced = Math.max(
       0,
-      defenderCardOfThis.stats[attackType] + opponent.defenseBonus - self.pierce,
+      defendingStat + opponent.defenseBonus - self.pierce,
     );
 
     // `Adapt` does not change which stat the card swings with, only whether the
@@ -211,57 +242,84 @@ export const resolveRound = ({
       defenseFaced,
       damage: attackValue - defenseFaced,
       bonuses: self.bonuses,
+      activeKeyword: self.keyword?.slug ?? "",
     };
   };
 
   const challenger = buildCombat("challenger");
   const defender = buildCombat("defender");
 
-  /* 5. Outcome, then First Strike may soften a narrow loss into a draw. */
-  let winner: RoundOutcome =
+  /* 5. Outcome. A card that did not win may ask for a different one: First
+        Strike softens a narrow loss into a draw, Edge takes a drawn round. Every
+        hook sees the outcome as it fell, and two cards asking for different
+        things cancel out - so two Edges facing each other still draw. */
+  const fallen: RoundOutcome =
     challenger.damage === defender.damage
       ? "draw"
       : challenger.damage > defender.damage
         ? "challenger"
         : "defender";
 
-  for (const side of sides) {
-    if (winner === side || winner === "draw") continue;
-    for (const keyword of stageKeywords(cards[side], "outcome", rules)) {
-      const outcomeContext: OutcomeContext = {
-        self: workspaces[side],
-        selfDamage: side === "challenger" ? challenger.damage : defender.damage,
-        opponentDamage:
-          side === "challenger" ? defender.damage : challenger.damage,
-        outcome: winner,
-        rules,
-        notes,
-      };
-      const override = keyword.adjustOutcome?.(outcomeContext);
-      if (override) winner = override;
-    }
+  const requests = sides.flatMap((side) => {
+    const keyword = fallen === side ? null : keywordAt(side, "outcome");
+    if (!keyword) return [];
+    const requestNotes: string[] = [];
+    const outcomeContext: OutcomeContext = {
+      self: workspaces[side],
+      selfDamage: side === "challenger" ? challenger.damage : defender.damage,
+      opponentDamage:
+        side === "challenger" ? defender.damage : challenger.damage,
+      outcome: fallen,
+      rules,
+      notes: requestNotes,
+    };
+    const outcome = keyword.adjustOutcome?.(outcomeContext);
+    return outcome ? [{ outcome, notes: requestNotes }] : [];
+  });
+
+  let winner = fallen;
+  if (new Set(requests.map((request) => request.outcome)).size === 1) {
+    winner = requests[0].outcome;
+    notes.push(...requests.flatMap((request) => request.notes));
   }
 
-  /* 6. Post-round effects (Rally) - only for the side that won. */
+  /* 6. Post-round effects: Rally for the side that won, and the on-loss
+        handoffs (Martyr, Parting Shot, Spoiler) for the side that lost. */
   if (winner !== "draw") {
-    for (const keyword of stageKeywords(cards[winner], "postRound", rules)) {
-      keyword.apply?.(contextFor(winner));
-    }
+    const loser = otherSide(winner);
+    const won = keywordAt(winner, "postRound");
+    const lost = keywordAt(loser, "postLoss");
+    won?.apply?.(contextFor(winner));
+    lost?.apply?.(contextFor(loser));
   }
 
   return { slot, challenger, defender, winner, notes };
 };
 
-/** Per-round tiebreaker contribution: floored at 0, doubled above 10 by Overwhelm. */
-const tiebreakContribution = (
-  combat: SideCombat,
+/**
+ * What each side's attack in a round counts toward the tiebreaker, and how it
+ * got there: `dealt` is the damage floored at 0, `own` is after the attacking
+ * card's keyword (`Overwhelm`, `Grit`, `Relentless`), `counted` after the
+ * opposing card's (`Mercy`). Exported so the result can explain the difference.
+ */
+export const tiebreakDamageOf = (
+  round: RoundResult,
+  side: Side,
   rules: BattleRules,
-): number => {
-  const floored = Math.max(0, combat.damage);
-  if (!rules.keywordsEnabled) return floored;
-  const keyword = findKeyword(combat.card.keyword);
-  if (keyword?.stage !== "tiebreak") return floored;
-  return keyword.adjustTiebreakDamage?.(floored, rules) ?? floored;
+): { dealt: number; own: number; counted: number } => {
+  const attack = round[side];
+  const reply = round[otherSide(side)];
+  const dealt = Math.max(0, attack.damage);
+  if (!rules.keywordsEnabled) return { dealt, own: dealt, counted: dealt };
+
+  const context = { attack, reply };
+  const own =
+    combatKeyword(attack)?.adjustTiebreakDamage?.(dealt, rules, context) ??
+    dealt;
+  const counted =
+    combatKeyword(reply)?.adjustOpposingTiebreakDamage?.(own, rules, context) ??
+    own;
+  return { dealt, own, counted };
 };
 
 export type ResolveMatchInput = {
@@ -315,8 +373,8 @@ export const resolveMatch = ({
 
     rounds.push(round);
 
-    tiebreakDamage.challenger += tiebreakContribution(round.challenger, rules);
-    tiebreakDamage.defender += tiebreakContribution(round.defender, rules);
+    tiebreakDamage.challenger += tiebreakDamageOf(round, "challenger", rules).counted;
+    tiebreakDamage.defender += tiebreakDamageOf(round, "defender", rules).counted;
 
     if (round.winner === "challenger") {
       challengerState.roundsWon += 1;

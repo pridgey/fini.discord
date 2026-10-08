@@ -1,8 +1,9 @@
 # Finicards v2
 
 Implementation of `docs/Finicards-v2.md` — the battle-first card game. **Phase 1
-(PvP battles) is complete and playable.** Phase 2's keyword library is built and
-tested but switched off, so it can be turned on with one flag when you want it.
+(PvP battles) and Phase 2 (keywords) are complete and playable.** Keywords are
+on (`RULES.keywordsEnabled`); the cards only carry them once the pool has been
+re-imported, see below.
 
 v2 runs *alongside* v1. Nothing in `modules/finicards`, `commands/booster-pack`,
 `commands/card-collection`, `commands/sell-card` or `commands/fuse-cards` was
@@ -39,6 +40,10 @@ when you want it, is retiring the v1 commands — not migrating data.
    Idempotent, keyed on `legacy_card`, so re-running after a mapping tweak
    updates in place instead of duplicating the pool.
 
+   The import also rolls each card's keyword while keywords are live. A pool
+   imported before they were switched on has none - re-run the import once to
+   hand them out. `keywords:False` imports with the column blank.
+
 4. **Get cards and fight:**
 
    ```
@@ -49,6 +54,7 @@ when you want it, is retiring the v1 commands — not migrating data.
    /finicard-v2 battle opponent:@them            # no card ids anywhere
    /finicard-v2 battle opponent:@them draw:4     # try a different draw size
    /finicard-v2 pending                          # whatever is waiting on you
+   /finicard-v2 practice                         # both sides yourself, see below
    ```
 
 ---
@@ -91,11 +97,13 @@ lineup.** Nothing is typed at any point.
                  → one click if they have one deck, a deck picker if several
 
 3. REVEAL      Both hands are shown in full: stats, keywords, card images.
+                 → each hand lists what its keywords do, under the image
 
 4. LINEUP      Each player privately clicks 3 of their 5, in slot order.
                  → two cards get left behind; which two is the decision
 
 5. RESOLVE     The second lineup in resolves the match.
+                 → the result lists what every keyword did, or that it sat idle
 ```
 
 **Nobody sees their own hand until both are dealt.** That is deliberate: if the
@@ -112,6 +120,32 @@ can never desync from stored state. There is a "start over" button for misclicks
 
 Lineups are validated against the dealt hand, so a player can only play cards
 they were actually dealt, and a locked lineup cannot be changed.
+
+## Practice battles
+
+`/finicard-v2 practice` runs a whole battle with one player on both sides, so a
+scenario can be tried without a second account:
+
+```
+/finicard-v2 practice                            # your only deck against itself
+/finicard-v2 practice deck:Main against:Hearts   # one of your decks vs another
+/finicard-v2 practice deck:Main draw:8           # see more of the deck per hand
+```
+
+Both hands are dealt and revealed at once, you pick the first side's lineup and
+the picker turns straight over to the second, and the result comes back with the
+same board and breakdown as a real match. All of it is ephemeral - only the
+player sees it - and nothing touches Finicoin, the jackpot or anyone's record.
+
+It is not a separate code path. A practice battle is an ordinary `v2_battle` row
+whose challenger and defender are the same user, which a real challenge can
+never be, so it needs no schema change and exercises the real dealing, picker,
+engine and rendering (`practice.ts`). The sides are named after their decks
+(`Main A` / `Main B` for a mirror). A deck facing itself is dealt as two
+separate hands with no copy on both sides, when it has enough cards for that.
+
+To stage an exact matchup, build a small deck per side with `deck build` and
+`deck add` / `remove`, and raise `draw` so the cards you want are in the hand.
 
 ## Decks
 
@@ -190,7 +224,74 @@ common 3/5/7 (Heart) vs full-art 10/3/2 (Power)
 ```
 
 That is one number in `RULES.spikeCeiling`. Left at 12 because it is a game-feel
-decision the doc made deliberately, not a bug.
+decision the doc made deliberately, not a bug - and because keywords turned out
+to be the better lever. See **Keywords and rarity**.
+
+## Keywords and rarity
+
+Rarity already buys a bigger spike, so it does not also buy the best keywords -
+the odds run the other way. Every keyword has a **grade**, and each rarity rolls
+against its own odds (`KEYWORD_ODDS` in `keywords.ts`):
+
+| | none | minor | standard | strong | mythic |
+| --- | --- | --- | --- | --- | --- |
+| common | 4.5% | 10% | 50% | 35% | 0.5% |
+| uncommon | 29.5% | 30% | 30% | 10% | 0.5% |
+| full-art | 62.5% | 25% | 10% | 2% | 0.5% |
+
+| grade | keywords | mirror win rate, vs a field with no keywords / with rolled ones |
+| --- | --- | --- |
+| minor | Momentum, First Strike, Rally, Overwhelm, Mimic, Synergy, Second Wind, Spoiler, Versatile, Edge, Grit, Relentless, Mercy | 50-56% / 43-50% |
+| standard | Vanguard, Last Stand, Avenge, Underdog, Anchor, Gambit, Closer, Rival, Giant Slayer, Purist, Brace, Silence, Kinship, Trinity, Chorus, Lone Wolf, Thrifty, Grudge, Echo, Martyr, Parting Shot, Glass Cannon | 57-66% / 50-59% |
+| strong | Guard, Bulwark, Pierce, Intimidate, Feint, Fortress | 68-75% / 60-67% |
+| mythic | Adapt | 85% / 76% |
+
+Measured with `bun run scripts/finicards_v2_simulate.ts --grade`: the keyword on
+all three of one side's cards, the other side either bare or carrying keywords
+rolled at the real odds. The second column matters for the keywords that only
+mean anything against other keywords (`Silence`, `Mimic`, `Spoiler`, `Purist`);
+a lineup with no keywords at all scores about 43% there.
+
+Four are graded above what that measures, because the simulated player neither
+builds a deck around a keyword nor chooses a slot for it: `Kinship`, `Trinity`
+and `Thrifty` pay for how a lineup is assembled, and `Gambit` is +5 in the one
+slot a player would actually put it in.
+
+Grades come from those measured numbers, not from how an effect reads. On the
+live 263-card pool this leaves 39 of the 65 full-arts with no keyword at all.
+
+At 0.5% a pool that size expects one Adapt card or so, and the seeded roll
+happens to hand the live pool **none**. Adapt stays in the library and any new
+card can roll it; to put one in play now, set `keyword` to `adapt` on a
+`v2_card_definition` row by hand - but note a re-import re-rolls that row.
+
+Why it is built this way: with the original rule - commons none, uncommons one,
+full-arts anything - switching keywords on took a full-art deck's win rate
+against commons from 91% to 98% and an uncommon deck's from 79% to 92%. Keywords
+were pure upside for the cards already winning. With the odds above
+(`--keywords`, 3000 matches per cell, multiplier 1.5):
+
+| | keywords off | keywords on |
+| --- | --- | --- |
+| depth wins | 75.1% | 73.2% |
+| fa vs blind | 90.5% | 79.4% |
+| fa vs answer | 91.9% | 83.6% |
+| mono-type | 0.0% | 0.1% |
+| level rounds | 11.3% | 10.1% |
+
+So keywords now *narrow* the rarity gap rather than widen it, and full-arts keep
+the inherent stat edge they are meant to have. `Underdog` does a lot of that
+work: it is dead on a full-art and worth +3 on a common exactly when it faces
+something rarer.
+
+The simulated player does not slot cards by keyword (it will not put a Vanguard
+in slot 1), so placement keywords are somewhat stronger in real play than the
+sweep shows.
+
+Keywords are rolled per card *definition*, seeded by the card's own id, so a
+re-import hands every card the keyword it already had. Two things reshuffle
+them: changing `KEYWORD_ODDS`, and adding a keyword to a grade (the pick within
+the grade is by position).
 
 ## Files
 
@@ -203,6 +304,7 @@ decision the doc made deliberately, not a bug.
 | `convertLegacyCards.ts` | Pure v1 → v2 mapping. |
 | `cardStore.ts` | Pocketbase boundary for cards, collections, lineups and the pool import. |
 | `battleStore.ts` | The two-phase challenge lifecycle and its state machine. |
+| `practice.ts` | What makes a battle a practice battle, and how its two hands are dealt. |
 | `decks.ts` | Deck CRUD, auto-building with filters, and loading a deck for play. |
 | `draw.ts` | Dealing a hand and validating a lineup against it. |
 | `lineupPicker.ts` | The three-click lineup picker and its custom-id encoding. |
@@ -236,7 +338,7 @@ the keyword up the moment it registers.
 registerKeyword({
   name: "Kindred",
   slug: "kindred",
-  tier: "uncommon",
+  grade: "standard",      // decides how often each rarity rolls it
   description: "+3 if another card in your lineup shares a tag",
   stage: "conditional",   // one of the eight locked stages
   order: 1,               // tie-break within the stage
@@ -254,8 +356,8 @@ registerKeyword({
 });
 ```
 
-`registerKeyword` rejects a duplicate slug, an unknown stage, or a definition
-with no hook — all three of which would otherwise fail *silently*, the keyword
+`registerKeyword` rejects a duplicate slug, an unknown stage or grade, or a
+definition with no hook — all three of which would otherwise fail *silently*, the keyword
 simply never firing, which is a miserable thing to debug mid-balance-pass.
 
 ### What a hook can read and write
@@ -403,6 +505,12 @@ and negative damage is parenthesised, because `4 – -4` is hard to parse.
 as a compact line (`🔴 Vegeta 10 · 🔵 Bulma 9 · …`), because the read is the whole
 decision and the reveal may be several messages up by then.
 
+**Keywords are named on the card and explained once.** Most keywords pay off in
+one slot and are dead in another, so the picker names each card's keyword on its
+button, in its slot and on the opposing chips, with one legend line per keyword
+in play. The battle board then shows what happened: a bonus that landed is lit
+above the card's name (`VANGUARD +3`), a keyword that sat idle is dimmed.
+
 ### One constraint worth knowing
 
 A message created with `IsComponentsV2` **cannot** carry a plain `content` field,
@@ -514,18 +622,16 @@ Render cost is 34 ms for a common and 99 ms for a full-art, so a five-card pack
 reveal is well under a second.
 
 **Where images appear:** `/finicard-v2 card` (with the text face as fallback),
-`/finicard-v2 pack` (all five pulls in one message), and the battle **reveal**
-(both hands, six cards). Match results stay text - the round-by-round maths is
-the point there.
+`/finicard-v2 pack` (all five pulls in one message), the battle **reveal** (both
+hands) and the match **result** (`cardArt/battleBoard.ts`, with the text result
+as its fallback).
 
 ---
 
 ## Deliberately not built
 
-- **Keywords in live battles.** Written, tested and documented, but
-  `RULES.keywordsEnabled` is `false`. Phase 1 is meant to answer "is
-  type-plus-stat fun" without keywords confusing the answer. Flip the flag (or
-  pass `rules: { keywordsEnabled: true }`) to play with them.
+- **Keyword-aware deck building.** `deck build` still ranks by stats alone and
+  does not know a keyword is worth anything.
 - **Decks, cooldowns, dungeons, set completion, trading.** Phases 3–6. The
   schema carries `cost`, `tags`, `keyword` and `set_piece` from day one, so none
   of them needs a migration across a live collection.

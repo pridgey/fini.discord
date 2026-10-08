@@ -9,6 +9,12 @@ import {
   dealHandFromDeck,
   isLegalLineup,
 } from "./draw";
+import {
+  dealPracticeHands,
+  isPractice,
+  practiceNames,
+  practiceSideToPlay,
+} from "./practice";
 import { RULES } from "./rules";
 import type { MatchResult, Side } from "./types";
 
@@ -116,6 +122,79 @@ export const sideForUser = (
   if (battle.challenger_id === userId) return "challenger";
   if (battle.defender_id === userId) return "defender";
   return null;
+};
+
+/**
+ * The side a user's next lineup pick is for.
+ *
+ * In a real battle that is simply their side. In practice they hold both, and
+ * play the challenger's lineup first.
+ */
+export const sideToPlay = (
+  battle: V2BattleRecord,
+  userId: string,
+): Side | null => {
+  const side = sideForUser(battle, userId);
+  if (!side || !isPractice(battle)) return side;
+  return practiceSideToPlay(battle);
+};
+
+/* -------------------------------------------------------------------------- */
+/* Practice - one player, both sides, dealt and revealed in a single step      */
+/* -------------------------------------------------------------------------- */
+
+export type CreatePracticeInput = {
+  serverId: string;
+  channelId: string;
+  userId: string;
+  /** The deck played as the challenger. */
+  deck: V2DeckRecord;
+  /** The deck played as the defender. May be the same deck. */
+  against: V2DeckRecord;
+  handSize?: number;
+};
+
+export const createPracticeBattle = async (
+  input: CreatePracticeInput,
+): Promise<CreateChallengeOutcome> => {
+  const handSize = clampHandSize(input.handSize);
+  const [mine, theirs] = await Promise.all([
+    loadDeck(input.deck, input.serverId),
+    loadDeck(input.against, input.serverId),
+  ]);
+
+  for (const contents of [mine, theirs]) {
+    if (contents.cards.length < handSize) {
+      return {
+        ok: false,
+        reason: `**${contents.deck.name}** can only field ${contents.cards.length} cards and this battle deals ${handSize}.`,
+      };
+    }
+  }
+
+  const hands = dealPracticeHands(mine.cards, theirs.cards, handSize);
+  const names = practiceNames(input.deck.name, input.against.name);
+
+  const battle = await pb.collection<V2BattleRecord>(V2_BATTLE).create({
+    server_id: input.serverId,
+    channel_id: input.channelId,
+    challenger_id: input.userId,
+    challenger_name: names.challenger,
+    defender_id: input.userId,
+    defender_name: names.defender,
+    challenger_deck: input.deck.id ?? "",
+    defender_deck: input.against.id ?? "",
+    challenger_hand: hands.challenger.map((card) => card.instanceId),
+    defender_hand: hands.defender.map((card) => card.instanceId),
+    hand_size: handSize,
+    challenger_lineup: [],
+    defender_lineup: [],
+    state: "awaiting_lineups",
+    result: null,
+    wager: 0,
+  });
+
+  return { ok: true, battle };
 };
 
 /** The draw size a battle was created with, falling back for older rows. */
@@ -288,7 +367,7 @@ export const getPendingBattlesForUser = async (
 
   // Only surface battles where the ball is actually in this user's court.
   return open.filter((battle) => {
-    const side = sideForUser(battle, userId);
+    const side = sideToPlay(battle, userId);
     if (!side) return false;
     if (battle.state === "awaiting_defender") return side === "defender";
     return lineupFor(battle, side).length !== RULES.rounds;
@@ -338,6 +417,8 @@ export const getBattleRecordForUser = async (
   let draws = 0;
 
   for (const battle of battles) {
+    // Beating yourself in practice is not a win.
+    if (isPractice(battle)) continue;
     const winner = (battle.result as MatchResult | null)?.winner;
     if (!winner) continue;
     if (winner === "draw") {

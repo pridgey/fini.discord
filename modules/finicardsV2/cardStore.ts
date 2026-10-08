@@ -66,6 +66,8 @@ export const getUserCollection = async (
       filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}"`,
       sort: "-created",
       expand: "card",
+      // Practice loads two decks at once; the SDK would auto-cancel the first.
+      requestKey: null,
     });
 
   return owned
@@ -198,7 +200,8 @@ export const loadLineupByIds = async (
     try {
       const record = await pb
         .collection<V2UserCardRecord>(V2_USER_CARD)
-        .getOne(id, { expand: "card" });
+        // Both hands load at once and, in practice, may share a copy.
+        .getOne(id, { expand: "card", requestKey: null });
       if (!record.expand?.card) continue;
       cards.push(toBattleCard({ ...record, definition: record.expand.card }));
     } catch {

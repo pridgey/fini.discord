@@ -52,6 +52,12 @@ export type SideCombat = {
   damage: number;
   /** Human-readable list of what modified this attack. */
   bonuses: string[];
+  /**
+   * Slug of the keyword this card fought the round with, "" for none. Differs
+   * from the card's printed one after `Mimic` or `Silence`. Absent on results
+   * stored before it was tracked.
+   */
+  activeKeyword?: string;
 };
 
 export type RoundOutcome = Side | "draw";

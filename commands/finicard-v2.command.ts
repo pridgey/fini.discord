@@ -10,6 +10,7 @@ import {
 import {
   buildCardMessage,
   buildPackMessage,
+  buildRevealMessage,
   compositionString,
 } from "../modules/finicardsV2/ui";
 import {
@@ -33,16 +34,18 @@ import {
   getCardDefinitions,
   getUserCollection,
   importCardDefinitions,
+  loadLineupByIds,
   resolveLineup,
   toBattleCard,
 } from "../modules/finicardsV2/cardStore";
 import {
   createChallenge,
+  createPracticeBattle,
   getBattleRecordForUser,
   getPendingBattlesForUser,
 } from "../modules/finicardsV2/battleStore";
 import { convertLegacyPool } from "../modules/finicardsV2/convertLegacyCards";
-import { KEYWORDS } from "../modules/finicardsV2/keywords";
+import { GRADE_LABEL, KEYWORDS } from "../modules/finicardsV2/keywords";
 import { openPack, PACK_SIZE } from "../modules/finicardsV2/packs";
 import { renderCardFace } from "../modules/finicardsV2/renderBattle";
 import {
@@ -150,6 +153,35 @@ export const data = new SlashCommandBuilder()
           .setName("wager")
           .setDescription("Finicoin each side stakes (default 0)")
           .setMinValue(0)
+          .setRequired(false),
+      ),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("practice")
+      .setDescription(
+        "Play both sides of a battle yourself - private, nothing staked or recorded",
+      )
+      .addStringOption((option) =>
+        option
+          .setName("deck")
+          .setDescription("Deck for the first side (blank uses your only deck)")
+          .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("against")
+          .setDescription("Deck for the other side (blank uses the same deck)")
+          .setRequired(false),
+      )
+      .addIntegerOption((option) =>
+        option
+          .setName("draw")
+          .setDescription(
+            `Cards dealt to each side (${MIN_HAND_SIZE}-${MAX_HAND_SIZE}, default ${HAND_SIZE})`,
+          )
+          .setMinValue(MIN_HAND_SIZE)
+          .setMaxValue(MAX_HAND_SIZE)
           .setRequired(false),
       ),
   )
@@ -290,7 +322,7 @@ export const data = new SlashCommandBuilder()
       .addBooleanOption((option) =>
         option
           .setName("keywords")
-          .setDescription("Also assign keywords (default: false)")
+          .setDescription("Roll keywords for the pool (default: on while keywords are live)")
           .setRequired(false),
       ),
   )
@@ -322,7 +354,12 @@ export const execute = async (
   const serverName = interaction.guild?.name ?? "unknown guild name";
   const identifier = `${interaction.user.username}-${serverName}`;
 
-  await interaction.deferReply();
+  /* A practice battle is shown only to the player running it, and whether a
+     reply is ephemeral is fixed at the moment it is deferred. */
+  const isPrivate = interaction.options.getSubcommand(false) === "practice";
+  await interaction.deferReply(
+    isPrivate ? { flags: [MessageFlags.Ephemeral] } : undefined,
+  );
 
   try {
     /* The deck group is dispatched first - `getSubcommand()` returns the leaf
@@ -611,6 +648,93 @@ export const execute = async (
         return;
       }
 
+      /* ------------------------------------------------------ practice ---- */
+      case "practice": {
+        const deckName = interaction.options.getString("deck");
+        const againstName = interaction.options.getString("against");
+        const handSize = clampHandSize(
+          interaction.options.getInteger("draw") ?? HAND_SIZE,
+        );
+
+        const decks = await getDecks(interaction.user.id, serverId);
+
+        if (decks.length === 0) {
+          await interaction.editReply(
+            `You have no decks. Build one with \`/finicard-v2 deck build name:Main\` - a battle deals ${HAND_SIZE} cards from it.`,
+          );
+          return;
+        }
+
+        const yours = decks.map((d) => `**${d.name}**`).join(", ");
+        const deck = deckName
+          ? await findDeckByName(interaction.user.id, serverId, deckName)
+          : decks.length === 1
+            ? decks[0]
+            : null;
+
+        if (!deck) {
+          await interaction.editReply(
+            deckName
+              ? `You have no deck called **${deckName}**. Yours: ${yours}.`
+              : `You have several decks - say which one: ${yours}.`,
+          );
+          return;
+        }
+
+        // Blank plays the deck against itself, dealt as two separate hands.
+        const against = againstName
+          ? await findDeckByName(interaction.user.id, serverId, againstName)
+          : deck;
+
+        if (!against) {
+          await interaction.editReply(
+            `You have no deck called **${againstName}**. Yours: ${yours}.`,
+          );
+          return;
+        }
+
+        const created = await createPracticeBattle({
+          serverId,
+          channelId: interaction.channelId,
+          userId: interaction.user.id,
+          deck,
+          against,
+          handSize,
+        });
+
+        if (!created.ok) {
+          await interaction.editReply(created.reason);
+          return;
+        }
+
+        const { battle } = created;
+        const [challengerHand, defenderHand] = await Promise.all([
+          loadLineupByIds(battle.challenger_hand),
+          loadLineupByIds(battle.defender_hand),
+        ]);
+
+        await interaction.editReply(
+          await buildRevealMessage({
+            battleId: battle.id!,
+            wager: 0,
+            practice: true,
+            challenger: {
+              side: "challenger",
+              name: battle.challenger_name,
+              userId: interaction.user.id,
+              cards: challengerHand,
+            },
+            defender: {
+              side: "defender",
+              name: battle.defender_name,
+              userId: interaction.user.id,
+              cards: defenderHand,
+            },
+          }),
+        );
+        return;
+      }
+
       /* ------------------------------------------------------- pending ---- */
       case "pending": {
         const pending = await getPendingBattlesForUser(
@@ -709,7 +833,7 @@ export const execute = async (
             const stage = keyword.stage;
             accumulator[stage] = accumulator[stage] ?? [];
             accumulator[stage].push(
-              `• **${keyword.name}** (${RARITY_LABEL[keyword.tier]}) — ${keyword.description}`,
+              `• **${keyword.name}** (${GRADE_LABEL[keyword.grade]}) — ${keyword.description}`,
             );
             return accumulator;
           },
@@ -720,14 +844,15 @@ export const execute = async (
           "### v2 keyword library",
           RULES.keywordsEnabled
             ? "_Keywords are **active** in battles._"
-            : "_Keywords are **not yet active** in battles - Phase 1 is pure stats. Cards carry them so Phase 2 needs no schema change._",
+            : "_Keywords are **switched off** - battles are pure stats for now._",
+          "_The rarer the card, the less likely it carries one, and the less likely it is a strong one._",
           "",
           ...Object.entries(byStage).map(
             ([stage, entries]) =>
               `**Resolves at: ${stage}**\n${entries.join("\n")}`,
           ),
           "",
-          "_Resolution order is fixed: placement → conditional → matchup → defense → damage → outcome → post-round → tiebreak._",
+          "_Resolution order is fixed: copy → suppress → placement → conditional → matchup → defense → damage → outcome → post-round → post-loss → tiebreak._",
         ].join("\n");
 
         for (const [index, chunk] of splitBigString(body).entries()) {
@@ -748,7 +873,7 @@ export const execute = async (
 
         const commit = interaction.options.getBoolean("commit") ?? false;
         const assignKeywords =
-          interaction.options.getBoolean("keywords") ?? false;
+          interaction.options.getBoolean("keywords") ?? RULES.keywordsEnabled;
 
         const legacyCards = await pb
           .collection<CardDefinitionRecord>("card_definition")

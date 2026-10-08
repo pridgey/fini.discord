@@ -1,8 +1,10 @@
 import sharp from "sharp";
 import type { MatchResult, RoundResult, Side, SideCombat } from "../types";
+import { tiebreakDamageOf } from "../battleEngine";
+import { combatKeyword } from "../keywords";
 import { resolveArtSource } from "./generateCardImage";
 import { squareArt } from "./handStrip";
-import { TYPE_BEATS } from "../rules";
+import { RULES, TYPE_BEATS } from "../rules";
 import { STAT_LABELS, TYPE_PALETTES } from "./palettes";
 import { escapeXml, truncateToWidth } from "./svgText";
 import type { CardType } from "../../../types/PocketbaseTablesV2";
@@ -70,6 +72,91 @@ const working = (combat: SideCombat): string => {
 };
 
 /**
+ * What a card's keyword did this round, for the line above its name.
+ *
+ * A bonus that landed is spelled out ("VANGUARD +3") and lit, because it is why
+ * the stat underneath is bigger than the card's printed one. A keyword that sat
+ * idle - `Last Stand` played in slot 1 - still shows, dimmed, so the wasted slot
+ * is visible. A handed-on `Rally` counts as landing on the card that received it.
+ *
+ * `short` drops the amounts, for when a card's own bonus and a `Rally` together
+ * are too wide for the panel.
+ */
+export const keywordTag = (
+  roundResult: RoundResult,
+  side: Side,
+): { label: string; short: string; fired: boolean } | null => {
+  const combat = roundResult[side];
+
+  if (combat.bonuses.length > 0) {
+    // "Guard (no multiplier vs this card)" - the name alone fits the panel.
+    const labels = combat.bonuses.map((bonus) =>
+      bonus.replace(/\s*\(.*\)$/, "").toUpperCase(),
+    );
+    return {
+      label: labels.join(" \u00b7 "),
+      short: labels
+        .map((label) => label.replace(/\s+\S*\d\S*$/, ""))
+        .join(" \u00b7 "),
+      fired: true,
+    };
+  }
+
+  const keyword = RULES.keywordsEnabled ? combatKeyword(combat) : null;
+  if (!keyword) return null;
+
+  /* Keywords that change the outcome or hand something on (`First Strike`,
+     `Rally`) leave a round note naming the side rather than a bonus. */
+  const fired = roundResult.notes.some(
+    (note) => note.startsWith(`${keyword.name}:`) && note.includes(side),
+  );
+  const label = keyword.name.toUpperCase();
+  /* Tiebreak keywords touch only the total, so leave no trace in the round:
+     this card's own count changed, or it changed the opposing card's. */
+  const other: Side = side === "challenger" ? "defender" : "challenger";
+  const mine = tiebreakDamageOf(roundResult, side, RULES);
+  const theirs = tiebreakDamageOf(roundResult, other, RULES);
+  return {
+    label,
+    short: label,
+    fired: fired || mine.own !== mine.dealt || theirs.counted !== theirs.own,
+  };
+};
+
+/** Room for the tag: the WIN chip takes the inner corner of a winning panel. */
+const KEYWORD_TAG = { width: 88, widthBesideChip: 62, letterSpacing: 0.6 };
+
+/** The widest form of the tag that fits, shrinking the type before cutting it. */
+const fitKeywordTag = (
+  tag: { label: string; short: string },
+  width: number,
+): { text: string; fontSize: number } => {
+  const attempts = [
+    { text: tag.label, fontSize: 6 },
+    { text: tag.short, fontSize: 6 },
+    { text: tag.short, fontSize: 5 },
+  ];
+  for (const attempt of attempts) {
+    const options = {
+      fontSize: attempt.fontSize,
+      letterSpacing: KEYWORD_TAG.letterSpacing,
+      bold: true,
+    };
+    if (truncateToWidth(attempt.text, width, options) === attempt.text) {
+      return attempt;
+    }
+  }
+  return {
+    text: truncateToWidth(tag.short, width, {
+      fontSize: 5,
+      letterSpacing: KEYWORD_TAG.letterSpacing,
+      bold: true,
+    }),
+    fontSize: 5,
+  };
+};
+
+/**
  * Outline glyphs for each type, drawn in a 10×10 box: a flexed arm for Power, a
  * brain for Wit, a heart for Heart. They tag the working line so the type it was
  * fought in reads at a glance, without spelling the stat name out again.
@@ -92,12 +179,13 @@ const typeIcon = (type: CardType, x: number, y: number): string =>
 
 /** One side's card, laid out mirror-image for the defender. */
 const cardPanel = (
-  combat: SideCombat,
+  roundResult: RoundResult,
   side: Side,
   outcome: "won" | "lost" | "draw",
   row: number,
   artUri: string | null,
 ): string => {
+  const combat = roundResult[side];
   const palette = TYPE_PALETTES[combat.printedType];
   const mirrored = side === "defender";
   const x0 = mirrored ? INNER - PANEL.width : 0;
@@ -116,6 +204,20 @@ const cardPanel = (
     bold: true,
   });
   const statLabel = STAT_LABELS[combat.printedType].full;
+  /* A keyword bonus is shown as the printed stat plus the gain, in gold, so the
+     bigger number in the working line underneath has a visible source. */
+  const gained = combat.attackStat - combat.baseAttackStat;
+  const boost =
+    gained === 0
+      ? ""
+      : `<tspan dx="3" fill="${GOLD}">${gained > 0 ? "+" : "\u2212"}${Math.abs(gained)}</tspan>`;
+  const tag = keywordTag(roundResult, side);
+  const fittedTag = tag
+    ? fitKeywordTag(
+        tag,
+        outcome === "won" ? KEYWORD_TAG.widthBesideChip : KEYWORD_TAG.width,
+      )
+    : null;
 
   /* The icon sits on the art side of the working line - leading it for the
      challenger, trailing it for the defender - so it mirrors like the rest of
@@ -154,7 +256,18 @@ const cardPanel = (
       textX,
     )}" y="46" text-anchor="${anchor}" font-family="JetBrains Mono, monospace" font-size="8" font-weight="700" letter-spacing="0.8" fill="${
       palette.bright
-    }">${statLabel} ${combat.attackStat}</text>`,
+    }">${statLabel} ${combat.baseAttackStat}${boost}</text>`,
+    tag && fittedTag
+      ? `<text x="${round(
+          textX,
+        )}" y="17" text-anchor="${anchor}" font-family="JetBrains Mono, monospace" font-size="${
+          fittedTag.fontSize
+        }" font-weight="800" letter-spacing="${
+          KEYWORD_TAG.letterSpacing
+        }" fill="${tag.fired ? GOLD : "#ffffff"}" fill-opacity="${
+          tag.fired ? 0.95 : 0.35
+        }">${escapeXml(fittedTag.text)}</text>`
+      : "",
     typeIcon(combat.printedType, iconX, 52.4),
     `<text x="${round(
       workingX,
@@ -215,14 +328,18 @@ const centreColumn = (roundResult: RoundResult): string => {
     score(defender, "defender"),
   ];
 
-  /* Only one side can ever hold the multiplier. The chip is coloured by the
-     type that earned it and points at the card that got it. */
-  const bonused: Side | null =
-    challenger.multiplier > 1
-      ? "challenger"
-      : defender.multiplier > 1
-      ? "defender"
-      : null;
+  /* Normally only one side can hold the multiplier. The chip is coloured by the
+     type that earned it and points at the card that got it. `Adapt` is the
+     exception: it can hand its card the bonus while the opponent holds the
+     natural one, and then the chip points at nobody. */
+  const both = challenger.multiplier > 1 && defender.multiplier > 1;
+  const bonused: Side | null = both
+    ? null
+    : challenger.multiplier > 1
+    ? "challenger"
+    : defender.multiplier > 1
+    ? "defender"
+    : null;
 
   const chip = { width: 72, height: 13, y: 52 };
   const chipX = cx - chip.width / 2;
@@ -253,8 +370,11 @@ const centreColumn = (roundResult: RoundResult): string => {
       }" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" font-weight="800" letter-spacing="0.5" fill="#ffffff">${label}</text>`,
     );
   } else {
-    const label =
-      challenger.printedType === defender.printedType ? "MIRROR" : "NO BONUS";
+    const label = both
+      ? `BOTH ×${challenger.multiplier}`
+      : challenger.printedType === defender.printedType
+      ? "MIRROR"
+      : "NO BONUS";
     parts.push(
       `<rect x="${chipX}" y="${chip.y}" width="${chip.width}" height="${chip.height}" rx="6.5" fill="none" stroke="#ffffff" stroke-opacity="0.18"></rect>`,
       `<text x="${cx}" y="${
@@ -283,7 +403,7 @@ const roundRow = (
       HEADER.height + HEADER.gap + index * (ROW.height + ROW.gap)
     })">`,
     cardPanel(
-      roundResult.challenger,
+      roundResult,
       "challenger",
       outcomeFor("challenger"),
       index,
@@ -291,7 +411,7 @@ const roundRow = (
     ),
     centreColumn(roundResult),
     cardPanel(
-      roundResult.defender,
+      roundResult,
       "defender",
       outcomeFor("defender"),
       index,

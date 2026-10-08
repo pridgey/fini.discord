@@ -14,6 +14,7 @@ import {
   SIDE_ACCENT,
   cardLine,
   compositionOf,
+  keywordLegend,
 } from "./theme";
 
 /**
@@ -44,6 +45,8 @@ export type RevealMessageInput = {
   defender: RevealHand;
   wager: number;
   battleId: string;
+  /** One player holding both hands: no mentions, and they pick both lineups. */
+  practice?: boolean;
 };
 
 export type BuiltMessage = {
@@ -65,19 +68,30 @@ const handContainer = (
     );
 
   if (stripFile) {
-    return container.addMediaGalleryComponents((gallery) =>
+    container.addMediaGalleryComponents((gallery) =>
       gallery.addItems((item) =>
         item
           .setURL(`attachment://${stripFile}`)
           .setDescription(`${hand.name}'s hand`),
       ),
     );
+  } else {
+    // Only reached if the strip failed to render; the text is the fallback.
+    container.addTextDisplayComponents((text) =>
+      text.setContent(hand.cards.map(cardLine).join("\n")),
+    );
   }
 
-  // Only reached if the strip failed to render; the text is the fallback.
-  return container.addTextDisplayComponents((text) =>
-    text.setContent(hand.cards.map(cardLine).join("\n")),
-  );
+  /* The strip names each card's keyword but has no room to say what it does,
+     and both players are choosing slots around exactly that. */
+  const legend = keywordLegend(hand.cards);
+  if (legend.length > 0) {
+    container.addTextDisplayComponents((text) =>
+      text.setContent(legend.join("\n")),
+    );
+  }
+
+  return container;
 };
 
 /**
@@ -110,25 +124,34 @@ export const buildRevealMessage = async (
 
   const lineupButton = new ButtonBuilder()
     .setCustomId(`v2_lineup_open:${input.battleId}`)
-    .setLabel("Set your lineup")
+    .setLabel(input.practice ? "Set both lineups" : "Set your lineup")
     .setStyle(ButtonStyle.Primary);
 
   const header = new ContainerBuilder()
     .setAccentColor(NEUTRAL_ACCENT)
     .addTextDisplayComponents((text) =>
       text.setContent(
-        [
-          "## ⚔️ Hands are dealt",
-          `<@${input.challenger.userId}> vs <@${input.defender.userId}>${
-            input.wager > 0 ? ` · **${input.wager} fc** each` : " · friendly"
-          }`,
-        ].join("\n"),
+        input.practice
+          ? [
+              "## 🧪 Practice battle",
+              `**${input.challenger.name}** vs **${input.defender.name}** · only you can see this · nothing is staked or recorded`,
+            ].join("\n")
+          : [
+              "## ⚔️ Hands are dealt",
+              `<@${input.challenger.userId}> vs <@${input.defender.userId}>${
+                input.wager > 0 ? ` · **${input.wager} fc** each` : " · friendly"
+              }`,
+            ].join("\n"),
       ),
     )
     .addSeparatorComponents((separator) => separator)
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `Both of you now pick **3 of your ${input.challenger.cards.length}**, in slot order. The two you leave behind are the decision.\n${MECHANIC_HINT}`,
+        `${
+          input.practice
+            ? `Pick **3 of the ${input.challenger.cards.length}** for ${input.challenger.name}, then 3 for ${input.defender.name}, each in slot order.`
+            : `Both of you now pick **3 of your ${input.challenger.cards.length}**, in slot order. The two you leave behind are the decision.`
+        }\n${MECHANIC_HINT}`,
       ),
     )
     .addActionRowComponents(() =>

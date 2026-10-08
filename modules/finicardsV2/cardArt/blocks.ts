@@ -136,10 +136,8 @@ export type AbilityContent = {
 /**
  * The ability panel.
  *
- * Commons are pure stats by design, and keywords are switched off entirely in
- * Phase 1, so the common case is a card with no keyword at all. Rather than
- * leave the panel blank, it says so - which also makes it obvious at a glance
- * whether keywords are live.
+ * Most full-arts and a good share of uncommons roll no keyword at all. Rather
+ * than leave the panel blank, it says so.
  */
 export const abilityBlock = (
   spec: AbilitySpec,

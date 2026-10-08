@@ -4,7 +4,7 @@ import { TYPE_PRIORITY } from "../rules";
 import type { BattleCard } from "../types";
 import { resolveArtSource, type CardArtSource } from "./generateCardImage";
 import { STAT_LABELS, TYPE_PALETTES } from "./palettes";
-import { escapeXml, truncateToWidth } from "./svgText";
+import { escapeXml, estimateWidth, truncateToWidth } from "./svgText";
 
 /**
  * The hand strip: one wide image containing every card in a hand.
@@ -32,6 +32,10 @@ const ART = { x: 12, y: 4, size: 60 };
 
 /** Where the text column starts and ends. */
 const TEXT = { x: 80, width: 152 };
+
+/** The keyword chip under the series line. Gold, as on the battle board. */
+const KEYWORD_CHIP = { height: 14, padding: 6, fontSize: 7.5, spacing: 0.8 };
+const KEYWORD_GOLD = "#FFD166";
 
 /** The stat boxes. */
 const STATS = { x: 236, right: 372, gap: 3, leadRatio: 1.7, y: 18, height: 32 };
@@ -125,11 +129,23 @@ const strip = (
     fontSize: 15,
     bold: true,
   });
-  const subtitle = truncateToWidth(
-    [card.series, keyword?.name].filter(Boolean).join(" · ").toUpperCase(),
-    TEXT.width,
-    { fontSize: 8, letterSpacing: 0.7, bold: true },
-  );
+  const subtitle = truncateToWidth(card.series.toUpperCase(), TEXT.width, {
+    fontSize: 8,
+    letterSpacing: 0.7,
+    bold: true,
+  });
+
+  /* The keyword gets a line of its own. Sharing the series line meant a long
+     series title pushed it off the end, and the keyword is the part a player
+     needs in order to choose a slot. A card without one keeps the two lines
+     centred. */
+  const keywordLabel = keyword?.name.toUpperCase() ?? "";
+  const lines = keyword
+    ? { name: 22, series: 35, keyword: 44 }
+    : { name: 28, series: 44, keyword: 0 };
+  const chipWidth =
+    estimateWidth(keywordLabel, KEYWORD_CHIP.fontSize, KEYWORD_CHIP.spacing, true) +
+    KEYWORD_CHIP.padding * 2;
 
   return [
     // A nested svg gives each strip its own coordinate space and its own `lead`
@@ -148,11 +164,17 @@ const strip = (
        anything busy. */
     `<circle cx="${ART.x + 9}" cy="${top + ART.y + 9}" r="7.5" fill="#0b0c16" fill-opacity="0.72"></circle>`,
     `<text x="${ART.x + 9}" y="${top + ART.y + 12}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="700" fill="#ffffff" fill-opacity="0.9">${index + 1}</text>`,
-    `<text x="${TEXT.x}" y="${top + 28}" font-size="15" font-weight="800" fill="#ffffff">${escapeXml(name)}</text>`,
+    `<text x="${TEXT.x}" y="${top + lines.name}" font-size="15" font-weight="800" fill="#ffffff">${escapeXml(name)}</text>`,
     card.foil
-      ? `<text x="${TEXT.x + TEXT.width - 22}" y="${top + 28}" font-size="11" fill="${palette.bright}">✦</text>`
+      ? `<text x="${TEXT.x + TEXT.width - 22}" y="${top + lines.name}" font-size="11" fill="${palette.bright}">✦</text>`
       : "",
-    `<text x="${TEXT.x}" y="${top + 44}" font-size="8" font-weight="700" letter-spacing="0.7" fill="${palette.bright}" fill-opacity="0.85">${escapeXml(subtitle)}</text>`,
+    `<text x="${TEXT.x}" y="${top + lines.series}" font-size="8" font-weight="700" letter-spacing="0.7" fill="${palette.bright}" fill-opacity="0.85">${escapeXml(subtitle)}</text>`,
+    keyword
+      ? [
+          `<rect x="${TEXT.x}" y="${top + lines.keyword}" width="${round(chipWidth)}" height="${KEYWORD_CHIP.height}" rx="${KEYWORD_CHIP.height / 2}" fill="${KEYWORD_GOLD}" fill-opacity="0.14" stroke="${KEYWORD_GOLD}" stroke-opacity="0.45" stroke-width="0.6"></rect>`,
+          `<text x="${TEXT.x + KEYWORD_CHIP.padding}" y="${top + lines.keyword + 9.6}" font-family="JetBrains Mono, monospace" font-size="${KEYWORD_CHIP.fontSize}" font-weight="800" letter-spacing="${KEYWORD_CHIP.spacing}" fill="${KEYWORD_GOLD}">${escapeXml(keywordLabel)}</text>`,
+        ].join("")
+      : "",
     statBoxes(card, top, index),
     `</svg>`,
   ].join("");

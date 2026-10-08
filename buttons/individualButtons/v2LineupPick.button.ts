@@ -2,7 +2,7 @@ import { ButtonInteraction, MessageFlags, TextChannel } from "discord.js";
 import {
   getBattle,
   handFor,
-  sideForUser,
+  sideToPlay,
   submitLineup,
 } from "../../modules/finicardsV2/battleStore";
 import { loadLineupByIds } from "../../modules/finicardsV2/cardStore";
@@ -15,6 +15,7 @@ import {
   buildResultMessage,
   notice,
 } from "../../modules/finicardsV2/ui";
+import { isPractice } from "../../modules/finicardsV2/practice";
 import { RULES } from "../../modules/finicardsV2/rules";
 import {
   awardPot,
@@ -41,7 +42,8 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     return;
   }
 
-  const side = sideForUser(battle, interaction.user.id);
+  const side = sideToPlay(battle, interaction.user.id);
+  const practice = isPractice(battle);
 
   if (!side) {
     await interaction.reply({
@@ -63,12 +65,12 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     loadLineupByIds(handFor(battle, side)),
     loadLineupByIds(handFor(battle, opposingSide)),
   ]);
+  const nameOf = (which: typeof side) =>
+    which === "challenger" ? battle.challenger_name : battle.defender_name;
   const pickerContext = {
     opposing,
-    opponentName:
-      opposingSide === "challenger"
-        ? battle.challenger_name
-        : battle.defender_name,
+    opponentName: nameOf(opposingSide),
+    playingAs: practice ? nameOf(side) : undefined,
   };
   const picked = decodePicks(encoded);
 
@@ -115,6 +117,19 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
   const chosen = next.map((handIndex) => hand[handIndex]);
 
+  /* Practice: the same player holds the other hand, so instead of waiting on
+     an opponent the picker turns straight over to the second lineup. */
+  if (!outcome.resolved && practice) {
+    await interaction.update(
+      buildPickerView(battleId, opposing, [], {
+        opposing: hand,
+        opponentName: nameOf(side),
+        playingAs: nameOf(opposingSide),
+      }),
+    );
+    return;
+  }
+
   if (!outcome.resolved) {
     const opponentName =
       outcome.waitingOn === "challenger"
@@ -134,6 +149,26 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
   };
 
   await interaction.update(notice("✅ Lineup locked in. Resolving…"));
+
+  /* A practice result goes back to the one player who can see the battle, not
+     to the channel, and there is no pot to settle. */
+  if (practice) {
+    const message = await buildResultMessage({
+      battleId,
+      result,
+      names,
+      userIds: {
+        challenger: battle.challenger_id,
+        defender: battle.defender_id,
+      },
+      practice: true,
+    });
+    await interaction.followUp({
+      ...message,
+      flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
+    });
+    return;
+  }
 
   /* Settle. A decided pot is raked to the server Jackpot before payout; a draw
      returns both stakes. Either way the coin out equals the coin in. */

@@ -10,7 +10,7 @@ import {
   legacyStatWeights,
   legacyTags,
 } from "../../modules/finicardsV2/convertLegacyCards";
-import { findKeyword } from "../../modules/finicardsV2/keywords";
+import { KEYWORD_ODDS, findKeyword } from "../../modules/finicardsV2/keywords";
 import { RULES } from "../../modules/finicardsV2/rules";
 import { validateSpread } from "../../modules/finicardsV2/statBudget";
 import type { CardDefinitionRecord } from "../../types/PocketbaseTables";
@@ -251,14 +251,30 @@ describe("finicards v2 legacy conversion", () => {
       expect(convertLegacyCard(legacy())!.keyword).toBe("");
     });
 
-    it("assigns a legal keyword for the rarity when asked", () => {
-      const uncommon = convertLegacyCard(legacy(), { assignKeywords: true })!;
-      expect(findKeyword(uncommon.keyword)?.tier).toBe("uncommon");
+    it("rolls every rarity against its own odds when asked", () => {
+      const share = (rarity: "common" | "uncommon" | "full_art") => {
+        const rolled = Array.from({ length: 2000 }, (_, index) =>
+          assignKeyword(`card-${index}`, rarity),
+        );
+        expect(rolled.every((slug) => slug === "" || findKeyword(slug))).toBe(
+          true,
+        );
+        return rolled.filter(Boolean).length / rolled.length;
+      };
 
-      const common = convertLegacyCard(legacy({ rarity: "c" }), {
+      const expected = (rarity: "common" | "uncommon" | "full_art") =>
+        Object.values(KEYWORD_ODDS[rarity]).reduce((a, b) => a + b, 0);
+
+      for (const rarity of ["common", "uncommon", "full_art"] as const) {
+        expect(Math.abs(share(rarity) - expected(rarity))).toBeLessThan(0.04);
+      }
+    });
+
+    it("rolls a card's keyword from its own rarity", () => {
+      const row = convertLegacyCard(legacy({ id: "legacy001", rarity: "c" }), {
         assignKeywords: true,
       })!;
-      expect(common.keyword).toBe("");
+      expect(row.keyword).toBe(assignKeyword("legacy001", "common"));
     });
 
     it("is stable across runs for the same card", () => {

@@ -4,7 +4,10 @@ import {
   KEYWORDS,
   KEYWORD_STAGE_ORDER,
   findKeyword,
-  keywordsForRarity,
+  KEYWORD_GRADES,
+  KEYWORD_ODDS,
+  keywordsOfGrade,
+  rollKeyword,
   normalizeKeywordSlug,
 } from "../../modules/finicardsV2/keywords";
 import type { BattleCard } from "../../modules/finicardsV2/types";
@@ -52,22 +55,60 @@ describe("finicards v2 keywords", () => {
 
     it("locks the stage order the doc asks to lock early", () => {
       expect(KEYWORD_STAGE_ORDER).toEqual([
+        "copy",
+        "suppress",
         "placement",
         "conditional",
         "matchup",
         "defense",
         "outcome",
         "postRound",
+        "postLoss",
         "tiebreak",
       ]);
     });
 
-    it("gives commons no keywords and full-arts the whole library", () => {
-      expect(keywordsForRarity("common")).toHaveLength(0);
-      expect(keywordsForRarity("uncommon").every((k) => k.tier === "uncommon")).toBe(
-        true,
-      );
-      expect(keywordsForRarity("full_art")).toHaveLength(KEYWORDS.length);
+    it("grades every keyword, with Adapt alone at the top", () => {
+      expect(KEYWORDS.every((k) => KEYWORD_GRADES.includes(k.grade))).toBe(true);
+      expect(keywordsOfGrade("mythic").map((k) => k.slug)).toEqual(["adapt"]);
+    });
+
+    describe("rarity odds", () => {
+      const chance = (rarity: CardRarity) =>
+        KEYWORD_GRADES.reduce(
+          (total, grade) => total + KEYWORD_ODDS[rarity][grade],
+          0,
+        );
+
+      it("never promises more than certainty", () => {
+        for (const rarity of ["common", "uncommon", "full_art"] as const) {
+          expect(chance(rarity)).toBeLessThanOrEqual(1);
+        }
+      });
+
+      it("hands out keywords more freely the more common the card", () => {
+        expect(chance("common")).toBeGreaterThan(chance("uncommon"));
+        expect(chance("uncommon")).toBeGreaterThan(chance("full_art"));
+        expect(KEYWORD_ODDS.common.strong).toBeGreaterThan(
+          KEYWORD_ODDS.uncommon.strong,
+        );
+        expect(KEYWORD_ODDS.uncommon.strong).toBeGreaterThan(
+          KEYWORD_ODDS.full_art.strong,
+        );
+      });
+
+      it("keeps Adapt to one card in two hundred at every rarity", () => {
+        for (const rarity of ["common", "uncommon", "full_art"] as const) {
+          expect(KEYWORD_ODDS[rarity].mythic).toBeLessThanOrEqual(0.005);
+        }
+      });
+
+      it("rolls the lowest band first and nothing past the last", () => {
+        expect(findKeyword(rollKeyword("full_art", 0, 0))?.grade).toBe("minor");
+        expect(rollKeyword("full_art", 0.99, 0)).toBe("");
+        const justInsideMythic = chance("common") - 0.001;
+        expect(rollKeyword("common", justInsideMythic, 0.999)).toBe("adapt");
+      });
     });
 
     it("looks keywords up by name, slug or hyphenated form", () => {
@@ -93,13 +134,26 @@ describe("finicards v2 keywords", () => {
     });
   });
 
-  describe("Phase 1 ships without keywords", () => {
-    it("ignores keyword text entirely by default", () => {
+  describe("the keyword switch", () => {
+    it("ships switched on", () => {
       const result = resolveMatch({
         challengerLineup: [
           card("Vanguardian", "power", 7, 5, 3, { keyword: "vanguard" }),
         ],
         defenderLineup: [card("Plain", "power", 7, 5, 3)],
+      });
+
+      expect(result.rounds[0].challenger.attackStat).toBe(10);
+      expect(result.winner).toBe("challenger");
+    });
+
+    it("ignores keyword text entirely when switched off", () => {
+      const result = resolveMatch({
+        challengerLineup: [
+          card("Vanguardian", "power", 7, 5, 3, { keyword: "vanguard" }),
+        ],
+        defenderLineup: [card("Plain", "power", 7, 5, 3)],
+        rules: { keywordsEnabled: false },
       });
 
       expect(result.rounds[0].challenger.attackStat).toBe(7);

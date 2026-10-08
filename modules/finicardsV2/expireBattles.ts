@@ -1,5 +1,6 @@
 import type { Client, TextChannel } from "discord.js";
 import { findStaleBattles, markBattleExpired } from "./battleStore";
+import { isPractice } from "./practice";
 import { refundWager } from "./wagers";
 
 /**
@@ -88,6 +89,9 @@ export const expireStaleV2Battles = async (
         }
       }
     }
+
+    // An abandoned practice battle was private; its expiry is nobody's news.
+    if (isPractice(battle)) continue;
 
     try {
       const channel = (await client.channels.fetch(
