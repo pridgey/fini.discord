@@ -4,3 +4,6 @@ dist
 .env.local
 .vercel
 pocketbase/pb_data
+
+# Pocketbase writes a migration here for every schema change made through
+# its dashboard or API. The schema is the hand-written files only.

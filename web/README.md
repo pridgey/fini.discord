@@ -43,6 +43,7 @@ it could expose: the copies in the mailbox, which are card collections.
 | `web/src/lib/cards.ts` | Filtering, sorting and deck checks. Pure, tested in `tests/web/` |
 | `web/pocketbase/pb_migrations/` | The mailbox's schema and access rules |
 | `modules/finicardsV2/webSync/` | Fini's half: sending copies, answering requests |
+| `scripts/finicards_v2_web_schema.ts` | Applies the mailbox's schema over its API |
 | `scripts/finicards_v2_web_sync.ts` | Runs the sync without the bot |
 | `scripts/finicards_v2_web_dev_login.ts` | Sign-in link for a local mailbox |
 
@@ -63,13 +64,16 @@ the keyword does - where they can.
 
 ## Going live
 
-None of this has been done yet; the steps below are untested against
-Pockethost, Vercel and Discord themselves.
-
-1. **Mailbox.** Create a Pockethost instance. Upload the files in
-   `web/pocketbase/pb_migrations/` into the instance's `pb_migrations` folder
-   and restart it. In its dashboard,
-   create a superuser for Fini to sign in as.
+1. **Mailbox.** Create a Pockethost instance and, in its dashboard, a
+   superuser for Fini to sign in as. Put the three settings from step 3 in
+   `.env`, then apply the schema:
+   ```
+   bun --env-file=.env run scripts/finicards_v2_web_schema.ts
+   ```
+   It runs the files in `web/pocketbase/pb_migrations/` over the API, and
+   only the ones not yet applied, so it is also how a later schema change
+   reaches the mailbox. (A self-hosted Pocketbase can take the files as
+   ordinary migrations instead. Use one way or the other, not both.)
 2. **Discord sign-in.** In the Discord developer portal, on Fini's
    application, add the OAuth2 redirect
    `https://<instance>.pockethost.io/api/oauth2-redirect`. In the mailbox
