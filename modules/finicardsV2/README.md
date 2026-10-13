@@ -39,22 +39,12 @@ fusion.
 2. **Register the command.** `bun run register-commands` — `/finicard` is
    picked up automatically by the existing glob.
 
-3. **Fill the card pool** from the existing v1 cards:
-
-   ```
-   /finicard import                 # dry run, reports what it would do
-   /finicard import commit:True     # writes the rows
-   ```
-
-   Idempotent, keyed on `legacy_card`, so re-running after a mapping tweak
-   updates in place instead of duplicating the pool.
-
-   The import does not assign keywords. A keyword belongs to a copy and is
-   rolled when the copy is pulled - see **Keywords and rarity**.
-
-   **Do not re-run the import once cards have been edited in the card
-   manager.** It overwrites every converted card with what v1 says, so stats,
-   names and series corrected by hand are lost.
+3. **The card pool** is kept in the card manager (see **The card manager**).
+   It began as a conversion of the first game's cards - see **The converted
+   pool** - and has been edited by hand since, which is why the command that
+   did the conversion is gone: run again, it would write v1's version of every
+   card over the corrected one. A keyword is not part of a card; it belongs to
+   a copy and is rolled when the copy is pulled - see **Keywords and rarity**.
 
 4. **Get cards and fight:**
 
@@ -77,7 +67,8 @@ fusion.
 
 ## The converted pool
 
-`/finicard import` maps the live v1 pool into v2 rows. Two corrections in
+The pool was first filled by mapping the live v1 pool into v2 rows
+(`convertLegacyPool`). Two corrections in
 `convertLegacyCards.ts` exist because measuring the real 263-card pool showed the
 naive mapping produced an unplayable pool:
 
@@ -469,8 +460,9 @@ This was run on 2026-10-12: 2,782 copies for 15 players and 69 free packs
 across two servers. It is kept for the record and should not be run again -
 it begins by wiping every v2 copy.
 
-`/finicard import` now only reports. The pool is kept in the card manager, and
-writing the v1 conversion over it would undo every card edited since.
+The `/finicard import` command that first filled the pool has been removed:
+the pool is kept in the card manager, and writing the v1 conversion over it
+would undo every card edited since.
 
 ## Dungeon history
 

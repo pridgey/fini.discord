@@ -6,7 +6,6 @@ import {
   ChatInputCommandInteraction,
   ContainerBuilder,
   MessageFlags,
-  PermissionFlagsBits,
 } from "discord.js";
 import {
   buildCardMessage,
@@ -36,7 +35,6 @@ import {
   getCardDefinitions,
   getPopulationCounts,
   getUserCollection,
-  importCardDefinitions,
   loadLineupByIds,
   resolveLineup,
   toBattleCard,
@@ -47,7 +45,6 @@ import {
   getBattleRecordForUser,
   getPendingBattlesForUser,
 } from "../modules/finicardsV2/battleStore";
-import { convertLegacyPool } from "../modules/finicardsV2/convertLegacyCards";
 import { DUNGEON } from "../modules/finicardsV2/dungeon";
 import {
   buildRunMessage,
@@ -80,13 +77,11 @@ import {
 import { canAfford, stakeWager } from "../modules/finicardsV2/wagers";
 import { addCoin, getUserBalance } from "../modules/finicoin";
 import { ADMIN_ID, isAdmin } from "../utilities/discord/isAdmin";
-import type { CardDefinitionRecord } from "../types/PocketbaseTables";
 import type {
   CardRarity,
   CardType,
   V2DeckRecord,
 } from "../types/PocketbaseTablesV2";
-import { pb } from "../utilities/pocketbase";
 import { splitBigString } from "../utilities/splitBigString";
 
 /**
@@ -111,11 +106,6 @@ const certainTier = (tier: LegendaryTier): Record<LegendaryTier, number> => ({
   4: 0,
   [tier]: 1,
 });
-
-/** Server administrators, plus the bot admin (`ADMIN_ID`) in any server. */
-const canAdminister = (interaction: ChatInputCommandInteraction) =>
-  isAdmin(interaction.user.id) ||
-  !!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
 
 /** The `view` choice shared by every command that shows cards as pages. */
 const withViewOption = (option: SlashCommandStringOption) =>
@@ -406,19 +396,8 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub
-      .setName("import")
-      .setDescription("[Admin] Compare the card pool against the first game's (reports only)")
-      .addBooleanOption((option) =>
-        option
-          .setName("commit")
-          .setDescription("Disabled since launch: the pool is kept in the card manager")
-          .setRequired(false),
-      ),
-  )
-  .addSubcommand((sub) =>
-    sub
       .setName("grant")
-      .setDescription("[Admin] Hand out free cards")
+      .setDescription("[Bot admin] Hand out free cards")
       .addUserOption((option) =>
         option
           .setName("who")
@@ -1066,53 +1045,6 @@ export const execute = async (
         return;
       }
 
-      /* -------------------------------------------------------- import ---- */
-      case "import": {
-        if (!canAdminister(interaction)) {
-          await interaction.editReply(
-            "Only an administrator can import the card pool.",
-          );
-          return;
-        }
-
-        // The pool has been edited by hand since it was first converted -
-        // stats, names, series, artwork. Writing the conversion over it again
-        // would undo all of that, so since launch this only reports.
-        if (interaction.options.getBoolean("commit")) {
-          await interaction.editReply(
-            "Importing is switched off: the card pool is now kept in the card manager, and importing would overwrite every card that came from the first game. Run it without `commit` to see what it would have done.",
-          );
-          return;
-        }
-        const commit = false;
-
-        const legacyCards = await pb
-          .collection<CardDefinitionRecord>("card_definition")
-          .getFullList();
-
-        // No keywords: a keyword is rolled per copy when it is pulled, never
-        // fixed on the card. Importing also blanks any left from before.
-        const { converted, skipped } = convertLegacyPool(legacyCards);
-        const summary = await importCardDefinitions(converted, {
-          dryRun: !commit,
-        });
-
-        await interaction.editReply(
-          [
-            `### v1 → v2 import ${commit ? "(committed)" : "(dry run)"}`,
-            `**Read:** ${legacyCards.length} v1 cards`,
-            `**Converted:** ${converted.length}`,
-            `**Skipped:** ${skipped.length} _(item cards have no v2 equivalent)_`,
-            `**Created:** ${summary.created} · **Updated:** ${summary.updated} · **Unchanged:** ${summary.unchanged}`,
-            "**Keywords:** none on cards — each copy rolls its own when pulled",
-            commit ? "" : "\n_Nothing was written. Re-run with `commit:True`._",
-          ]
-            .filter(Boolean)
-            .join("\n"),
-        );
-        return;
-      }
-
       /* ---------------------------------------------------------- sell ---- */
       case "sell": {
         await runSell(interaction, { serverId, serverName });
@@ -1121,10 +1053,10 @@ export const execute = async (
 
       /* --------------------------------------------------------- grant ---- */
       case "grant": {
-        if (!canAdminister(interaction)) {
-          await interaction.editReply(
-            "Only an administrator can grant cards.",
-          );
+        // The bot admin alone, not server administrators: a granted card is
+        // a free pull against the server's population limits.
+        if (!isAdmin(interaction.user.id)) {
+          await interaction.editReply("Only the bot admin can grant cards.");
           return;
         }
 
