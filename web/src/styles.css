@@ -638,6 +638,28 @@ code { padding: 2px 6px; border-radius: 6px; background: var(--panel-2); }
 .card[data-face="true"] .card-face { border-radius: 4.3cqw; background: none; }
 .card[data-face="true"] .card-face::after { display: none; }
 .card-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* The big card follows a finger as it follows a mouse, so it must not scroll. */
+.card[data-size="hero"] { touch-action: none; }
+.card[data-active="true"] .card-glare { opacity: 1; }
+.card[data-active="true"] .card-holo { opacity: 0.75; }
+.card[data-face="true"][data-active="true"] .card-holo { opacity: 0.6; }
+
+/*
+ * Where nothing hovers - a phone - a foil's light moves by itself, so it
+ * still reads as foil. It stops while a finger is steering it.
+ */
+@property --mx { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+@property --my { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+@keyframes shine {
+  from { --mx: 0%; --my: 15%; }
+  to { --mx: 100%; --my: 85%; }
+}
+@media (hover: none) {
+  .card[data-foil="true"]:not([data-active="true"]) { animation: shine 4.5s ease-in-out infinite alternate; }
+  .card[data-foil="true"] .card-holo,
+  .card[data-face="true"][data-foil="true"] .card-holo { opacity: 0.5; }
+}
+
 /* A printed foil already has its sheen; the moving light is for the hover. */
 .card[data-face="true"] .card-holo { opacity: 0; }
 .card[data-face="true"]:hover .card-holo { opacity: 0.55; }

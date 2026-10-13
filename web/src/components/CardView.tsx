@@ -47,7 +47,9 @@ export const CardView = memo(function CardView({
 
   const lean = (event: PointerEvent) => {
     const node = ref.current;
-    if (!node || event.pointerType === "touch") return;
+    // A finger in the grid is scrolling. On the big card it is the pointer.
+    if (!node || (event.pointerType === "touch" && size !== "hero")) return;
+    node.dataset.active = "true";
     const box = node.getBoundingClientRect();
     const x = (event.clientX - box.left) / box.width;
     const y = (event.clientY - box.top) / box.height;
@@ -61,6 +63,7 @@ export const CardView = memo(function CardView({
     if (!node) return;
     node.style.setProperty("--rx", "0deg");
     node.style.setProperty("--ry", "0deg");
+    delete node.dataset.active;
   };
 
   return (
@@ -80,8 +83,11 @@ export const CardView = memo(function CardView({
       data-detail={!!detail}
       title={!face && !detail && about ? `${keyword}: ${about}` : undefined}
       onClick={onClick}
+      onPointerDown={lean}
       onPointerMove={lean}
       onPointerLeave={settle}
+      onPointerUp={(event) => event.pointerType === "touch" && settle()}
+      onPointerCancel={settle}
     >
       {face ? (
         // The real card, as Fini renders it for Discord.
