@@ -2,7 +2,7 @@ import type { V2BattleRecord, V2DeckRecord } from "../../types/PocketbaseTablesV
 import { pb } from "../../utilities/pocketbase";
 import { resolveMatch } from "./battleEngine";
 import { V2_BATTLE, loadLineupByIds } from "./cardStore";
-import { loadDeck } from "./decks";
+import { loadDeck, unplayableReason } from "./decks";
 import {
   HAND_SIZE,
   clampHandSize,
@@ -64,6 +64,9 @@ export const createChallenge = async (
 ): Promise<CreateChallengeOutcome> => {
   const handSize = clampHandSize(input.handSize);
   const contents = await loadDeck(input.deck, input.serverId);
+
+  const unplayable = unplayableReason(contents);
+  if (unplayable) return { ok: false, reason: unplayable };
 
   if (contents.cards.length < handSize) {
     return {
@@ -164,6 +167,9 @@ export const createPracticeBattle = async (
   ]);
 
   for (const contents of [mine, theirs]) {
+    const unplayable = unplayableReason(contents);
+    if (unplayable) return { ok: false, reason: unplayable };
+
     if (contents.cards.length < handSize) {
       return {
         ok: false,
@@ -237,6 +243,9 @@ export const acceptChallenge = async (
      changed after the challenge was issued. */
   const handSize = handSizeOf(battle);
   const contents = await loadDeck(deck, battle.server_id);
+
+  const unplayable = unplayableReason(contents);
+  if (unplayable) return { ok: false, reason: unplayable };
 
   if (contents.cards.length < handSize) {
     return {

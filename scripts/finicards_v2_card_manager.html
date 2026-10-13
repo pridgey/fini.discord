@@ -1,0 +1,724 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Finicards v2 card manager</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #14162a; color: #e8e9f1; font: 14px system-ui; }
+  h3 { font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: #9aa1c4; margin: 22px 0 9px; }
+  small, .dim { color: #9aa1c4; }
+  input, select, textarea { background: #0f1122; color: #e8e9f1; border: 1px solid #2b3050; border-radius: 6px; padding: 6px 9px; font: inherit; }
+  input:focus, select:focus { outline: 1px solid #5865f2; }
+  button { background: #1f2340; color: #e8e9f1; border: 1px solid #2b3050; border-radius: 6px; padding: 6px 12px; cursor: pointer; font: inherit; }
+  button:hover { border-color: #5865f2; }
+  button.primary { background: #5865f2; border-color: #5865f2; }
+  button.danger:hover { border-color: #ff7a7a; color: #ff7a7a; }
+  button:disabled { opacity: .45; cursor: default; }
+  .bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  /* catalogue */
+  header { position: sticky; top: 0; z-index: 2; background: #14162a; border-bottom: 1px solid #2b3050; padding: 12px 18px; }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; padding: 18px; }
+  .tile { cursor: pointer; border-radius: 10px; padding: 6px; border: 1px solid transparent; }
+  .tile:hover { border-color: #5865f2; background: #1a1d36; }
+  .tile img { display: block; width: 100%; aspect-ratio: 606 / 849; border-radius: 8px; background: #0f1122; }
+  .tile b { display: block; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tile.off img { opacity: .5; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: .06em; border-radius: 4px; padding: 1px 5px; margin-left: 4px; color: #14162a; }
+  .badge.off { background: #9aa1c4; } .badge.noart { background: #ff7a7a; } .badge.new { background: #7fd6a0; }
+
+  /* editor */
+  #editor { position: fixed; inset: 0; z-index: 5; background: #14162a; display: flex; flex-direction: column; }
+  #editor[hidden] { display: none; }
+  #ed-head { display: flex; gap: 10px; align-items: center; padding: 10px 18px; border-bottom: 1px solid #2b3050; flex-wrap: wrap; }
+  #ed-head h2 { font-size: 18px; margin: 0; }
+  #ed-status { color: #f0c060; flex: 1; min-width: 120px; }
+  #ed-body { flex: 1; overflow-y: auto; display: grid; grid-template-columns: minmax(300px, 440px) minmax(280px, 380px) minmax(360px, 1fr); gap: 22px; padding: 16px 18px 80px; }
+  @media (max-width: 1250px) { #ed-body { grid-template-columns: 1fr 1fr; } }
+  .previews { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+  .previews figure { margin: 0; }
+  .previews figcaption { font-size: 12px; color: #9aa1c4; margin-bottom: 4px; }
+  .previews img { display: block; border-radius: 6px; max-width: 100%; }
+  .previews .card { width: 210px; }
+  .previews img { cursor: zoom-in; }
+  #lightbox { position: fixed; inset: 0; z-index: 9; background: #000d; display: flex; align-items: center; justify-content: center; cursor: zoom-out; padding: 24px; }
+  #lightbox[hidden] { display: none; }
+  #lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 10px 60px #000; }
+  label.field { display: block; margin-bottom: 10px; }
+  label.field span { display: block; font-size: 12px; color: #9aa1c4; margin-bottom: 3px; }
+  label.field input, label.field select, label.field textarea { width: 100%; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 8px; align-items: end; }
+  #stat-note { font-size: 12px; margin: -4px 0 10px; }
+  .good { color: #7fd6a0; } .bad { color: #ff7a7a; }
+  .chips { display: flex; gap: 6px; }
+  .chip { flex: 1; text-align: center; font-size: 12px; padding: 5px 0; }
+  .chip.has { background: #2b3050; } .chip.here { border-color: #5865f2; background: #262b55; cursor: default; }
+  .chip.new { border-style: dashed; color: #9aa1c4; }
+  #source { position: relative; cursor: crosshair; display: inline-block; max-width: 100%; }
+  #source img { display: block; max-width: 100%; max-height: 380px; border-radius: 8px; }
+  #source i { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid #fff; border-radius: 50%; background: #ff3d7f; box-shadow: 0 0 0 2px #000; pointer-events: none; }
+  .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+  .cand { position: relative; border: 2px solid transparent; border-radius: 8px; overflow: hidden; background: #0f1122; cursor: pointer; }
+  .cand img { display: block; width: 100%; height: 100px; object-fit: cover; }
+  .cand span { display: block; padding: 3px 6px; font-size: 11px; color: #9aa1c4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cand.on { border-color: #5865f2; }
+  .cand.soft span { color: #f0c060; }
+  .cand.added { opacity: .4; cursor: default; }
+  .cand.busy { opacity: .6; }
+  .cand .x { position: absolute; top: 4px; right: 4px; padding: 0 6px; font-size: 12px; background: #14162acc; }
+  .wiki-head { margin: 14px 0 6px; }
+  #drop { border: 1px dashed #2b3050; border-radius: 8px; padding: 10px; text-align: center; color: #9aa1c4; margin-top: 8px; }
+  #drop.over { border-color: #5865f2; color: #e8e9f1; }
+
+  /* stats window */
+  #stats-box { position: fixed; inset: 0; z-index: 8; background: #000a; display: flex; align-items: center; justify-content: center; }
+  #stats-box[hidden] { display: none; }
+  #stats-box > div { background: #1a1d36; border: 1px solid #2b3050; border-radius: 10px; padding: 18px 22px; max-height: 86vh; overflow: auto; }
+  table { border-collapse: collapse; } th, td { padding: 5px 12px; text-align: right; border-bottom: 1px solid #2b3050; }
+  th:first-child, td:first-child { text-align: left; }
+</style>
+
+<header>
+  <div class="bar">
+    <h1>Finicards v2</h1>
+    <input id="q" placeholder="Search name, series or tag…" style="width:240px">
+    <select id="f-set-filter"><option value="">All sets</option></select>
+    <select id="f-rarity-filter"><option value="">All rarities</option><option value="common">Common</option><option value="uncommon">Uncommon</option><option value="full_art">Full-art</option><option value="secret_art">Secret Art</option></select>
+    <select id="f-type-filter"><option value="">All types</option><option value="power">Power</option><option value="wit">Wit</option><option value="heart">Heart</option></select>
+    <select id="f-state-filter">
+      <option value="">Any state</option><option value="active">Active</option><option value="inactive">Inactive</option>
+      <option value="noart">No artwork</option><option value="v2">Made for v2</option><option value="single">Only one rarity</option>
+    </select>
+    <select id="sort"><option value="name">Sort: name</option><option value="series">Sort: series</option><option value="set">Sort: set</option><option value="updated">Sort: recently changed</option></select>
+    <span id="count" class="dim"></span>
+    <span style="flex:1"></span>
+    <button id="stats-open">Set stats</button>
+    <button class="primary" id="new-card">+ New card</button>
+  </div>
+</header>
+<div id="grid"></div>
+
+<div id="editor" hidden>
+  <div id="ed-head">
+    <button id="ed-close" title="Esc">← Catalogue</button>
+    <button id="ed-prev" title="Left arrow">‹</button><button id="ed-next" title="Right arrow">›</button>
+    <h2 id="ed-title"></h2><small id="ed-sub"></small>
+    <span id="ed-status"></span>
+    <button id="ed-revert">Revert</button>
+    <button class="danger" id="ed-delete">Delete</button>
+    <button class="primary" id="ed-save" title="Ctrl+S">Save</button>
+  </div>
+  <div id="ed-body">
+    <div>
+      <h3 style="margin-top:0">Preview</h3>
+      <div class="previews">
+        <figure><figcaption>plain</figcaption><img class="card" id="p-plain"></figure>
+        <figure id="fig-foil"><figcaption>foil</figcaption><img class="card" id="p-foil"></figure>
+        <figure><figcaption>hand strip / battle board</figcaption><img id="p-strip"></figure>
+        <figure><figcaption>dungeon fight</figcaption><img id="p-dungeon"></figure>
+      </div>
+      <div class="dim" style="margin-top:8px;font-size:12px">Click a preview to see it large.</div>
+      <label class="dim" style="display:block;margin-top:6px"><input type="checkbox" id="sample-keyword"> show a sample keyword (copies roll their own)</label>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Card</h3>
+      <label class="field"><span>Name</span><input id="e-name"></label>
+      <label class="field"><span>Series (printed in the header)</span><input id="e-series" list="series-list"></label>
+      <datalist id="series-list"></datalist>
+      <div class="bar" style="margin-bottom:10px">
+        <label class="field" style="flex:2;margin:0"><span>Rarity</span><select id="e-rarity"><option value="common">Common</option><option value="uncommon">Uncommon</option><option value="full_art">Full-art</option><option value="secret_art">Secret Art</option></select></label>
+        <label class="field" style="flex:1;margin:0"><span>Set</span><input id="e-set" type="number" min="0"></label>
+        <label class="field" style="flex:1;margin:0"><span>Max copies</span><input id="e-population" type="number" min="0" title="Per server. 0 means no limit."></label>
+      </div>
+      <div class="stats">
+        <label class="field"><span>Power</span><input id="e-power" type="number"></label>
+        <label class="field"><span>Wit</span><input id="e-wit" type="number"></label>
+        <label class="field"><span>Heart</span><input id="e-heart" type="number"></label>
+        <button id="balance" style="margin-bottom:10px" title="Make these a legal spread, keeping their proportions">Balance</button>
+      </div>
+      <div id="stat-note"></div>
+      <label class="field"><span>Tags, comma separated (the first two print under the name)</span><input id="e-tags"></label>
+      <label class="field"><span>Flavour text (common frame only)</span><input id="e-flavour"></label>
+      <label class="field"><span>Artist credit</span><input id="e-artist"></label>
+      <label style="display:block;margin:4px 0 12px"><input type="checkbox" id="e-active"> Active — can be pulled from packs</label>
+      <div id="ed-info" class="dim" style="font-size:12px"></div>
+
+      <h3>Rarities of this character</h3>
+      <div class="chips" id="rarity-chips"></div>
+    </div>
+
+    <div>
+      <h3 style="margin-top:0">Artwork</h3>
+      <div class="dim" id="source-label" style="margin-bottom:4px"></div>
+      <div id="source"><img id="source-img" alt=""></div>
+      <div class="bar" style="margin:8px 0"><button id="clear-focus">Clear subject mark</button><button id="clear-trim">Remove bar trim</button></div>
+
+      <h3>Candidates <span id="cand-count" class="dim"></span></h3>
+      <div class="cgrid" id="candidates"></div>
+      <div id="drop">Drop an image here, paste one (Ctrl+V), or <label style="color:#7fc8ff;cursor:pointer">choose a file<input type="file" id="file" accept="image/*" hidden></label></div>
+
+      <h3>Find images</h3>
+      <div class="bar">
+        <button class="primary" id="find">Find images for this character</button>
+        <span class="dim">Searches the best Fandom wikis, then Danbooru and Magic card art — both free of AI art, with artists named.</span>
+      </div>
+      <div class="bar" style="margin-top:8px">
+        <input id="wiki" placeholder="…or a wiki, e.g. naruto.fandom.com" style="width:230px">
+        <input id="query" placeholder="Search term or exact page title" style="flex:1;min-width:160px">
+        <button id="search">Search</button>
+        <button id="search-danbooru" title="Search Danbooru for the term (its own tags, e.g. iroh), or for this character if the box is empty">Danbooru</button>
+        <label class="dim" title="On: only Danbooru posts rated general or sensitive. Off: every rating, explicit included." style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="danbooru-safe" checked>Safe only</label>
+        <button id="search-scryfall" title="Search Magic card art for the term, or for this character if the box is empty">Magic art</button>
+      </div>
+      <div class="bar" style="margin-top:8px">
+        <input id="url" placeholder="…or paste a direct https image link" style="flex:1">
+        <button id="add-url">Add</button>
+      </div>
+      <div id="results"></div>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" hidden><img id="lightbox-img" alt=""></div>
+
+<div id="stats-box" hidden><div><div class="bar"><h2 style="margin:0;flex:1">Set stats</h2><button id="stats-close">Close</button></div><div id="stats-body"></div></div></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const api = async (path, body) => {
+  const response = await fetch("/cards/" + path, body === undefined ? {} : { method: "POST", body: JSON.stringify(body) });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || response.status);
+  return data;
+};
+const RARITY_CODE = { common: "C", uncommon: "U", full_art: "FA", secret_art: "SA" };
+// A Secret Art is a full-art with its own artwork: same frame, same stat rules, no foil frame.
+const fullFrame = (rarity) => rarity === "full_art" || rarity === "secret_art";
+const say = (text, bad) => { $("ed-status").textContent = text || ""; $("ed-status").style.color = bad ? "#ff7a7a" : "#f0c060"; };
+const guard = async (work) => { try { return await work(); } catch (error) { say(error.message, true); } };
+
+let cards = [];
+let rules = null;
+let shown = [];      // the catalogue as filtered and sorted, for prev / next
+let ed = null;       // the card open in the editor
+
+/* ------------------------------------------------------------ catalogue ---- */
+
+const loadCatalogue = async () => {
+  const data = await api("api/catalogue");
+  cards = data.cards;
+  rules = data.rules;
+  const sets = [...new Set(cards.map((card) => card.set))].sort((a, b) => a - b);
+  const picked = $("f-set-filter").value;
+  $("f-set-filter").innerHTML = '<option value="">All sets</option>' + sets.map((set) => '<option value="' + set + '">' + (set ? "Set " + set : "No set") + "</option>").join("");
+  $("f-set-filter").value = picked;
+  $("series-list").innerHTML = [...new Set(cards.map((card) => card.series))].sort().map((series) => "<option>" + series.replace(/</g, "&lt;") + "</option>").join("");
+  drawGrid();
+};
+
+const drawGrid = () => {
+  const query = $("q").value.trim().toLowerCase();
+  const set = $("f-set-filter").value, rarity = $("f-rarity-filter").value, type = $("f-type-filter").value, state = $("f-state-filter").value;
+  const perName = {};
+  for (const card of cards) perName[card.card_name] = (perName[card.card_name] || 0) + 1;
+
+  shown = cards.filter((card) =>
+    (!query || card.card_name.toLowerCase().includes(query) || card.series.toLowerCase().includes(query) || card.tags.some((tag) => tag.includes(query))) &&
+    (set === "" || String(card.set) === set) &&
+    (!rarity || card.rarity === rarity) &&
+    (!type || card.card_type === type) &&
+    (state === "" ||
+      (state === "active" && card.active) || (state === "inactive" && !card.active) ||
+      (state === "noart" && card.art === "none") || (state === "v2" && card.origin === "V2") ||
+      (state === "single" && perName[card.card_name] === 1)));
+
+  const sort = $("sort").value;
+  shown.sort((a, b) =>
+    sort === "series" ? a.series.localeCompare(b.series) || a.card_name.localeCompare(b.card_name)
+    : sort === "set" ? a.set - b.set || a.card_name.localeCompare(b.card_name)
+    : sort === "updated" ? b.updated.localeCompare(a.updated)
+    : a.card_name.localeCompare(b.card_name) || a.rarity.localeCompare(b.rarity));
+
+  $("count").textContent = shown.length + " of " + cards.length + " cards";
+  $("grid").replaceChildren(...shown.map((card) => {
+    const tile = document.createElement("div");
+    tile.className = "tile" + (card.active ? "" : " off");
+    tile.innerHTML = '<img loading="lazy" alt=""><b></b><small></small>';
+    tile.querySelector("img").src = "/cards/thumb?id=" + card.id + "&v=" + encodeURIComponent(card.updated);
+    tile.querySelector("b").textContent = card.card_name;
+    tile.querySelector("small").innerHTML = RARITY_CODE[card.rarity] + " · S" + card.set + " · " + card.card_type +
+      (card.active ? "" : '<span class="badge off">OFF</span>') + (card.art === "none" ? '<span class="badge noart">NO ART</span>' : "");
+    tile.onclick = () => openCard(card.id);
+    return tile;
+  }));
+};
+for (const id of ["q", "f-set-filter", "f-rarity-filter", "f-type-filter", "f-state-filter", "sort"]) $(id).oninput = drawGrid;
+
+/* --------------------------------------------------------------- editor ---- */
+
+const FIELD_IDS = { card_name: "e-name", series: "e-series", rarity: "e-rarity", set: "e-set", population: "e-population", power: "e-power", wit: "e-wit", heart: "e-heart", flavour: "e-flavour", artist: "e-artist" };
+
+const readFields = () => ({
+  card_name: $("e-name").value.trim(),
+  series: $("e-series").value.trim(),
+  rarity: $("e-rarity").value,
+  set: Number($("e-set").value) || 0,
+  population: Number($("e-population").value) || 0,
+  power: Number($("e-power").value) || 0,
+  wit: Number($("e-wit").value) || 0,
+  heart: Number($("e-heart").value) || 0,
+  tags: $("e-tags").value.split(",").map((tag) => tag.trim()).filter(Boolean),
+  flavour: $("e-flavour").value.trim(),
+  artist: $("e-artist").value.trim(),
+  active: $("e-active").checked,
+});
+
+const writeFields = (fields) => {
+  for (const [name, id] of Object.entries(FIELD_IDS)) $(id).value = fields[name] ?? "";
+  $("e-tags").value = (fields.tags || []).join(", ");
+  $("e-active").checked = !!fields.active;
+};
+
+const fieldsOf = (card) => ({
+  card_name: card.card_name, series: card.series, rarity: card.rarity, set: card.set, population: card.population,
+  power: card.power, wit: card.wit, heart: card.heart, tags: [...card.tags], flavour: card.flavour, artist: card.artist, active: card.active,
+});
+
+// What the server needs to draw or save the card as it stands in the editor.
+const payload = () => ({
+  ...(ed.id ? { id: ed.id } : {}),
+  key: ed.key,
+  fields: readFields(),
+  ...(ed.candidate ? { candidate: ed.candidate } : {}),
+  ...(ed.adjustTouched || ed.candidate ? { adjust: ed.adjust } : {}),
+});
+
+const isDirty = () => ed && (!ed.id || ed.candidate || ed.adjustTouched || JSON.stringify(readFields()) !== ed.clean);
+
+const leaveOk = () => !isDirty() || confirm("Discard the changes to " + (readFields().card_name || "this card") + "?");
+
+const startEditor = async (state) => {
+  ed = { candidate: null, adjustTouched: false, candidates: [], ...state };
+  writeFields(ed.fields);
+  ed.clean = JSON.stringify(readFields());
+  $("editor").hidden = false;
+  $("results").replaceChildren();
+  $("wiki").value = "";
+  $("query").value = ed.fields.card_name;
+  say(ed.id ? "" : "Not saved yet. Nothing is in the pool until you press Save.");
+  drawHead();
+  ed.candidates = await api("api/candidates?key=" + ed.key);
+  drawCandidates();
+  refreshArt();
+  refreshPreviews();
+};
+
+const openCard = (id) => {
+  if (ed && !leaveOk()) return;
+  const card = cards.find((other) => other.id === id);
+  if (!card) return;
+  startEditor({ id, key: id, fields: fieldsOf(card), adjust: card.art_adjust, saved: card });
+};
+
+const openNew = (fields) => {
+  if (ed && !leaveOk()) return;
+  startEditor({ id: null, key: "tmp-" + Math.random().toString(36).slice(2, 10), fields, adjust: null, saved: null });
+};
+
+$("new-card").onclick = () => guard(async () => {
+  const spread = await api("api/spread", { rarity: "common", power: 1, wit: 1, heart: 1 });
+  openNew({ card_name: "", series: "", rarity: "common", set: rules.defaultSet, population: rules.population.common, ...spread, tags: [], flavour: "", artist: "", active: false });
+  $("e-name").focus();
+});
+
+const closeEditor = () => {
+  if (!leaveOk()) return;
+  ed = null;
+  $("editor").hidden = true;
+};
+$("ed-close").onclick = closeEditor;
+
+const step = (by) => {
+  if (!ed || !ed.id) return;
+  const index = shown.findIndex((card) => card.id === ed.id);
+  const next = shown[index + by];
+  if (next) openCard(next.id);
+};
+$("ed-prev").onclick = () => step(-1);
+$("ed-next").onclick = () => step(1);
+
+const drawHead = () => {
+  const fields = readFields();
+  $("ed-title").textContent = fields.card_name || "New card";
+  $("ed-sub").textContent = ed.id
+    ? RARITY_CODE[ed.saved.rarity] + " · S" + ed.saved.set + " · " + ed.saved.origin + (ed.saved.active ? "" : " · inactive")
+    : "NEW";
+  $("ed-delete").style.display = ed.id ? "" : "none";
+  $("ed-prev").style.display = $("ed-next").style.display = ed.id ? "" : "none";
+  $("ed-info").textContent = ed.id
+    ? "id " + ed.id + " · " + ed.saved.copies + " copies owned · art: " + ({ own: "its own image", v1: "from the v1 card", link: "a link", none: "none" })[ed.saved.art]
+    : "A new card is saved inactive unless you tick Active.";
+  $("fig-foil").style.display = fullFrame(fields.rarity) ? "none" : "";
+  $("ed-save").textContent = ed.id ? "Save" : "Create card";
+  drawStatNote();
+  drawRarityChips();
+};
+
+const drawStatNote = () => {
+  const fields = readFields();
+  const values = [fields.power, fields.wit, fields.heart];
+  const total = values.reduce((sum, value) => sum + value, 0);
+  const ceiling = rules.ceiling[fields.rarity];
+  const problems = [];
+  if (total !== rules.total) problems.push("total is " + total + ", needs " + rules.total);
+  if (values.some((value) => value < rules.floor)) problems.push("every stat needs at least " + rules.floor);
+  if (values.some((value) => value > ceiling)) problems.push("a " + fields.rarity.replace("_", " ") + " tops out at " + ceiling);
+  const lead = ["Power", "Wit", "Heart"][values.indexOf(Math.max(...values))];
+  $("stat-note").className = problems.length ? "bad" : "good";
+  $("stat-note").textContent = problems.length ? problems.join(" · ") + " — press Balance to fix" : "Legal spread · " + lead + " type · ceiling " + ceiling;
+  return problems.length === 0;
+};
+
+$("balance").onclick = () => guard(async () => {
+  const fields = readFields();
+  const spread = await api("api/spread", { rarity: fields.rarity, power: fields.power, wit: fields.wit, heart: fields.heart });
+  $("e-power").value = spread.power; $("e-wit").value = spread.wit; $("e-heart").value = spread.heart;
+  changed();
+});
+
+// The same character at other rarities: jump to one, or start one that is missing.
+const drawRarityChips = () => {
+  const name = readFields().card_name;
+  const siblings = cards.filter((card) => card.card_name === name && name);
+  $("rarity-chips").replaceChildren(...Object.entries(RARITY_CODE).map(([rarity, code]) => {
+    const chip = document.createElement("button");
+    const sibling = siblings.find((card) => card.rarity === rarity);
+    if (sibling && ed.id === sibling.id) {
+      chip.className = "chip here"; chip.textContent = code + " · this card";
+    } else if (sibling) {
+      chip.className = "chip has"; chip.textContent = code + " · S" + sibling.set; chip.title = "Open it";
+      chip.onclick = () => openCard(sibling.id);
+    } else if (!ed.id) {
+      chip.className = "chip new"; chip.textContent = code + " · none"; chip.disabled = true;
+    } else {
+      chip.className = "chip new"; chip.textContent = "+ " + code; chip.title = "Start a " + rarity.replace("_", " ") + " of " + name;
+      chip.onclick = () => guard(async () => openNew(await api("api/new-rarity", { basedOn: ed.id, rarity })));
+    }
+    return chip;
+  }));
+};
+
+/* previews: redrawn from the unsaved state a moment after the last change */
+let previewTimer;
+const urls = {};
+const drawImage = async (element, path, body) => {
+  const response = await fetch("/cards/" + path, { method: "POST", body: JSON.stringify(body) });
+  if (!response.ok) { element.removeAttribute("src"); return false; }
+  const url = URL.createObjectURL(await response.blob());
+  if (urls[element.id]) URL.revokeObjectURL(urls[element.id]);
+  urls[element.id] = url;
+  element.src = url;
+  return true;
+};
+const refreshPreviews = () => {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(() => {
+    if (!ed) return;
+    const base = { ...payload(), sampleKeyword: $("sample-keyword").checked };
+    for (const view of ["plain", "foil", "strip", "dungeon"]) {
+      if (view === "foil" && fullFrame(base.fields.rarity)) continue;
+      drawImage($("p-" + view), "render", { ...base, view });
+    }
+  }, 300);
+};
+
+// A preview clicked: the same view, drawn large, over everything.
+for (const view of ["plain", "foil", "strip", "dungeon"]) {
+  $("p-" + view).onclick = async () => {
+    $("lightbox-img").removeAttribute("src");
+    $("lightbox").hidden = false;
+    const ok = await drawImage($("lightbox-img"), "render", { ...payload(), sampleKeyword: $("sample-keyword").checked, view, large: true });
+    if (!ok) $("lightbox").hidden = true;
+  };
+}
+$("lightbox").onclick = () => { $("lightbox").hidden = true; };
+
+const changed = () => { drawHead(); refreshPreviews(); if (isDirty() && ed.id) say("Unsaved changes."); };
+for (const id of [...Object.values(FIELD_IDS), "e-tags", "e-active"]) $(id).oninput = changed;
+$("sample-keyword").onchange = refreshPreviews;
+$("e-rarity").onchange = () => {
+  // A card not saved yet takes its new rarity's usual copy limit.
+  if (!ed.id) $("e-population").value = rules.population[$("e-rarity").value];
+  drawCandidates();
+  changed();
+};
+
+/* artwork: the image the card would use, and where its subject is */
+const refreshArt = async () => {
+  const has = await drawImage($("source-img"), "art", payload());
+  $("source").style.display = has ? "" : "none";
+  $("source-label").textContent = has
+    ? (ed.candidate ? "A candidate, not saved yet. " : "") + "Click the subject to centre every crop on it."
+    : "No artwork yet. Find or add some below.";
+  drawFocus();
+};
+const drawFocus = () => {
+  $("source").querySelector("i")?.remove();
+  const focus = ed.adjust && ed.adjust.focus;
+  if (focus) {
+    const dot = document.createElement("i");
+    dot.style.left = focus.x * 100 + "%";
+    dot.style.top = focus.y * 100 + "%";
+    $("source").append(dot);
+  }
+  $("clear-focus").disabled = !focus;
+  $("clear-trim").style.display = ed.adjust && ed.adjust.trim && !ed.candidate ? "" : "none";
+};
+$("source").onclick = (event) => {
+  const box = $("source-img").getBoundingClientRect();
+  ed.adjust = { ...(ed.adjust || {}), focus: {
+    x: Math.round(((event.clientX - box.left) / box.width) * 1000) / 1000,
+    y: Math.round(((event.clientY - box.top) / box.height) * 1000) / 1000,
+  } };
+  ed.adjustTouched = true;
+  drawFocus(); changed();
+};
+$("clear-focus").onclick = () => {
+  const trim = ed.adjust && ed.adjust.trim;
+  ed.adjust = trim ? { trim } : null;
+  ed.adjustTouched = true;
+  drawFocus(); changed();
+};
+$("clear-trim").onclick = () => {
+  const focus = ed.adjust && ed.adjust.focus;
+  ed.adjust = focus ? { focus } : null;
+  ed.adjustTouched = true;
+  refreshArt(); changed();
+};
+
+const drawCandidates = () => {
+  const frame = rules.artWindow[readFields().rarity];
+  $("cand-count").textContent = "(" + ed.candidates.length + ")";
+  const current = document.createElement("div");
+  current.className = "cand" + (ed.candidate ? "" : " on");
+  current.innerHTML = '<div style="height:100px;display:flex;align-items:center;justify-content:center" class="dim">current</div><span></span>';
+  current.querySelector("span").textContent = ed.id ? "Keep what it has" : "No image";
+  current.onclick = () => choose(null);
+
+  $("candidates").replaceChildren(current, ...ed.candidates.map((candidate) => {
+    // An image that has to be enlarged to fill the frame prints soft.
+    const soft = Math.max(frame.w / candidate.width, frame.h / candidate.height) > 1.15;
+    const tile = document.createElement("div");
+    tile.className = "cand" + (ed.candidate === candidate.file ? " on" : "") + (soft ? " soft" : "");
+    tile.innerHTML = '<img loading="lazy" alt=""><span></span><button class="x" title="Remove this candidate">×</button>';
+    tile.querySelector("img").src = "/cards/candidate?key=" + ed.key + "&file=" + candidate.file;
+    tile.querySelector("span").textContent = candidate.width + "×" + candidate.height + (soft ? " · low-res" : "") + (candidate.artist ? " · " + candidate.artist : "");
+    tile.onclick = () => choose(candidate.file);
+    tile.querySelector(".x").onclick = (event) => { event.stopPropagation(); guard(async () => {
+      await api("api/remove", { key: ed.key, file: candidate.file });
+      ed.candidates = ed.candidates.filter((other) => other.file !== candidate.file);
+      if (ed.candidate === candidate.file) choose(null); else drawCandidates();
+    }); };
+    return tile;
+  }));
+};
+
+// The credit follows the image. It is only ever replaced when it is empty or
+// is itself one of the images' artists - a credit typed by hand is left alone.
+const creditFor = (file) => {
+  const field = $("e-artist");
+  const known = new Set(ed.candidates.map((candidate) => candidate.artist).filter(Boolean));
+  if (ed.saved && ed.saved.artist) known.add(ed.saved.artist);
+  const current = field.value.trim();
+  if (current && !known.has(current)) return;
+  const chosen = ed.candidates.find((candidate) => candidate.file === file);
+  field.value = file ? (chosen && chosen.artist) || "" : (ed.saved ? ed.saved.artist : "");
+};
+
+const choose = (file) => {
+  ed.candidate = file;
+  creditFor(file);
+  // A subject mark belongs to one image: a different image starts unmarked,
+  // and going back to the saved one brings its saved mark back.
+  ed.adjust = file ? null : (ed.saved ? ed.saved.art_adjust : null);
+  ed.adjustTouched = false;
+  drawCandidates(); refreshArt(); changed();
+};
+
+const added = async (file) => {
+  ed.candidates = await api("api/candidates?key=" + ed.key);
+  choose(file);
+};
+const addFrom = async (url, tile, artist) => {
+  if (tile) tile.classList.add("busy");
+  await guard(async () => { await added((await api("api/add", { key: ed.key, url, artist: artist || "" })).file); if (tile) tile.classList.add("added"); });
+  if (tile) tile.classList.remove("busy");
+};
+const upload = (blob) => guard(async () => {
+  say("Uploading…");
+  const response = await fetch("/cards/api/upload?key=" + ed.key, { method: "POST", body: blob });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || response.status);
+  say("");
+  await added(data.file);
+});
+$("file").onchange = () => { if ($("file").files[0]) upload($("file").files[0]); $("file").value = ""; };
+const drop = $("drop");
+drop.ondragover = (event) => { event.preventDefault(); drop.classList.add("over"); };
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = (event) => { event.preventDefault(); drop.classList.remove("over"); const file = event.dataTransfer.files[0]; if (file) upload(file); };
+document.onpaste = (event) => {
+  if (!ed) return;
+  const item = [...event.clipboardData.items].find((entry) => entry.type.startsWith("image/"));
+  if (item) { event.preventDefault(); upload(item.getAsFile()); }
+};
+
+/* finding images */
+const resultTiles = (hits) => {
+  const grid = document.createElement("div");
+  grid.className = "cgrid";
+  const have = new Set(ed.candidates.map((candidate) => candidate.source));
+  grid.replaceChildren(...hits.map((hit) => {
+    const tile = document.createElement("div");
+    tile.className = "cand" + (have.has(hit.url) ? " added" : "");
+    tile.title = hit.title;
+    tile.innerHTML = '<img loading="lazy" alt="" referrerpolicy="no-referrer"><span></span>';
+    tile.querySelector("img").src = hit.thumb;
+    tile.querySelector("span").textContent = hit.width + "×" + hit.height + " · " + hit.title;
+    tile.onclick = async () => {
+      if (tile.classList.contains("added") || tile.classList.contains("busy")) return;
+      // The artist is kept with the image, and the credit follows whichever image is chosen.
+      await addFrom(hit.url, tile, hit.artist);
+    };
+    return tile;
+  }));
+  return grid;
+};
+
+const searchInto = async (wiki, label, query) => {
+  const head = document.createElement("div");
+  head.className = "wiki-head";
+  head.innerHTML = "<b></b> <small></small>";
+  head.querySelector("b").textContent = label;
+  head.querySelector("small").textContent = "searching…";
+  const body = document.createElement("div");
+  $("results").append(head, body);
+  try {
+    const hits = await api("api/search?wiki=" + encodeURIComponent(wiki) + "&q=" + encodeURIComponent(query) + "&series=" + encodeURIComponent(readFields().series));
+    head.querySelector("small").textContent = hits.length ? hits.length + " images · click one to add it" : "nothing large enough";
+    if (hits.length) body.append(resultTiles(hits));
+  } catch (error) {
+    head.querySelector("small").textContent = error.message;
+  }
+};
+
+// Remembered on this browser; the page works the same if it cannot be.
+try { $("danbooru-safe").checked = localStorage.getItem("danbooru-safe") !== "0"; } catch {}
+$("danbooru-safe").onchange = () => { try { localStorage.setItem("danbooru-safe", $("danbooru-safe").checked ? "1" : "0"); } catch {} };
+const SOURCES = { danbooru: "Danbooru", scryfall: "Magic: The Gathering" };
+// The credited sources answer with their own headed groups of images.
+const sourceInto = async (source, query) => {
+  const fields = readFields();
+  const head = document.createElement("div");
+  head.className = "wiki-head";
+  head.innerHTML = "<b></b> <small></small>";
+  head.querySelector("b").textContent = SOURCES[source];
+  head.querySelector("small").textContent = "searching…";
+  const body = document.createElement("div");
+  $("results").append(head, body);
+  try {
+    const groups = await api("api/art-search?source=" + source + "&name=" + encodeURIComponent(fields.card_name) + "&series=" + encodeURIComponent(fields.series) + "&q=" + encodeURIComponent(query || "") + (source === "danbooru" && !$("danbooru-safe").checked ? "&safe=0" : ""));
+    if (groups.length === 0) { head.querySelector("small").textContent = "no character tag found — try its own spelling in the search box"; return; }
+    head.remove();
+    for (const group of groups) {
+      const groupHead = document.createElement("div");
+      groupHead.className = "wiki-head";
+      groupHead.innerHTML = "<b></b> <small></small>";
+      groupHead.querySelector("b").textContent = group.label;
+      groupHead.querySelector("small").textContent = (group.hits.length ? group.hits.length + " images · click one to add it" : "nothing found") + " · " + group.note;
+      body.append(groupHead);
+      if (group.hits.length) body.append(resultTiles(group.hits));
+    }
+  } catch (error) {
+    head.querySelector("small").textContent = error.message;
+  }
+};
+$("search-danbooru").onclick = () => guard(async () => { $("results").replaceChildren(); await sourceInto("danbooru", $("query").value.trim()); });
+$("search-scryfall").onclick = () => guard(async () => { $("results").replaceChildren(); await sourceInto("scryfall", $("query").value.trim()); });
+
+$("find").onclick = () => guard(async () => {
+  const fields = readFields();
+  if (!fields.card_name) throw new Error("Give the card a name first.");
+  $("results").textContent = "Looking for the right wikis on Fandom…";
+  const wikis = await api("api/wikis?name=" + encodeURIComponent(fields.card_name) + "&series=" + encodeURIComponent(fields.series));
+  $("results").replaceChildren();
+  if (wikis.length === 0) {
+    const none = document.createElement("div");
+    none.className = "wiki-head";
+    none.textContent = "No wiki found with an article on " + fields.card_name + ". Try one by hand above.";
+    $("results").append(none);
+  }
+  // All at once: each fills in under its own heading as it comes back.
+  await Promise.all([
+    ...wikis.map((wiki) => searchInto(wiki.domain, wiki.name + " (" + wiki.domain + ") — " + wiki.why, fields.card_name)),
+    sourceInto("danbooru", ""),
+    sourceInto("scryfall", ""),
+  ]);
+});
+$("search").onclick = () => guard(async () => {
+  $("results").replaceChildren();
+  await searchInto($("wiki").value.trim(), $("wiki").value.trim(), $("query").value.trim());
+});
+$("query").onkeydown = (event) => { if (event.key === "Enter") $("search").click(); };
+$("add-url").onclick = async () => { const url = $("url").value.trim(); if (url) { await addFrom(url, null); $("url").value = ""; } };
+
+/* saving */
+const save = () => guard(async () => {
+  if (!drawStatNote()) throw new Error("The stats are not a legal spread. Press Balance, or fix them.");
+  say("Saving…");
+  const saved = await api("api/save", payload());
+  await loadCatalogue();
+  ed = null;
+  openCard(saved.id);
+  say("Saved.");
+});
+$("ed-save").onclick = save;
+$("ed-revert").onclick = () => { if (!ed.id) return closeEditor(); const id = ed.id; ed = null; openCard(id); };
+$("ed-delete").onclick = () => guard(async () => {
+  if (!confirm("Delete " + ed.saved.card_name + " (" + ed.saved.rarity.replace("_", " ") + ") from the pool? This cannot be undone here.")) return;
+  await api("api/delete", { id: ed.id });
+  ed = null; $("editor").hidden = true;
+  await loadCatalogue();
+});
+
+document.onkeydown = (event) => {
+  if (!ed) return;
+  if (!$("lightbox").hidden) { if (event.key === "Escape") $("lightbox").hidden = true; return; }
+  const typing = ["INPUT", "SELECT", "TEXTAREA"].includes(document.activeElement.tagName);
+  if ((event.ctrlKey || event.metaKey) && event.key === "s") { event.preventDefault(); save(); }
+  else if (event.key === "Escape") { typing ? document.activeElement.blur() : closeEditor(); }
+  else if (!typing && event.key === "ArrowLeft") step(-1);
+  else if (!typing && event.key === "ArrowRight") step(1);
+};
+window.onbeforeunload = () => (isDirty() ? "" : undefined);
+
+/* ----------------------------------------------------------- set stats ---- */
+
+$("stats-open").onclick = () => {
+  const sets = [...new Set(cards.map((card) => card.set))].sort((a, b) => a - b);
+  const row = (label, list) => {
+    const count = (test) => list.filter(test).length;
+    const share = (type) => list.length ? Math.round((count((card) => card.card_type === type) / list.length) * 100) + "%" : "–";
+    return "<tr><td>" + label + "</td><td>" + list.length + "</td><td>" + count((card) => card.rarity === "common") + "</td><td>" + count((card) => card.rarity === "uncommon") +
+      "</td><td>" + count((card) => fullFrame(card.rarity)) + "</td><td>" + count((card) => card.active) + "</td><td>" + share("power") + "</td><td>" + share("wit") + "</td><td>" + share("heart") +
+      "</td><td>" + new Set(list.map((card) => card.card_name)).size + "</td><td>" + count((card) => card.art === "none") + "</td></tr>";
+  };
+  $("stats-body").innerHTML = "<table><tr><th>Set</th><th>Cards</th><th>C</th><th>U</th><th>FA</th><th>Active</th><th>Power</th><th>Wit</th><th>Heart</th><th>Characters</th><th>No art</th></tr>" +
+    sets.map((set) => row(set ? "Set " + set : "No set", cards.filter((card) => card.set === set))).join("") + row("<b>All</b>", cards) + "</table>";
+  $("stats-box").hidden = false;
+};
+$("stats-close").onclick = () => { $("stats-box").hidden = true; };
+
+loadCatalogue();
+</script>

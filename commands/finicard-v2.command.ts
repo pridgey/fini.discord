@@ -1,18 +1,20 @@
-import { SlashCommandBuilder } from "@discordjs/builders";
+import { SlashCommandBuilder, SlashCommandStringOption } from "@discordjs/builders";
 import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChatInputCommandInteraction,
+  ContainerBuilder,
   MessageFlags,
   PermissionFlagsBits,
 } from "discord.js";
 import {
   buildCardMessage,
-  buildPackMessage,
   buildRevealMessage,
   compositionString,
+  NEUTRAL_ACCENT,
 } from "../modules/finicardsV2/ui";
+import { buildCardPages, buildDeckPages } from "../modules/finicardsV2/cardPages";
 import {
   MAX_DECK_SIZE,
   MIN_DECK_SIZE,
@@ -32,6 +34,7 @@ import {
 import {
   collectionComposition,
   getCardDefinitions,
+  getPopulationCounts,
   getUserCollection,
   importCardDefinitions,
   loadLineupByIds,
@@ -45,8 +48,29 @@ import {
   getPendingBattlesForUser,
 } from "../modules/finicardsV2/battleStore";
 import { convertLegacyPool } from "../modules/finicardsV2/convertLegacyCards";
+import { DUNGEON } from "../modules/finicardsV2/dungeon";
+import {
+  buildRunMessage,
+  payEntryFee,
+} from "../modules/finicardsV2/dungeonFlow";
+import { getActiveRun, startRun } from "../modules/finicardsV2/dungeonStore";
 import { GRADE_LABEL, KEYWORDS } from "../modules/finicardsV2/keywords";
-import { openPack, PACK_SIZE } from "../modules/finicardsV2/packs";
+import {
+  getUnopenedFreePacks,
+  markFreePackOpened,
+  passOnSpecial,
+} from "../modules/finicardsV2/freePacks";
+import { rollGuaranteedTier, type LegendaryTier } from "../modules/finicardsV2/legendary";
+import {
+  availableSecretArts,
+  BOOSTER_SETS,
+  openPack,
+  PACK_COST,
+  PACK_SIZE,
+  SET_PACK_COST,
+} from "../modules/finicardsV2/packs";
+import { presentPack } from "../modules/finicardsV2/packFlow";
+import { runSell } from "../modules/finicardsV2/sellFlow";
 import { renderCardFace } from "../modules/finicardsV2/renderBattle";
 import {
   RARITY_LABEL,
@@ -55,18 +79,13 @@ import {
 } from "../modules/finicardsV2/rules";
 import { canAfford, stakeWager } from "../modules/finicardsV2/wagers";
 import { addCoin, getUserBalance } from "../modules/finicoin";
-import { isAdmin } from "../utilities/discord/isAdmin";
+import { ADMIN_ID, isAdmin } from "../utilities/discord/isAdmin";
 import type { CardDefinitionRecord } from "../types/PocketbaseTables";
 import type {
   CardRarity,
   CardType,
   V2DeckRecord,
 } from "../types/PocketbaseTablesV2";
-import { QueryHandler } from "../queries/QueryHandler";
-import {
-  createPaginationContext,
-  createPaginationRow,
-} from "../utilities/pagination/pagination";
 import { pb } from "../utilities/pocketbase";
 import { splitBigString } from "../utilities/splitBigString";
 
@@ -80,15 +99,34 @@ import { splitBigString } from "../utilities/splitBigString";
  * When v2 takes over, these move up to top-level names and v1's retire.
  */
 
-const PACK_COST = 25;
-/** Lower than the old text listing: a section with a button is a taller row. */
-const COLLECTION_PAGE_SIZE = 10;
 const MAX_PENDING_SHOWN = 5;
+
+const NO_LEGENDARY: Record<LegendaryTier, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+
+/** Pack odds under which a Legendary of `tier`, and only that tier, is certain. */
+const certainTier = (tier: LegendaryTier): Record<LegendaryTier, number> => ({
+  1: 0,
+  2: 0,
+  3: 0,
+  4: 0,
+  [tier]: 1,
+});
 
 /** Server administrators, plus the bot admin (`ADMIN_ID`) in any server. */
 const canAdminister = (interaction: ChatInputCommandInteraction) =>
   isAdmin(interaction.user.id) ||
   !!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator);
+
+/** The `view` choice shared by every command that shows cards as pages. */
+const withViewOption = (option: SlashCommandStringOption) =>
+  option
+    .setName("view")
+    .setDescription("How to show it (default: list)")
+    .addChoices(
+      { name: "List - ten to a page", value: "list" },
+      { name: "Binder - six cards to a page, as a picture", value: "binder" },
+    )
+    .setRequired(false);
 
 export const data = new SlashCommandBuilder()
   .setName("finicard-v2")
@@ -96,18 +134,37 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("pack")
-      .setDescription(`Open a v2 booster pack (${PACK_COST} fc)`),
+      .setDescription(`Open a v2 booster pack (${PACK_COST} fc, or ${SET_PACK_COST} fc for one set) - bot admin only while testing`)
+      .addIntegerOption((opt) =>
+        opt
+          .setName("set")
+          .setDescription(`Draw every card from one set (${SET_PACK_COST} fc). Leave blank for a mix of all sets.`)
+          .addChoices(...BOOSTER_SETS.map((set) => ({ name: `Set ${set}`, value: set }))),
+      )
+      .addStringOption((opt) =>
+        opt
+          .setName("test")
+          .setDescription("Testing only: force a special pull into this pack, free of charge")
+          .addChoices(
+            { name: "Secret Art", value: "secret_art" },
+            { name: "Legendary tier 1", value: "legendary_1" },
+            { name: "Legendary tier 2", value: "legendary_2" },
+            { name: "Legendary tier 3", value: "legendary_3" },
+            { name: "Legendary tier 4", value: "legendary_4" },
+          ),
+      ),
   )
   .addSubcommand((sub) =>
     sub
       .setName("collection")
-      .setDescription("List your v2 cards and their lineup ids")
+      .setDescription("Your v2 cards - as a list with their ids, or as binder pages")
       .addUserOption((option) =>
         option
           .setName("who")
           .setDescription("Whose collection to view (blank for your own)")
           .setRequired(false),
-      ),
+      )
+      .addStringOption(withViewOption),
   )
   .addSubcommand((sub) =>
     sub
@@ -187,6 +244,19 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub
+      .setName("dungeon")
+      .setDescription(
+        `Solo run - ${DUNGEON.entryFee} fc, ${DUNGEON.handSize} cards, endless rooms. Earn geld, walk out before you fall`,
+      )
+      .addStringOption((option) =>
+        option
+          .setName("deck")
+          .setDescription("Which deck to bring (blank uses your only deck)")
+          .setRequired(false),
+      ),
+  )
+  .addSubcommand((sub) =>
+    sub
       .setName("pending")
       .setDescription("Battles waiting on your lineup"),
   )
@@ -250,13 +320,14 @@ export const data = new SlashCommandBuilder()
       .addSubcommand((sub) =>
         sub
           .setName("show")
-          .setDescription("Show a deck's cards")
+          .setDescription("Show a deck's cards, as a list or a binder")
           .addStringOption((option) =>
             option
               .setName("name")
               .setDescription("Which deck")
               .setRequired(true),
-          ),
+          )
+          .addStringOption(withViewOption),
       )
       .addSubcommand((sub) =>
         sub
@@ -306,6 +377,30 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub
+      .setName("sell")
+      .setDescription("Sell or trade one of your v2 cards - to anyone, to a player, or to Fini")
+      .addStringOption((option) =>
+        option
+          .setName("card")
+          .setDescription("The card's id, from /finicard-v2 collection")
+          .setRequired(true),
+      )
+      .addIntegerOption((option) =>
+        option
+          .setName("price")
+          .setDescription("Asking price in Finicoin (ignored when selling to Fini)")
+          .setMinValue(0)
+          .setRequired(false),
+      )
+      .addUserOption((option) =>
+        option
+          .setName("who")
+          .setDescription("Who to sell to: a player, or Fini. Leave blank to offer it to anyone")
+          .setRequired(false),
+      ),
+  )
+  .addSubcommand((sub) =>
+    sub
       .setName("keywords")
       .setDescription("The v2 keyword library and what each one does"),
   )
@@ -317,12 +412,6 @@ export const data = new SlashCommandBuilder()
         option
           .setName("commit")
           .setDescription("Actually write the rows (default: dry run)")
-          .setRequired(false),
-      )
-      .addBooleanOption((option) =>
-        option
-          .setName("keywords")
-          .setDescription("Roll keywords for the pool (default: on while keywords are live)")
           .setRequired(false),
       ),
   )
@@ -377,17 +466,62 @@ export const execute = async (
     switch (interaction.options.getSubcommand()) {
       /* ---------------------------------------------------------- pack ---- */
       case "pack": {
-        const balance =
-          (await getUserBalance(interaction.user.id, serverId)) || 0;
-
-        if (balance < PACK_COST) {
+        // Closed to everyone else until v2 launches.
+        if (!isAdmin(interaction.user.id)) {
           await interaction.editReply(
-            `A v2 pack costs ${PACK_COST} fc and you have ${balance}.`,
+            "v2 packs aren't open yet - only the bot admin can open them while they're being tested.",
           );
           return;
         }
 
-        const definitions = await getCardDefinitions();
+        // A forced pull is a test, not a purchase: it costs nothing.
+        const test = interaction.options.getString("test");
+
+        const set = interaction.options.getInteger("set");
+
+        // A free pack the player is owed is opened before one they pay for.
+        // It is a pack of every set, so asking for one set buys a pack instead.
+        const freePacks =
+          test || set
+            ? []
+            : await getUnopenedFreePacks(interaction.user.id, serverId).catch(() => []);
+        const freePack = freePacks[0] ?? null;
+
+        const price = set ? SET_PACK_COST : PACK_COST;
+        const cost = test || freePack ? 0 : price;
+        const forcedTier = test?.startsWith("legendary_")
+          ? (Number(test.slice(-1)) as LegendaryTier)
+          : null;
+
+        const balance =
+          (await getUserBalance(interaction.user.id, serverId)) || 0;
+
+        if (balance < cost) {
+          await interaction.editReply(
+            `${set ? `A Set ${set} pack` : "A v2 pack"} costs ${price} fc and you have ${balance}.`,
+          );
+          return;
+        }
+
+        const definitions = (await getCardDefinitions()).filter(
+          (definition) => !set || definition.set === set,
+        );
+        // Asked for, and impossible: say so rather than hand over a plain pack.
+        if (
+          test === "secret_art" &&
+          availableSecretArts(definitions, await getPopulationCounts(serverId)).length === 0
+        ) {
+          await interaction.editReply(
+            definitions.some((definition) => definition.secret_art)
+              ? "Every active Secret Art is already at its 3 copies on this server."
+              : `No Secret Art is active${set ? ` in set ${set}` : ""}, so a pack has none to find. Mark one active in the card manager and try again.`,
+          );
+          return;
+        }
+        if (set && definitions.length === 0) {
+          await interaction.editReply(`Set ${set} has no active cards to pull.`);
+          return;
+        }
         if (definitions.length === 0) {
           await interaction.editReply(
             "The v2 card pool is empty. An admin needs to run `/finicard-v2 import commit:True` first.",
@@ -395,27 +529,59 @@ export const execute = async (
           return;
         }
 
-        await addCoin(
-          "Reserve",
-          serverId,
-          PACK_COST,
-          interaction.user.username,
-          serverName,
-          interaction.user.id,
-        );
+        if (cost > 0) {
+          await addCoin(
+            "Reserve",
+            serverId,
+            cost,
+            interaction.user.username,
+            serverName,
+            interaction.user.id,
+          );
+        }
 
         const { pulls, shortfall } = await openPack({
           userId: interaction.user.id,
           serverId,
           identifier,
+          ...(set ? { set } : {}),
+          ...(test === "secret_art" ? { secretArtChance: 1 } : {}),
+          ...(forcedTier ? { legendaryOdds: certainTier(forcedTier) } : {}),
+          // A free pack holds what was placed in it and rolls nothing special
+          // by chance: each server's batch has exactly one of each.
+          ...(freePack
+            ? {
+                secretArtChance: freePack.special === "secret_art" ? 1 : 0,
+                legendaryOdds:
+                  freePack.special === "legendary"
+                    ? certainTier(rollGuaranteedTier(Math.random()))
+                    : NO_LEGENDARY,
+              }
+            : {}),
         });
 
-        if (shortfall > 0) {
+        if (freePack) {
+          await markFreePackOpened(freePack.id ?? "");
+          // Placed but not there to give - no Secret Art left on the server,
+          // say. Another unopened free pack takes it, so the server still
+          // gets its one.
+          const delivered =
+            freePack.special === "secret_art"
+              ? pulls.some((pull) => pull.definition.secret_art)
+              : freePack.special === "legendary"
+                ? pulls.some((pull) => !!pull.legendary)
+                : true;
+          if (!delivered && freePack.special) {
+            await passOnSpecial(serverId, freePack.special, ADMIN_ID || undefined);
+          }
+        }
+
+        if (shortfall > 0 && cost > 0) {
           // Refund at the per-card rate, the way /booster-pack does.
           await addCoin(
             interaction.user.id,
             serverId,
-            Math.round((PACK_COST / PACK_SIZE) * shortfall),
+            Math.round((cost / PACK_SIZE) * shortfall),
             interaction.user.username,
             serverName,
             "Reserve",
@@ -423,16 +589,25 @@ export const execute = async (
         }
 
         const reimbursement =
-          shortfall > 0 ? Math.round((PACK_COST / PACK_SIZE) * shortfall) : 0;
+          shortfall > 0 ? Math.round((cost / PACK_SIZE) * shortfall) : 0;
 
-        await interaction.editReply(
-          await buildPackMessage({
-            cards: pulls.map((owned) => toBattleCard(owned)),
-            cost: PACK_COST,
-            shortfall,
-            reimbursement,
-          }),
-        );
+        const cards = pulls.map((owned) => toBattleCard(owned));
+        const pack = {
+          cards,
+          cost,
+          shortfall,
+          reimbursement,
+          ...(freePack
+            ? {
+                note: `Free pack · ${freePacks.length - 1} more to open`,
+              }
+            : set
+              ? { note: `Set ${set} pack · ${cost > 0 ? `${cost} fc` : "test, free"}` }
+              : {}),
+        };
+
+        // The sealed pack first, then its cards one at a time.
+        await presentPack(interaction, pack);
         return;
       }
 
@@ -449,56 +624,18 @@ export const execute = async (
           return;
         }
 
-        /*
-         * The whole collection was just read to count it and work out its
-         * composition, but the pages themselves are served by the shared
-         * pagination system rather than sliced here - that's what gives the
-         * listing its prev/next buttons and its per-card View button.
-         *
-         * The heading is stashed in the context's `query` field, which is
-         * threaded through to `buildResults` on every page turn. Otherwise
-         * every click would re-read the entire collection just to say how big
-         * it is.
-         */
-        const ownerLabel = `${target.displayName} — ${collection.length} card${
-          collection.length === 1 ? "" : "s"
-        } ${compositionString(collectionComposition(collection))}`;
-
-        const filter = `user_id = "${target.id}" && server_id = "${serverId}"`;
-
-        const query = QueryHandler("v2_card_collection");
-        const results = await query.query({
-          page: 1,
-          perPage: COLLECTION_PAGE_SIZE,
-          filterOption: filter,
-        });
-
-        const contextId = await createPaginationContext({
-          userId: interaction.user.id,
-          queryId: query.id,
-          filter,
-          query: ownerLabel,
-          perPage: COLLECTION_PAGE_SIZE,
-        });
-
-        const { components } = await query.buildResults({
-          items: results.items,
-          userId: interaction.user.id,
-          queryString: ownerLabel,
-          contextId,
-        });
-
-        const pageRow = createPaginationRow({
-          userId: interaction.user.id,
-          currentPage: results.currentPage,
-          totalPages: results.totalPages,
-          contextId,
-        });
-
-        await interaction.editReply({
-          components: [...(components ?? []), pageRow],
-          flags: [MessageFlags.IsComponentsV2],
-        });
+        // The whole collection was just read to count it and work out its
+        // composition; the pages themselves are served by the shared system.
+        await interaction.editReply(
+          await buildCardPages({
+            viewerId: interaction.user.id,
+            heading: `${target.displayName} — ${collection.length} card${
+            collection.length === 1 ? "" : "s"
+          } ${compositionString(collectionComposition(collection))}`,
+            filter: `user_id = "${target.id}" && server_id = "${serverId}"`,
+            binder: interaction.options.getString("view") === "binder",
+          }),
+        );
         return;
       }
 
@@ -735,6 +872,76 @@ export const execute = async (
         return;
       }
 
+      /* ------------------------------------------------------- dungeon ---- */
+      case "dungeon": {
+        /* One run at a time. Asking again while one is live brings it back
+           rather than charging for another - the fee is already paid, and the
+           message it was on may be a long way up the channel. */
+        const active = await getActiveRun(interaction.user.id, serverId);
+
+        if (active) {
+          await interaction.editReply(await buildRunMessage(active));
+          return;
+        }
+
+        const deckName = interaction.options.getString("deck");
+        const decks = await getDecks(interaction.user.id, serverId);
+
+        if (decks.length === 0) {
+          await interaction.editReply(
+            `You have no decks. Build one with \`/finicard-v2 deck build name:Main\` - a dungeon run deals ${DUNGEON.handSize} cards from it.`,
+          );
+          return;
+        }
+
+        const deck = deckName
+          ? await findDeckByName(interaction.user.id, serverId, deckName)
+          : decks.length === 1
+            ? decks[0]
+            : null;
+
+        if (!deck) {
+          await interaction.editReply(
+            deckName
+              ? `You have no deck called **${deckName}**. Yours: ${decks.map((d) => `**${d.name}**`).join(", ")}.`
+              : `You have several decks - say which one: ${decks.map((d) => `**${d.name}**`).join(", ")}.`,
+          );
+          return;
+        }
+
+        const party = {
+          userId: interaction.user.id,
+          serverId,
+          username: interaction.user.username,
+          servername: serverName,
+        };
+
+        if (!(await canAfford(party, DUNGEON.entryFee))) {
+          await interaction.editReply(
+            `A dungeon run costs ${DUNGEON.entryFee} fc and you can't cover that right now.`,
+          );
+          return;
+        }
+
+        const started = await startRun({
+          serverId,
+          channelId: interaction.channelId,
+          userId: interaction.user.id,
+          playerName: interaction.user.displayName,
+          deck,
+        });
+
+        if (!started.ok) {
+          await interaction.editReply(started.reason);
+          return;
+        }
+
+        await payEntryFee(party, DUNGEON.entryFee);
+
+        await interaction.editReply(await buildRunMessage(started.run));
+        return;
+      }
+
       /* ------------------------------------------------------- pending ---- */
       case "pending": {
         const pending = await getPendingBattlesForUser(
@@ -872,16 +1079,14 @@ export const execute = async (
         }
 
         const commit = interaction.options.getBoolean("commit") ?? false;
-        const assignKeywords =
-          interaction.options.getBoolean("keywords") ?? RULES.keywordsEnabled;
 
         const legacyCards = await pb
           .collection<CardDefinitionRecord>("card_definition")
           .getFullList();
 
-        const { converted, skipped } = convertLegacyPool(legacyCards, {
-          assignKeywords,
-        });
+        // No keywords: a keyword is rolled per copy when it is pulled, never
+        // fixed on the card. Importing also blanks any left from before.
+        const { converted, skipped } = convertLegacyPool(legacyCards);
         const summary = await importCardDefinitions(converted, {
           dryRun: !commit,
         });
@@ -893,14 +1098,18 @@ export const execute = async (
             `**Converted:** ${converted.length}`,
             `**Skipped:** ${skipped.length} _(item cards have no v2 equivalent)_`,
             `**Created:** ${summary.created} · **Updated:** ${summary.updated} · **Unchanged:** ${summary.unchanged}`,
-            assignKeywords
-              ? "**Keywords:** assigned"
-              : "**Keywords:** left blank",
+            "**Keywords:** none on cards — each copy rolls its own when pulled",
             commit ? "" : "\n_Nothing was written. Re-run with `commit:True`._",
           ]
             .filter(Boolean)
             .join("\n"),
         );
+        return;
+      }
+
+      /* ---------------------------------------------------------- sell ---- */
+      case "sell": {
+        await runSell(interaction, { serverId, serverName });
         return;
       }
 
@@ -1007,16 +1216,40 @@ const handleDeckSubcommand = async (
         return;
       }
 
-      const lines = decks.map(
-        (deck) =>
-          `• **${deck.name}** — ${(deck.cards ?? []).length} cards${
-            (deck.cards ?? []).length < HAND_SIZE ? " ⚠️ too small to battle" : ""
-          }`,
+      // One row per deck, each with a button onto the same pages as
+      // `deck show`.
+      const container = new ContainerBuilder()
+        .setAccentColor(NEUTRAL_ACCENT)
+        .addTextDisplayComponents((text) => text.setContent("### Your decks"));
+
+      for (const deck of decks) {
+        const size = (deck.cards ?? []).length;
+        container.addSectionComponents((section) =>
+          section
+            .addTextDisplayComponents((text) =>
+              text.setContent(
+                `**${deck.name}** — ${size} cards${
+                  size < MIN_DECK_SIZE ? `\n-# ⚠️ too small to play (needs ${MIN_DECK_SIZE})` : ""
+                }`,
+              ),
+            )
+            .setButtonAccessory((button) =>
+              button
+                .setCustomId(`v2_deck_show:${deck.id}:${userId}`)
+                .setLabel("View")
+                .setStyle(ButtonStyle.Secondary),
+            ),
+        );
+      }
+
+      container.addTextDisplayComponents((text) =>
+        text.setContent("-# Bring one with `/finicard-v2 battle deck:<name>`."),
       );
 
-      await interaction.editReply(
-        `### Your decks\n${lines.join("\n")}\n\n_Bring one with \`/finicard-v2 battle deck:<name>\`._`,
-      );
+      await interaction.editReply({
+        components: [container],
+        flags: [MessageFlags.IsComponentsV2],
+      });
       return;
     }
 
@@ -1067,12 +1300,14 @@ const handleDeckSubcommand = async (
         return;
       }
 
-      for (const [index, chunk] of splitBigString(
-        await describeDeck(deck),
-      ).entries()) {
-        if (index === 0) await interaction.editReply(chunk);
-        else await interaction.followUp(chunk);
-      }
+      const pages = await buildDeckPages(deck, {
+        viewerId: userId,
+        binder: interaction.options.getString("view") === "binder",
+      });
+      await interaction.editReply(
+        pages ??
+          `**${deck.name}** has no cards left in your collection. Add some with \`/finicard-v2 deck add\`.`,
+      );
       return;
     }
 

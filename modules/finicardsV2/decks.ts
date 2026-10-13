@@ -24,8 +24,12 @@ import type { BattleCard, OwnedCard } from "./types";
 
 export const V2_DECK = "v2_deck";
 
-/** A deck must be able to fill a hand. */
-export const MIN_DECK_SIZE = 5;
+/**
+ * Twenty, so a hand is a draw and not a choice: a battle deals five and a
+ * dungeon run six, and a deck barely bigger than that would hand its owner the
+ * same best cards every time.
+ */
+export const MIN_DECK_SIZE = 20;
 export const MAX_DECK_SIZE = 40;
 export const MAX_DECKS_PER_USER = 10;
 export const MAX_DECK_NAME_LENGTH = 32;
@@ -286,6 +290,22 @@ export type DeckContents = {
   cards: BattleCard[];
   /** Ids in the deck whose card is gone - sold, traded, or deleted. */
   missing: string[];
+};
+
+/**
+ * Why a deck may not be played, or null if it may. A deck is checked when it
+ * is built and edited, but it can shrink afterwards - a card in it sold or
+ * traded away leaves a hole - so it is checked again whenever a hand is about
+ * to be dealt from it.
+ */
+export const unplayableReason = (contents: DeckContents): string | null => {
+  if (contents.cards.length >= MIN_DECK_SIZE) return null;
+  const gone = contents.missing.length;
+  return `**${contents.deck.name}** has ${contents.cards.length} cards and a deck needs at least ${MIN_DECK_SIZE} to play.${
+    gone > 0
+      ? ` ${gone} of its cards ${gone === 1 ? "is" : "are"} no longer in your collection.`
+      : ""
+  } Add more with \`/finicard-v2 deck add\`.`;
 };
 
 /**

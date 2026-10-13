@@ -161,7 +161,7 @@ const fitKeywordTag = (
  * brain for Wit, a heart for Heart. They tag the working line so the type it was
  * fought in reads at a glance, without spelling the stat name out again.
  */
-const TYPE_ICON_PATHS: Record<CardType, string> = {
+export const TYPE_ICON_PATHS: Record<CardType, string> = {
   power:
     "M1 9 L1 7.2 C1 4.2 4.8 3 6.3 5.2 L6.3 4.3 C5 4.1 4.6 2.4 5.6 1.6 C6.6 0.8 8.7 0.9 9 2.6 L8.9 7.8 C8.8 8.6 8.2 9 7.4 9 Z M2.9 6.7 C3.5 5.8 4.6 5.6 5.4 6.1",
   wit: "M5 2 C3.6 1 1.8 1.9 2 3.6 C0.8 4.2 0.8 6.2 2.2 6.6 C2.2 8.2 4 8.9 5 8 C6 8.9 7.8 8.2 7.8 6.6 C9.2 6.2 9.2 4.2 8 3.6 C8.2 1.9 6.4 1 5 2 Z M5 2 V8 M3.2 4.4 C4 4.6 4 5.4 3.4 5.8 M6.8 4.4 C6 4.6 6 5.4 6.6 5.8",
@@ -529,6 +529,7 @@ export const renderBattleBoard = async (
         await resolveArtSource({
           art_url: combat.card.artUrl,
           legacy_card: combat.card.legacyCard,
+          art_adjust: combat.card.artAdjust,
         }),
         artPixels,
       );

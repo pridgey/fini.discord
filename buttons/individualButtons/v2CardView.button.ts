@@ -7,6 +7,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import { getOwnedCard, toBattleCard } from "../../modules/finicardsV2/cardStore";
+import { buybackPrice } from "../../modules/finicardsV2/market";
 import { renderCardFace } from "../../modules/finicardsV2/renderBattle";
 import { buildCardMessage } from "../../modules/finicardsV2/ui";
 import { NEUTRAL_ACCENT } from "../../modules/finicardsV2/ui/theme";
@@ -36,10 +37,14 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
+    // Acknowledged before any work: a press has three seconds to be answered,
+    // and a slow lookup or upload must not show as "interaction failed".
+    await interaction.deferUpdate();
+
     const owned = await getOwnedCard(cardId);
 
     if (!owned) {
-      await interaction.reply({
+      await interaction.followUp({
         content: "❌ That card no longer exists.",
         flags: [MessageFlags.Ephemeral],
       });
@@ -51,8 +56,18 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     const backRow = new ActionRowBuilder<ButtonBuilder>().setComponents([
       new ButtonBuilder()
         .setCustomId(`v2_card_back:${contextId}:${userId}`)
-        .setLabel("◀ Back to collection")
+        .setLabel("◀ Back")
         .setStyle(ButtonStyle.Secondary),
+      // Only on your own card: this is the quick way to sell it back to Fini.
+      // Selling to another player is `/finicard-v2 sell`.
+      ...(owned.user_id === interaction.user.id
+        ? [
+            new ButtonBuilder()
+              .setCustomId(`v2_card_sell:${contextId}:${cardId}:${userId}:ask`)
+              .setLabel(`Sell to Fini · ${buybackPrice(card)} fc`)
+              .setStyle(ButtonStyle.Secondary),
+          ]
+        : []),
     ]);
 
     const message = await buildCardMessage(card);
@@ -63,7 +78,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
      * V2 message can never be edited back into a plain `content` one.
      */
     if (!message) {
-      await interaction.update({
+      await interaction.editReply({
         components: [
           new ContainerBuilder()
             .setAccentColor(NEUTRAL_ACCENT)
@@ -79,7 +94,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
-    await interaction.update({
+    await interaction.editReply({
       components: [...message.components, backRow],
       files: message.files,
       attachments: [],
@@ -87,9 +102,8 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     });
   } catch (error) {
     console.error("Error viewing v2 card:", error, { args });
-    await interaction.reply({
-      content: "❌ Failed to load that card",
-      flags: [MessageFlags.Ephemeral],
-    });
+    const failed = { content: "❌ Failed to load that card", flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral] };
+    if (interaction.replied || interaction.deferred) await interaction.followUp(failed).catch(() => undefined);
+    else await interaction.reply(failed).catch(() => undefined);
   }
 }

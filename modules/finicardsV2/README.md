@@ -1,14 +1,20 @@
 # Finicards v2
 
 Implementation of `docs/Finicards-v2.md` — the battle-first card game. **Phase 1
-(PvP battles) and Phase 2 (keywords) are complete and playable.** Keywords are
-on (`RULES.keywordsEnabled`); the cards only carry them once the pool has been
-re-imported, see below.
+(PvP battles) and Phase 2 (keywords) are complete and playable, and the first
+cut of Phase 4 (solo dungeons) is in.** Keywords are on
+(`RULES.keywordsEnabled`) and belong to a copy: each is rolled when the copy is
+pulled.
 
-v2 runs *alongside* v1. Nothing in `modules/finicards`, `commands/booster-pack`,
-`commands/card-collection`, `commands/sell-card` or `commands/fuse-cards` was
-touched, and no v1 collection is read or written by this module. The switchover,
-when you want it, is retiring the v1 commands — not migrating data.
+Around the battles sit the collecting game: booster packs opened one card at a
+time, two tiers above full-art (**Secret Art** and **Legendary**), a collection
+with a list and a binder view, selling, and set numbers on every card.
+
+v2 runs *alongside* v1 until launch. Nothing in `modules/finicards`,
+`commands/booster-pack`, `commands/card-collection`, `commands/sell-card` or
+`commands/fuse-cards` was touched. At launch, v1 collections are carried across
+by a one-off script (see **Launch**) and the v1 commands are retired. There is
+no v2 fusion: `/fuse-cards` goes with the rest of v1.
 
 ---
 
@@ -22,10 +28,12 @@ when you want it, is retiring the v1 commands — not migrating data.
    # then restart Pocketbase - unapplied migrations run on boot
    ```
 
-   Four migrations: they create `v2_card_definition`, `v2_user_card` and
-   `v2_battle`, add the `flavour` / `artist` columns the templates use, and add
-   `v2_deck` plus the dealt-hand fields. Copies are already in `pb_migrations/`
-   and apply the next time Pocketbase restarts.
+   The migrations create `v2_card_definition`, `v2_user_card`, `v2_battle`,
+   `v2_deck`, `v2_dungeon_run` and `v2_free_pack`, and add what came later: a
+   card's own artwork and crop, per-copy keywords, Secret Arts and copy
+   numbers, Legendaries, set numbers, and a finished dungeon run's summary.
+   Copies are already in `pb_migrations/` and apply the next time Pocketbase
+   restarts.
 
 2. **Register the command.** `bun run register-commands` — `/finicard-v2` is
    picked up automatically by the existing glob.
@@ -40,21 +48,28 @@ when you want it, is retiring the v1 commands — not migrating data.
    Idempotent, keyed on `legacy_card`, so re-running after a mapping tweak
    updates in place instead of duplicating the pool.
 
-   The import also rolls each card's keyword while keywords are live. A pool
-   imported before they were switched on has none - re-run the import once to
-   hand them out. `keywords:False` imports with the column blank.
+   The import does not assign keywords. A keyword belongs to a copy and is
+   rolled when the copy is pulled - see **Keywords and rarity**.
+
+   **Do not re-run the import once cards have been edited in the card
+   manager.** It overwrites every converted card with what v1 says, so stats,
+   names and series corrected by hand are lost.
 
 4. **Get cards and fight:**
 
    ```
-   /finicard-v2 pack                             # 25 fc, five cards
+   /finicard-v2 pack                             # 25 fc, five cards from every set
+   /finicard-v2 pack set:Set 3                   # 40 fc, five cards from one set
    /finicard-v2 grant who:@someone count:10      # admin, free, for testing
-   /finicard-v2 collection                       # card ids live here
+   /finicard-v2 collection                       # a list, with a View button per card
+   /finicard-v2 collection view:Binder           # six cards to a page, as a picture
+   /finicard-v2 sell card:<id>                   # to anyone, a player, or Fini
    /finicard-v2 deck build name:Main             # required before battling
    /finicard-v2 battle opponent:@them            # no card ids anywhere
    /finicard-v2 battle opponent:@them draw:4     # try a different draw size
    /finicard-v2 pending                          # whatever is waiting on you
    /finicard-v2 practice                         # both sides yourself, see below
+   /finicard-v2 dungeon                          # 15 fc, solo, endless - see Dungeons
    ```
 
 ---
@@ -147,6 +162,137 @@ separate hands with no copy on both sides, when it has enough cards for that.
 To stage an exact matchup, build a small deck per side with `deck build` and
 `deck add` / `remove`, and raise `draw` so the cards you want are in the hand.
 
+## Dungeons
+
+`/finicard-v2 dungeon` is a solo run on the battle engine - the doc's §5, with
+no second combat system. It has no last room: you see one room at a time, pick
+one of two doors out of it, and go on until you fall or walk out.
+
+```
+1. ENTER     15 fc to the Reserve. 6 cards are dealt from the deck you bring
+             and you are standing in room 1.
+               → nothing is visible until the fee is paid, so there is no draw
+                 to fish for
+
+2. ROOM      Deal with the room you are in:
+               fight   play a card. Win for geld; lose and the run ends.
+               event   play a card. Its stat + d6 against a target.
+               shop    spend geld on buffs for this run.
+
+3. DOORS     Two doors, each with a hint - "Wit room", "Elite Power room",
+             "Shop", "Event" - and nothing more. Pick one. Back to 2.
+
+4. END       A lost fight, or the Walk out button, which is always there.
+```
+
+**Cooldowns.** A card played into a fight or an event rests for the next 2
+rooms (`DUNGEON.cooldownRooms`) and is back in the third. Every kind of room
+counts, so a shop or an event is also a breather. The hand image - two cards
+across, so it sits short under the room - shows resting cards dimmed with the rooms they have left. Smelling Salts (shop), Quick Hands
+(shop) and two of the events bring cards back sooner.
+
+**Geld.** Fights pay geld: `(4 + depth)`, x1.75 for an elite, x3 for a boss.
+Geld is the only currency inside the dungeon and only spends in shops. When the
+run ends it converts at `DUNGEON.coinPerGeld` (0.25 - four geld to the coin), paid
+out of the Reserve. **Walking out keeps all of it; falling keeps half**
+(`fallenKeep`) - that is the whole push-your-luck of an endless dungeon.
+`coinPerGeld` is the dial a difficulty setting would move.
+
+**Fights.** Enemies are pool cards with extra stat points bolted on, and they
+are deliberately not bound by the 15-point budget or the spike ceilings:
+
+- `floor((depth - 1) * 0.4)` points, +2 for an elite, +3 for a boss
+- an affix decides where they go: **Hulking** (all in its type stat), **Warded**
+  (both off stats), **Ancient** (spread evenly), **Cunning** (half the points,
+  and a random keyword instead)
+- elites and bosses always carry a keyword, rolled if their card has none
+- deeper rooms draw from better rarities; every 5th room is a boss behind both
+  doors
+- **the first 5 rooms are a warm-up** (`DUNGEON.warmup`): enemies are commons
+  fighting 2 points under their card ("Drowsy"), no elites, and the room-5 boss
+  is built on an uncommon rather than a full-art
+
+A draw is a stalemate: the enemy stands, the card rests, play another. A run
+starts with one **ward charm**, which breaks instead of the run on the first
+lost fight (no geld for that room); shops and one event hand out more.
+
+**Boss drops.** Beating a boss banks a card. The first three bosses drop an
+uncommon; after that the chance of a full-art instead climbs fast - 10%, 25%,
+50%, 80%, then certain from the eighth boss on (`DUNGEON.bossFullArtOdds`).
+Banked cards are drawn and granted when the run ends, on a walk out or a fall
+alike, and shown on the final message. A ward that carries you past a boss
+drops nothing.
+
+**Events.** Eight encounters, each asking for one stat. The card's stat (with
+buffs) + d6 has to reach `9 + depth / 4`, and every button shows that card's
+chance. Passing pays the event's boon - geld, a temporary buff, a ward, or
+every card recovered. Failing never ends the run: the next choice is one door
+instead of two. An event can also be walked past, which counts as failing it.
+
+**Shops.** Three wares off a shelf of ten, priced in geld: +1 to a stat for the
+run, War Paint (+2 type stat, 3 rooms), Hex Doll (enemies -1, 3 rooms),
+Smelling Salts, Quick Hands, Lucky Coin, Deep Pockets, Ward Charm. The hand
+strip and the card buttons show stats with buffs already applied.
+
+**Doors.** One door is always a fight, and after a shop or an event both are -
+a run cannot be walked on side rooms. Two fight doors are different types when
+the pool allows. The rooms behind the doors are generated when the doors appear
+and stored on the run, so a hint is always true and re-opening the message
+cannot reroll it.
+
+**Shop guarantee.** The second door rolls a shop about one time in four, which
+on its own leaves some runs without one. So after `DUNGEON.shopPity` (4) door
+choices in a row with no shop on offer, the next choice that is allowed a shop
+has one.
+
+**The summary.** A finished run's message carries one image
+(`cardArt/dungeonSummary.ts`): rooms, fights and bosses won, events passed, geld
+made, the payout, the card that won the most fights, and the path - a node per
+room, coloured like its door, with a small dot for each door not taken. A run
+longer than 48 rooms shows its last 48.
+
+**A fight is one clash, and every three fights are one match.** The player is
+the challenger, the dungeon the defender, and each fight goes through the same
+`resolveRound` a battle uses. A run has no length for `Last Stand` to find the
+end of and no ceiling for `Momentum`, so keywords see it as a string of
+three-fight legs: slot 1, 2, 3, then slot 1 again with fresh keyword state. The
+fight room says which slot it is. Keywords that read "your lineup" (`Trinity`,
+`Thrifty`, `Kinship`) see the cards played so far this leg plus the one being
+played.
+
+**Progress lives in the row, not the button ids** - the opposite of the lineup
+picker, deliberately. `v2_dungeon_run.progress` holds the whole `DungeonState`:
+room, doors, geld, cooldowns, buffs, keyword state. It carries a `step` that
+goes up on every accepted click, every button carries the step it was drawn
+for, and a click for any other step is refused. One run per player per server:
+`/finicard-v2 dungeon` during a run re-posts it instead of charging again.
+
+The payout is recorded on the run as it is paid, and a run that already carries
+one is never paid again.
+
+### How far it goes
+
+`bun run scripts/finicards_v2_simulate.ts --dungeon --keywords`, 1000 runs a
+row. *careful* works out every clash and walks out when nothing in hand can win;
+*gut* plays the best-looking card and never walks out.
+
+| deck | player | avg room | median | p90 | avg fc | runs in profit | cards | full-arts |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 packs, all 10 cards | careful | 14.3 | 10 | 25 | 40.9 | 47% | 2.04 | 0.14 |
+| | gut | 12.0 | 10 | 20 | 6.5 | 9% | 1.01 | 0.01 |
+| 8 packs, best 20 | careful | 17.3 | 15 | 30 | 61.6 | 62% | 2.63 | 0.23 |
+| | gut | 14.6 | 12 | 25 | 11.3 | 18% | 1.41 | 0.04 |
+| 24 packs, best 20 | careful | 23.8 | 20 | 45 | 129.9 | 78% | 3.94 | 0.74 |
+| | gut | 19.1 | 15 | 36 | 28.7 | 31% | 2.02 | 0.18 |
+| full-arts only | careful | 31.4 | 29 | 55 | 239.4 | 91% | 5.47 | 1.46 |
+| | gut | 28.4 | 23 | 55 | 91.9 | 57% | 3.52 | 0.73 |
+
+Against a 15 fc fee the dungeon is a Finicoin source for anyone who walks out
+in time and a sink for anyone who plays until they fall - the payout comes out
+of the Reserve either way. Bosses are the walls - medians sit on
+multiples of five. The bots shop and pick doors crudely, so read these as
+shapes, not promises. Every number is in `DUNGEON` in `dungeon.ts`.
+
 ## Decks
 
 A battle draws from a deck, not from the whole collection, and **that distinction
@@ -178,12 +324,165 @@ the same copy can sit in several, and only one deck is used per battle.
 
 `build` is the path that matters — it assembles a deck from the collection so a
 player never has to type a card id to get playing. `add` / `remove` are for
-tuning afterwards. Limits: 5-40 cards, 10 decks per player. Rebuilding a name
+tuning afterwards. Limits: 20-40 cards, 10 decks per player. Rebuilding a name
 replaces that deck in place rather than duplicating it.
 
+**The minimum is 20 on purpose.** A battle deals five cards and a dungeon run
+six, so a deck barely bigger than a hand deals its owner the same best cards
+every time. `MIN_DECK_SIZE` in `decks.ts` is the dial.
+
 A deck stores specific copies, so selling a card leaves a hole; `loadDeck`
-reports those, and a deck that can no longer fill a hand is caught before the
-battle starts rather than mid-deal.
+reports those. The minimum is therefore checked again whenever a hand is about
+to be dealt - starting or accepting a battle, a practice battle, a dungeon run
+(`unplayableReason`) - so a deck cannot be built at 20 and sold down to 7.
+
+`deck show` uses the same pages as the collection, list or binder, narrowed to
+the deck's copies (`cardPages.ts`), and each deck in `deck list` has a View
+button onto them.
+
+## Packs
+
+```
+/finicard-v2 pack                # 25 fc: five cards, drawn from every set
+/finicard-v2 pack set:Set 3      # 40 fc: five cards, all from that set
+```
+
+Rarity odds per card are 70 / 25 / 5 (common / uncommon / full-art), and any
+card has a 3% chance of being foil. On top of those, each pack makes two rolls
+of its own, each of which replaces one card:
+
+| | chance per pack | notes |
+| --- | --- | --- |
+| Secret Art | 1% | only while one has room left on the server |
+| Legendary tier 1 / 2 / 3 / 4 | 1% / 0.5% / 0.29% / 0.17% | one roll, rarest checked first |
+
+**Opening a pack** (`packFlow.ts`) is v1's ritual: the sealed pack and an "Open
+pack" button, a two-second animation of the pack turning over and unzipping
+down its seam, then the cards one at a time, rarest last, ending on all five
+together. A Legendary or a Secret Art gets its reveal when its turn comes. The
+cards belong to the player before the sealed pack is shown, so walking away
+loses nothing; the message settles on the whole pack after ten minutes.
+
+The card images are attached to the sealed pack's message as soon as they are
+drawn. A components-v2 message only shows the attachments its layout points
+at, so they ride along unseen and "Next card" sends a few bytes of layout with
+nothing to upload. If Discord ever refuses such an edit, the screen is sent
+whole instead and the log says so.
+
+The pack art and its animation are files in `assets/`, drawn by
+`scripts/finicards_v2_pack_art.ts`. Run that script after changing the design;
+the game only reads the files.
+
+**Population.** A card can have a per-server cap (`population`, 0 for none):
+full-arts are held to 1 copy, Secret Arts to 3. A capped-out rarity falls down
+the ladder (full-art → uncommon → common). Once v1 collections convert, every
+set 1 and set 2 full-art is at its cap, so those only come out of a pack as
+Legendaries, which are counted apart.
+
+**Free packs** (`freePacks.ts`, `v2_free_pack`). A player owed one opens it
+before paying for a pack. It rolls no special by chance; it holds what was
+placed in it, or nothing. See **Launch**.
+
+## Secret Arts and Legendaries
+
+Both sit above full-art, and neither is a fourth rarity: `CardRarity` stays
+three values, because the stat budget is per rarity and these carry no extra
+stats.
+
+- **Secret Art** is a card definition: a full-art with `secret_art` set, its
+  own unusual artwork, and a population of 3. It prints `SA`, is found only by
+  its own roll (never in the full-art slot or as dungeon loot), and is left out
+  of its set's count.
+- **Legendary** is a *copy*: any full-art that is not a Secret Art can come out
+  of a pack Legendary, with `v2_user_card.legendary` naming the animated effect
+  it carries. There is one Legendary of each card per server, counted apart
+  from the card's ordinary copies. It prints `L1`-`L4` and is shown as a
+  looping GIF (`cardArt/legendaryGif.ts`); the effects and their tiers are in
+  `legendary.ts`.
+
+A copy of a card held to fewer than five per server says which one it is under
+the rarity code: "2 OF 3", "1 OF 1" (`v2_user_card.serial`).
+
+Legendary GIFs take a few seconds to draw and are cached in the system temp
+directory, keyed on everything printed on the card. A card that should have
+art and came out without it is shown but not cached.
+
+## Collection, binder and selling
+
+`/finicard-v2 collection` pages through a player's cards ten at a time, each
+with a View button; `view:Binder` shows six to a page as one picture
+(`cardArt/binderPage.ts`). A binder page is a still, so the pocket of a
+Legendary is lit gold and tagged "VIEW TO PLAY", and a foil's is edged and
+tagged in its prism.
+
+Selling (`market.ts`):
+
+- **To Fini.** From any of your own cards opened with View, "Sell to Fini" and
+  a confirm. Fini pays 2 / 5 / 10 for a common / uncommon / full-art, 25 for a
+  Secret Art and 50 for a Legendary; a foil pays half again, rounded up.
+- **To a player.** `/finicard-v2 sell card:<id> price:<fc>` offers it to
+  anyone, or to one player with `who:`. This is trading.
+
+A sold card is taken out of every deck it was in. A card in a battle or dungeon
+run that is already under way can still be sold; that is a known gap.
+
+## Set numbers
+
+Every card prints its place in its release set in the footer:
+`FINICARD V1 · S3 12/217 · <copy id>`. Sets are numbered by name, then rarity,
+so a character's cards sit together. Secret Arts are not counted - they are
+secret - and number past the total, which is how one reads `218/217`. An
+inactive card keeps its number: the gap it leaves is the hint that it exists.
+
+`setNumbers.ts` does the numbering; the card manager renumbers after every
+save, and `scripts/finicards_v2_number_sets.ts` does it by hand.
+
+## The card manager
+
+```bash
+bun --env-file=.env run scripts/finicards_v2_art_check.ts --serve   # http://127.0.0.1:8765/cards/
+```
+
+A local page for the card pool: make and edit cards, set stats inside the
+budget, mark Secret Arts, and choose artwork. Art can be searched from Danbooru
+(which bans AI art; results before August 2022 are shown first) and from Magic
+card art via Scryfall, and each candidate image keeps its own artist credit.
+Every write is appended to `edits.jsonl` with what the card was before.
+
+## Launch
+
+`scripts/finicards_v2_migrate_collections.ts` carries v1 collections into v2.
+It reports what it would do unless given `--commit`:
+
+1. Wipes the v2 data made while testing: copies, decks, dungeon runs, battles.
+2. Takes v1's colour off the converted cards' tags.
+3. Turns every v1 battler a player owns into a v2 copy of the same card, with
+   a keyword rolled for that copy. v1 legendaries come across as foil
+   full-arts.
+4. v1 item cards do not come across. Their owners get free packs instead, one
+   per 40 items, rounded up. Each server's batch of free packs holds exactly
+   one Secret Art and one Legendary, in different packs, and never in the bot
+   admin's.
+
+Around it: activate the new set, lift the admin-only gate on
+`/finicard-v2 pack`, and retire the v1 card commands.
+
+## Dungeon history
+
+Every run is kept after it ends. When one is settled its numbers are written to
+its own columns - depth reached, fights and bosses won, geld earned, finicoin
+paid, cards won, and when it ended - so the record does not depend on the
+shape of the game's working state (`dungeonStats.ts`).
+
+```bash
+bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts              # every year
+bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts --year 2026
+bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts --server <id> --json
+```
+
+Per year: runs and how they ended, players, the deepest run, average depth,
+finicoin in and out, cards won, a table of players and the cards that won the
+most fights.
 
 ## What the sweep says about the dials
 
@@ -288,10 +587,14 @@ The simulated player does not slot cards by keyword (it will not put a Vanguard
 in slot 1), so placement keywords are somewhat stronger in real play than the
 sweep shows.
 
-Keywords are rolled per card *definition*, seeded by the card's own id, so a
-re-import hands every card the keyword it already had. Two things reshuffle
-them: changing `KEYWORD_ODDS`, and adding a keyword to a grade (the pick within
-the grade is by position).
+**Keywords are rolled per copy, not per card.** A copy rolls its keyword at its
+rarity's odds when it is made - pulled from a pack, dropped by a boss
+(`rollCopyKeyword` in `cardStore.ts`) - and keeps it for good, on
+`v2_user_card.keyword`. Two copies of the same card can carry different
+keywords, which is the point: the pairings of card and keyword are what make a
+collection varied. A dungeon enemy rolls one the same way when its room is
+built. `v2_card_definition.keyword` is left over from the first design, where
+the keyword was fixed per card; nothing reads it, and the import blanks it.
 
 ## Files
 
@@ -305,11 +608,27 @@ the grade is by position).
 | `cardStore.ts` | Pocketbase boundary for cards, collections, lineups and the pool import. |
 | `battleStore.ts` | The two-phase challenge lifecycle and its state machine. |
 | `practice.ts` | What makes a battle a practice battle, and how its two hands are dealt. |
-| `decks.ts` | Deck CRUD, auto-building with filters, and loading a deck for play. |
+| `dungeon.ts` | Pure dungeon rules: the dials, rooms and doors, fights, events, shops, buffs, cooldowns, payouts. |
+| `dungeonStore.ts` | The run lifecycle: one `act` per click, and its guards against stale or replayed ones. |
+| `cardArt/dungeonScene.ts` | The picture of the current room - fight, shop, event - or the doors out of it. |
+| `dungeonFlow.ts` | The entry fee, settling a finished run, and the one builder for a run's message. |
+| `dungeonStats.ts` | A finished run's summary, and the roll-up of runs by year. |
+| `decks.ts` | Deck CRUD, auto-building with filters, the minimum size, and loading a deck for play. |
+| `cardPages.ts` | A set of cards as pages, list or binder. The collection and `deck show` are both this. |
 | `draw.ts` | Dealing a hand and validating a lineup against it. |
 | `lineupPicker.ts` | The three-click lineup picker and its custom-id encoding. |
 | `battleFlow.ts` | The shared accept-and-reveal step. |
-| `packs.ts` | Pack odds, foil rolls, population limits. |
+| `packs.ts` | Pack odds, prices, set packs, foil rolls, population limits, and the Secret Art and Legendary rolls. |
+| `packFlow.ts` | Opening a pack: the sealed pack, the animation, one card at a time. |
+| `freePacks.ts` | Packs a player is owed, and placing each server's guaranteed specials among them. |
+| `legendary.ts` | The Legendary effects, their tiers and odds. |
+| `market.ts` | What Fini pays for a card, and handing a sold card over. |
+| `sellFlow.ts` | `/finicard-v2 sell`. |
+| `setNumbers.ts` | A card's place in its release set. |
+| `assets/` | The pack art and its opening animation, the type emoji and their ids. |
+| `cardArt/legendaryGif.ts` | Legendaries as animated GIFs, and the pull reveal. |
+| `cardArt/binderPage.ts` | A page of the binder. |
+| `cardArt/packOpening.ts` | Reads the pack art and animation from `assets/`. |
 | `wagers.ts` | Finicoin escrow, the jackpot rake and pot splitting. |
 | `expireBattles.ts` | The defender-timeout sweep, run from the minute poll. |
 | `ui/` | Discord message building: containers, galleries, accents, and the copy that explains the mechanics. |
@@ -323,8 +642,17 @@ Surface files outside the module: `commands/finicard-v2.command.ts`,
 `buttons/individualButtons/v2Battle{Accept,Decline}.button.ts`,
 `buttons/individualButtons/v2DeckPick.button.ts`,
 `buttons/individualButtons/v2Lineup{Open,Pick}.button.ts`,
-`types/PocketbaseTablesV2.ts`, `scripts/finicards_v2_simulate.ts`,
+`buttons/individualButtons/v2Dungeon.button.ts`,
+`buttons/individualButtons/v2Card{View,Back,Sell}.button.ts`,
+`buttons/individualButtons/v2DeckShow.button.ts`,
+`queries/queryFunctions/v2Card{Collection,Binder}.query.ts`,
+`types/PocketbaseTablesV2.ts`, `scripts/finicards_v2_*.ts`,
 `tests/finicardsV2/`.
+
+Buttons answered by a collector on their own message - the pack's, and
+`/finicard-v2 sell`'s - are listed in `buttons/buttonHandler.ts` so the router
+leaves them alone; without that it answers "unknown button" first and uses up
+the press.
 
 ---
 
@@ -457,6 +785,20 @@ them.
 **Round draws** — count for neither side and break an `Avenge` chain (a draw is
 not a loss).
 
+**Dungeon failure cost** → a lost fight ends the run and halves its geld; the
+fee is never refunded. A drawn fight is a stalemate, not a loss. A failed event
+costs a door, not the run.
+
+**Fixed vs procedural rooms** → procedural and endless. Enemies are pool cards
+with depth-scaled points on top, outside the stat budget on purpose.
+
+**Skill checks** → events: a card's stat plus a d6 against a target. Fights are
+still plain battles.
+
+**Dungeon card rewards** → boss drops, banked and granted at the end of the
+run: uncommons first, full-arts only deep in. A pack returns about 0.15
+full-arts per 15 fc; a typical deck played well gets about 0.05 from a run.
+
 **Wagers** — not in the doc, added because battles were listed as an economy
 source with no mechanism. Both sides escrow into the Reserve, and **10% of every
 decided pot is raked into the server Jackpot** (`RAKE` in `wagers.ts`), so a
@@ -488,8 +830,8 @@ The layout now splits by *need*. The headline of each round carries who won and
 by how much; the derivation sits underneath in small text you can skip:
 
 ```
-`R1` **Fen +2** · 🟢 Oathbound Knight **7** – 5 Storm Caller 🔴
--# 🟢 Heart beats 🔴 Power — ×1.5 to Fen · 7×1.5=10 − 3 Heart vs 9 − 4 Power
+`R1` **Fen +2** · 🔴 Oathbound Knight **7** – 5 Storm Caller 🟠
+-# 🔴 Heart beats 🟠 Power — ×1.5 to Fen · 7×1.5=10 − 3 Heart vs 9 − 4 Power
 ```
 
 All three rounds live in one block with one separator - three bordered sections
@@ -502,7 +844,7 @@ marked every round `✅`, which read as "you won this one" regardless of who did
 and negative damage is parenthesised, because `4 – -4` is hard to parse.
 
 **Never make them scroll to decide.** The lineup picker repeats the opposing hand
-as a compact line (`🔴 Vegeta 10 · 🔵 Bulma 9 · …`), because the read is the whole
+as a compact line (`🟠 Vegeta 10 · 🔵 Bulma 9 · …`), because the read is the whole
 decision and the reveal may be several messages up by then.
 
 **Keywords are named on the card and explained once.** Most keywords pay off in
@@ -585,13 +927,30 @@ its tier:
 
 | | plain | foil |
 | --- | --- | --- |
-| common | `card-common` (silver) | `card-rare` (gold) |
-| uncommon | `card-uncommon` (light) | `card-double-rare` (holo) |
-| full_art | `card-special` (prism) | `card-special` |
+| common | `card-common`, prints `C` | `card-common-foil` (gold border), prints `FC` |
+| uncommon | `card-uncommon`, prints `U` | `card-uncommon-foil` (holo border), prints `FU` |
+| full_art | `card-special` (prism), prints `FA` | `card-special` |
+
+A Secret Art prints `SA` and a Legendary `L1`-`L4` in the same corner, both on
+the full-art frame.
 
 That gives the cosmetic axis something visible to do while never touching a stat,
 which is what the doc wants foil to be. Full-arts already have the top frame, so
 foil changes nothing for them. Remap in `layoutFor` if you'd rather.
+
+**Common and uncommon are the redrawn dark frames.** Their originals are
+`templates/mockups/card-common-v2.svg` and `card-uncommon-v2.svg`. They are drawn
+in 606x849 units where the other three are still 320x448, so each layout carries
+its own `width`. Two things they do that the first set does not: art taller than
+its window is kept from the top (`artAnchor`), and a long name is set smaller
+before it is cut (`name.minSize`). The uncommon's frosted panel is the scene
+drawn once and reused blurred, so the artwork is only embedded once.
+
+The two foils are those same frames with a foil border and a sheen
+(`card-common-foil`, `card-uncommon-foil`), built from them rather than drawn
+separately, so a card's art crops identically whether or not the copy is foil.
+`card-rare.svg` and `card-double-rare.svg` are the first set's foil frames and
+are no longer used. The full-art frame is unchanged.
 
 **The stat bar is generated, not templated.** In the mockups the wide filled box
 sits wherever the lead stat happens to be, so a Power card and a Heart card have
@@ -621,10 +980,21 @@ fc-cache -f
 Render cost is 34 ms for a common and 99 ms for a full-art, so a five-card pack
 reveal is well under a second.
 
+**The footer** reads `FINICARD V1 · S3 12/217 · <copy id>`: where the card
+comes from, its set and set number, and the copy's id. Commons and uncommons
+credit the artist at its right-hand end.
+
+**Type emoji.** Power, Wit and Heart are three custom emoji belonging to the
+bot's own Discord application - circles in the card colours, carrying the
+battle board's glyphs. Their ids are in `assets/type-emoji.json`, written by
+`scripts/finicards_v2_type_emoji.ts --upload`; without that file the standard
+circles stand in. A custom emoji is some thirty characters of text, so a tally
+of more than eight cards is counted (`🟠 12 · 🔵 9`) rather than drawn out.
+
 **Where images appear:** `/finicard-v2 card` (with the text face as fallback),
-`/finicard-v2 pack` (all five pulls in one message), the battle **reveal** (both
-hands) and the match **result** (`cardArt/battleBoard.ts`, with the text result
-as its fallback).
+`/finicard-v2 pack` (one card at a time, then all five), the collection's
+binder, the battle **reveal** (both hands) and the match **result**
+(`cardArt/battleBoard.ts`, with the text result as its fallback).
 
 ---
 
@@ -632,13 +1002,30 @@ as its fallback).
 
 - **Keyword-aware deck building.** `deck build` still ranks by stats alone and
   does not know a keyword is worth anything.
-- **Decks, cooldowns, dungeons, set completion, trading.** Phases 3–6. The
-  schema carries `cost`, `tags`, `keyword` and `set_piece` from day one, so none
-  of them needs a migration across a live collection.
+- **Cooldowns and set completion.** Phases 3–6. The schema carries `cost`,
+  `tags`, `keyword` and `set_piece` from day one, so none of them needs a
+  migration across a live collection.
+- **Fusion.** v1's `/fuse-cards` has no v2 counterpart.
+- **Collection filtering and sorting.** The collection is newest first and
+  that is all. Planned as the first follow-up after launch; `cardPages.ts` is
+  where it goes, and decks get it for free.
+- **An animated binder page.** A page holding a Legendary is a still with a
+  marked pocket.
+- **Item-gated cards.** Exodia, Shenron and Super Sonic are meant to be earned
+  through unique item cards. They are inactive until that exists.
+- **Holding a card that is in play.** A card in an open battle or dungeon run
+  can be sold out from under it.
+- **Dungeon extras.** Rotating conditions (*commons only*, *no cards above cost
+  3*), card cooldowns after a run, a mulligan and a daily run limit are all in
+  the doc and all left out of the first cut. Conditions are a filter on the deck
+  before the deal; cooldowns need a column on `v2_user_card`.
+- **Recovering a run that ended but was never paid.** If the process dies
+  between a run's last room and its payout, the run is finished with no reward
+  recorded and nothing retries it. `settleRun` is safe to call on it by hand.
 - **Mulligans.** The doc offers one free redraw and lists extra redraws as a
   Finicoin sink. Left out because a redraw after the reveal leaks information -
   you would be rerolling against a known hand - and a redraw before it reopens
   the draw-fishing hole that dealing both hands together closes. Worth designing
   deliberately rather than bolting on.
-- **Deck cost budgets and cooldowns.** Phase 3. `cost` is populated on every
-  card, so neither needs a migration.
+- **Deck cost budgets.** Phase 3. `cost` is populated on every card, so it needs
+  no migration.

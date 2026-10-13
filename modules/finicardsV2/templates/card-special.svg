@@ -31,13 +31,14 @@
   <g id="header">
     <text x="21" y="34" font-size="10" font-weight="800" letter-spacing="2" fill="#ffffff" opacity="0.72">{faction}</text>
     <text x="299" y="35" text-anchor="end" font-size="15" font-weight="800" font-style="italic" fill="#ffffff" opacity="0.9">{rarity_code}</text>
+  <text id="limited" x="299" y="47" text-anchor="end" font-size="7.5" font-weight="700" letter-spacing="0.9" fill="#ffffff" fill-opacity="0.82">{limited}</text>
   </g>
-  <text id="name" x="20" y="278" font-size="31" font-weight="800" font-style="italic" fill="#ffffff" letter-spacing="-0.9">{card_name}</text>
+  <text id="name" x="20" y="278" font-size="{name_size}" font-weight="800" font-style="italic" fill="#ffffff" letter-spacing="-0.9">{card_name}</text>
   {professions}
   <rect x="20" y="307" width="200" height="1" fill="url(#nameRuleSP)"></rect>
   {ability}
   {stat_bar}
-  <g id="footer" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="0.7" fill="#ffffff" fill-opacity="0.42">
+  <g id="footer" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="0.3" fill="#ffffff" fill-opacity="0.42">
   <text x="22" y="430">{card_number}</text><text x="298" y="430" text-anchor="end">{artist}</text></g>
 </g>
 </svg>

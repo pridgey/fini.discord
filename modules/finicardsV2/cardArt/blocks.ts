@@ -49,7 +49,7 @@ export const artBlock = (
     return [
       `<g id="art-window">`,
       `<rect id="ART" x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}" fill="url(#${pattern})"></rect>`,
-      `<text x="${round(layout.artCaption.x)}" y="${round(layout.artCaption.y)}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="1" fill="${layout.artCaption.fill}">NO ART</text>`,
+      `<text x="${round(layout.artCaption.x)}" y="${round(layout.artCaption.y)}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="${layout.artCaption.size ?? 7}" letter-spacing="1" fill="${layout.artCaption.fill}">NO ART</text>`,
       `</g>`,
     ].join("");
   }
@@ -75,13 +75,19 @@ export const tagsBlock = (spec: TagsSpec, tags: string[]): string => {
 
   if (spec.style === "inline") {
     const opacity = spec.opacity !== undefined ? ` opacity="${spec.opacity}"` : "";
-    const fitted = [first, second].filter(Boolean).map((tag) =>
-      truncateToWidth(upper(tag), spec.maxWidth / 2.2, {
-        fontSize: spec.size,
-        letterSpacing: spec.letterSpacing,
-        bold: true,
-      }),
-    );
+    const type = { fontSize: spec.size, letterSpacing: spec.letterSpacing, bold: true };
+    const widthOf = (text: string) => estimateWidth(text, spec.size, spec.letterSpacing, true);
+
+    // The line is shared, not halved: a lone tag has all of it, and a short
+    // tag leaves what it does not use to the other.
+    const labels = [first, second].filter(Boolean).map(upper);
+    const room = spec.maxWidth - (labels.length > 1 ? widthOf(spec.separator) : 0);
+    const half = room / labels.length;
+    const fitted = labels.map((label, index) => {
+      const other = labels[1 - index];
+      const spare = other ? Math.max(half - widthOf(other), 0) : 0;
+      return truncateToWidth(label, half + spare, type);
+    });
 
     const spans = [
       `<tspan fill="${spec.first.fill}">${fitted[0]}</tspan>`,

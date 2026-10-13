@@ -56,7 +56,7 @@ export const assertEncodable = (handSize: number): void => {
 };
 
 /** The keyword goes first in the tail, so a long name truncates the name. */
-const cardLabel = (card: BattleCard): string => {
+export const cardLabel = (card: BattleCard): string => {
   const keyword = activeKeyword(card);
   const tail = ` ${statLine(card)}${keyword ? ` · ${keyword.name}` : ""}`;
   return `${card.name.slice(0, 76 - tail.length)}${tail}`;

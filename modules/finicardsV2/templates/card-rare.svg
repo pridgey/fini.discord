@@ -37,7 +37,7 @@
   <rect id="ability-panel" x="22" y="317" width="277" height="58" rx="5" fill="url(#panelGold)" stroke="#ece2c9"></rect>
   {ability}
   {stat_bar}
-  <g id="footer" font-family="JetBrains Mono, monospace" font-size="8" letter-spacing="0.7" fill="#a2a8c8">
+  <g id="footer" font-family="JetBrains Mono, monospace" font-size="7" letter-spacing="0.3" fill="#a2a8c8">
     <text x="22" y="430">{card_number}</text><text x="298" y="430" text-anchor="end">{artist}</text></g>
 </g>
 </svg>

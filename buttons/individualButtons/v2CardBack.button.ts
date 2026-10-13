@@ -25,10 +25,14 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
+    // Acknowledged before any work: a press has three seconds to be answered,
+    // and a slow lookup or upload must not show as "interaction failed".
+    await interaction.deferUpdate();
+
     const context = await getPaginationContext(contextId);
 
     if (!context) {
-      await interaction.reply({
+      await interaction.followUp({
         content:
           "❌ This collection session has expired. Run `/finicard-v2 collection` again.",
         flags: [MessageFlags.Ephemeral],
@@ -42,7 +46,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     });
 
     if (!page) {
-      await interaction.reply({
+      await interaction.followUp({
         content:
           "❌ This collection session has expired. Run `/finicard-v2 collection` again.",
         flags: [MessageFlags.Ephemeral],
@@ -50,12 +54,11 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
-    await interaction.update(page);
+    await interaction.editReply(page);
   } catch (error) {
     console.error("Error returning to v2 collection:", error, { args });
-    await interaction.reply({
-      content: "❌ Failed to reopen the collection",
-      flags: [MessageFlags.Ephemeral],
-    });
+    const failed = { content: "❌ Failed to reopen the collection", flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral] };
+    if (interaction.replied || interaction.deferred) await interaction.followUp(failed).catch(() => undefined);
+    else await interaction.reply(failed).catch(() => undefined);
   }
 }

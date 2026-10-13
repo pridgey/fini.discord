@@ -1,5 +1,6 @@
 import type { CardType } from "../../../types/PocketbaseTablesV2";
 import { findKeyword, type KeywordDefinition } from "../keywords";
+import { legendaryCode } from "../legendary";
 import { RARITY_LABEL, RULES, TYPE_BEATS, TYPE_EMOJI } from "../rules";
 import type { BattleCard, Side } from "../types";
 
@@ -46,15 +47,34 @@ export const MECHANIC_HINT = `-# ${TYPE_WHEEL} — beating your opponent's type 
 /** The same, trimmed for the picker, where the slot rule is already obvious. */
 export const WHEEL_HINT = `-# ${TYPE_WHEEL} — beating their type deals **×1.5**.`;
 
-/** `🔴🔴🔵🟢🟢` from a type tally. */
+/** The most cards a tally is drawn out for, one emoji each, before it is counted. */
+const TALLY_DRAWN_UP_TO = 8;
+
+/**
+ * A type tally. A hand or a pack is drawn out, `🟠🟠🔵🔴🔴`, so its shape
+ * reads at a glance; anything bigger - a deck, a collection - is counted,
+ * `🟠 12 · 🔵 9 · 🔴 4`, because a row of two hundred emoji says nothing and
+ * is longer than a message may be.
+ */
 export const compositionString = (
   counts: Record<CardType, number>,
-): string =>
-  TYPE_EMOJI.power.repeat(counts.power) +
-    TYPE_EMOJI.wit.repeat(counts.wit) +
-    TYPE_EMOJI.heart.repeat(counts.heart) || "—";
+): string => {
+  const total = counts.power + counts.wit + counts.heart;
+  if (total === 0) return "—";
+  if (total <= TALLY_DRAWN_UP_TO) {
+    return (
+      TYPE_EMOJI.power.repeat(counts.power) +
+      TYPE_EMOJI.wit.repeat(counts.wit) +
+      TYPE_EMOJI.heart.repeat(counts.heart)
+    );
+  }
+  return (["power", "wit", "heart"] as const)
+    .filter((type) => counts[type] > 0)
+    .map((type) => `${TYPE_EMOJI[type]} ${counts[type]}`)
+    .join(" · ");
+};
 
-/** `🔴🔴🔵🟢🟢` - a hand's shape at a glance, order deliberately meaningless. */
+/** `🟠🟠🔵🔴🔴` - a hand's shape at a glance, order deliberately meaningless. */
 export const compositionOf = (cards: BattleCard[]): string => {
   const counts: Record<CardType, number> = { power: 0, wit: 0, heart: 0 };
   for (const card of cards) counts[card.type] += 1;
@@ -146,7 +166,11 @@ export const keywordSheet = (
   ].join("\n\n");
 
 export const rarityLabel = (card: BattleCard): string =>
-  RARITY_LABEL[card.rarity];
+  card.legendary
+    ? `Legendary ${legendaryCode(card.legendary) ?? ""}`.trim()
+    : card.secretArt
+      ? "Secret Art"
+      : RARITY_LABEL[card.rarity];
 
 /**
  * Why an attack got its multiplier.

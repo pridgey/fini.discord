@@ -1,9 +1,13 @@
 import type {
+  CardRarity,
   CardType,
   V2CardDefinitionRecord,
   V2UserCardRecord,
 } from "../../types/PocketbaseTablesV2";
 import { pb } from "../../utilities/pocketbase";
+import { rollKeyword } from "./keywords";
+import { RULES } from "./rules";
+import { numberSets } from "./setNumbers";
 import type { BattleCard, OwnedCard } from "./types";
 
 /**
@@ -28,6 +32,45 @@ export const getCardDefinitions = async (options?: {
     sort: "rarity,card_name",
   });
 
+/**
+ * Writes every card's place in its set (`setNumbers.ts`), touching only the
+ * rows whose number or set size is out of date. Run after anything that moves
+ * a card: one made, removed, renamed, or changed in rarity or set.
+ *
+ * `ready` is false when the columns are not there yet - the migration that
+ * adds them has not been applied - and nothing is written.
+ */
+export const renumberSets = async (): Promise<{
+  ready: boolean;
+  changed: number;
+  sets: Map<number, number>;
+}> => {
+  const definitions = await getCardDefinitions({ includeInactive: true });
+  const sets = new Map<number, number>();
+  if (definitions.length > 0 && !("number" in definitions[0])) {
+    return { ready: false, changed: 0, sets };
+  }
+
+  const numbers = numberSets(definitions);
+  let changed = 0;
+  for (const definition of definitions) {
+    const place = numbers.get(definition.id ?? "") ?? { number: 0, setSize: 0 };
+    if (definition.set) sets.set(definition.set, place.setSize);
+    if (
+      (definition.number ?? 0) === place.number &&
+      (definition.set_size ?? 0) === place.setSize
+    ) {
+      continue;
+    }
+    await pb
+      .collection<V2CardDefinitionRecord>(V2_CARD_DEFINITION)
+      .update(definition.id ?? "", { number: place.number, set_size: place.setSize });
+    changed += 1;
+  }
+
+  return { ready: true, changed, sets };
+};
+
 export const getCardDefinition = async (
   id: string,
 ): Promise<V2CardDefinitionRecord | null> => {
@@ -50,9 +93,25 @@ export const getPopulationCounts = async (
 
   const counts = new Map<string, number>();
   for (const card of owned) {
+    // A Legendary has a population of its own, beside its card's.
+    if (card.legendary) continue;
     counts.set(card.card, (counts.get(card.card) ?? 0) + 1);
   }
   return counts;
+};
+
+/** The definitions that already have their one Legendary copy on a server. */
+export const getLegendaryHolders = async (
+  serverId: string,
+): Promise<Set<string>> => {
+  const owned = await pb
+    .collection<V2UserCardRecord>(V2_USER_CARD)
+    .getFullList({
+      filter: `server_id = "${filterSafe(serverId)}" && legendary != ""`,
+      fields: "card",
+      requestKey: null,
+    });
+  return new Set(owned.map((card) => card.card));
 };
 
 /** A user's v2 cards, each already joined to its definition. */
@@ -115,14 +174,27 @@ export const toBattleCard = (owned: OwnedCard): BattleCard => ({
     wit: owned.definition.wit,
     heart: owned.definition.heart,
   },
-  keyword: owned.definition.keyword ?? "",
+  // The copy's, not the definition's: keywords are rolled per copy.
+  keyword: owned.keyword ?? "",
   foil: !!owned.foil,
   tags: owned.definition.tags ?? [],
   cost: owned.definition.cost ?? 0,
-  artUrl: owned.definition.art_url ?? "",
+  // A card's own artwork file wins over a linked image.
+  artUrl: owned.definition.art
+    ? pb.files.getURL(owned.definition, owned.definition.art)
+    : (owned.definition.art_url ?? ""),
   legacyCard: owned.definition.legacy_card ?? "",
   flavour: owned.definition.flavour ?? "",
   artist: owned.definition.artist ?? "",
+  legendary: owned.legendary ?? "",
+  secretArt: !!owned.definition.secret_art,
+  // A Legendary is the only one of its card on its server.
+  population: owned.legendary ? 1 : (owned.definition.population ?? 0),
+  serial: owned.legendary ? 1 : (owned.serial ?? 0),
+  set: owned.definition.set ?? 0,
+  number: owned.definition.number ?? 0,
+  setSize: owned.definition.set_size ?? 0,
+  artAdjust: owned.definition.art_adjust ?? null,
 });
 
 export type LineupResolution = {
@@ -219,20 +291,58 @@ export type GrantCardInput = {
   identifier: string;
   definitionId: string;
   foil?: boolean;
+  /** The copy's keyword slug. Roll one with `rollCopyKeyword`. */
+  keyword?: string;
+  /** The Legendary effect the copy carries, for a Legendary. */
+  legendary?: string;
   acquiredFrom?: string;
+};
+
+/**
+ * Rolls the keyword for a new copy of a card of `rarity`, at that rarity's
+ * odds. "" when the roll comes up empty, or while keywords are switched off.
+ */
+export const rollCopyKeyword = (
+  rarity: CardRarity,
+  random: () => number = Math.random,
+): string => (RULES.keywordsEnabled ? rollKeyword(rarity, random(), random()) : "");
+
+/**
+ * The number a new copy of a card takes on a server: the lowest not in use.
+ * Lowest rather than next, so a copy made after another was sold or deleted
+ * fills the gap - a card limited to three never prints "4 OF 3".
+ */
+export const nextSerial = (taken: Iterable<number | undefined>): number => {
+  const used = new Set([...taken].filter((serial) => !!serial && serial > 0));
+  let serial = 1;
+  while (used.has(serial)) serial += 1;
+  return serial;
 };
 
 export const grantCard = async (
   input: GrantCardInput,
-): Promise<V2UserCardRecord> =>
-  pb.collection<V2UserCardRecord>(V2_USER_CARD).create({
+): Promise<V2UserCardRecord> => {
+  const siblings = await pb.collection<V2UserCardRecord>(V2_USER_CARD).getFullList({
+    filter: `server_id = "${filterSafe(input.serverId)}" && card = "${filterSafe(input.definitionId)}"`,
+    fields: "serial,legendary",
+    requestKey: null,
+  });
+
+  return pb.collection<V2UserCardRecord>(V2_USER_CARD).create({
     user_id: input.userId,
     server_id: input.serverId,
     identifier: input.identifier,
     card: input.definitionId,
     foil: input.foil ?? false,
+    keyword: input.keyword ?? "",
+    legendary: input.legendary ?? "",
+    // Legendaries are numbered apart from their card's ordinary copies.
+    serial: input.legendary
+      ? 1
+      : nextSerial(siblings.filter((copy) => !copy.legendary).map((copy) => copy.serial)),
     acquired_from: input.acquiredFrom ?? "grant",
   });
+};
 
 export const transferCard = async (
   userCardId: string,
@@ -286,6 +396,7 @@ export const importCardDefinitions = async (
       keyword: row.keyword ?? "",
       cost: row.cost,
       population: row.population,
+      set: row.set ?? 0,
     });
 
   for (const row of rows) {

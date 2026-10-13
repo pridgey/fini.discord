@@ -255,13 +255,13 @@ export const keywordReport = (
 };
 
 /**
- * One round in two lines: who won it, then the working in small text. Only
- * used when the battle board fails to render.
+ * One round in two lines: who won it, then the working in small text. Used
+ * when the battle board fails to render, and for a dungeon run's room log.
  *
  * The winner leads the line. An earlier version marked every round with a ✅,
  * which read as "you won this one" regardless of who actually did.
  */
-const roundBlock = (
+export const roundBlock = (
   round: RoundResult,
   names: Record<Side, string>,
 ): string => {
@@ -281,7 +281,7 @@ const roundBlock = (
   return [
     `\`R${round.slot}\` ${verdict} · ${TYPE_EMOJI[challenger.printedType]} ${challenger.card.name} ${score(challenger, "challenger")} – ${score(defender, "defender")} ${defender.card.name} ${TYPE_EMOJI[defender.printedType]}`,
     `-# ${multiplierNote(round, names)} · ${workingOf(challenger)} vs ${workingOf(defender)}`,
-    ...round.notes.map((note) => `-# ↳ ${note}`),
+    ...round.notes.map((note) => `-# ↳ ${namedNote(note, names)}`),
   ].join("\n");
 };
 

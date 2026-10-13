@@ -9,7 +9,9 @@ import type { CardRarity } from "../../../types/PocketbaseTablesV2";
  * touching TypeScript, as long as the tokens stay put, and the renderer never
  * has to parse SVG.
  *
- * Every number here was read off the supplied mockups.
+ * Every number here was read off the supplied mockups. The common and uncommon
+ * and their foils are the redrawn dark frames, in 606x849 units; the full-art
+ * frame is the first set's, in 320x448.
  */
 
 export type Box = { x: number; y: number; w: number; h: number };
@@ -128,17 +130,67 @@ export type FlavourSpec = {
 export type TemplateLayout = {
   /** File in `modules/finicardsV2/templates`. */
   file: string;
+  /**
+   * Width of the template in its own user units. Every other number in the
+   * layout is in those units, and the templates do not all share a scale.
+   */
+  width: number;
   /** Letter shown in the header and footer. */
   rarityCode: string;
   /** Whether the card face is dark - decides the art placeholder pattern. */
   face: "light" | "dark";
   art: Box;
+  /**
+   * Which end of the artwork to keep when it is taller than the window.
+   * Unset, the crop goes wherever the picture is busiest; "top" holds on to
+   * the top edge, which is where a portrait keeps its face.
+   */
+  artAnchor?: "top";
   /** Placeholder caption position, when there is no artwork. */
-  artCaption: { x: number; y: number; fill: string };
-  /** Widest the name may be before it is ellipsised. */
-  name: { size: number; maxWidth: number; bold: boolean };
+  artCaption: { x: number; y: number; fill: string; size?: number };
+  /**
+   * How the name is fitted. One that fits at `size` within `maxWidth` is set
+   * on its one line. One that does not is broken over two lines at `wrapSize`,
+   * the second on the usual baseline and the first a line above it - so a long
+   * name grows upward, and nothing under it has to move. A single word too
+   * long to break is set smaller, down to `minSize`, and only then cut.
+   *
+   * `x` is where the template starts the name, which a second line has to
+   * return to. `widen` is how much wider the name's face sets than the width
+   * estimator assumes. The template takes the size through `{name_size}`.
+   */
+  name: {
+    size: number;
+    maxWidth: number;
+    bold: boolean;
+    x?: number;
+    wrapSize?: number;
+    minSize?: number;
+    widen?: number;
+  };
+  /**
+   * A panel the text sits on, where the frame has one. A name that takes a
+   * second line grows it upward by that line, so the name is never left
+   * hanging above its own backing. The template draws it from `{panel_y}`,
+   * `{panel_h}` and, for its hairline, `{panel_edge_y}` and `{panel_edge_h}`.
+   */
+  panel?: { y: number; h: number };
+  /**
+   * For a frame with no panel, where the text sits straight under the art: a
+   * name's second line is made room for by ending the art window that much
+   * higher. The template draws the window from `{art_h}` and `{art_edge_h}`.
+   */
+  artYieldsToName?: boolean;
+  /**
+   * The most characters of an artist's credit the footer has room for beside
+   * the card's own line, on the frames that set the footer in a fixed-width
+   * face. Without it the credit is fitted by estimated width instead.
+   */
+  artistChars?: number;
   /** Widest the series label in the header may be. */
   factionMaxWidth: number;
+  /** The header label's type, for measuring it. Defaults to the first set's. */
+  factionFont?: { size: number; letterSpacing: number };
   tags: TagsSpec;
   ability: AbilitySpec;
   flavour?: FlavourSpec;
@@ -147,251 +199,190 @@ export type TemplateLayout = {
 
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The stat line the dark common and uncommon share: two quiet stats, a
+ * divider, and the card's type stat set large.
+ */
+const darkStatLine = (options: {
+  x: number;
+  /** Baselines: the values share one, the lead's label sits higher. */
+  valueY: number;
+  labelY: number;
+  leadLabelY: number;
+  advance: number;
+  leadOffset: number;
+  labelSize: number;
+  valueSize: number;
+  leadValueSize: number;
+  divider: { y: number; h: number };
+}): InlineStatBar => ({
+  style: "inline",
+  x: options.x,
+  labelY: options.labelY,
+  valueY: options.valueY,
+  leadLabelY: options.leadLabelY,
+  leadValueY: options.valueY,
+  advance: options.advance,
+  // Room for a two-digit lead value before the next stat starts.
+  leadAdvance: options.leadValueSize * 2.1,
+  leadOffset: options.leadOffset,
+  divider: {
+    dx: 0,
+    y: options.divider.y,
+    h: options.divider.h,
+    fill: "#ffffff",
+    opacity: 0.18,
+  },
+  label: {
+    fill: "#ffffff",
+    opacity: 0.52,
+    size: options.labelSize,
+    letterSpacing: options.labelSize * 0.08,
+  },
+  value: { fill: "#e6e8ee", opacity: 1, size: options.valueSize },
+  lead: {
+    labelFill: "{t_soft}",
+    labelSize: options.labelSize,
+    labelLetterSpacing: options.labelSize * 0.08,
+    valueFill: "#ffffff",
+    valueSize: options.leadValueSize,
+    italic: true,
+  },
+});
+
 const COMMON: TemplateLayout = {
   file: "card-common.svg",
+  width: 606,
   rarityCode: "C",
-  face: "light",
-  art: { x: 22, y: 56, w: 279, h: 158 },
-  artCaption: { x: 161.5, y: 138, fill: "#9aa1c4" },
-  name: { size: 19, maxWidth: 279, bold: true },
-  factionMaxWidth: 205,
+  face: "dark",
+  art: { x: 32, y: 32, w: 542, h: 430 },
+  artAnchor: "top",
+  artYieldsToName: true,
+  artistChars: 18,
+  artCaption: { x: 303, y: 252, fill: "#5d6072", size: 13 },
+  // Bold italic DejaVu measured against the estimator over every name in the
+  // pool: 5% wider on average, 16% at worst.
+  name: { size: 48, maxWidth: 542, bold: true, x: 32, wrapSize: 40, minSize: 34, widen: 1.16 },
+  factionMaxWidth: 430,
+  factionFont: { size: 15, letterSpacing: 3.3 },
   tags: {
     style: "inline",
-    x: 22,
-    y: 256,
-    size: 8,
-    letterSpacing: 0.6,
-    separator: "  •  ",
-    first: { fill: "{t_deep}" },
-    second: { fill: "{t_pale_ink}" },
-    separatorFill: "{t_hairline}",
-    maxWidth: 279,
+    x: 32,
+    y: 555,
+    size: 15,
+    letterSpacing: 2.4,
+    separator: "  ·  ",
+    first: { fill: "#ffffff" },
+    second: { fill: "#ffffff" },
+    separatorFill: "#ffffff",
+    opacity: 0.58,
+    maxWidth: 542,
   },
   ability: {
-    x: 22,
-    y: 283,
-    lineHeight: 15,
-    size: 10.5,
-    maxWidth: 272,
-    maxLines: 4,
-    fill: "#2b2e4a",
-    keywordFill: "{t_deep}",
-    emptyFill: "{t_pale_ink}",
+    x: 32,
+    y: 608,
+    lineHeight: 25,
+    size: 18,
+    maxWidth: 542,
+    maxLines: 3,
+    fill: "#ffffff",
+    opacity: 0.86,
+    keywordFill: "{t_soft}",
+    emptyFill: "#ffffff",
   },
-  flavour: { x: 22, y: 352, size: 9.5, fill: "{t_pale_ink}", maxWidth: 279 },
-  statBar: {
-    style: "boxed",
-    x0: 22,
-    x1: 301,
-    y: 371,
-    h: 34,
-    rx: 4,
-    gap: 4.05,
-    leadRatio: 1.7,
-    box: { fill: "none", stroke: "#e8e9f1" },
-    label: { fill: "#9aa1c4", size: 8, letterSpacing: 1.1 },
-    value: { fill: "#3f4262", size: 18 },
-    lead: {
-      labelFill: "#ffffff",
-      labelOpacity: 0.9,
-      labelSize: 8.5,
-      labelLetterSpacing: 1.4,
-      valueFill: "#ffffff",
-      valueSize: 24,
-    },
-    padX: 9,
-    labelDy: 20,
-    valueDy: 24,
-  },
+  statBar: darkStatLine({
+    x: 32,
+    valueY: 783,
+    labelY: 732,
+    leadLabelY: 718,
+    advance: 61.4,
+    leadOffset: 33,
+    labelSize: 14,
+    valueSize: 42,
+    leadValueSize: 58,
+    divider: { y: 723, h: 62 },
+  }),
 };
 
 const UNCOMMON: TemplateLayout = {
   file: "card-uncommon.svg",
+  width: 606,
   rarityCode: "U",
-  face: "light",
-  art: { x: 20, y: 56, w: 280, h: 186 },
-  artCaption: { x: 160, y: 152, fill: "#9aa1c4" },
-  name: { size: 21, maxWidth: 256, bold: true },
-  factionMaxWidth: 200,
+  face: "dark",
+  art: { x: 10, y: 10, w: 586, h: 622 },
+  artAnchor: "top",
+  // Centred on the part of the art the panel leaves showing, not on the window.
+  artCaption: { x: 303, y: 270, fill: "#5d6072", size: 13 },
+  name: { size: 44, maxWidth: 494, bold: true, x: 56, wrapSize: 38, minSize: 30, widen: 1.16 },
+  panel: { y: 520, h: 271 },
+  artistChars: 16,
+  factionMaxWidth: 440,
+  factionFont: { size: 15, letterSpacing: 3.3 },
   tags: {
-    style: "chips",
-    x: 44,
-    y: 272,
-    h: 15,
-    size: 8,
-    letterSpacing: 0.6,
-    padX: 6,
-    gap: 4,
-    rx: 2,
-    first: { fill: "{t_bright}", textFill: "#ffffff" },
-    second: { fill: "{t_pale_fill}", textFill: "{t_pale_ink}" },
-    textDy: 10.5,
-    maxWidth: 256,
+    style: "inline",
+    x: 56,
+    y: 613,
+    size: 14,
+    letterSpacing: 2.24,
+    separator: "  ·  ",
+    first: { fill: "#ffffff" },
+    second: { fill: "#ffffff" },
+    separatorFill: "#ffffff",
+    opacity: 0.6,
+    maxWidth: 494,
   },
   ability: {
-    x: 32,
-    y: 315,
-    lineHeight: 15,
-    size: 10.5,
-    maxWidth: 250,
-    maxLines: 3,
-    fill: "#2b2e4a",
-    keywordFill: "{t_pale_ink}",
-    emptyFill: "{t_pale_ink}",
+    x: 56,
+    y: 664,
+    lineHeight: 22,
+    size: 18,
+    maxWidth: 494,
+    // The panel only has room for two before the stat labels start.
+    maxLines: 2,
+    fill: "#ffffff",
+    opacity: 0.86,
+    keywordFill: "{t_soft}",
+    emptyFill: "#ffffff",
   },
-  statBar: {
-    style: "boxed",
-    x0: 21,
-    x1: 299,
-    y: 368,
-    h: 34,
-    rx: 4,
-    gap: 3.97,
-    leadRatio: 1.7,
-    box: { fill: "{t_pale_fill}", stroke: "{t_hairline}" },
-    label: { fill: "#9aa1c4", size: 8, letterSpacing: 1.1 },
-    value: { fill: "#3f4262", size: 18 },
-    lead: {
-      labelFill: "#ffffff",
-      labelOpacity: 0.9,
-      labelSize: 8.5,
-      labelLetterSpacing: 1.4,
-      valueFill: "#ffffff",
-      valueSize: 24,
-    },
-    padX: 9,
-    labelDy: 20,
-    valueDy: 24,
-  },
+  statBar: darkStatLine({
+    x: 56,
+    valueY: 765,
+    labelY: 719,
+    leadLabelY: 705,
+    advance: 56.6,
+    leadOffset: 31,
+    labelSize: 13,
+    valueSize: 38,
+    leadValueSize: 54,
+    divider: { y: 711, h: 56 },
+  }),
 };
 
+/* The foils are their plain cards with a foil border and a sheen: same
+   geometry, so the artwork crops identically whether or not a copy is foil. */
+
 const RARE: TemplateLayout = {
-  file: "card-rare.svg",
-  rarityCode: "R",
-  face: "light",
-  art: { x: 7, y: 7, w: 306, h: 268 },
-  artCaption: { x: 160, y: 144, fill: "#9aa1c4" },
-  name: { size: 24, maxWidth: 277, bold: true },
-  factionMaxWidth: 70,
-  tags: {
-    style: "chips",
-    x: 22,
-    y: 292,
-    h: 15,
-    size: 8,
-    letterSpacing: 0.6,
-    padX: 6,
-    gap: 4,
-    rx: 2,
-    first: { fill: "{t_deep}", textFill: "#ffffff" },
-    second: { fill: "{t_pale_fill}", textFill: "{t_pale_ink}" },
-    textDy: 10.5,
-    maxWidth: 277,
-  },
-  ability: {
-    x: 33,
-    y: 335,
-    lineHeight: 15,
-    size: 10.5,
-    maxWidth: 248,
-    maxLines: 3,
-    fill: "#2b2e4a",
-    keywordFill: "{t_deeper}",
-    emptyFill: "{t_pale_ink}",
-  },
-  statBar: {
-    style: "boxed",
-    x0: 22,
-    x1: 299,
-    y: 380,
-    h: 32,
-    rx: 4,
-    gap: 4.0,
-    leadRatio: 1.7,
-    box: { fill: "#14162a", stroke: "none" },
-    label: { fill: "#e4cf9a", size: 8, letterSpacing: 1.1 },
-    value: { fill: "#ffffff", size: 18 },
-    lead: {
-      labelFill: "#ffffff",
-      labelOpacity: 0.9,
-      labelSize: 8.5,
-      labelLetterSpacing: 1.4,
-      valueFill: "#ffffff",
-      valueSize: 24,
-    },
-    padX: 9,
-    labelDy: 19,
-    valueDy: 23,
-  },
+  ...COMMON,
+  file: "card-common-foil.svg",
+  // A foil is a finish on a rarity, not a rarity: a foil common is still a common.
+  rarityCode: "FC",
 };
 
 const DOUBLE_RARE: TemplateLayout = {
-  file: "card-double-rare.svg",
-  rarityCode: "RR",
-  face: "dark",
-  art: { x: 6, y: 6, w: 308, h: 436 },
-  artCaption: { x: 160, y: 227, fill: "#7b83b5" },
-  name: { size: 27, maxWidth: 276, bold: true },
-  factionMaxWidth: 70,
-  tags: {
-    style: "chips",
-    x: 22,
-    y: 305,
-    h: 15,
-    size: 8,
-    letterSpacing: 0.6,
-    padX: 6,
-    gap: 4,
-    rx: 2,
-    first: { fill: "{t_bright}", textFill: "{t_ink}" },
-    second: { fill: "#ffffff", fillOpacity: 0.13, textFill: "{t_glow}" },
-    textDy: 10.5,
-    maxWidth: 276,
-  },
-  ability: {
-    x: 33,
-    y: 348,
-    lineHeight: 15,
-    size: 10.5,
-    maxWidth: 246,
-    maxLines: 3,
-    fill: "#f2e6ea",
-    keywordFill: "#ffffff",
-    emptyFill: "{t_glow}",
-  },
-  statBar: {
-    style: "boxed",
-    x0: 22,
-    x1: 298,
-    y: 394,
-    h: 34,
-    rx: 4,
-    gap: 4.0,
-    leadRatio: 1.7,
-    box: { fill: "#ffffff", stroke: "#ffffff" },
-    label: { fill: "#ffffff", size: 8, letterSpacing: 1.1 },
-    value: { fill: "#ffffff", size: 18 },
-    lead: {
-      labelFill: "{t_ink}",
-      labelOpacity: 0.75,
-      labelSize: 8.5,
-      labelLetterSpacing: 1.4,
-      valueFill: "#ffffff",
-      valueSize: 24,
-    },
-    padX: 9,
-    labelDy: 20,
-    valueDy: 24,
-  },
+  ...UNCOMMON,
+  file: "card-uncommon-foil.svg",
+  rarityCode: "FU",
 };
 
 const SPECIAL: TemplateLayout = {
   file: "card-special.svg",
-  rarityCode: "SP",
+  width: 320,
+  rarityCode: "FA",
   face: "dark",
   art: { x: 4, y: 4, w: 312, h: 440 },
   artCaption: { x: 160, y: 227, fill: "#7b83b5" },
-  name: { size: 31, maxWidth: 280, bold: true },
+  // The art runs the full height of this frame, so a second line has room.
+  name: { size: 31, maxWidth: 280, bold: true, x: 20, wrapSize: 29, minSize: 24 },
   factionMaxWidth: 215,
   tags: {
     style: "inline",
@@ -455,12 +446,11 @@ export type LayoutName = keyof typeof LAYOUTS;
 /**
  * Which template a card gets.
  *
- * v2 has three rarities and a separate cosmetic `foil` flag, and the mockups
- * supplied five escalating designs (silver → light → gold → holo → prism). So
- * foil is what promotes a card to the fancier frame of its tier: a foil common
- * prints on the gold "rare" frame, a foil uncommon on the holo. That gives the
- * cosmetic axis something visible to do without ever touching a stat, which is
- * exactly what the doc wants foil to be.
+ * v2 has three rarities and a separate cosmetic `foil` flag. Foil is what
+ * promotes a card to the fancier frame of its tier: a foil common prints with
+ * a gold border ("rare"), a foil uncommon with a holo one ("double rare").
+ * That gives the cosmetic axis something visible to do without ever touching a
+ * stat, which is exactly what the doc wants foil to be.
  *
  * Full-arts already use the top frame, so foil changes nothing for them.
  */

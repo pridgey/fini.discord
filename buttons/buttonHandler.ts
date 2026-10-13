@@ -20,7 +20,20 @@ export async function loadButtonHandlers() {
   console.log(`Loaded ${buttonHandlers.size} button handlers`);
 }
 
+/**
+ * Buttons answered by a collector on their own message rather than by a
+ * handler file: the flow that posted them is listening for them. They are
+ * left alone here - replying "unknown" would use up the press before the
+ * collector could answer it.
+ */
+const COLLECTOR_BUTTONS = [/^v2pack-/, /^v2sell-/, /^cancel-trade$/, /^purchase$/];
+
+export const isCollectorButton = (customId: string): boolean =>
+  COLLECTOR_BUTTONS.some((pattern) => pattern.test(customId));
+
 export async function handleButtonInteraction(interaction: ButtonInteraction) {
+  if (isCollectorButton(interaction.customId)) return;
+
   // Parse customId: "namespace:data:userId"
   const [namespace, ...args] = interaction.customId.split(":");
 

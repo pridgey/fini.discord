@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   MAX_DECK_SIZE,
   MIN_DECK_SIZE,
+  unplayableReason,
   buildDeckCards,
 } from "../../modules/finicardsV2/decks";
 import { HAND_SIZE } from "../../modules/finicardsV2/draw";
@@ -67,6 +68,19 @@ describe("finicards v2 decks", () => {
   describe("size rules", () => {
     it("requires enough cards to fill a hand", () => {
       expect(MIN_DECK_SIZE).toBeGreaterThanOrEqual(HAND_SIZE);
+    });
+
+    it("will not deal from a deck that has shrunk below the minimum", () => {
+      const cards = (count: number) =>
+        Array.from({ length: count }, (_, index) => ({ instanceId: `c${index}` })) as any;
+      const deck = { name: "Main" } as any;
+
+      expect(unplayableReason({ deck, cards: cards(MIN_DECK_SIZE), missing: [] })).toBeNull();
+
+      // Built at the minimum, then two of its cards were sold.
+      const shrunk = unplayableReason({ deck, cards: cards(MIN_DECK_SIZE - 2), missing: ["a", "b"] });
+      expect(shrunk).toContain(`has ${MIN_DECK_SIZE - 2} cards`);
+      expect(shrunk).toContain("2 of its cards are no longer in your collection");
     });
   });
 

@@ -137,8 +137,8 @@ const slugify = (value: string): string =>
     .replace(/^_+|_+$/g, "");
 
 /**
- * Tags are free to add and expensive to retrofit, so be generous. Series and
- * colour come across as-is, plus a `legacy` marker so converted cards can be
+ * Tags are free to add and expensive to retrofit, so be generous. The series comes
+ * across as-is, plus a `legacy` marker so converted cards can be
  * excluded from a curated event with one filter.
  */
 export const legacyTags = (card: CardDefinitionRecord): string[] => {
@@ -147,7 +147,8 @@ export const legacyTags = (card: CardDefinitionRecord): string[] => {
   // descriptive ones lead and the `legacy` marker trails.
   const tags = new Set<string>();
   if (card.type) tags.add(slugify(card.type));
-  if (card.color) tags.add(slugify(card.color));
+  // v1's colour ("green", "black"...) is deliberately left behind: v2 has no
+  // use for it, and as the second tag it would be printed on every card face.
   if (card.series) tags.add(slugify(card.series));
   tags.add("legacy");
   return [...tags].filter(Boolean);
@@ -229,6 +230,7 @@ export const convertLegacyCard = (
       : "",
     cost: RARITY_COST[rarity],
     set_piece: "",
+    set: card.set ?? 0,
     art_url: "",
     legacy_card: legacyId,
     population: card.population ?? 0,

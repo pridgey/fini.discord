@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="606" height="849" viewBox="0 0 606 849" font-family="DejaVu Sans, Verdana, sans-serif">
+<defs>
+<clipPath id="inner"><rect x="10" y="10" width="586" height="829" rx="19"></rect></clipPath>
+<clipPath id="panel"><rect x="28" y="{panel_y}" width="550" height="{panel_h}" rx="18"></rect></clipPath>
+<pattern id="hatch" width="34" height="34" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="34" height="34" fill="#edeff8"></rect><rect width="17" height="34" fill="#e3e6f4"></rect>
+</pattern>
+<pattern id="hatchDark" width="34" height="34" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+  <rect width="34" height="34" fill="#1d1f2a"></rect><rect width="17" height="34" fill="#181a23"></rect>
+</pattern>
+<linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#111218" stop-opacity="0"></stop><stop offset="1" stop-color="#111218" stop-opacity="0.92"></stop></linearGradient>
+<linearGradient id="scrim" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a0b0f" stop-opacity="0.72"></stop><stop offset="1" stop-color="#0a0b0f" stop-opacity="0"></stop></linearGradient>
+<linearGradient id="rule" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="{t_soft}"></stop><stop offset="1" stop-color="#ffffff" stop-opacity="0"></stop></linearGradient>
+<filter id="frost" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="16"></feGaussianBlur></filter>
+<radialGradient id="tint" gradientUnits="userSpaceOnUse" cx="10" cy="839" r="820.4" gradientTransform="translate(10 839) scale(1 0.6063) translate(-10 -839)"><stop offset="0" stop-color="{t_soft}" stop-opacity="0.1"></stop><stop offset="0.45" stop-color="{t_soft}" stop-opacity="0.040"></stop><stop offset="0.8" stop-color="{t_soft}" stop-opacity="0"></stop></radialGradient>
+<linearGradient id="foil" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffeef5"></stop><stop offset="0.16" stop-color="{t_glow}"></stop><stop offset="0.3" stop-color="#ffffff"></stop><stop offset="0.46" stop-color="#c3c8f7"></stop><stop offset="0.6" stop-color="#b7f0e2"></stop><stop offset="0.78" stop-color="#ffd6e5"></stop><stop offset="1" stop-color="{t_soft}"></stop></linearGradient>
+<linearGradient id="sheen" x1="0" y1="1" x2="1" y2="0"><stop offset="0.36" stop-color="#ffffff" stop-opacity="0"></stop><stop offset="0.47" stop-color="#ffffff" stop-opacity="0.16"></stop><stop offset="0.58" stop-color="#ffffff" stop-opacity="0"></stop></linearGradient>
+<clipPath id="face"><rect x="10" y="10" width="586" height="829" rx="19"></rect></clipPath>
+</defs>
+<!-- The foil uncommon: the uncommon, on a holo border with a sheen and sparkle. -->
+<rect id="frame" width="606" height="849" rx="26" fill="url(#foil)"></rect>
+<g clip-path="url(#inner)">
+  <!-- Drawn once and reused: the frosted panel is this same scene, blurred. -->
+  <g id="scene">
+    <rect x="10" y="10" width="586" height="829" fill="#111218"></rect>
+    <rect x="10" y="10" width="586" height="829" fill="url(#tint)"></rect>
+    {art_window}
+    <rect x="10" y="391" width="586" height="249" fill="url(#fade)"></rect>
+  </g>
+  <rect x="10" y="10" width="586" height="110" fill="url(#scrim)"></rect>
+  <g clip-path="url(#panel)">
+    <use xlink:href="#scene" filter="url(#frost)"></use>
+    <rect x="28" y="{panel_y}" width="550" height="{panel_h}" fill="#111218" fill-opacity="0.7"></rect>
+  </g>
+</g>
+<rect x="28.5" y="{panel_edge_y}" width="549" height="{panel_edge_h}" rx="17.5" fill="none" stroke="#ffffff" stroke-opacity="0.12"></rect>
+<g clip-path="url(#face)"><rect x="10" y="10" width="586" height="829" fill="url(#sheen)"></rect><g id="sparkle" fill="#ffffff">
+  <circle cx="92" cy="150" r="2.4" opacity="0.9"></circle><circle cx="402" cy="88" r="2" opacity="0.75"></circle>
+  <circle cx="512" cy="282" r="2.6" opacity="0.85"></circle><circle cx="214" cy="372" r="1.8" opacity="0.6"></circle>
+  <circle cx="470" cy="560" r="2.2" opacity="0.7"></circle><circle cx="120" cy="668" r="1.8" opacity="0.5"></circle>
+</g></g>
+<rect x="10.75" y="10.75" width="584.5" height="827.5" rx="18.5" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1.5"></rect>
+<g id="header">
+  <text x="40" y="56" font-size="15" font-weight="700" letter-spacing="3.3" fill="#ffffff" fill-opacity="0.75">{faction}</text>
+  <text x="566" y="61" text-anchor="end" font-size="26" font-weight="700" font-style="italic" fill="#ffffff">{rarity_code}</text>
+  <text id="limited" x="566" y="82" text-anchor="end" font-size="13" font-weight="700" letter-spacing="1.56" fill="#ffffff" fill-opacity="0.82">{limited}</text>
+</g>
+<text id="name" x="56" y="586" font-size="{name_size}" font-weight="700" font-style="italic" letter-spacing="-0.44" fill="#f2f3f7">{card_name}</text>
+{professions}
+<rect x="56" y="631" width="346" height="2" fill="url(#rule)"></rect>
+{ability}
+{stat_bar}
+<g id="footer" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace" font-size="13" letter-spacing="1.04" fill="#ffffff" fill-opacity="0.42">
+<text x="40" y="818">{card_number}</text><text x="566" y="818" text-anchor="end">{artist}</text></g>
+</svg>

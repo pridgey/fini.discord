@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
 
 /**
@@ -62,10 +64,32 @@ export const TYPE_BEATEN_BY: Record<CardType, CardType> = {
 /** Order used to break stat ties when deriving a type. */
 export const TYPE_PRIORITY: CardType[] = ["power", "wit", "heart"];
 
-export const TYPE_EMOJI: Record<CardType, string> = {
-  power: "🔴",
+/** The nearest standard emoji, for a bot whose own type emoji are not set up. */
+const FALLBACK_TYPE_EMOJI: Record<CardType, string> = {
+  power: "🟠",
   wit: "🔵",
-  heart: "🟢",
+  heart: "🔴",
+};
+
+/**
+ * The bot's own type emoji - circles in the cards' colours, with the battle
+ * board's glyphs - as `<:name:id>`. They belong to one Discord application, so
+ * their ids are kept in a file that `scripts/finicards_v2_type_emoji.ts`
+ * writes when it uploads them; without it, the standard circles stand in.
+ */
+const uploadedTypeEmoji = (): Partial<Record<CardType, string>> => {
+  try {
+    return JSON.parse(
+      readFileSync(join(import.meta.dir, "assets", "type-emoji.json"), "utf8"),
+    );
+  } catch {
+    return {};
+  }
+};
+
+export const TYPE_EMOJI: Record<CardType, string> = {
+  ...FALLBACK_TYPE_EMOJI,
+  ...uploadedTypeEmoji(),
 };
 
 export const RARITY_LABEL: Record<CardRarity, string> = {

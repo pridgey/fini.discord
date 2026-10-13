@@ -2,7 +2,12 @@ import sharp from "sharp";
 import { findKeyword } from "../keywords";
 import { TYPE_PRIORITY } from "../rules";
 import type { BattleCard } from "../types";
-import { resolveArtSource, type CardArtSource } from "./generateCardImage";
+import {
+  coverCrop,
+  loadArt,
+  resolveArtSource,
+  type CardArtSource,
+} from "./generateCardImage";
 import { STAT_LABELS, TYPE_PALETTES } from "./palettes";
 import { escapeXml, estimateWidth, truncateToWidth } from "./svgText";
 
@@ -54,27 +59,12 @@ export const squareArt = async (
   if (!source) return null;
 
   try {
-    let input: Buffer;
+    const input = await loadArt(source);
+    if (!input) return null;
 
-    if (source.buffer) {
-      input = source.buffer;
-    } else if (source.url) {
-      const response = await fetch(source.url);
-      if (!response.ok) return null;
-      input = Buffer.from(await response.arrayBuffer());
-    } else {
-      return null;
-    }
-
-    const png = await sharp(input)
-      .resize({
-        width: pixels,
-        height: pixels,
-        fit: "cover",
-        position: "attention",
-      })
-      .png()
-      .toBuffer();
+    const png = await coverCrop(input, pixels, pixels, {
+      focus: source.adjust?.focus,
+    });
 
     return `data:image/png;base64,${png.toString("base64")}`;
   } catch {
@@ -120,6 +110,13 @@ const strip = (
   card: BattleCard,
   index: number,
   artDataUri: string | null,
+  /** Rooms until the card can be played again. 0 draws the strip as normal. */
+  cooldown = 0,
+  /** Top-left corner of the strip within the image. */
+  origin: { x: number; y: number } = {
+    x: 0,
+    y: index * (STRIP.height + STRIP.gap),
+  },
 ): string => {
   const palette = TYPE_PALETTES[card.type];
   const keyword = findKeyword(card.keyword);
@@ -150,7 +147,7 @@ const strip = (
   return [
     // A nested svg gives each strip its own coordinate space and its own `lead`
     // gradient id, so gradients can't collide between cards.
-    `<svg x="0" y="${round(index * (STRIP.height + STRIP.gap))}" width="${STRIP.width}" height="${STRIP.height}" viewBox="0 0 ${STRIP.width} ${STRIP.height}">`,
+    `<svg x="${round(origin.x)}" y="${round(origin.y)}" width="${STRIP.width}" height="${STRIP.height}" viewBox="0 0 ${STRIP.width} ${STRIP.height}">`,
     `<rect x="0" y="${top}" width="${STRIP.width}" height="${STRIP.height}" rx="8" fill="#141728"></rect>`,
     `<rect x="0" y="${top}" width="${STRIP.width}" height="${STRIP.height}" rx="8" fill="${palette.deep}" fill-opacity="0.14"></rect>`,
     // Type spine: the fastest possible read of what this card is.
@@ -176,6 +173,15 @@ const strip = (
         ].join("")
       : "",
     statBoxes(card, top, index),
+    /* A dungeon card on cooldown: still readable, so the player can plan for
+       its return, but plainly not on offer. */
+    cooldown > 0
+      ? [
+          `<rect x="0" y="${top}" width="${STRIP.width}" height="${STRIP.height}" rx="8" fill="#0b0c16" fill-opacity="0.66"></rect>`,
+          `<rect x="${STATS.x}" y="${top + 24}" width="${STATS.right - STATS.x}" height="20" rx="10" fill="#0b0c16" stroke="#ffffff" stroke-opacity="0.35" stroke-width="0.8"></rect>`,
+          `<text x="${(STATS.x + STATS.right) / 2}" y="${top + 37.5}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8.5" font-weight="800" letter-spacing="1" fill="#ffffff" fill-opacity="0.9">READY IN ${cooldown} ROOM${cooldown === 1 ? "" : "S"}</text>`,
+        ].join("")
+      : "",
     `</svg>`,
   ].join("");
 };
@@ -188,13 +194,25 @@ const strip = (
  */
 export const renderHandStrip = async (
   cards: BattleCard[],
-  options: { width?: number } = {},
+  options: {
+    width?: number;
+    /** Per card, rooms left on cooldown. A dungeon hand dims the ones resting. */
+    cooldowns?: number[];
+    /**
+     * Strips per row. More than one trades width per card for a shorter image,
+     * for a hand that sits under something else worth looking at.
+     */
+    columns?: number;
+  } = {},
 ): Promise<Buffer | null> => {
   if (cards.length === 0) return null;
 
   try {
     const width = options.width ?? HAND_STRIP_WIDTH;
-    const scale = width / (STRIP.width + PADDING * 2);
+    const columns = Math.max(1, Math.min(options.columns ?? 1, cards.length));
+    const rows = Math.ceil(cards.length / columns);
+    const innerWidth = columns * STRIP.width + (columns - 1) * STRIP.gap;
+    const scale = width / (innerWidth + PADDING * 2);
     const artPixels = Math.round(ART.size * scale);
 
     const artUris = await Promise.all(
@@ -203,19 +221,24 @@ export const renderHandStrip = async (
           await resolveArtSource({
             art_url: card.artUrl,
             legacy_card: card.legacyCard,
+            art_adjust: card.artAdjust,
           }),
           artPixels,
         ),
       ),
     );
 
-    const innerHeight =
-      cards.length * STRIP.height + (cards.length - 1) * STRIP.gap;
+    const innerHeight = rows * STRIP.height + (rows - 1) * STRIP.gap;
 
     const svg = [
-      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${STRIP.width + PADDING * 2}" height="${innerHeight + PADDING * 2}" viewBox="0 0 ${STRIP.width + PADDING * 2} ${innerHeight + PADDING * 2}" font-family="Archivo, sans-serif">`,
+      `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${innerWidth + PADDING * 2}" height="${innerHeight + PADDING * 2}" viewBox="0 0 ${innerWidth + PADDING * 2} ${innerHeight + PADDING * 2}" font-family="Archivo, sans-serif">`,
       `<g transform="translate(${PADDING} ${PADDING})">`,
-      ...cards.map((card, index) => strip(card, index, artUris[index])),
+      ...cards.map((card, index) =>
+        strip(card, index, artUris[index], options.cooldowns?.[index] ?? 0, {
+          x: (index % columns) * (STRIP.width + STRIP.gap),
+          y: Math.floor(index / columns) * (STRIP.height + STRIP.gap),
+        }),
+      ),
       `</g>`,
       `</svg>`,
     ].join("");

@@ -31,6 +31,11 @@ export type TypePalette = {
   pale_ink: string;
   /** Light tint for text and sparkle on dark faces. */
   glow: string;
+  /**
+   * The soft accent of the dark-faced frames: stat label, name rule, corner
+   * tint, and what the uncommon's border is tinted with.
+   */
+  soft: string;
 };
 
 export const TYPE_PALETTES: Record<CardType, TypePalette> = {
@@ -45,6 +50,7 @@ export const TYPE_PALETTES: Record<CardType, TypePalette> = {
     pale_fill: "#fdf2e6",
     pale_ink: "#8a5a29",
     glow: "#ffe3c2",
+    soft: "#f6c18a",
   },
   /* From card-uncommon / card-rare / card-special-wit. */
   wit: {
@@ -57,6 +63,7 @@ export const TYPE_PALETTES: Record<CardType, TypePalette> = {
     pale_fill: "#eceefe",
     pale_ink: "#4d5490",
     glow: "#d9e2ff",
+    soft: "#aab4f8",
   },
   /* From card-common / card-double-rare / card-special-heart. */
   heart: {
@@ -69,6 +76,8 @@ export const TYPE_PALETTES: Record<CardType, TypePalette> = {
     pale_fill: "#fdeef2",
     pale_ink: "#8c5568",
     glow: "#ffd9e5",
+    // The one soft accent that was supplied, on the dark common and uncommon.
+    soft: "#f4a6c6",
   },
 };
 
@@ -79,6 +88,24 @@ export const STAT_LABELS: Record<CardType, { short: string; full: string }> = {
   power: { short: "PWR", full: "POWER" },
   wit: { short: "WIT", full: "WIT" },
   heart: { short: "HRT", full: "HEART" },
+};
+
+/** The neutral border of the dark frames, which a type's `soft` tints. */
+const FRAME_BASE = "#2b2d37";
+
+/** Blends `amount` of `tint` into `base`. Both are six-digit hexes. */
+const mixHex = (base: string, tint: string, amount: number): string => {
+  const channel = (hex: string, index: number) =>
+    parseInt(hex.slice(1 + index * 2, 3 + index * 2), 16);
+  return `#${[0, 1, 2]
+    .map((index) =>
+      Math.round(
+        channel(base, index) + (channel(tint, index) - channel(base, index)) * amount,
+      )
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 };
 
 /** Substitution map for one type, keyed by the `{t_*}` tokens in a template. */
@@ -96,5 +123,8 @@ export const paletteTokens = (
     t_pale_fill: palette.pale_fill,
     t_pale_ink: palette.pale_ink,
     t_glow: palette.glow,
+    t_soft: palette.soft,
+    // 28% is what the supplied uncommon works out to: #634f5f from #f4a6c6.
+    t_frame: mixHex(FRAME_BASE, palette.soft, 0.28),
   };
 };

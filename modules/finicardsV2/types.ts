@@ -1,4 +1,5 @@
 import type {
+  ArtAdjust,
   CardRarity,
   CardType,
   V2CardDefinitionRecord,
@@ -28,6 +29,21 @@ export type BattleCard = {
   flavour?: string;
   /** Artist credit for the footer. */
   artist?: string;
+  /** The Legendary effect this copy carries, or "" / absent for none. */
+  legendary?: string;
+  /** A Secret Art: a full-art with its own unique artwork, printed `SA`. */
+  secretArt?: boolean;
+  /** Most copies of this card a server can hold. 0 or absent = no limit. */
+  population?: number;
+  /** This copy's number among its card's copies on its server, from 1. */
+  serial?: number;
+  /** Release set number, for the footer. Absent or 0 when the card has none. */
+  set?: number;
+  /** Place in the release set and the set's size, printed as "12/217". */
+  number?: number;
+  setSize?: number;
+  /** Crop corrections for the artwork. */
+  artAdjust?: ArtAdjust | null;
 };
 
 export type Side = "challenger" | "defender";

@@ -11,10 +11,12 @@ import {
   buildRevealMessage,
   cardChip,
   compositionOf,
+  compositionString,
   explainMultiplier,
   keywordLegend,
   keywordReport,
 } from "../../modules/finicardsV2/ui";
+import { TYPE_EMOJI } from "../../modules/finicardsV2/rules";
 import type { BattleCard } from "../../modules/finicardsV2/types";
 import type { CardType } from "../../types/PocketbaseTablesV2";
 
@@ -65,7 +67,14 @@ const hand = (prefix: string) => [
 describe("finicards v2 message UI", () => {
   describe("theme", () => {
     it("summarises a hand's shape without implying order", () => {
-      expect(compositionOf(hand("a"))).toBe("🔴🔴🔵🔵🟢");
+      // Whatever the type emoji are - the bot's own, or the standard circles.
+      const { power, wit, heart } = TYPE_EMOJI;
+      expect(compositionOf(hand("a"))).toBe(`${power}${power}${wit}${wit}${heart}`);
+
+      // A collection is counted, not drawn out: it would not fit in a message.
+      const big = compositionString({ power: 120, wit: 0, heart: 45 });
+      expect(big).toBe(`${power} 120 · ${heart} 45`);
+      expect(compositionString({ power: 0, wit: 0, heart: 0 })).toBe("—");
     });
 
     it("keeps the card name in a chip, so a counter can be identified", () => {

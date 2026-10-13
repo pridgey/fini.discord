@@ -1,10 +1,21 @@
 import {
+  ActionRowBuilder,
   AttachmentBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ContainerBuilder,
   MessageFlags,
 } from "discord.js";
 import { findKeyword } from "../keywords";
-import { renderCardAttachments, renderCardImage, cardImageName } from "../cardArt";
+import {
+  PACK_COVER_NAME,
+  PACK_OPENING_NAME,
+  packCover,
+  packOpeningGif,
+  renderCardMedia,
+  renderCardMediaList,
+  type CardMedia,
+} from "../cardArt";
 import type { BattleCard } from "../types";
 import {
   NEUTRAL_ACCENT,
@@ -41,10 +52,11 @@ export type BuiltCardMessage = {
 export const buildCardMessage = async (
   card: BattleCard,
 ): Promise<BuiltCardMessage | null> => {
-  const image = await renderCardImage(card);
-  if (!image) return null;
+  // A Legendary is shown moving; everything else as its still.
+  const media = await renderCardMedia(card);
+  if (!media) return null;
 
-  const name = cardImageName(card);
+  const { name, buffer: image } = media;
   const keyword = findKeyword(card.keyword);
 
   const container = new ContainerBuilder()
@@ -76,13 +88,20 @@ export type PackMessageInput = {
   /** Cards the pack couldn't hand out because the pool is exhausted. */
   shortfall: number;
   reimbursement: number;
+  /**
+   * Show a Legendary as its pull reveal rather than its loop. The reveal plays
+   * once, so the caller follows it with the same message built without this.
+   */
+  reveal?: boolean;
+  /** Said in place of the price, for a pack that was not paid for. */
+  note?: string;
 };
 
 /** A pack pull: one block, one gallery, one line per card with its id. */
 export const buildPackMessage = async (
   input: PackMessageInput,
 ): Promise<BuiltCardMessage> => {
-  const images = await renderCardAttachments(input.cards);
+  const images = await renderCardMediaList(input.cards, { reveal: input.reveal });
 
   const container = new ContainerBuilder()
     .setAccentColor(NEUTRAL_ACCENT)
@@ -98,7 +117,7 @@ export const buildPackMessage = async (
         gallery.addItems((item) =>
           item
             .setURL(`attachment://${image.name}`)
-            .setDescription(image.name.replace(/\.png$/, "")),
+            .setDescription(image.name.replace(/\.(png|gif)$/, "")),
         );
       }
       return gallery;
@@ -110,14 +129,17 @@ export const buildPackMessage = async (
     .addTextDisplayComponents((text) =>
       text.setContent(
         input.cards
-          .map((card) => `${cardLine(card)} · \`${card.instanceId}\``)
+          .map(
+            (card) =>
+              `${cardLine(card)}${specialMark(card)} · \`${card.instanceId}\``,
+          )
           .join("\n") || "_Nothing left in the pool._",
       ),
     )
     .addTextDisplayComponents((text) =>
       text.setContent(
         [
-          `-# ${input.cost} fc · add these to a deck with \`/finicard-v2 deck add\``,
+          `-# ${input.note ?? `${input.cost} fc`} · add these to a deck with \`/finicard-v2 deck add\``,
           input.shortfall > 0
             ? `-# ${input.shortfall} card(s) couldn't be pulled — the pool is out of room. ${input.reimbursement} fc reimbursed.`
             : "",
@@ -132,6 +154,130 @@ export const buildPackMessage = async (
     files: images.map(
       (image) => new AttachmentBuilder(image.buffer, { name: image.name }),
     ),
+    flags: [MessageFlags.IsComponentsV2],
+  };
+};
+
+/** Button ids of the pack flow, handled by the collector in `packFlow.ts`. */
+export const PACK_BUTTON = {
+  open: "v2pack-open",
+  next: "v2pack-next",
+  all: "v2pack-all",
+} as const;
+
+/** What a pull is, where it is anything more than its rarity. */
+const specialMark = (card: BattleCard): string =>
+  card.legendary
+    ? ` · 👑 **${rarityLabel(card)}**`
+    : card.secretArt
+      ? " · 🌟 **Secret Art**"
+      : "";
+
+/** The sealed pack, waiting to be opened. Says nothing of what is inside. */
+export const buildPackCoverMessage = async (input: {
+  size: number;
+  cost: number;
+  note?: string;
+}): Promise<BuiltCardMessage> => {
+  const container = new ContainerBuilder()
+    .setAccentColor(NEUTRAL_ACCENT)
+    .addMediaGalleryComponents((gallery) =>
+      gallery.addItems((item) =>
+        item.setURL(`attachment://${PACK_COVER_NAME}`).setDescription("A sealed booster pack"),
+      ),
+    )
+    .addTextDisplayComponents((text) =>
+      text.setContent(`-# ${input.note ?? `${input.cost} fc`} · ${input.size} cards inside`),
+    )
+    .addActionRowComponents(() =>
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(PACK_BUTTON.open)
+          .setLabel("Open pack")
+          .setStyle(ButtonStyle.Primary),
+      ),
+    );
+
+  return {
+    components: [container],
+    files: [new AttachmentBuilder(await packCover(), { name: PACK_COVER_NAME })],
+    flags: [MessageFlags.IsComponentsV2],
+  };
+};
+
+/** The pack tearing open. Shown for as long as the animation runs. */
+export const buildPackOpeningMessage = async (): Promise<BuiltCardMessage> => ({
+  components: [
+    new ContainerBuilder()
+      .setAccentColor(NEUTRAL_ACCENT)
+      .addMediaGalleryComponents((gallery) =>
+        gallery.addItems((item) =>
+          item.setURL(`attachment://${PACK_OPENING_NAME}`).setDescription("The pack opening"),
+        ),
+      ),
+  ],
+  files: [new AttachmentBuilder(await packOpeningGif(), { name: PACK_OPENING_NAME })],
+  flags: [MessageFlags.IsComponentsV2],
+});
+
+/**
+ * One card out of a pack, on its own, with the way on to the next.
+ *
+ * `media` is the card as it should be shown at this moment - a Legendary's
+ * reveal, then its loop - which is why it is passed in rather than drawn here.
+ */
+export const buildPackCardMessage = (input: {
+  card: BattleCard;
+  media: CardMedia;
+  /** This card's place in the pack, from 0. */
+  index: number;
+  total: number;
+}): BuiltCardMessage => {
+  const { card, media } = input;
+  const keyword = findKeyword(card.keyword);
+  const last = input.index >= input.total - 1;
+
+  const row = new ActionRowBuilder<ButtonBuilder>();
+  if (!last) {
+    row.addComponents(
+      new ButtonBuilder()
+        .setCustomId(PACK_BUTTON.next)
+        .setLabel("Next card")
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
+  row.addComponents(
+    new ButtonBuilder()
+      .setCustomId(PACK_BUTTON.all)
+      .setLabel(last ? "See the whole pack" : "Skip to the end")
+      .setStyle(last ? ButtonStyle.Primary : ButtonStyle.Secondary),
+  );
+
+  const container = new ContainerBuilder()
+    .setAccentColor(TYPE_ACCENT[card.type])
+    .addTextDisplayComponents((text) =>
+      text.setContent(`-# Card ${input.index + 1} of ${input.total}`),
+    )
+    .addMediaGalleryComponents((gallery) =>
+      gallery.addItems((item) =>
+        item.setURL(`attachment://${media.name}`).setDescription(card.name),
+      ),
+    )
+    .addTextDisplayComponents((text) =>
+      text.setContent(
+        [
+          `**${card.name}**${card.foil ? " ✨ foil" : ""} · ${rarityLabel(card)} · ${TYPE_NAME[card.type]} ${card.stats[card.type]}${
+            card.legendary ? " · 👑" : card.secretArt ? " · 🌟" : ""
+          }`,
+          `-# \`${statLine(card)}\` power/wit/heart${keyword ? ` · ${keyword.name}` : ""} · id \`${card.instanceId}\``,
+        ].join("\n"),
+      ),
+    )
+    .addActionRowComponents(() => row);
+
+  return {
+    components: [container],
+    files: [new AttachmentBuilder(media.buffer, { name: media.name })],
     flags: [MessageFlags.IsComponentsV2],
   };
 };

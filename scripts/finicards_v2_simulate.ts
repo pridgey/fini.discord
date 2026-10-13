@@ -4,6 +4,7 @@
  *   bun run scripts/finicards_v2_simulate.ts
  *   bun run scripts/finicards_v2_simulate.ts --matches 5000 --keywords
  *   bun run scripts/finicards_v2_simulate.ts --grade
+ *   bun run scripts/finicards_v2_simulate.ts --dungeon --keywords
  *
  * The design doc names `typeMultiplier` "the single number defining game feel"
  * and expects extended tuning, so this exists to answer the tuning question with
@@ -30,6 +31,23 @@
 import { resolveMatch } from "../modules/finicardsV2/battleEngine";
 import { buildDeckCards } from "../modules/finicardsV2/decks";
 import { HAND_SIZE, dealHand } from "../modules/finicardsV2/draw";
+import {
+  DUNGEON,
+  buyOffer,
+  chooseDoor,
+  createRun,
+  eventChance,
+  leaveShop,
+  modsOf,
+  payoutFor,
+  playEvent,
+  playFight,
+  skipEvent,
+  type DungeonState,
+  type Room,
+  type RoomSource,
+} from "../modules/finicardsV2/dungeon";
+import { PACK_ODDS, rollRarity } from "../modules/finicardsV2/packs";
 import { assignKeyword } from "../modules/finicardsV2/convertLegacyCards";
 import { GRADE_LABEL, KEYWORDS } from "../modules/finicardsV2/keywords";
 import {
@@ -56,6 +74,7 @@ const argumentValue = (flag: string, fallback: number): number => {
 const MATCHES = argumentValue("--matches", 2000);
 const KEYWORDS_ENABLED = process.argv.includes("--keywords");
 const GRADE_MODE = process.argv.includes("--grade");
+const DUNGEON_MODE = process.argv.includes("--dungeon");
 const MULTIPLIERS = [1.0, 1.25, 1.5, 1.75, 2.0];
 
 /* -------------------------------------------------------------------------- */
@@ -432,6 +451,180 @@ const gradeKeywords = () => {
     );
   }
 };
+
+/* -------------------------------------------------------------------------- */
+/* Dungeons                                                                   */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * How far a run gets and what it pays, for collections of different depth.
+ *
+ * A run has no last room, so the numbers that matter are how deep a deck goes
+ * before it has to stop and how much Finicoin comes back against the fee. Two
+ * players are simulated, because the gap between them is what the dungeon is
+ * for:
+ *
+ *   careful  works out every clash before playing and walks out, geld intact,
+ *            the moment no card in hand can win the room.
+ *   gut      plays the best-looking card and never walks out, so every run
+ *            ends in a fall and pays `fallenKeep` of its geld.
+ */
+const gradeDungeon = () => {
+  const rules = { ...RULES, keywordsEnabled: KEYWORDS_ENABLED };
+  const MAX_ROOMS = 300;
+
+  type Policy = "careful" | "gut";
+
+  const ready = (state: DungeonState, hand: BattleCard[], at = state.depth) =>
+    hand.filter((card) => (state.readyAt[card.instanceId] ?? 0) <= at);
+
+  /** Whether any card that will be ready can win the fight behind a door. */
+  const winnable = (
+    state: DungeonState,
+    hand: BattleCard[],
+    door: number,
+    source: RoomSource,
+  ): boolean => {
+    const entered = chooseDoor(state, door);
+    return ready(entered, hand).some(
+      (card) => playFight(entered, card, source, rules).result === "won",
+    );
+  };
+
+  const run = (
+    deck: BattleCard[],
+    policy: Policy,
+    random: () => number,
+  ): { depth: number; coin: number; cards: number; fullArts: number } => {
+    const hand = dealHand(deck, DUNGEON.handSize, random);
+    const source: RoomSource = { pool: POOL, random };
+    let state = createRun(source)!;
+    let fell = false;
+
+    for (let guard = 0; guard < MAX_ROOMS * 4 && state.depth < MAX_ROOMS; guard++) {
+      if (state.phase === "doors") {
+        const score = (room: Room, index: number): number => {
+          if (room.kind === "shop") return state.geld >= 8 ? 3 : 0;
+          if (room.kind === "event") return 2;
+          if (policy === "gut") return 1;
+          return winnable(state, hand, index, source) ? 1 : -1;
+        };
+        const scores = state.doors.map(score);
+        state = chooseDoor(state, scores.indexOf(Math.max(...scores)));
+        continue;
+      }
+
+      const room = state.room;
+      const cards = ready(state, hand);
+
+      if (room.kind === "shop") {
+        const affordable = room.offers
+          .map((offer, index) => ({ offer, index }))
+          .filter(({ offer }) => !offer.sold && offer.price <= state.geld)
+          .sort((a, b) => a.offer.price - b.offer.price)[0];
+        state = affordable
+          ? buyOffer(state, affordable.index)
+          : leaveShop(state, source);
+        continue;
+      }
+
+      if (room.kind === "event") {
+        const mods = modsOf(state);
+        const best = [...cards].sort(
+          (a, b) => eventChance(room, b, mods) - eventChance(room, a, mods),
+        )[0];
+        state =
+          best && eventChance(room, best, mods) >= 0.5
+            ? playEvent(state, best, source).state
+            : skipEvent(state, source);
+        continue;
+      }
+
+      if (cards.length === 0) break;
+
+      if (policy === "careful") {
+        // The cheapest card that wins, so the strong ones are still in hand.
+        const wins = cards
+          .map((card) => ({ card, outcome: playFight(state, card, source, rules) }))
+          .filter(({ outcome }) => outcome.result === "won")
+          .sort((a, b) => typeStat(a.card) - typeStat(b.card));
+        if (wins.length === 0) break;
+        state = wins[0].outcome.state;
+        continue;
+      }
+
+      const enemy = room.enemy;
+      const looks = (card: BattleCard) =>
+        typeStat(card) * (TYPE_BEATS[card.type] === enemy.type ? 1.5 : 1) -
+        enemy.stats[card.type];
+      const outcome = playFight(
+        state,
+        [...cards].sort((a, b) => looks(b) - looks(a))[0],
+        source,
+        rules,
+      );
+      state = outcome.state;
+      if (outcome.result === "fell") {
+        fell = true;
+        break;
+      }
+    }
+
+    return {
+      depth: state.depth,
+      coin: payoutFor(state.geld, fell).coin,
+      cards: state.loot.length,
+      fullArts: state.loot.filter((rarity) => rarity === "full_art").length,
+    };
+  };
+
+  const pulls = (count: number, random: () => number) =>
+    Array.from({ length: count }, () =>
+      pick(ofRarity(rollRarity(PACK_ODDS, random)), random),
+    );
+
+  const players: [string, (random: () => number) => BattleCard[]][] = [
+    ["2 packs, all 10 cards", (random) => pulls(10, random)],
+    ["8 packs, best 20", (random) => deckFrom(pulls(40, random))],
+    ["24 packs, best 20", (random) => deckFrom(pulls(120, random))],
+    ["commons only", (random) => dealHand(ofRarity("common"), 20, random)],
+    ["full-arts only", (random) => dealHand(ofRarity("full_art"), 20, random)],
+  ];
+
+  console.log("Finicards v2 dungeon depth and payout");
+  console.log(
+    `fee ${DUNGEON.entryFee} fc · ${DUNGEON.coinPerGeld} fc per geld · hand ${DUNGEON.handSize} · cooldown ${DUNGEON.cooldownRooms} · ${MATCHES} runs per row · keywords ${
+      KEYWORDS_ENABLED ? "ON" : "OFF"
+    }\n`,
+  );
+  console.log(
+    `${"deck".padEnd(24)}${"player".padEnd(9)}${"avg room".padStart(9)}${"p10".padStart(5)}${"p50".padStart(5)}${"p90".padStart(5)}${"avg fc".padStart(8)}${"profit".padStart(8)}${"cards".padStart(7)}${"full-art".padStart(10)}`,
+  );
+
+  for (const [label, build] of players) {
+    for (const policy of ["careful", "gut"] as Policy[]) {
+      const random = makeRandom(9009);
+      const runs = Array.from({ length: MATCHES }, () =>
+        run(build(random), policy, random),
+      );
+      const depths = runs.map((result) => result.depth).sort((a, b) => a - b);
+      const at = (share: number) => depths[Math.floor((MATCHES - 1) * share)];
+      const mean = (values: number[]) =>
+        values.reduce((sum, value) => sum + value, 0) / values.length;
+      const profit =
+        runs.filter((result) => result.coin > DUNGEON.entryFee).length / MATCHES;
+
+      console.log(
+        `${label.padEnd(24)}${policy.padEnd(9)}${mean(depths).toFixed(1).padStart(9)}${String(at(0.1)).padStart(5)}${String(at(0.5)).padStart(5)}${String(at(0.9)).padStart(5)}${mean(runs.map((result) => result.coin)).toFixed(1).padStart(8)}${`${(profit * 100).toFixed(0)}%`.padStart(8)}${mean(runs.map((result) => result.cards)).toFixed(2).padStart(7)}${mean(runs.map((result) => result.fullArts)).toFixed(3).padStart(10)}`,
+      );
+    }
+  }
+};
+
+if (DUNGEON_MODE) {
+  gradeDungeon();
+  process.exit(0);
+}
 
 if (GRADE_MODE) {
   gradeKeywords();

@@ -20,7 +20,7 @@ export const renderCardFace = (card: BattleCard): string => {
   const keyword = findKeyword(card.keyword);
   const rows: string[] = [
     `${card.name}${card.foil ? " ✨" : ""}`,
-    `${card.series || "Unknown series"} · ${RARITY_LABEL[card.rarity]}`,
+    `${card.series || "Unknown series"} · ${card.legendary ? "Legendary" : card.secretArt ? "Secret Art" : RARITY_LABEL[card.rarity]}`,
     "",
     `Power  ${String(card.stats.power).padStart(2, " ")}${card.type === "power" ? "  ◀ type" : ""}`,
     `Wit    ${String(card.stats.wit).padStart(2, " ")}${card.type === "wit" ? "  ◀ type" : ""}`,

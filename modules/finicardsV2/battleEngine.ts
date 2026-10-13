@@ -322,6 +322,33 @@ export const tiebreakDamageOf = (
   return { dealt, own, counted };
 };
 
+/**
+ * Carries a resolved round into both sides' running state, which is what the
+ * next round's `Momentum`, `Avenge` and friends read. Exported because a
+ * dungeon run resolves one room at a time and has to keep the same books.
+ */
+export const recordRound = (
+  round: RoundResult,
+  challengerState: SideState,
+  defenderState: SideState,
+): void => {
+  if (round.winner === "challenger") {
+    challengerState.roundsWon += 1;
+    challengerState.lastRoundWasLoss = false;
+    defenderState.roundsLost += 1;
+    defenderState.lastRoundWasLoss = true;
+  } else if (round.winner === "defender") {
+    defenderState.roundsWon += 1;
+    defenderState.lastRoundWasLoss = false;
+    challengerState.roundsLost += 1;
+    challengerState.lastRoundWasLoss = true;
+  } else {
+    // A draw counts for neither side, and breaks any Avenge chain.
+    challengerState.lastRoundWasLoss = false;
+    defenderState.lastRoundWasLoss = false;
+  }
+};
+
 export type ResolveMatchInput = {
   challengerLineup: BattleCard[];
   defenderLineup: BattleCard[];
@@ -376,21 +403,7 @@ export const resolveMatch = ({
     tiebreakDamage.challenger += tiebreakDamageOf(round, "challenger", rules).counted;
     tiebreakDamage.defender += tiebreakDamageOf(round, "defender", rules).counted;
 
-    if (round.winner === "challenger") {
-      challengerState.roundsWon += 1;
-      challengerState.lastRoundWasLoss = false;
-      defenderState.roundsLost += 1;
-      defenderState.lastRoundWasLoss = true;
-    } else if (round.winner === "defender") {
-      defenderState.roundsWon += 1;
-      defenderState.lastRoundWasLoss = false;
-      challengerState.roundsLost += 1;
-      challengerState.lastRoundWasLoss = true;
-    } else {
-      // A draw counts for neither side, and breaks any Avenge chain.
-      challengerState.lastRoundWasLoss = false;
-      defenderState.lastRoundWasLoss = false;
-    }
+    recordRound(round, challengerState, defenderState);
   }
 
   const roundsWon: Record<Side, number> = {

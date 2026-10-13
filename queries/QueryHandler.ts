@@ -14,6 +14,7 @@ import { cardCollectionQuery } from "./queryFunctions/CardCollection.query";
 import { cardCollectionListQuery } from "./queryFunctions/cardCollectionList.query";
 import { helpCategoriesQuery } from "./queryFunctions/helpCategories.query";
 import { jackpotHistoryQuery } from "./queryFunctions/JackpotHistory.query";
+import { v2CardBinderQuery } from "./queryFunctions/v2CardBinder.query";
 import { v2CardCollectionQuery } from "./queryFunctions/v2CardCollection.query";
 
 const queryDictionary = {
@@ -25,6 +26,7 @@ const queryDictionary = {
   jackpot_history: jackpotHistoryQuery,
   help_commands: helpCategoriesQuery,
   v2_card_collection: v2CardCollectionQuery,
+  v2_card_binder: v2CardBinderQuery,
 };
 
 export type QueryMap = {
@@ -36,6 +38,7 @@ export type QueryMap = {
   jackpot_history: JackpotWinnerRecord;
   help_commands: HelpCategory;
   v2_card_collection: V2UserCardRecord;
+  v2_card_binder: V2UserCardRecord;
 };
 
 /* Utility function to retrieve the appropriate query function based on the query identifier */

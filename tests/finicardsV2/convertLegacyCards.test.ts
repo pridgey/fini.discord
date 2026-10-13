@@ -235,11 +235,9 @@ describe("finicards v2 legacy conversion", () => {
       expect(convertLegacyCard(legacy())!.legacy_card).toBe("legacy001");
     });
 
-    it("tags card type, colour, series and a legacy marker, in that order", () => {
-      // The first two are what the card face prints, so they lead.
+    it("tags card type, series and a legacy marker, in that order, and leaves v1's colour behind", () => {
       expect(legacyTags(legacy())).toEqual([
         "fighter",
-        "red",
         "dragon_ball",
         "legacy",
       ]);
