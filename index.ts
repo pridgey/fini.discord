@@ -29,6 +29,7 @@ import {
 } from "./modals/modalHandler";
 import { fileExists } from "./utilities/files/fileUtilities";
 import { resetShareDir, startShareServer } from "./modules/fileShare";
+import { startWebSync } from "./modules/finicardsV2/webSync";
 
 /**
  * Recorded as a command's output when its reply cannot be read back - the
@@ -64,6 +65,12 @@ client.once("clientReady", async (cl) => {
    */
   await resetShareDir();
   await startShareServer();
+
+  /* The Finicards site: copies collections out to a public mailbox and takes
+   * deck requests back. Off unless FINI_WEB_POCKETBASE_URL is set. */
+  startWebSync(() =>
+    Object.fromEntries(cl.guilds.cache.map((guild) => [guild.id, guild.name])),
+  );
 
   // Load button files for handling
   await loadButtonHandlers();

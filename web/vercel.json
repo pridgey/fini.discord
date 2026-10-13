@@ -1,0 +1,5 @@
+{
+  "framework": "vite",
+  "outputDirectory": "dist",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- ."
+}

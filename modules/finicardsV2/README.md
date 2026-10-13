@@ -316,12 +316,16 @@ the same copy can sit in several, and only one deck is used per battle.
 
 `build` is the path that matters — it assembles a deck from the collection so a
 player never has to type a card id to get playing. `add` / `remove` are for
-tuning afterwards. Limits: 20-40 cards, 10 decks per player. Rebuilding a name
+tuning afterwards. Limits: exactly 20 cards, 10 decks per player. Rebuilding a name
 replaces that deck in place rather than duplicating it.
 
-**The minimum is 20 on purpose.** A battle deals five cards and a dungeon run
+**Every deck is exactly 20.** A battle deals five cards and a dungeon run
 six, so a deck barely bigger than a hand deals its owner the same best cards
-every time. `MIN_DECK_SIZE` in `decks.ts` is the dial.
+every time. And one size instead of a range, because hands are dealt at
+random: every card past the minimum only waters down the best ones, so a
+range was a rule nobody would have used. `add` and `remove` may leave a deck
+short while it is being changed; it cannot be played until it is back to 20.
+`DECK_SIZE` in `decks.ts` is the dial.
 
 A deck stores specific copies, so selling a card leaves a hole; `loadDeck`
 reports those. The minimum is therefore checked again whenever a hand is about
@@ -1026,3 +1030,11 @@ binder, the battle **reveal** (both hands) and the match **result**
   deliberately rather than bolting on.
 - **Deck cost budgets.** Phase 3. `cost` is populated on every card, so it needs
   no migration.
+
+## On the web
+
+Players can browse their collection and build decks on a site, signed in with
+Discord. Fini's database is never exposed for it: `webSync/` copies
+collections out to a public Pocketbase and takes deck requests back, over
+connections Fini opens. It is off unless `FINI_WEB_POCKETBASE_URL` is set.
+The site, its schema and the setup steps are in [`web/`](../../web/README.md).

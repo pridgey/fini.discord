@@ -25,12 +25,15 @@ import type { BattleCard, OwnedCard } from "./types";
 export const V2_DECK = "v2_deck";
 
 /**
+ * Every deck is played at exactly this size.
+ *
  * Twenty, so a hand is a draw and not a choice: a battle deals five and a
  * dungeon run six, and a deck barely bigger than that would hand its owner the
- * same best cards every time.
+ * same best cards every time. One size, because a range was no choice either -
+ * hands are dealt at random, so every card past the minimum only waters down
+ * the best ones, and everybody would have built the minimum.
  */
-export const MIN_DECK_SIZE = 20;
-export const MAX_DECK_SIZE = 40;
+export const DECK_SIZE = 20;
 export const MAX_DECKS_PER_USER = 10;
 export const MAX_DECK_NAME_LENGTH = 32;
 
@@ -75,7 +78,7 @@ export type DeckResult =
   | { ok: true; deck: V2DeckRecord }
   | { ok: false; reason: string };
 
-const validateName = (name: string): string | null => {
+export const validateDeckName = (name: string): string | null => {
   const clean = (name ?? "").trim();
   if (!clean) return "A deck needs a name.";
   if (clean.length > MAX_DECK_NAME_LENGTH) {
@@ -101,21 +104,15 @@ export type SaveDeckInput = {
 export const saveDeck = async (
   input: SaveDeckInput,
 ): Promise<DeckResult> => {
-  const nameError = validateName(input.name);
+  const nameError = validateDeckName(input.name);
   if (nameError) return { ok: false, reason: nameError };
 
   const cards = [...new Set(input.cards.filter(Boolean))];
 
-  if (cards.length < MIN_DECK_SIZE) {
+  if (cards.length !== DECK_SIZE) {
     return {
       ok: false,
-      reason: `A deck needs at least ${MIN_DECK_SIZE} cards - a battle draws ${RULES.rounds + 2} from it.`,
-    };
-  }
-  if (cards.length > MAX_DECK_SIZE) {
-    return {
-      ok: false,
-      reason: `A deck holds at most ${MAX_DECK_SIZE} cards.`,
+      reason: `A deck is exactly ${DECK_SIZE} cards - a battle draws ${RULES.rounds + 2} from it. That has ${cards.length}.`,
     };
   }
 
@@ -151,7 +148,11 @@ export const deleteDeck = async (deckId: string): Promise<void> => {
   await pb.collection<V2DeckRecord>(V2_DECK).delete(deckId);
 };
 
-/** Adds or removes cards on an existing deck, keeping it inside the limits. */
+/**
+ * Adds or removes cards on an existing deck. A deck may be left short - taking
+ * one card out and putting another in is two steps - and simply cannot be
+ * played until it is back to size. It may never go over.
+ */
 export const updateDeckCards = async (
   deck: V2DeckRecord,
   changes: { add?: string[]; remove?: string[] },
@@ -164,16 +165,10 @@ export const updateDeckCards = async (
     ]),
   ];
 
-  if (cards.length < MIN_DECK_SIZE) {
+  if (cards.length > DECK_SIZE) {
     return {
       ok: false,
-      reason: `That would leave ${cards.length} cards; a deck needs at least ${MIN_DECK_SIZE}.`,
-    };
-  }
-  if (cards.length > MAX_DECK_SIZE) {
-    return {
-      ok: false,
-      reason: `That would make ${cards.length} cards; a deck holds at most ${MAX_DECK_SIZE}.`,
+      reason: `A deck is exactly ${DECK_SIZE} cards and that would make ${cards.length}. Take one out first.`,
     };
   }
 
@@ -195,8 +190,6 @@ export type DeckBuildFilter = {
   rarity?: CardRarity;
   /** Only cards carrying this tag. */
   tag?: string;
-  /** How many cards to take. */
-  size?: number;
 };
 
 /**
@@ -209,12 +202,9 @@ export type DeckBuildFilter = {
 export const buildDeckCards = (
   collection: OwnedCard[],
   filter: DeckBuildFilter = {},
+  /** Only the simulator asks for another size, to measure what size does. */
+  size: number = DECK_SIZE,
 ): string[] => {
-  const size = Math.min(
-    Math.max(filter.size ?? 20, MIN_DECK_SIZE),
-    MAX_DECK_SIZE,
-  );
-
   const eligible = collection.filter((owned) => {
     const definition = owned.definition;
     if (filter.type && definition.card_type !== filter.type) return false;
@@ -246,19 +236,19 @@ export const autoBuildDeck = async (input: {
 }): Promise<AutoBuildResult> => {
   const collection = await getUserCollection(input.userId, input.serverId);
 
-  if (collection.length < MIN_DECK_SIZE) {
+  if (collection.length < DECK_SIZE) {
     return {
       ok: false,
-      reason: `You have ${collection.length} cards and need at least ${MIN_DECK_SIZE}. Try \`/finicard pack\`.`,
+      reason: `You have ${collection.length} cards and a deck is ${DECK_SIZE}. Try \`/finicard pack\`.`,
     };
   }
 
   const cards = buildDeckCards(collection, input.filter);
 
-  if (cards.length < MIN_DECK_SIZE) {
+  if (cards.length < DECK_SIZE) {
     return {
       ok: false,
-      reason: `Only ${cards.length} of your cards match that filter, and a deck needs ${MIN_DECK_SIZE}.`,
+      reason: `Only ${cards.length} of your cards match that filter, and a deck is ${DECK_SIZE}.`,
     };
   }
 
@@ -299,9 +289,9 @@ export type DeckContents = {
  * to be dealt from it.
  */
 export const unplayableReason = (contents: DeckContents): string | null => {
-  if (contents.cards.length >= MIN_DECK_SIZE) return null;
+  if (contents.cards.length >= DECK_SIZE) return null;
   const gone = contents.missing.length;
-  return `**${contents.deck.name}** has ${contents.cards.length} cards and a deck needs at least ${MIN_DECK_SIZE} to play.${
+  return `**${contents.deck.name}** has ${contents.cards.length} cards and a deck needs ${DECK_SIZE} to play.${
     gone > 0
       ? ` ${gone} of its cards ${gone === 1 ? "is" : "are"} no longer in your collection.`
       : ""

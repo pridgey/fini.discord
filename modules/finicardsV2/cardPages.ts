@@ -6,7 +6,7 @@ import {
   createPaginationRow,
 } from "../../utilities/pagination/pagination";
 import { BINDER_PAGE_SIZE } from "./cardArt";
-import { MIN_DECK_SIZE, loadDeck } from "./decks";
+import { DECK_SIZE, loadDeck } from "./decks";
 import { compositionString } from "./ui/theme";
 
 /**
@@ -83,7 +83,7 @@ export const buildDeckPages = async (
   for (const card of contents.cards) composition[card.type] += 1;
   const notes = [
     contents.missing.length > 0 ? `${contents.missing.length} no longer owned` : "",
-    contents.cards.length < MIN_DECK_SIZE ? `too small to play, needs ${MIN_DECK_SIZE}` : "",
+    contents.cards.length < DECK_SIZE ? `too small to play, needs ${DECK_SIZE}` : "",
   ].filter(Boolean);
 
   return buildCardPages({

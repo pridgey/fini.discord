@@ -15,8 +15,7 @@ import {
 } from "../modules/finicardsV2/ui";
 import { buildCardPages, buildDeckPages } from "../modules/finicardsV2/cardPages";
 import {
-  MAX_DECK_SIZE,
-  MIN_DECK_SIZE,
+  DECK_SIZE,
   autoBuildDeck,
   deleteDeck,
   findDeckByName,
@@ -269,14 +268,6 @@ export const data = new SlashCommandBuilder()
               .setName("name")
               .setDescription("Name for the deck")
               .setRequired(true),
-          )
-          .addIntegerOption((option) =>
-            option
-              .setName("size")
-              .setDescription(`How many cards (${MIN_DECK_SIZE}-${MAX_DECK_SIZE}, default 20)`)
-              .setMinValue(MIN_DECK_SIZE)
-              .setMaxValue(MAX_DECK_SIZE)
-              .setRequired(false),
           )
           .addStringOption((option) =>
             option
@@ -1167,7 +1158,7 @@ const handleDeckSubcommand = async (
             .addTextDisplayComponents((text) =>
               text.setContent(
                 `**${deck.name}** — ${size} cards${
-                  size < MIN_DECK_SIZE ? `\n-# ⚠️ too small to play (needs ${MIN_DECK_SIZE})` : ""
+                  size < DECK_SIZE ? `\n-# ⚠️ too small to play (needs ${DECK_SIZE})` : ""
                 }`,
               ),
             )
@@ -1193,7 +1184,6 @@ const handleDeckSubcommand = async (
 
     case "build": {
       const name = interaction.options.getString("name", true);
-      const size = interaction.options.getInteger("size") ?? undefined;
       const type = interaction.options.getString("type") as
         | CardType
         | null;
@@ -1208,7 +1198,6 @@ const handleDeckSubcommand = async (
         identifier,
         name,
         filter: {
-          size,
           tag,
           ...(type ? { type } : {}),
           ...(rarity ? { rarity } : {}),
@@ -1287,7 +1276,9 @@ const handleDeckSubcommand = async (
       }
 
       await interaction.editReply(
-        `${isAdd ? "Added" : "Removed"} **${card.name}** ${isAdd ? "to" : "from"} **${deck.name}** (${(updated.deck.cards ?? []).length} cards).`,
+        `${isAdd ? "Added" : "Removed"} **${card.name}** ${isAdd ? "to" : "from"} **${deck.name}** (${(updated.deck.cards ?? []).length} of ${DECK_SIZE} cards${
+          (updated.deck.cards ?? []).length < DECK_SIZE ? " - add another before you play it" : ""
+        }).`,
       );
       return;
     }

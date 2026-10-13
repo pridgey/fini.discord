@@ -1,7 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import {
-  MAX_DECK_SIZE,
-  MIN_DECK_SIZE,
+  DECK_SIZE,
   unplayableReason,
   buildDeckCards,
 } from "../../modules/finicardsV2/decks";
@@ -67,7 +66,7 @@ const collection = (size: number) =>
 describe("finicards v2 decks", () => {
   describe("size rules", () => {
     it("requires enough cards to fill a hand", () => {
-      expect(MIN_DECK_SIZE).toBeGreaterThanOrEqual(HAND_SIZE);
+      expect(DECK_SIZE).toBeGreaterThanOrEqual(HAND_SIZE);
     });
 
     it("will not deal from a deck that has shrunk below the minimum", () => {
@@ -75,32 +74,23 @@ describe("finicards v2 decks", () => {
         Array.from({ length: count }, (_, index) => ({ instanceId: `c${index}` })) as any;
       const deck = { name: "Main" } as any;
 
-      expect(unplayableReason({ deck, cards: cards(MIN_DECK_SIZE), missing: [] })).toBeNull();
+      expect(unplayableReason({ deck, cards: cards(DECK_SIZE), missing: [] })).toBeNull();
 
       // Built at the minimum, then two of its cards were sold.
-      const shrunk = unplayableReason({ deck, cards: cards(MIN_DECK_SIZE - 2), missing: ["a", "b"] });
-      expect(shrunk).toContain(`has ${MIN_DECK_SIZE - 2} cards`);
+      const shrunk = unplayableReason({ deck, cards: cards(DECK_SIZE - 2), missing: ["a", "b"] });
+      expect(shrunk).toContain(`has ${DECK_SIZE - 2} cards`);
       expect(shrunk).toContain("2 of its cards are no longer in your collection");
     });
   });
 
   describe("buildDeckCards", () => {
-    it("takes the requested number of cards", () => {
-      expect(buildDeckCards(collection(40), { size: 20 })).toHaveLength(20);
-    });
-
-    it("defaults to 20", () => {
-      expect(buildDeckCards(collection(40))).toHaveLength(20);
+    it("takes exactly a deck's worth", () => {
+      expect(buildDeckCards(collection(40))).toHaveLength(DECK_SIZE);
+      expect(buildDeckCards(collection(80))).toHaveLength(DECK_SIZE);
     });
 
     it("never returns more cards than the collection holds", () => {
-      expect(buildDeckCards(collection(8), { size: 20 })).toHaveLength(8);
-    });
-
-    it("clamps a request above the deck limit", () => {
-      expect(
-        buildDeckCards(collection(80), { size: 500 }).length,
-      ).toBeLessThanOrEqual(MAX_DECK_SIZE);
+      expect(buildDeckCards(collection(8))).toHaveLength(8);
     });
 
     it("prefers the strongest cards by type stat", () => {
@@ -109,18 +99,18 @@ describe("finicards v2 decks", () => {
         owned("strong", { spike: 12, rarity: "full_art" }),
         owned("mid", { spike: 8, rarity: "uncommon" }),
       ];
-      expect(buildDeckCards(pool, { size: 5 })[0]).toBe("strong");
+      expect(buildDeckCards(pool)[0]).toBe("strong");
     });
 
     it("returns unique ids", () => {
-      const cards = buildDeckCards(collection(40), { size: 20 });
+      const cards = buildDeckCards(collection(40));
       expect(new Set(cards).size).toBe(cards.length);
     });
 
     it("is stable across rebuilds", () => {
       const pool = collection(30);
-      expect(buildDeckCards(pool, { size: 15 })).toEqual(
-        buildDeckCards(pool, { size: 15 }),
+      expect(buildDeckCards(pool)).toEqual(
+        buildDeckCards(pool),
       );
     });
   });
@@ -133,7 +123,7 @@ describe("finicards v2 decks", () => {
         owned("h1", { type: "heart" }),
         owned("p2", { type: "power" }),
       ];
-      expect(buildDeckCards(pool, { type: "power", size: 10 }).sort()).toEqual([
+      expect(buildDeckCards(pool, { type: "power" }).sort()).toEqual([
         "p1",
         "p2",
       ]);
@@ -145,7 +135,7 @@ describe("finicards v2 decks", () => {
         owned("u1", { rarity: "uncommon" }),
         owned("f1", { rarity: "full_art" }),
       ];
-      expect(buildDeckCards(pool, { rarity: "uncommon", size: 10 })).toEqual([
+      expect(buildDeckCards(pool, { rarity: "uncommon" })).toEqual([
         "u1",
       ]);
     });
@@ -156,7 +146,7 @@ describe("finicards v2 decks", () => {
         owned("b", { tags: ["mecha"] }),
         owned("c", { tags: ["shonen"] }),
       ];
-      expect(buildDeckCards(pool, { tag: "shonen", size: 10 }).sort()).toEqual([
+      expect(buildDeckCards(pool, { tag: "shonen" }).sort()).toEqual([
         "a",
         "c",
       ]);
@@ -169,20 +159,20 @@ describe("finicards v2 decks", () => {
         owned("c", { type: "power", rarity: "uncommon", tags: ["magic"] }),
       ];
       expect(
-        buildDeckCards(pool, { type: "wit", rarity: "uncommon", size: 10 }),
+        buildDeckCards(pool, { type: "wit", rarity: "uncommon" }),
       ).toEqual(["a"]);
     });
 
     it("returns nothing when no card matches", () => {
       expect(
-        buildDeckCards(collection(10), { tag: "nonexistent", size: 10 }),
+        buildDeckCards(collection(10), { tag: "nonexistent" }),
       ).toEqual([]);
     });
 
     it("can build a mono-type deck, which the type wheel will punish", () => {
       // Legal to build, and a 3-0 loss to the counter type. The math does the
       // teaching, not a rule.
-      const cards = buildDeckCards(collection(30), { type: "heart", size: 10 });
+      const cards = buildDeckCards(collection(30), { type: "heart" });
       expect(cards.length).toBeGreaterThan(0);
     });
   });

@@ -62,7 +62,7 @@ describe("getCommandIndex", () => {
 
     expect(build?.options.map((o) => o.name)).toContain("name");
     expect(build?.options.find((o) => o.name === "name")?.required).toBe(true);
-    expect(build?.options.find((o) => o.name === "size")?.required).toBe(false);
+    expect(build?.options.find((o) => o.name === "type")?.required).toBe(false);
   });
 
   it("captures top-level options when there are no subcommands", async () => {

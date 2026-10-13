@@ -222,7 +222,7 @@ const deckFrom = (collection: BattleCard[], size = 20): BattleCard[] => {
     foil: card.foil,
   })) as any[];
 
-  const chosen = new Set(buildDeckCards(asOwned, { size }));
+  const chosen = new Set(buildDeckCards(asOwned, {}, size));
   return collection.filter((card) => chosen.has(card.instanceId));
 };
 
