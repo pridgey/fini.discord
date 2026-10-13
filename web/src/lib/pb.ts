@@ -15,6 +15,18 @@ export const signInWithDiscord = async (): Promise<void> => {
 
 export const signOut = (): void => pb.authStore.clear();
 
+/**
+ * Where a mailbox file is loaded from. On the deployed site that is the CDN
+ * (`api/file.ts`), so pictures do not spend the visitor's hourly allowance of
+ * requests to the mailbox; in development there is no CDN, and the mailbox is
+ * asked directly.
+ */
+const fileUrl = (record: { id: string; collectionId: string }, name: string): string => {
+  if (!name) return "";
+  if (import.meta.env.DEV) return pb.files.getURL(record, name);
+  return `/api/file?p=${record.collectionId}/${record.id}/${encodeURIComponent(name)}`;
+};
+
 export type Viewer = { id: string; name: string; avatar: string };
 
 export const viewer = (): Viewer | null => {
@@ -23,17 +35,15 @@ export const viewer = (): Viewer | null => {
   return {
     id: record.id,
     name: (record.name as string) || "Player",
-    avatar: record.avatar ? pb.files.getURL(record, record.avatar as string) : "",
+    avatar: fileUrl(record, (record.avatar as string) ?? ""),
   };
 };
 
-export const artUrl = (definition: Definition): string =>
-  definition.art ? pb.files.getURL(definition, definition.art) : "";
+export const artUrl = (definition: Definition): string => fileUrl(definition, definition.art);
 
-export const faceUrl = (card: CardRow): string => (card.face ? pb.files.getURL(card, card.face) : "");
+export const faceUrl = (card: CardRow): string => fileUrl(card, card.face);
 
-export const animationUrl = (card: CardRow): string =>
-  card.animation ? pb.files.getURL(card, card.animation) : "";
+export const animationUrl = (card: CardRow): string => fileUrl(card, card.animation);
 
 /**
  * Development only: `?token=...` signs in with a token made by hand, because

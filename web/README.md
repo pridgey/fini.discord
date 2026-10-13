@@ -35,11 +35,27 @@ What a compromised or misbehaving site could do: ask for deck changes, which
 Fini refuses unless they are the signed-in player's own cards and decks. What
 it could expose: the copies in the mailbox, which are card collections.
 
+### The host's request limit
+
+Pockethost allows each address 1,000 requests an hour, and answers 429 to
+everything past that until the hour is up. Two things follow:
+
+- **Pictures go through Vercel.** A collection is hundreds of card faces;
+  loaded straight from the mailbox, one visit would spend a player's whole
+  allowance. `web/api/file.ts` fetches each file from the mailbox once and
+  the CDN keeps it for good - a file never changes, a new picture gets a new
+  name.
+- **Fini is sparing.** A pass that finds nothing new makes no request at
+  all, changes are sent fifty to a request, and after a refusal Fini leaves
+  the mailbox alone for a growing while. At home, Fini and anyone browsing
+  the site share one address and one allowance.
+
 ## Where things are
 
 | Path | What |
 |---|---|
 | `web/src/` | The site: Vite, React, TypeScript |
+| `web/api/file.ts` | Serves mailbox files through Vercel's CDN |
 | `web/src/lib/cards.ts` | Filtering, sorting and deck checks. Pure, tested in `tests/web/` |
 | `web/pocketbase/pb_migrations/` | The mailbox's schema and access rules |
 | `modules/finicardsV2/webSync/` | Fini's half: sending copies, answering requests |

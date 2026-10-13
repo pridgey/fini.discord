@@ -19,8 +19,12 @@ export * from "./sync";
 
 /** How often Fini's database is checked for something new to send. */
 const SYNC_EVERY_MS = 15_000;
-/** How often the mailbox is checked for requests the stream did not announce. */
-const REQUESTS_EVERY_MS = 30_000;
+/**
+ * How often the mailbox is checked for requests the stream did not announce.
+ * Every look is a request, and the mailbox's host allows an address a thousand
+ * an hour - shared, at home, with whoever is browsing the site.
+ */
+const REQUESTS_EVERY_MS = 120_000;
 /** How often what the mailbox holds is read again from scratch. */
 const REREAD_EVERY_MS = 6 * 60 * 60 * 1000;
 
@@ -49,9 +53,18 @@ export const startWebSync = (
 
   const controller = new AbortController();
   let failing = false;
+  // After a failure the mailbox is left alone for a while, longer each time:
+  // it is most often refusing because it has been asked too much already.
+  let failures = 0;
+  let quietUntil = 0;
+  const holdOff = () => {
+    failures += 1;
+    quietUntil = Date.now() + Math.min(30_000 * 2 ** (failures - 1), 10 * 60_000);
+  };
 
   const pass = () =>
     inTurn(async () => {
+      if (Date.now() < quietUntil) return;
       try {
         const summary = await syncOnce(serverNames());
         if (
@@ -67,17 +80,19 @@ export const startWebSync = (
         // A row that would not send is unknown ground: read the mailbox again.
         if (summary.failed) forgetMailbox();
         failing = false;
+        failures = 0;
       } catch (error) {
         // Say so once, not every fifteen seconds while the mailbox is down.
         if (!failing) console.error("Web sync: pass failed:", (error as Error)?.message ?? error);
         failing = true;
         forgetMailbox();
+        holdOff();
       }
     });
 
   let draining = false;
   const drain = async () => {
-    if (draining) return;
+    if (draining || Date.now() < quietUntil) return;
     draining = true;
     try {
       await inTurn(async () => {
@@ -109,6 +124,8 @@ export const startWebSync = (
       });
     } catch (error) {
       if (!failing) console.error("Web sync: could not read requests:", (error as Error)?.message ?? error);
+      failing = true;
+      holdOff();
     } finally {
       draining = false;
     }
