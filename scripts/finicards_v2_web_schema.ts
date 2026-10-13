@@ -118,6 +118,37 @@ const applied = new Set(
   (await remote.collection(APPLIED).getFullList()).map((row) => row.file as string),
 );
 
+const RULES = ["listRule", "viewRule", "createRule", "updateRule", "deleteRule"] as const;
+
+/**
+ * Reads back what was just sent and lists anything the mailbox did not take:
+ * a rule, or whether a field must be filled in. A save that is accepted is
+ * not always a save that was kept, and a rule that silently stayed open is
+ * exactly the kind of thing worth being told about.
+ */
+const notApplied = async (sent: Step[]): Promise<string[]> => {
+  const last = new Map<string, Step>();
+  for (const step of sent) if (step.kind !== "delete") last.set(step.id, step);
+  const problems: string[] = [];
+  for (const step of last.values()) {
+    const now = (await remote.collections.getOne(step.id)) as Json;
+    for (const rule of RULES) {
+      if (rule in (step.body ?? {}) && (step.body![rule] ?? null) !== (now[rule] ?? null)) {
+        problems.push(`${step.name}.${rule} is ${JSON.stringify(now[rule])}, wanted ${JSON.stringify(step.body![rule])}`);
+      }
+    }
+    for (const field of (step.body?.fields ?? []) as Json[]) {
+      const kept = (now.fields as Json[]).find((other) => other.name === field.name);
+      if (!kept) problems.push(`${step.name}.${field.name} is missing`);
+      else if (!!field.required !== !!kept.required) {
+        problems.push(`${step.name}.${field.name} required is ${!!kept.required}, wanted ${!!field.required}`);
+      }
+    }
+  }
+  return problems;
+};
+const missed: string[] = [];
+
 console.log(`Mailbox: ${remoteUrl()}`);
 
 // Fini sends its changes many to a request; a hosted mailbox counts requests.
@@ -144,5 +175,11 @@ for (const migration of migrations) {
   }
   await remote.collection(APPLIED).create({ file: migration.file });
   console.log(`  applied          ${migration.file}  (${steps.length} changes)`);
+  missed.push(...(await notApplied(steps)));
+}
+if (missed.length) {
+  console.error("\nThe mailbox did not keep everything it was sent:");
+  for (const problem of missed) console.error(`  ${problem}`);
+  process.exit(1);
 }
 process.exit(0);
