@@ -30,6 +30,7 @@ import {
 import { fileExists } from "./utilities/files/fileUtilities";
 import { resetShareDir, startShareServer } from "./modules/fileShare";
 import { startWebSync } from "./modules/finicardsV2/webSync";
+import { startCardManager } from "./modules/finicardsV2/cardManagerServer";
 
 /**
  * Recorded as a command's output when its reply cannot be read back - the
@@ -71,6 +72,10 @@ client.once("clientReady", async (cl) => {
   startWebSync(() =>
     Object.fromEntries(cl.guilds.cache.map((guild) => [guild.id, guild.name])),
   );
+
+  /* The card manager, for the home network. Off unless FINI_CARD_MANAGER_PORT
+   * is set. */
+  startCardManager();
 
   // Load button files for handling
   await loadButtonHandlers();

@@ -445,6 +445,14 @@ budget, mark Secret Arts, and choose artwork. Art can be searched from Danbooru
 card art via Scryfall, and each candidate image keeps its own artist credit.
 Every write is appended to `edits.jsonl` with what the card was before.
 
+The bot keeps it up too, so it can be reached from the home network without
+an ssh tunnel: set `FINI_CARD_MANAGER_PORT` (8765) and it is at
+`http://<the machine>:8765/cards/` whenever Fini is running
+(`cardManagerServer.ts`). It answers only to private addresses - the house's
+network and the tailnet - and has no login of its own unless
+`FINI_CARD_MANAGER_PASSWORD` is set. The art review pages are not part of it;
+those still come from the command above.
+
 ## Launch
 
 `scripts/finicards_v2_migrate_collections.ts` carries v1 collections into v2.
