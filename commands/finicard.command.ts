@@ -15,6 +15,15 @@ import {
 } from "../modules/finicardsV2/ui";
 import { buildCardPages, buildDeckPages } from "../modules/finicardsV2/cardPages";
 import {
+  buildCollectionQuery,
+  SORT_LABEL as COLLECTION_SORT_LABEL,
+  TIER_LABEL as COLLECTION_TIER_LABEL,
+  type CollectionSort,
+  type CollectionTier,
+} from "../modules/finicardsV2/collectionFilters";
+import { V2_USER_CARD } from "../modules/finicardsV2/cardStore";
+import { pb } from "../utilities/pocketbase";
+import {
   DECK_SIZE,
   autoBuildDeck,
   deleteDeck,
@@ -153,7 +162,62 @@ export const data = new SlashCommandBuilder()
           .setDescription("Whose collection to view (blank for your own)")
           .setRequired(false),
       )
-      .addStringOption(withViewOption),
+      .addStringOption(withViewOption)
+      .addStringOption((option) =>
+        option
+          .setName("sort")
+          .setDescription("What order to show the cards in (default: newest first)")
+          .addChoices(
+            ...(Object.keys(COLLECTION_SORT_LABEL) as CollectionSort[]).map((value) => ({
+              name: COLLECTION_SORT_LABEL[value],
+              value,
+            })),
+          )
+          .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("type")
+          .setDescription("Only cards of this type")
+          .addChoices(
+            { name: "Power", value: "power" },
+            { name: "Wit", value: "wit" },
+            { name: "Heart", value: "heart" },
+          )
+          .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("rarity")
+          .setDescription("Only cards of this rarity")
+          .addChoices(
+            ...(Object.keys(COLLECTION_TIER_LABEL) as CollectionTier[]).map((value) => ({
+              name: COLLECTION_TIER_LABEL[value],
+              value,
+            })),
+          )
+          .setRequired(false),
+      )
+      .addIntegerOption((option) =>
+        option
+          .setName("set")
+          .setDescription("Only cards from this set")
+          .addChoices(...BOOSTER_SETS.map((set) => ({ name: `Set ${set}`, value: set })))
+          .setRequired(false),
+      )
+      .addBooleanOption((option) =>
+        option.setName("foil").setDescription("Only foils").setRequired(false),
+      )
+      .addBooleanOption((option) =>
+        option.setName("keyword").setDescription("Only cards that rolled a keyword").setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("search")
+          .setDescription("Only cards whose name or series contains this")
+          .setMaxLength(60)
+          .setRequired(false),
+      ),
   )
   .addSubcommand((sub) =>
     sub
@@ -591,15 +655,46 @@ export const execute = async (
           return;
         }
 
+        const owner = `user_id = "${target.id}" && server_id = "${serverId}"`;
+        const asked = buildCollectionQuery({
+          sort: interaction.options.getString("sort") as CollectionSort | null,
+          type: interaction.options.getString("type") as CardType | null,
+          tier: interaction.options.getString("rarity") as CollectionTier | null,
+          set: interaction.options.getInteger("set"),
+          foil: interaction.options.getBoolean("foil"),
+          keyword: interaction.options.getBoolean("keyword"),
+          search: interaction.options.getString("search"),
+        });
+        const filter = asked.filter ? `${owner} && ${asked.filter}` : owner;
+
         // The whole collection was just read to count it and work out its
         // composition; the pages themselves are served by the shared system.
+        let heading = `${target.displayName} — ${collection.length} card${
+          collection.length === 1 ? "" : "s"
+        } ${compositionString(collectionComposition(collection))}`;
+
+        if (asked.filter) {
+          const matching = (
+            await pb
+              .collection(V2_USER_CARD)
+              .getList(1, 1, { filter, fields: "id", requestKey: null })
+          ).totalItems;
+          if (matching === 0) {
+            await interaction.editReply(
+              `None of ${target.id === interaction.user.id ? "your" : `${target.displayName}'s`} ${collection.length} cards match: ${asked.summary}.`,
+            );
+            return;
+          }
+          heading = `${target.displayName} — ${matching} of ${collection.length} cards · ${asked.summary}`;
+        }
+        if (asked.order) heading += ` · by ${asked.order}`;
+
         await interaction.editReply(
           await buildCardPages({
             viewerId: interaction.user.id,
-            heading: `${target.displayName} — ${collection.length} card${
-            collection.length === 1 ? "" : "s"
-          } ${compositionString(collectionComposition(collection))}`,
-            filter: `user_id = "${target.id}" && server_id = "${serverId}"`,
+            heading,
+            filter,
+            sort: asked.sort,
             binder: interaction.options.getString("view") === "binder",
           }),
         );

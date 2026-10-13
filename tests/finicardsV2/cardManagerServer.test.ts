@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isPrivateAddress } from "../../modules/finicardsV2/cardManagerServer";
+import { isPrivateAddress } from "../../modules/finicardsV2/privateAddress";
 
 describe("card manager: who may reach it", () => {
   test("the house, the tailnet and this machine", () => {

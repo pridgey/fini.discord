@@ -27,6 +27,8 @@ export type CardPagesInput = {
   heading: string;
   /** A `v2_user_card` filter picking out the cards to show. */
   filter: string;
+  /** A Pocketbase sort for them. Newest first when left out. */
+  sort?: string;
   binder: boolean;
 };
 
@@ -34,7 +36,12 @@ export type CardPagesInput = {
 export const buildCardPages = async (input: CardPagesInput) => {
   const perPage = input.binder ? BINDER_PAGE_SIZE : COLLECTION_PAGE_SIZE;
   const query = QueryHandler(input.binder ? "v2_card_binder" : "v2_card_collection");
-  const results = await query.query({ page: 1, perPage, filterOption: input.filter });
+  const results = await query.query({
+    page: 1,
+    perPage,
+    filterOption: input.filter,
+    sortOption: input.sort,
+  });
 
   // The heading rides in the context's `query` field, which is threaded to
   // `buildResults` on every page turn, so no page has to recount the cards.
@@ -42,6 +49,7 @@ export const buildCardPages = async (input: CardPagesInput) => {
     userId: input.viewerId,
     queryId: query.id,
     filter: input.filter,
+    sort: input.sort,
     query: input.heading,
     perPage,
   });

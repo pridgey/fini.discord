@@ -21,22 +21,19 @@ import { pb } from "../../utilities/pocketbase";
  */
 
 /**
- * Sorted newest-first, matching `getUserCollection`.
- *
- * Grouping by rarity would read better, but `v2_card_definition` has no
- * `rarity_order` column the way v1's `card_definition` does, and the rarity
- * names don't sort usefully as strings ("common", "full_art", "uncommon").
- * That wants a migration rather than a surprising sort here.
+ * Sorted newest-first, matching `getUserCollection`, unless the page was
+ * asked for in another order (`collectionFilters.ts`).
  */
 const queryV2CardCollection = async ({
   page,
   perPage,
   filterOption,
+  sortOption,
 }: QueryParams) => {
   const results = await pb
     .collection<V2UserCardRecord>(V2_USER_CARD)
     .getList(page, perPage, {
-      sort: "-created",
+      sort: sortOption || "-created",
       filter: filterOption,
       expand: "card",
     });

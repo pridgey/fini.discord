@@ -81,7 +81,17 @@ describe("getCommandIndex", () => {
     );
 
     // `view` picks the list or the binder; there is still no `page`.
-    expect(collection?.options.map((o) => o.name)).toEqual(["who", "view"]);
+    expect(collection?.options.map((o) => o.name)).toEqual([
+      "who",
+      "view",
+      "sort",
+      "type",
+      "rarity",
+      "set",
+      "foil",
+      "keyword",
+      "search",
+    ]);
   });
 
   it("accepts a leading slash when looking a command up", async () => {
