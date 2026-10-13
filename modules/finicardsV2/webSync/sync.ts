@@ -16,7 +16,7 @@ import {
 } from "../decks";
 import { GRADE_LABEL, KEYWORDS } from "../keywords";
 import { RULES, TYPE_BEATS } from "../rules";
-import { remote, signIn } from "./remote";
+import { paced, remote, signIn } from "./remote";
 import {
   artKeyOf,
   buildSnapshot,
@@ -135,7 +135,10 @@ const inParallel = async <T>(
         await work(item);
       } catch (error) {
         failed += 1;
-        if (failed <= 3) console.error("Web sync: a row was not sent:", error);
+        if (failed <= 3) {
+          const { status, message } = error as { status?: number; message?: string };
+          console.error(`Web sync: a row was not sent: ${status ?? ""} ${message ?? error}`.trim());
+        }
       }
     }
   };
@@ -171,10 +174,12 @@ const sendArt = async (definition: V2CardDefinitionRecord): Promise<boolean> => 
     heldArt.set(id, key);
     return false;
   }
-  await remote.collection("web_definition").update(id, {
-    art_key: key,
-    art: art ? new File([art], `${id}.webp`, { type: "image/webp" }) : null,
-  });
+  await paced(() =>
+    remote.collection("web_definition").update(id, {
+      art_key: key,
+      art: art ? new File([art], `${id}.webp`, { type: "image/webp" }) : null,
+    }),
+  );
   heldArt.set(id, key);
   return true;
 };
@@ -197,11 +202,13 @@ const sendFace = async (
 
   const face = await sharp(png).webp({ quality: 80 }).toBuffer();
   const animation = card.legendary ? await legendaryGif(battleCard) : null;
-  await remote.collection("web_card").update(id, {
-    face_key: key,
-    face: new File([face], `${id}.webp`, { type: "image/webp" }),
-    animation: animation ? new File([animation], `${id}.gif`, { type: "image/gif" }) : null,
-  });
+  await paced(() =>
+    remote.collection("web_card").update(id, {
+      face_key: key,
+      face: new File([face], `${id}.webp`, { type: "image/webp" }),
+      animation: animation ? new File([animation], `${id}.gif`, { type: "image/gif" }) : null,
+    }),
+  );
   return true;
 };
 
@@ -252,12 +259,14 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
   for (const collection of WRITE_ORDER) {
     const plan = plans[collection];
     summary.failed += await inParallel(plan.create, async (row) => {
-      await remote.collection(collection).create({ id: row.id, ...payloadOf(collection, row) });
+      await paced(() =>
+        remote.collection(collection).create({ id: row.id, ...payloadOf(collection, row) }),
+      );
       remember(collection, row);
       summary.created += 1;
     });
     summary.failed += await inParallel(plan.update, async (row) => {
-      await remote.collection(collection).update(row.id, payloadOf(collection, row));
+      await paced(() => remote.collection(collection).update(row.id, payloadOf(collection, row)));
       remember(collection, row);
       summary.updated += 1;
     });
@@ -290,7 +299,7 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
   for (const collection of [...WRITE_ORDER].reverse()) {
     summary.failed += await inParallel(plans[collection].remove, async (id) => {
       try {
-        await remote.collection(collection).delete(id);
+        await paced(() => remote.collection(collection).delete(id));
       } catch (error) {
         // Already gone - removed along with the card it pointed at.
         if ((error as { status?: number })?.status !== 404) throw error;
