@@ -7,13 +7,13 @@ import {
   ChatInputCommandInteraction,
   ComponentType,
 } from "discord.js";
-import { pb } from "../utilities/pocketbase";
+import { pb } from "../../utilities/pocketbase";
 import {
   CardDefinitionRecord,
   UserCardRecord,
-} from "../types/PocketbaseTables";
-import { createCardImage } from "../modules/finicards/generateCardImage";
-import { addCoin, getUserBalance } from "../modules/finicoin";
+} from "../../types/PocketbaseTables";
+import { createCardImage } from "../../modules/finicards/generateCardImage";
+import { addCoin, getUserBalance } from "../../modules/finicoin";
 
 export const data = new SlashCommandBuilder()
   .setName("sell-card")

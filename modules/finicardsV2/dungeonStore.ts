@@ -156,7 +156,7 @@ export const startRun = async (
     return {
       ok: false,
       reason:
-        "The v2 card pool is empty, so there is nothing to put in the rooms. An admin needs to run `/finicard-v2 import commit:True` first.",
+        "The card pool is empty, so there is nothing to put in the rooms.",
     };
   }
 

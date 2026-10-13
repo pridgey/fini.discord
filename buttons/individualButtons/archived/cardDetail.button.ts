@@ -1,5 +1,5 @@
 import { ButtonInteraction, MessageFlags } from "discord.js";
-import { QueryHandler } from "../../queries/QueryHandler";
+import { QueryHandler } from "../../../queries/QueryHandler";
 
 export const namespace = "view_userCard_detail";
 

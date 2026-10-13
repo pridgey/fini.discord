@@ -7,9 +7,9 @@ import {
   ChatInputCommandInteraction,
 } from "discord.js";
 import path from "path";
-import { generateBoosterPack } from "../modules/finicards/generateBoosterPack";
-import { addCoin, getUserBalance } from "../modules/finicoin";
-import { createPaginationContext } from "../utilities/pagination/pagination";
+import { generateBoosterPack } from "../../modules/finicards/generateBoosterPack";
+import { addCoin, getUserBalance } from "../../modules/finicoin";
+import { createPaginationContext } from "../../utilities/pagination/pagination";
 
 const COMMAND_COST = 25;
 const EXPECTED_CARDS = 5;
@@ -73,7 +73,7 @@ export const execute = async (
 
       // Initial image (booster pack cover)
       const coverImage = new AttachmentBuilder(
-        path.join(__dirname, "../modules/finicards", "BoosterPackCover.png"),
+        path.join(__dirname, "../../modules/finicards", "BoosterPackCover.png"),
       );
 
       // Initial response

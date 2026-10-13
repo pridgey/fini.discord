@@ -249,7 +249,7 @@ export const autoBuildDeck = async (input: {
   if (collection.length < MIN_DECK_SIZE) {
     return {
       ok: false,
-      reason: `You have ${collection.length} v2 cards and need at least ${MIN_DECK_SIZE}. Try \`/finicard-v2 pack\`.`,
+      reason: `You have ${collection.length} cards and need at least ${MIN_DECK_SIZE}. Try \`/finicard pack\`.`,
     };
   }
 
@@ -305,7 +305,7 @@ export const unplayableReason = (contents: DeckContents): string | null => {
     gone > 0
       ? ` ${gone} of its cards ${gone === 1 ? "is" : "are"} no longer in your collection.`
       : ""
-  } Add more with \`/finicard-v2 deck add\`.`;
+  } Add more with \`/finicard deck add\`.`;
 };
 
 /**

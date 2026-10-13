@@ -59,7 +59,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
         .setLabel("◀ Back")
         .setStyle(ButtonStyle.Secondary),
       // Only on your own card: this is the quick way to sell it back to Fini.
-      // Selling to another player is `/finicard-v2 sell`.
+      // Selling to another player is `/finicard sell`.
       ...(owned.user_id === interaction.user.id
         ? [
             new ButtonBuilder()

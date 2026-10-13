@@ -139,7 +139,7 @@ export const buildPackMessage = async (
     .addTextDisplayComponents((text) =>
       text.setContent(
         [
-          `-# ${input.note ?? `${input.cost} fc`} · add these to a deck with \`/finicard-v2 deck add\``,
+          `-# ${input.note ?? `${input.cost} fc`} · add these to a deck with \`/finicard deck add\``,
           input.shortfall > 0
             ? `-# ${input.shortfall} card(s) couldn't be pulled — the pool is out of room. ${input.reimbursement} fc reimbursed.`
             : "",

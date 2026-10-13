@@ -48,7 +48,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
   if (decks.length === 0) {
     await interaction.reply({
-      content: `❌ You have no decks. Build one with \`/finicard-v2 deck build name:Main\` - a battle deals ${HAND_SIZE} cards from it.`,
+      content: `❌ You have no decks. Build one with \`/finicard deck build name:Main\` - a battle deals ${HAND_SIZE} cards from it.`,
       flags: [MessageFlags.Ephemeral],
     });
     return;

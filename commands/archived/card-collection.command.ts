@@ -1,10 +1,10 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
-import { QueryHandler } from "../queries/QueryHandler";
+import { QueryHandler } from "../../queries/QueryHandler";
 import {
   createPaginationContext,
   createPaginationRow,
-} from "../utilities/pagination/pagination";
+} from "../../utilities/pagination/pagination";
 
 export const data = new SlashCommandBuilder()
   .setName("card-collection")

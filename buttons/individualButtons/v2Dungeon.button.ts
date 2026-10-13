@@ -56,7 +56,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
   }
   if (run.user_id !== interaction.user.id) {
     await refuse(
-      "❌ This isn't your run. Start your own with `/finicard-v2 dungeon`.",
+      "❌ This isn't your run. Start your own with `/finicard dungeon`.",
     );
     return;
   }

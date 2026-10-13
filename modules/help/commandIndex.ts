@@ -74,12 +74,8 @@ export const COMMAND_CATEGORIES: Record<string, string> = {
   deathbattle: "Games & Gambling",
 
   // Finicards
-  "booster-pack": "Finicards",
-  "card-collection": "Finicards",
-  "sell-card": "Finicards",
-  "fuse-cards": "Finicards",
+  finicard: "Finicards",
   "suggest-card": "Finicards",
-  "finicard-v2": "Finicards",
 
   // AniStock
   anistock: "AniStock",

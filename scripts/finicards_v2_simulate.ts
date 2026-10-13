@@ -194,7 +194,7 @@ const counterOf: Record<CardType, CardType> = {
 const typeStat = (card: BattleCard) => card.stats[card.type];
 
 /**
- * A deck built from a collection, the way `/finicard-v2 deck build` builds it.
+ * A deck built from a collection, the way `/finicard deck build` builds it.
  *
  * This is where collection depth actually pays: a deep collection produces a
  * stronger 20-card deck, and every hand is then dealt from that better deck.

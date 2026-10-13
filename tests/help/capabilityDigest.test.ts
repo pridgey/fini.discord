@@ -11,7 +11,7 @@ describe("getCapabilityDigest", () => {
     const digest = await getCapabilityDigest();
 
     expect(digest).toContain("/balance");
-    expect(digest).toContain("/finicard-v2");
+    expect(digest).toContain("/finicard");
     expect(digest).toContain("Finicards:");
   });
 
@@ -35,14 +35,14 @@ describe("getCapabilityDigest", () => {
   });
 
   it("summarises the tail of a long subcommand list", async () => {
-    // /finicard-v2 has well over the cap; the rest must be counted, not cut.
-    expect(await getCapabilityDigest("finicard-v2")).toMatch(/\+\d+ more/);
+    // /finicard has well over the cap; the rest must be counted, not cut.
+    expect(await getCapabilityDigest("finicard")).toMatch(/\+\d+ more/);
   });
 
   it("narrows to a topic", async () => {
     const cards = await getCapabilityDigest("card");
 
-    expect(cards).toContain("/booster-pack");
+    expect(cards).toContain("/finicard");
     expect(cards).not.toContain("/weather");
   });
 

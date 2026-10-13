@@ -1,9 +1,9 @@
 import { ButtonInteraction, MessageFlags } from "discord.js";
-import { QueryHandler } from "../../queries/QueryHandler";
+import { QueryHandler } from "../../../queries/QueryHandler";
 import {
   createPaginationRow,
   getPaginationContext,
-} from "../../utilities/pagination/pagination";
+} from "../../../utilities/pagination/pagination";
 
 export const namespace = "booster_pack_open";
 

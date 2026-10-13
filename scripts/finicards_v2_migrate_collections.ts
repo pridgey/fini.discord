@@ -14,6 +14,9 @@ import { pb } from "../utilities/pocketbase";
 /**
  * The launch migration: v1 collections become v2 collections.
  *
+ * RUN ON 2026-10-12. Do not run it again with `--commit`: its first step wipes
+ * every v2 copy, deck, dungeon run and battle, which are now real.
+ *
  *   bun --env-file=.env run scripts/finicards_v2_migrate_collections.ts
  *   bun --env-file=.env run scripts/finicards_v2_migrate_collections.ts --commit
  *

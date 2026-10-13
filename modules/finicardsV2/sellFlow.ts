@@ -13,7 +13,7 @@ import { buybackPrice, findSellable, handOver, sellToFini, stillOwns } from "./m
 import { rarityLabel } from "./ui/theme";
 
 /**
- * `/finicard-v2 sell`: v1's `/sell-card`, for v2 cards.
+ * `/finicard sell`: v1's `/sell-card`, for v2 cards.
  *
  * Three ways to sell, by who the card is offered to:
  *   - nobody named: anyone but the seller may buy it at the asking price;
@@ -46,7 +46,7 @@ export const runSell = async (
   const copy = await findSellable(seller.id, serverId, typed);
   if (!copy) {
     await interaction.editReply(
-      `\`${typed}\` isn't one of your v2 cards. Card ids are listed in \`/finicard-v2 collection\`.`,
+      `\`${typed}\` isn't one of your cards. Card ids are listed in \`/finicard collection\`.`,
     );
     return;
   }

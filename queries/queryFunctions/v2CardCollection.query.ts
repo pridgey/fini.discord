@@ -68,7 +68,7 @@ const buildV2CardCollectionResult = async ({
   const container = new ContainerBuilder().setAccentColor(NEUTRAL_ACCENT);
 
   container.addTextDisplayComponents((text) =>
-    text.setContent(`## 🎴 ${queryString || "v2 collection"}`),
+    text.setContent(`## 🎴 ${queryString || "Collection"}`),
   );
 
   for (const item of items) {

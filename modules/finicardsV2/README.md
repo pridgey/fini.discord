@@ -10,11 +10,12 @@ Around the battles sit the collecting game: booster packs opened one card at a
 time, two tiers above full-art (**Secret Art** and **Legendary**), a collection
 with a list and a binder view, selling, and set numbers on every card.
 
-v2 runs *alongside* v1 until launch. Nothing in `modules/finicards`,
-`commands/booster-pack`, `commands/card-collection`, `commands/sell-card` or
-`commands/fuse-cards` was touched. At launch, v1 collections are carried across
-by a one-off script (see **Launch**) and the v1 commands are retired. There is
-no v2 fusion: `/fuse-cards` goes with the rest of v1.
+**Launched 2026-10-12.** The game was built and tested as `/finicard-v2`
+beside the first one, and is now `/finicard`. v1's `/booster-pack`,
+`/card-collection`, `/sell-card` and `/fuse-cards` are retired
+(`commands/archived`); v1 collections were carried across by a one-off script
+(see **Launch**), and item cards were paid for in free packs. There is no v2
+fusion.
 
 ---
 
@@ -35,14 +36,14 @@ no v2 fusion: `/fuse-cards` goes with the rest of v1.
    Copies are already in `pb_migrations/` and apply the next time Pocketbase
    restarts.
 
-2. **Register the command.** `bun run register-commands` — `/finicard-v2` is
+2. **Register the command.** `bun run register-commands` — `/finicard` is
    picked up automatically by the existing glob.
 
 3. **Fill the card pool** from the existing v1 cards:
 
    ```
-   /finicard-v2 import                 # dry run, reports what it would do
-   /finicard-v2 import commit:True     # writes the rows
+   /finicard import                 # dry run, reports what it would do
+   /finicard import commit:True     # writes the rows
    ```
 
    Idempotent, keyed on `legacy_card`, so re-running after a mapping tweak
@@ -58,25 +59,25 @@ no v2 fusion: `/fuse-cards` goes with the rest of v1.
 4. **Get cards and fight:**
 
    ```
-   /finicard-v2 pack                             # 25 fc, five cards from every set
-   /finicard-v2 pack set:Set 3                   # 40 fc, five cards from one set
-   /finicard-v2 grant who:@someone count:10      # admin, free, for testing
-   /finicard-v2 collection                       # a list, with a View button per card
-   /finicard-v2 collection view:Binder           # six cards to a page, as a picture
-   /finicard-v2 sell card:<id>                   # to anyone, a player, or Fini
-   /finicard-v2 deck build name:Main             # required before battling
-   /finicard-v2 battle opponent:@them            # no card ids anywhere
-   /finicard-v2 battle opponent:@them draw:4     # try a different draw size
-   /finicard-v2 pending                          # whatever is waiting on you
-   /finicard-v2 practice                         # both sides yourself, see below
-   /finicard-v2 dungeon                          # 15 fc, solo, endless - see Dungeons
+   /finicard pack                             # 25 fc, five cards from every set
+   /finicard pack set:Set 3                   # 40 fc, five cards from one set
+   /finicard grant who:@someone count:10      # admin, free, for testing
+   /finicard collection                       # a list, with a View button per card
+   /finicard collection view:Binder           # six cards to a page, as a picture
+   /finicard sell card:<id>                   # to anyone, a player, or Fini
+   /finicard deck build name:Main             # required before battling
+   /finicard battle opponent:@them            # no card ids anywhere
+   /finicard battle opponent:@them draw:4     # try a different draw size
+   /finicard pending                          # whatever is waiting on you
+   /finicard practice                         # both sides yourself, see below
+   /finicard dungeon                          # 15 fc, solo, endless - see Dungeons
    ```
 
 ---
 
 ## The converted pool
 
-`/finicard-v2 import` maps the live v1 pool into v2 rows. Two corrections in
+`/finicard import` maps the live v1 pool into v2 rows. Two corrections in
 `convertLegacyCards.ts` exist because measuring the real 263-card pool showed the
 naive mapping produced an unplayable pool:
 
@@ -138,13 +139,13 @@ they were actually dealt, and a locked lineup cannot be changed.
 
 ## Practice battles
 
-`/finicard-v2 practice` runs a whole battle with one player on both sides, so a
+`/finicard practice` runs a whole battle with one player on both sides, so a
 scenario can be tried without a second account:
 
 ```
-/finicard-v2 practice                            # your only deck against itself
-/finicard-v2 practice deck:Main against:Hearts   # one of your decks vs another
-/finicard-v2 practice deck:Main draw:8           # see more of the deck per hand
+/finicard practice                            # your only deck against itself
+/finicard practice deck:Main against:Hearts   # one of your decks vs another
+/finicard practice deck:Main draw:8           # see more of the deck per hand
 ```
 
 Both hands are dealt and revealed at once, you pick the first side's lineup and
@@ -164,7 +165,7 @@ To stage an exact matchup, build a small deck per side with `deck build` and
 
 ## Dungeons
 
-`/finicard-v2 dungeon` is a solo run on the battle engine - the doc's §5, with
+`/finicard dungeon` is a solo run on the battle engine - the doc's §5, with
 no second combat system. It has no last room: you see one room at a time, pick
 one of two doors out of it, and go on until you fall or walk out.
 
@@ -265,7 +266,7 @@ picker, deliberately. `v2_dungeon_run.progress` holds the whole `DungeonState`:
 room, doors, geld, cooldowns, buffs, keyword state. It carries a `step` that
 goes up on every accepted click, every button carries the step it was drawn
 for, and a click for any other step is refused. One run per player per server:
-`/finicard-v2 dungeon` during a run re-posts it instead of charging again.
+`/finicard dungeon` during a run re-posts it instead of charging again.
 
 The payout is recorded on the run as it is paid, and a run that already carries
 one is never paid again.
@@ -315,11 +316,11 @@ Decks are also how a player organises a collection, so they may overlap freely -
 the same copy can sit in several, and only one deck is used per battle.
 
 ```
-/finicard-v2 deck build name:Main                   # from your best cards
-/finicard-v2 deck build name:Hearts type:heart      # filter by type,
-/finicard-v2 deck build name:Rares rarity:full_art  # rarity,
-/finicard-v2 deck build name:Shonen tag:shonen      # or tag
-/finicard-v2 deck list | show | add | remove | delete
+/finicard deck build name:Main                   # from your best cards
+/finicard deck build name:Hearts type:heart      # filter by type,
+/finicard deck build name:Rares rarity:full_art  # rarity,
+/finicard deck build name:Shonen tag:shonen      # or tag
+/finicard deck list | show | add | remove | delete
 ```
 
 `build` is the path that matters — it assembles a deck from the collection so a
@@ -343,8 +344,8 @@ button onto them.
 ## Packs
 
 ```
-/finicard-v2 pack                # 25 fc: five cards, drawn from every set
-/finicard-v2 pack set:Set 3      # 40 fc: five cards, all from that set
+/finicard pack                # 25 fc: five cards, drawn from every set
+/finicard pack set:Set 3      # 40 fc: five cards, all from that set
 ```
 
 Rarity odds per card are 70 / 25 / 5 (common / uncommon / full-art), and any
@@ -409,7 +410,7 @@ art and came out without it is shown but not cached.
 
 ## Collection, binder and selling
 
-`/finicard-v2 collection` pages through a player's cards ten at a time, each
+`/finicard collection` pages through a player's cards ten at a time, each
 with a View button; `view:Binder` shows six to a page as one picture
 (`cardArt/binderPage.ts`). A binder page is a still, so the pocket of a
 Legendary is lit gold and tagged "VIEW TO PLAY", and a foil's is edged and
@@ -420,7 +421,7 @@ Selling (`market.ts`):
 - **To Fini.** From any of your own cards opened with View, "Sell to Fini" and
   a confirm. Fini pays 2 / 5 / 10 for a common / uncommon / full-art, 25 for a
   Secret Art and 50 for a Legendary; a foil pays half again, rounded up.
-- **To a player.** `/finicard-v2 sell card:<id> price:<fc>` offers it to
+- **To a player.** `/finicard sell card:<id> price:<fc>` offers it to
   anyone, or to one player with `who:`. This is trading.
 
 A sold card is taken out of every deck it was in. A card in a battle or dungeon
@@ -464,8 +465,12 @@ It reports what it would do unless given `--commit`:
    one Secret Art and one Legendary, in different packs, and never in the bot
    admin's.
 
-Around it: activate the new set, lift the admin-only gate on
-`/finicard-v2 pack`, and retire the v1 card commands.
+This was run on 2026-10-12: 2,782 copies for 15 players and 69 free packs
+across two servers. It is kept for the record and should not be run again -
+it begins by wiping every v2 copy.
+
+`/finicard import` now only reports. The pool is kept in the card manager, and
+writing the v1 conversion over it would undo every card edited since.
 
 ## Dungeon history
 
@@ -623,7 +628,7 @@ the keyword was fixed per card; nothing reads it, and the import blanks it.
 | `freePacks.ts` | Packs a player is owed, and placing each server's guaranteed specials among them. |
 | `legendary.ts` | The Legendary effects, their tiers and odds. |
 | `market.ts` | What Fini pays for a card, and handing a sold card over. |
-| `sellFlow.ts` | `/finicard-v2 sell`. |
+| `sellFlow.ts` | `/finicard sell`. |
 | `setNumbers.ts` | A card's place in its release set. |
 | `assets/` | The pack art and its opening animation, the type emoji and their ids. |
 | `cardArt/legendaryGif.ts` | Legendaries as animated GIFs, and the pull reveal. |
@@ -638,7 +643,7 @@ the keyword was fixed per card; nothing reads it, and the import blanks it.
 | `templates/` | The five card templates. `templates/mockups/` holds the original designs. |
 | `migrations/` | Tracked copies of the Pocketbase migrations. |
 
-Surface files outside the module: `commands/finicard-v2.command.ts`,
+Surface files outside the module: `commands/finicard.command.ts`,
 `buttons/individualButtons/v2Battle{Accept,Decline}.button.ts`,
 `buttons/individualButtons/v2DeckPick.button.ts`,
 `buttons/individualButtons/v2Lineup{Open,Pick}.button.ts`,
@@ -650,7 +655,7 @@ Surface files outside the module: `commands/finicard-v2.command.ts`,
 `tests/finicardsV2/`.
 
 Buttons answered by a collector on their own message - the pack's, and
-`/finicard-v2 sell`'s - are listed in `buttons/buttonHandler.ts` so the router
+`/finicard sell`'s - are listed in `buttons/buttonHandler.ts` so the router
 leaves them alone; without that it answers "unknown button" first and uses up
 the press.
 
@@ -862,7 +867,7 @@ through a container. `ui/notice.ts` exists for exactly those one-line paths.
 
 ### Hand size
 
-Set per battle: `/finicard-v2 battle draw:4`. Range is `MIN_HAND_SIZE`
+Set per battle: `/finicard battle draw:4`. Range is `MIN_HAND_SIZE`
 (= `RULES.rounds`, below which there is nothing to choose) to `MAX_HAND_SIZE` of
 8, and it is **stored on the battle** rather than read from a constant - the two
 hands are dealt at different times and validated later still, so all three have
@@ -893,7 +898,7 @@ rendered as one image with a landscape strip per card stacked vertically. Each
 strip then has the full width for a name, a type spine, an art thumbnail and
 three stat boxes with the card's own type emphasised.
 
-Portrait cards are still the real card: `/finicard-v2 card` and pack pulls use
+Portrait cards are still the real card: `/finicard card` and pack pulls use
 them. The strip exists purely for the read-a-whole-hand-at-a-glance job.
 
 Two things that bit while building it, both worth knowing before editing:
@@ -991,8 +996,8 @@ battle board's glyphs. Their ids are in `assets/type-emoji.json`, written by
 circles stand in. A custom emoji is some thirty characters of text, so a tally
 of more than eight cards is counted (`🟠 12 · 🔵 9`) rather than drawn out.
 
-**Where images appear:** `/finicard-v2 card` (with the text face as fallback),
-`/finicard-v2 pack` (one card at a time, then all five), the collection's
+**Where images appear:** `/finicard card` (with the text face as fallback),
+`/finicard pack` (one card at a time, then all five), the collection's
 binder, the battle **reveal** (both hands) and the match **result**
 (`cardArt/battleBoard.ts`, with the text result as its fallback).
 

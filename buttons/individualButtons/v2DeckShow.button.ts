@@ -5,7 +5,7 @@ import { getDeck } from "../../modules/finicardsV2/decks";
 export const namespace = "v2_deck_show";
 
 /**
- * Opens a deck from the deck list: the same pages `/finicard-v2 deck show`
+ * Opens a deck from the deck list: the same pages `/finicard deck show`
  * gives, put in place of the list.
  */
 export async function execute(interaction: ButtonInteraction, args: string[]) {
@@ -35,7 +35,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     const pages = await buildDeckPages(deck, { viewerId: interaction.user.id, binder: false });
     if (!pages) {
       await interaction.followUp({
-        content: `**${deck.name}** has no cards left in your collection. Add some with \`/finicard-v2 deck add\`.`,
+        content: `**${deck.name}** has no cards left in your collection. Add some with \`/finicard deck add\`.`,
         flags: [MessageFlags.Ephemeral],
       });
       return;

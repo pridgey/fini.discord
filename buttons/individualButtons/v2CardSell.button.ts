@@ -22,7 +22,7 @@ export const namespace = "v2_card_sell";
  * Two presses, because it cannot be undone: the first ("ask") swaps the card's
  * buttons for a confirmation, the second ("confirm") sells it and puts the
  * collection page back. Selling to another player is not offered here - that
- * needs a price and a buyer, and is `/finicard-v2 sell`.
+ * needs a price and a buyer, and is `/finicard sell`.
  */
 export async function execute(interaction: ButtonInteraction, args: string[]) {
   try {
@@ -89,7 +89,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
     if (!page) {
       await interaction.editReply({ components: [], files: [], attachments: [] }).catch(() => undefined);
-      await interaction.followUp({ content: `${sold} Run \`/finicard-v2 collection\` to see what's left.`, flags: [MessageFlags.Ephemeral] });
+      await interaction.followUp({ content: `${sold} Run \`/finicard collection\` to see what's left.`, flags: [MessageFlags.Ephemeral] });
       return;
     }
 

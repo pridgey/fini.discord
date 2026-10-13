@@ -90,13 +90,13 @@ import { pb } from "../utilities/pocketbase";
 import { splitBigString } from "../utilities/splitBigString";
 
 /**
- * The v2 test surface.
+ * Finicards: the card game.
  *
- * Deliberately one command with subcommands rather than a spread of top-level
- * commands: v1's `/booster-pack`, `/card-collection`, `/sell-card` and
- * `/fuse-cards` keep working untouched, and everything v2 lives behind
- * `/finicard-v2 ...` so there is no ambiguity about which game you are playing.
- * When v2 takes over, these move up to top-level names and v1's retire.
+ * One command with subcommands rather than a spread of top-level commands, so
+ * the whole game is found in one place. It was named with a `-v2` suffix while
+ * it was tested alongside the first game; v1's `/booster-pack`, `/card-collection`,
+ * `/sell-card` and `/fuse-cards` were retired when it launched
+ * (`commands/archived`).
  */
 
 const MAX_PENDING_SHOWN = 5;
@@ -129,12 +129,12 @@ const withViewOption = (option: SlashCommandStringOption) =>
     .setRequired(false);
 
 export const data = new SlashCommandBuilder()
-  .setName("finicard-v2")
-  .setDescription("Finicards v2 (in testing) - battles, packs and collection")
+  .setName("finicard")
+  .setDescription("Finicards - packs, your collection, decks, battles and dungeons")
   .addSubcommand((sub) =>
     sub
       .setName("pack")
-      .setDescription(`Open a v2 booster pack (${PACK_COST} fc, or ${SET_PACK_COST} fc for one set) - bot admin only while testing`)
+      .setDescription(`Open a booster pack: five cards for ${PACK_COST} fc, or ${SET_PACK_COST} fc from one set. Free packs open first.`)
       .addIntegerOption((opt) =>
         opt
           .setName("set")
@@ -144,7 +144,7 @@ export const data = new SlashCommandBuilder()
       .addStringOption((opt) =>
         opt
           .setName("test")
-          .setDescription("Testing only: force a special pull into this pack, free of charge")
+          .setDescription("[Bot admin] Testing: force a special pull into this pack, free of charge")
           .addChoices(
             { name: "Secret Art", value: "secret_art" },
             { name: "Legendary tier 1", value: "legendary_1" },
@@ -157,7 +157,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("collection")
-      .setDescription("Your v2 cards - as a list with their ids, or as binder pages")
+      .setDescription("Your cards - as a list with their ids, or as binder pages")
       .addUserOption((option) =>
         option
           .setName("who")
@@ -169,11 +169,11 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("card")
-      .setDescription("Show one of your v2 cards in detail")
+      .setDescription("Show one of your cards in detail")
       .addStringOption((option) =>
         option
           .setName("id")
-          .setDescription("The card id from /finicard-v2 collection")
+          .setDescription("The card id from /finicard collection")
           .setRequired(true),
       ),
   )
@@ -261,7 +261,7 @@ export const data = new SlashCommandBuilder()
       .setDescription("Battles waiting on your lineup"),
   )
   .addSubcommand((sub) =>
-    sub.setName("record").setDescription("Your v2 battle record"),
+    sub.setName("record").setDescription("Your battle record"),
   )
   .addSubcommandGroup((group) =>
     group
@@ -342,7 +342,7 @@ export const data = new SlashCommandBuilder()
           .addStringOption((option) =>
             option
               .setName("card")
-              .setDescription("Card id from /finicard-v2 collection")
+              .setDescription("Card id from /finicard collection")
               .setRequired(true),
           ),
       )
@@ -378,11 +378,11 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("sell")
-      .setDescription("Sell or trade one of your v2 cards - to anyone, to a player, or to Fini")
+      .setDescription("Sell or trade one of your cards - to anyone, to a player, or to Fini")
       .addStringOption((option) =>
         option
           .setName("card")
-          .setDescription("The card's id, from /finicard-v2 collection")
+          .setDescription("The card's id, from /finicard collection")
           .setRequired(true),
       )
       .addIntegerOption((option) =>
@@ -407,18 +407,18 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("import")
-      .setDescription("[Admin] Convert the v1 card pool into v2 rows")
+      .setDescription("[Admin] Compare the card pool against the first game's (reports only)")
       .addBooleanOption((option) =>
         option
           .setName("commit")
-          .setDescription("Actually write the rows (default: dry run)")
+          .setDescription("Disabled since launch: the pool is kept in the card manager")
           .setRequired(false),
       ),
   )
   .addSubcommand((sub) =>
     sub
       .setName("grant")
-      .setDescription("[Admin] Hand out free v2 cards for testing")
+      .setDescription("[Admin] Hand out free cards")
       .addUserOption((option) =>
         option
           .setName("who")
@@ -466,16 +466,13 @@ export const execute = async (
     switch (interaction.options.getSubcommand()) {
       /* ---------------------------------------------------------- pack ---- */
       case "pack": {
-        // Closed to everyone else until v2 launches.
-        if (!isAdmin(interaction.user.id)) {
-          await interaction.editReply(
-            "v2 packs aren't open yet - only the bot admin can open them while they're being tested.",
-          );
+        // A forced pull is a test, not a purchase: it costs nothing - which is
+        // why only the bot admin may ask for one.
+        const test = interaction.options.getString("test");
+        if (test && !isAdmin(interaction.user.id)) {
+          await interaction.editReply("The `test` option is for the bot admin. Leave it off to open a pack.");
           return;
         }
-
-        // A forced pull is a test, not a purchase: it costs nothing.
-        const test = interaction.options.getString("test");
 
         const set = interaction.options.getInteger("set");
 
@@ -498,7 +495,7 @@ export const execute = async (
 
         if (balance < cost) {
           await interaction.editReply(
-            `${set ? `A Set ${set} pack` : "A v2 pack"} costs ${price} fc and you have ${balance}.`,
+            `${set ? `A Set ${set} pack` : "A pack"} costs ${price} fc and you have ${balance}.`,
           );
           return;
         }
@@ -524,7 +521,7 @@ export const execute = async (
         }
         if (definitions.length === 0) {
           await interaction.editReply(
-            "The v2 card pool is empty. An admin needs to run `/finicard-v2 import commit:True` first.",
+            "The card pool is empty, so there is nothing to pull.",
           );
           return;
         }
@@ -619,7 +616,7 @@ export const execute = async (
 
         if (collection.length === 0) {
           await interaction.editReply(
-            `${target.id === interaction.user.id ? "You have" : `${target.displayName} has`} no v2 cards yet. Try \`/finicard-v2 pack\`.`,
+            `${target.id === interaction.user.id ? "You have" : `${target.displayName} has`} no cards yet. Try \`/finicard pack\`.`,
           );
           return;
         }
@@ -693,7 +690,7 @@ export const execute = async (
 
         if (decks.length === 0) {
           await interaction.editReply(
-            `You have no decks. Build one with \`/finicard-v2 deck build name:Main\` - a battle deals ${HAND_SIZE} cards from it.`,
+            `You have no decks. Build one with \`/finicard deck build name:Main\` - a battle deals ${HAND_SIZE} cards from it.`,
           );
           return;
         }
@@ -797,7 +794,7 @@ export const execute = async (
 
         if (decks.length === 0) {
           await interaction.editReply(
-            `You have no decks. Build one with \`/finicard-v2 deck build name:Main\` - a battle deals ${HAND_SIZE} cards from it.`,
+            `You have no decks. Build one with \`/finicard deck build name:Main\` - a battle deals ${HAND_SIZE} cards from it.`,
           );
           return;
         }
@@ -889,7 +886,7 @@ export const execute = async (
 
         if (decks.length === 0) {
           await interaction.editReply(
-            `You have no decks. Build one with \`/finicard-v2 deck build name:Main\` - a dungeon run deals ${DUNGEON.handSize} cards from it.`,
+            `You have no decks. Build one with \`/finicard deck build name:Main\` - a dungeon run deals ${DUNGEON.handSize} cards from it.`,
           );
           return;
         }
@@ -1078,7 +1075,16 @@ export const execute = async (
           return;
         }
 
-        const commit = interaction.options.getBoolean("commit") ?? false;
+        // The pool has been edited by hand since it was first converted -
+        // stats, names, series, artwork. Writing the conversion over it again
+        // would undo all of that, so since launch this only reports.
+        if (interaction.options.getBoolean("commit")) {
+          await interaction.editReply(
+            "Importing is switched off: the card pool is now kept in the card manager, and importing would overwrite every card that came from the first game. Run it without `commit` to see what it would have done.",
+          );
+          return;
+        }
+        const commit = false;
 
         const legacyCards = await pb
           .collection<CardDefinitionRecord>("card_definition")
@@ -1133,7 +1139,7 @@ export const execute = async (
         });
 
         await interaction.editReply(
-          `Granted ${pulls.length} v2 card(s) to ${target.displayName}.${
+          `Granted ${pulls.length} card(s) to ${target.displayName}.${
             shortfall > 0 ? ` (${shortfall} couldn't be granted - pool is dry.)` : ""
           }`,
         );
@@ -1145,7 +1151,7 @@ export const execute = async (
       }
     }
   } catch (error) {
-    console.error("Error during /finicard-v2", error);
+    console.error("Error during /finicard", error);
     const message = "Something went wrong running that v2 command.";
     if (interaction.deferred || interaction.replied) {
       await interaction.editReply(message);
@@ -1211,7 +1217,7 @@ const handleDeckSubcommand = async (
 
       if (decks.length === 0) {
         await interaction.editReply(
-          `You have no decks. Build one with \`/finicard-v2 deck build name:Main\` — a battle deals ${HAND_SIZE} cards from it.`,
+          `You have no decks. Build one with \`/finicard deck build name:Main\` — a battle deals ${HAND_SIZE} cards from it.`,
         );
         return;
       }
@@ -1243,7 +1249,7 @@ const handleDeckSubcommand = async (
       }
 
       container.addTextDisplayComponents((text) =>
-        text.setContent("-# Bring one with `/finicard-v2 battle deck:<name>`."),
+        text.setContent("-# Bring one with `/finicard battle deck:<name>`."),
       );
 
       await interaction.editReply({
@@ -1306,7 +1312,7 @@ const handleDeckSubcommand = async (
       });
       await interaction.editReply(
         pages ??
-          `**${deck.name}** has no cards left in your collection. Add some with \`/finicard-v2 deck add\`.`,
+          `**${deck.name}** has no cards left in your collection. Add some with \`/finicard deck add\`.`,
       );
       return;
     }

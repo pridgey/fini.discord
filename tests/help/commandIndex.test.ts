@@ -47,7 +47,7 @@ describe("getCommandIndex", () => {
   });
 
   it("flattens subcommand groups into typeable names", async () => {
-    const finicard = await findCommand("finicard-v2");
+    const finicard = await findCommand("finicard");
     const names = finicard?.subcommands.map((s) => s.name) ?? [];
 
     // Flat subcommand and a grouped one, both as the user would type them.
@@ -57,7 +57,7 @@ describe("getCommandIndex", () => {
   });
 
   it("captures options on a subcommand", async () => {
-    const finicard = await findCommand("finicard-v2");
+    const finicard = await findCommand("finicard");
     const build = finicard?.subcommands.find((s) => s.name === "deck build");
 
     expect(build?.options.map((o) => o.name)).toContain("name");
@@ -72,15 +72,16 @@ describe("getCommandIndex", () => {
     expect(give?.options.length).toBeGreaterThan(0);
   });
 
-  it("drops the collection page option from /finicard-v2", async () => {
+  it("drops the collection page option from /finicard", async () => {
     // Pagination buttons replaced it; a stale `page:` would be registered with
     // Discord and silently ignored.
-    const finicard = await findCommand("finicard-v2");
+    const finicard = await findCommand("finicard");
     const collection = finicard?.subcommands.find(
       (s) => s.name === "collection",
     );
 
-    expect(collection?.options.map((o) => o.name)).toEqual(["who"]);
+    // `view` picks the list or the binder; there is still no `page`.
+    expect(collection?.options.map((o) => o.name)).toEqual(["who", "view"]);
   });
 
   it("accepts a leading slash when looking a command up", async () => {

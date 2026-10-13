@@ -61,7 +61,7 @@ describe("helpCategoriesQuery", () => {
 
     const text = render(components!);
     expect(text).toContain("Finicards");
-    expect(text).toContain("/booster-pack");
+    expect(text).toContain("/finicard");
     expect(text).toContain("/help command:");
   });
 

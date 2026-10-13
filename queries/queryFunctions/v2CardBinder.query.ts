@@ -26,7 +26,7 @@ const buildV2CardBinderResult = async ({
 
   const container = new ContainerBuilder().setAccentColor(NEUTRAL_ACCENT);
   container.addTextDisplayComponents((text) =>
-    text.setContent(`## 📖 ${queryString || "v2 collection"}`),
+    text.setContent(`## 📖 ${queryString || "Collection"}`),
   );
 
   const files: AttachmentBuilder[] = [];

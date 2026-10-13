@@ -17,9 +17,9 @@ import { getHelpCategories, type HelpCommand } from "./commandIndex";
 /**
  * How many subcommands to name before summarising the rest.
  *
- * `/finicard-v2` alone has fourteen. Listing every one crowds out the other
+ * `/finicard` alone has fourteen. Listing every one crowds out the other
  * forty-odd commands, and naming a few is enough for the model to answer "yes,
- * there's a card game, try `/finicard-v2 pack`".
+ * there's a card game, try `/finicard pack`".
  */
 const MAX_SUBCOMMANDS_SHOWN = 6;
 

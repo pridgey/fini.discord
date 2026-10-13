@@ -7,7 +7,7 @@ import type { BattleCard, Side } from "./types";
  *
  * A practice battle is an ordinary battle row whose challenger and defender are
  * the same user - a real challenge can never look like that, because
- * `/finicard-v2 battle` refuses to challenge yourself. That makes it a marker
+ * `/finicard battle` refuses to challenge yourself. That makes it a marker
  * that needs no schema change, and it means practice runs through the same
  * dealing, picking, resolution and rendering as a real match, which is the whole
  * point of having it.

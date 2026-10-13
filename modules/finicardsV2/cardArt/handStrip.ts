@@ -24,7 +24,7 @@ import { escapeXml, estimateWidth, truncateToWidth } from "./svgText";
  * vertically. Every strip then gets the full message width, which is enough room
  * to read a name, a type and three stats without clicking anything.
  *
- * Portrait cards are still the real card - `/finicard-v2 card` and pack pulls use
+ * Portrait cards are still the real card - `/finicard card` and pack pulls use
  * them. This layout exists purely for the "read a whole hand at a glance" job.
  */
 

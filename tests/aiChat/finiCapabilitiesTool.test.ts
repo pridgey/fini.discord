@@ -71,7 +71,7 @@ describe("executeToolCall for fini_capabilities", () => {
       },
     });
 
-    expect(result).toContain("/booster-pack");
+    expect(result).toContain("/finicard");
     expect(result).not.toContain("/weather");
   });
 

@@ -34,7 +34,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     if (!context) {
       await interaction.followUp({
         content:
-          "❌ This collection session has expired. Run `/finicard-v2 collection` again.",
+          "❌ This collection session has expired. Run `/finicard collection` again.",
         flags: [MessageFlags.Ephemeral],
       });
       return;
@@ -48,7 +48,7 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     if (!page) {
       await interaction.followUp({
         content:
-          "❌ This collection session has expired. Run `/finicard-v2 collection` again.",
+          "❌ This collection session has expired. Run `/finicard collection` again.",
         flags: [MessageFlags.Ephemeral],
       });
       return;

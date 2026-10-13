@@ -67,10 +67,10 @@ describe("/help autocomplete", () => {
     const { interaction, respond } = autocompleteWith("finicard");
     await autocomplete(interaction);
 
-    const match = choices(respond).find((c) => c.value === "finicard-v2");
+    const match = choices(respond).find((c) => c.value === "finicard");
 
     expect(match).toBeDefined();
-    expect(match?.name).toContain("/finicard-v2");
+    expect(match?.name).toContain("/finicard");
   });
 
   it("keeps every choice name inside Discord's 100-character limit", async () => {

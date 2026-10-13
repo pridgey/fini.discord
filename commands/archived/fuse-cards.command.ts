@@ -8,8 +8,8 @@ import {
 import {
   CardDefinitionRecord,
   UserCardRecord,
-} from "../types/PocketbaseTables";
-import { pb } from "../utilities/pocketbase";
+} from "../../types/PocketbaseTables";
+import { pb } from "../../utilities/pocketbase";
 
 export const data = new SlashCommandBuilder()
   .setName("fuse-cards")

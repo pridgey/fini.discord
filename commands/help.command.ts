@@ -162,7 +162,7 @@ export const execute = async (
 /**
  * Suggests command names, matched on the name or its description.
  *
- * Matching the description too means typing "card" surfaces `/booster-pack`,
+ * Matching the description too means typing "card" surfaces `/finicard`,
  * which is the case where someone needs help most - they know what they want,
  * not what it's called.
  */
