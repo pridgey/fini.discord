@@ -20,34 +20,38 @@ export const remote = new PocketBase(url);
 // Rows are sent side by side; the client would cancel all but the last.
 remote.autoCancellation(false);
 
-/** Shortest time between two writes to the mailbox, in milliseconds. */
-const WRITE_GAP_MS = 80;
-/** Waits after being told to slow down, in milliseconds. Then it gives up. */
-const BACK_OFF_MS = [2_000, 5_000, 10_000, 20_000, 40_000];
+/** The gap between two writes to the mailbox, in milliseconds: found, not fixed. */
+const GAP = { least: 50, most: 10_000, start: 150 };
+/** Times a write turned away is tried again before it counts as failed. */
+const TRIES = 8;
 
+let gap = GAP.start;
 let nextWrite = 0;
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Sends one write to the mailbox, no faster than it will take them.
  *
- * A hosted Pocketbase sits behind a limiter that answers 429 to a burst - a
- * first send is thousands of rows - so writes are spaced out, and one that is
- * turned away waits and tries again rather than counting as failed.
+ * A hosted Pocketbase sits behind a limiter that answers 429 to too many
+ * requests, and does not say what "too many" is. So the pace is found as it
+ * goes: each write turned away doubles the gap between writes and is tried
+ * again; each one let through narrows the gap a little.
  */
 export const paced = async <T>(write: () => Promise<T>): Promise<T> => {
-  for (let attempt = 0; ; attempt++) {
+  for (let attempt = 1; ; attempt++) {
     const now = Date.now();
     const turn = Math.max(now, nextWrite);
-    nextWrite = turn + WRITE_GAP_MS;
+    nextWrite = turn + gap;
     if (turn > now) await pause(turn - now);
     try {
-      return await write();
+      const result = await write();
+      gap = Math.max(GAP.least, gap * 0.97);
+      return result;
     } catch (error) {
-      const wait = BACK_OFF_MS[attempt];
-      if ((error as { status?: number })?.status !== 429 || wait === undefined) throw error;
+      if ((error as { status?: number })?.status !== 429 || attempt >= TRIES) throw error;
+      gap = Math.min(GAP.most, gap * 2);
       // Everyone waits, not just this write.
-      nextWrite = Math.max(nextWrite, Date.now() + wait);
+      nextWrite = Math.max(nextWrite, Date.now() + gap);
     }
   }
 };

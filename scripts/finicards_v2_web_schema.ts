@@ -119,6 +119,15 @@ const applied = new Set(
 );
 
 console.log(`Mailbox: ${remoteUrl()}`);
+
+// Fini sends its changes many to a request; a hosted mailbox counts requests.
+const settings = await remote.settings.getAll();
+if (!settings.batch?.enabled || settings.batch.maxRequests < 50) {
+  await remote.settings.update({
+    batch: { enabled: true, maxRequests: 100, timeout: 60, maxBodySize: 0 },
+  });
+  console.log("  switched on      batch requests");
+}
 for (const migration of migrations) {
   if (applied.has(migration.file)) {
     console.log(`  already applied  ${migration.file}`);

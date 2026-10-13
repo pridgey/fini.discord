@@ -40,8 +40,8 @@ import {
 
 /** Longest side of the artwork sent for a card, in pixels. */
 const ART_SIZE = 800;
-/** Rows sent side by side. */
-const PARALLEL = 6;
+/** Pictures made side by side. */
+const PARALLEL = 4;
 /**
  * Card faces rendered in one pass, and how many at a time. Rendering is the
  * same work as showing a card in Discord, so a first send of thousands is
@@ -162,54 +162,92 @@ const webArt = async (definition: V2CardDefinitionRecord): Promise<Buffer | null
     .toBuffer();
 };
 
-/** Sends a card's artwork if the mailbox's copy was made from something else. */
-const sendArt = async (definition: V2CardDefinitionRecord): Promise<boolean> => {
-  const id = definition.id ?? "";
-  const key = artKeyOf(definition);
-  if (heldArt.get(id) === key) return false;
+/** One change to the mailbox, and what to note once it has been made. */
+type Write = {
+  collection: WebCollection;
+  kind: "create" | "update" | "delete";
+  id: string;
+  body?: Record<string, unknown>;
+  /** Rough size, for keeping a batch small enough to send. */
+  bytes?: number;
+  done: () => void;
+};
 
-  const art = key ? await webArt(definition).catch(() => null) : null;
-  if (key && !art) {
-    // Could not be had just now. Say nothing, and try again after a restart.
-    heldArt.set(id, key);
-    return false;
-  }
-  await paced(() =>
-    remote.collection("web_definition").update(id, {
-      art_key: key,
-      art: art ? new File([art], `${id}.webp`, { type: "image/webp" }) : null,
-    }),
-  );
-  heldArt.set(id, key);
-  return true;
+/** Changes sent in one request, and the most they may weigh together. */
+const BATCH_SIZE = 50;
+const BATCH_BYTES = 6 * 1024 * 1024;
+
+/** Whether the mailbox takes batches. Null until the first one is tried. */
+let batches: boolean | null = null;
+
+const sendOne = (write: Write): Promise<unknown> => {
+  const records = remote.collection(write.collection);
+  if (write.kind === "create") return records.create({ id: write.id, ...write.body });
+  if (write.kind === "update") return records.update(write.id, write.body ?? {});
+  return records.delete(write.id);
 };
 
 /**
- * Renders a copy's card face - the picture Discord shows - and sends it.
- * A Legendary is sent with its animation too, for the site to play.
+ * Makes the changes, many to a request where the mailbox allows it - a first
+ * send is thousands of rows, and a hosted mailbox counts requests. A batch is
+ * all or nothing, so one that is refused is sent again a row at a time, and
+ * only the rows that are themselves refused count as failed.
  */
-const sendFace = async (
-  card: V2UserCardRecord,
-  definition: V2CardDefinitionRecord,
-  key: string,
-): Promise<boolean> => {
-  const id = card.id ?? "";
-  const battleCard = toBattleCard({ ...card, definition });
-  const png = await renderCardImage(battleCard);
-  // Could not be drawn just now. Say nothing, and try again after a restart.
-  heldFace.set(id, key);
-  if (!png) return false;
+const sendWrites = async (writes: Write[]): Promise<number> => {
+  let failed = 0;
+  const groups: Write[][] = [];
+  let weight = 0;
+  for (const write of writes) {
+    const last = groups[groups.length - 1];
+    if (!last || last.length >= BATCH_SIZE || weight + (write.bytes ?? 0) > BATCH_BYTES) {
+      groups.push([write]);
+      weight = write.bytes ?? 0;
+    } else {
+      last.push(write);
+      weight += write.bytes ?? 0;
+    }
+  }
 
-  const face = await sharp(png).webp({ quality: 80 }).toBuffer();
-  const animation = card.legendary ? await legendaryGif(battleCard) : null;
-  await paced(() =>
-    remote.collection("web_card").update(id, {
-      face_key: key,
-      face: new File([face], `${id}.webp`, { type: "image/webp" }),
-      animation: animation ? new File([animation], `${id}.gif`, { type: "image/gif" }) : null,
-    }),
-  );
-  return true;
+  for (const group of groups) {
+    if (batches !== false && group.length > 1) {
+      try {
+        await paced(() => {
+          const batch = remote.createBatch();
+          for (const write of group) {
+            const records = batch.collection(write.collection);
+            if (write.kind === "create") records.create({ id: write.id, ...write.body });
+            else if (write.kind === "update") records.update(write.id, write.body ?? {});
+            else records.delete(write.id);
+          }
+          return batch.send();
+        });
+        batches = true;
+        group.forEach((write) => write.done());
+        continue;
+      } catch (error) {
+        // Never worked: the mailbox has batches switched off. Stop asking.
+        if (batches === null) batches = false;
+      }
+    }
+    for (const write of group) {
+      try {
+        await paced(() => sendOne(write));
+        write.done();
+      } catch (error) {
+        const { status, message } = error as { status?: number; message?: string };
+        // Already gone - removed along with the card it pointed at.
+        if (write.kind === "delete" && status === 404) {
+          write.done();
+          continue;
+        }
+        failed += 1;
+        if (failed <= 3) {
+          console.error(`Web sync: a row was not sent: ${status ?? ""} ${message ?? error}`.trim());
+        }
+      }
+    }
+  }
+  return failed;
 };
 
 export type SyncSummary = {
@@ -253,32 +291,77 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
     ]),
   ) as Record<WebCollection, ReturnType<typeof planSync>>;
 
-  const remember = (collection: WebCollection, row: WebRow) =>
-    mailbox[collection].set(row.id, fingerprint(collection, row));
-
+  const writes: Write[] = [];
   for (const collection of WRITE_ORDER) {
-    const plan = plans[collection];
-    summary.failed += await inParallel(plan.create, async (row) => {
-      await paced(() =>
-        remote.collection(collection).create({ id: row.id, ...payloadOf(collection, row) }),
-      );
-      remember(collection, row);
-      summary.created += 1;
-    });
-    summary.failed += await inParallel(plan.update, async (row) => {
-      await paced(() => remote.collection(collection).update(row.id, payloadOf(collection, row)));
-      remember(collection, row);
-      summary.updated += 1;
-    });
+    const remember = (row: WebRow) => mailbox[collection].set(row.id, fingerprint(collection, row));
+    for (const row of plans[collection].create) {
+      writes.push({
+        collection,
+        kind: "create",
+        id: row.id,
+        body: payloadOf(collection, row),
+        done: () => {
+          remember(row);
+          summary.created += 1;
+        },
+      });
+    }
+    for (const row of plans[collection].update) {
+      writes.push({
+        collection,
+        kind: "update",
+        id: row.id,
+        body: payloadOf(collection, row),
+        done: () => {
+          remember(row);
+          summary.updated += 1;
+        },
+      });
+    }
   }
+  summary.failed += await sendWrites(writes);
 
-  const wanted = local.definitions.filter((definition) =>
-    mailbox.web_definition.has(definition.id ?? ""),
+  /* Artwork: made here a few at a time, then sent together. */
+  const artless = local.definitions.filter(
+    (definition) =>
+      mailbox.web_definition.has(definition.id ?? "") &&
+      heldArt.get(definition.id ?? "") !== artKeyOf(definition),
   );
-  summary.failed += await inParallel(wanted, async (definition) => {
-    if (await sendArt(definition)) summary.art += 1;
-  });
+  const artWrites: Write[] = [];
+  await inParallel(
+    artless,
+    async (definition) => {
+      const id = definition.id ?? "";
+      const key = artKeyOf(definition);
+      const art = key ? await webArt(definition).catch(() => null) : null;
+      if (key && !art) {
+        // Could not be had just now. Say nothing, and try again after a restart.
+        heldArt.set(id, key);
+        return;
+      }
+      artWrites.push({
+        collection: "web_definition",
+        kind: "update",
+        id,
+        body: {
+          art_key: key,
+          art: art ? new File([art], `${id}.webp`, { type: "image/webp" }) : null,
+        },
+        bytes: art?.length ?? 0,
+        done: () => {
+          heldArt.set(id, key);
+          summary.art += 1;
+        },
+      });
+    },
+    FACES_PARALLEL,
+  );
+  summary.failed += await sendWrites(artWrites);
 
+  /*
+   * Card faces: the picture Discord shows, rendered here and sent up. A
+   * Legendary goes with its animation too, for the site to play.
+   */
   const definitions = new Map(local.definitions.map((definition) => [definition.id ?? "", definition]));
   const faceless = local.cards.flatMap((card) => {
     const definition = definitions.get(card.card);
@@ -287,29 +370,58 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
     return heldFace.get(card.id ?? "") === key ? [] : [{ card, definition, key }];
   });
   summary.facesLeft = Math.max(faceless.length - FACES_PER_PASS, 0);
-  summary.failed += await inParallel(
+  const faceWrites: Write[] = [];
+  await inParallel(
     faceless.slice(0, FACES_PER_PASS),
     async ({ card, definition, key }) => {
-      if (await sendFace(card, definition, key)) summary.faces += 1;
+      const id = card.id ?? "";
+      const battleCard = toBattleCard({ ...card, definition });
+      const png = await renderCardImage(battleCard);
+      if (!png) {
+        // Could not be drawn just now. Say nothing, and try again after a restart.
+        heldFace.set(id, key);
+        return;
+      }
+      const face = await sharp(png).webp({ quality: 80 }).toBuffer();
+      const animation = card.legendary ? await legendaryGif(battleCard) : null;
+      faceWrites.push({
+        collection: "web_card",
+        kind: "update",
+        id,
+        body: {
+          face_key: key,
+          face: new File([face], `${id}.webp`, { type: "image/webp" }),
+          animation: animation ? new File([animation], `${id}.gif`, { type: "image/gif" }) : null,
+        },
+        bytes: face.length + (animation?.length ?? 0),
+        done: () => {
+          heldFace.set(id, key);
+          summary.faces += 1;
+        },
+      });
     },
     FACES_PARALLEL,
   );
+  summary.failed += await sendWrites(faceWrites);
 
   // Copies before the cards they are copies of.
+  const removals: Write[] = [];
   for (const collection of [...WRITE_ORDER].reverse()) {
-    summary.failed += await inParallel(plans[collection].remove, async (id) => {
-      try {
-        await paced(() => remote.collection(collection).delete(id));
-      } catch (error) {
-        // Already gone - removed along with the card it pointed at.
-        if ((error as { status?: number })?.status !== 404) throw error;
-      }
-      mailbox[collection].delete(id);
-      if (collection === "web_definition") heldArt.delete(id);
-      if (collection === "web_card") heldFace.delete(id);
-      summary.removed += 1;
-    });
+    for (const id of plans[collection].remove) {
+      removals.push({
+        collection,
+        kind: "delete",
+        id,
+        done: () => {
+          mailbox[collection].delete(id);
+          if (collection === "web_definition") heldArt.delete(id);
+          if (collection === "web_card") heldFace.delete(id);
+          summary.removed += 1;
+        },
+      });
+    }
   }
+  summary.failed += await sendWrites(removals);
 
   return summary;
 };
