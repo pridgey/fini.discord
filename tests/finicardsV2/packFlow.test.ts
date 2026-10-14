@@ -1,7 +1,11 @@
 import { describe, expect, it } from "bun:test";
 import { packShowOrder } from "../../modules/finicardsV2/packFlow";
 import type { BattleCard } from "../../modules/finicardsV2/types";
-import { PACK_BUTTON, buildPackCardMessage } from "../../modules/finicardsV2/ui/cardMessage";
+import {
+  PACK_BUTTON,
+  buildPackCardMessage,
+  buildPackMessage,
+} from "../../modules/finicardsV2/ui/cardMessage";
 
 const card = (overrides: Partial<BattleCard> = {}): BattleCard => ({
   instanceId: "inst1",
@@ -18,7 +22,7 @@ const card = (overrides: Partial<BattleCard> = {}): BattleCard => ({
   ...overrides,
 });
 
-const buttonsOf = (message: ReturnType<typeof buildPackCardMessage>): string[] =>
+const buttonsOf = (message: Pick<ReturnType<typeof buildPackCardMessage>, "components">): string[] =>
   JSON.stringify(message.components.map((component) => component.toJSON()))
     .match(/v2pack-[a-z]+/g) ?? [];
 
@@ -45,6 +49,16 @@ describe("finicardsV2 pack flow", () => {
 
     const last = buildPackCardMessage({ card: card(), media, index: 4, total: 5 });
     expect(buttonsOf(last)).toEqual([PACK_BUTTON.all]);
+  });
+
+  it("offers another pack under the whole pack only when there is one to offer", async () => {
+    const pack = { cards: [], cost: 50, shortfall: 0, reimbursement: 0 };
+
+    expect(buttonsOf(await buildPackMessage(pack))).toEqual([]);
+
+    const again = await buildPackMessage({ ...pack, again: "Buy another pack · 50 fc" });
+    expect(buttonsOf(again)).toEqual([PACK_BUTTON.again]);
+    expect(JSON.stringify(again.components[0].toJSON())).toContain("Buy another pack · 50 fc");
   });
 });
 

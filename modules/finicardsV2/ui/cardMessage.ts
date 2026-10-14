@@ -95,6 +95,8 @@ export type PackMessageInput = {
   reveal?: boolean;
   /** Said in place of the price, for a pack that was not paid for. */
   note?: string;
+  /** The label of a button that gets another pack like this one. Absent, there is none. */
+  again?: string;
 };
 
 /** A pack pull: one block, one gallery, one line per card with its id. */
@@ -149,6 +151,18 @@ export const buildPackMessage = async (
       ),
     );
 
+  const again = input.again;
+  if (again) {
+    container.addActionRowComponents(() =>
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId(PACK_BUTTON.again)
+          .setLabel(again)
+          .setStyle(ButtonStyle.Success),
+      ),
+    );
+  }
+
   return {
     components: [container],
     files: images.map(
@@ -163,6 +177,7 @@ export const PACK_BUTTON = {
   open: "v2pack-open",
   next: "v2pack-next",
   all: "v2pack-all",
+  again: "v2pack-again",
 } as const;
 
 /** What a pull is, where it is anything more than its rarity. */

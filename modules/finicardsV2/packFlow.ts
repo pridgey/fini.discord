@@ -2,6 +2,7 @@ import {
   AttachmentBuilder,
   ComponentType,
   type Attachment,
+  type ButtonInteraction,
   type ChatInputCommandInteraction,
   type Message,
 } from "discord.js";
@@ -26,7 +27,7 @@ import {
  * cards one at a time.
  *
  *   sealed pack -> "Open pack" -> the pack tears open -> card 1 -> ... -> the
- *   whole pack, laid out together
+ *   whole pack, laid out together -> "Buy another pack" -> a new sealed pack
  *
  * One at a time is what gives a Legendary or a Secret Art its moment: its
  * reveal plays when its turn comes, alone on the message, instead of in a row
@@ -72,9 +73,21 @@ type Surface = {
   editReply: (payload: object) => Promise<Message>;
 };
 
+/** The way on to another pack of the same kind, offered under the whole pack. */
+export type PackAgain = {
+  label: string;
+  /**
+   * Buys the next pack and presents it on `press`, whose reply is already
+   * deferred - so the new pack is a message of its own, and this one stays as
+   * the record of what it held.
+   */
+  buy: (press: ButtonInteraction) => Promise<void>;
+};
+
 export const presentPack = async (
-  interaction: ChatInputCommandInteraction,
-  input: Omit<PackMessageInput, "reveal">,
+  interaction: ChatInputCommandInteraction | ButtonInteraction,
+  input: Omit<PackMessageInput, "reveal" | "again">,
+  again?: PackAgain,
 ): Promise<void> => {
   const cards = packShowOrder(input.cards);
   const pack = { ...input, cards };
@@ -163,12 +176,16 @@ export const presentPack = async (
   let shown = -1;
   let busy = false;
   let finished = false;
+  /** The whole pack is up with its "another pack" button still on it. */
+  let offering = false;
 
   const showAll = async (surface: Surface) => {
     finished = true;
     screen += 1;
-    await put(surface, await buildPackMessage(pack));
-    collector.stop();
+    await put(surface, await buildPackMessage({ ...pack, again: again?.label }));
+    // The collector is kept, when there is another pack to offer, to hear it asked for.
+    if (again) offering = true;
+    else collector.stop();
   };
 
   const showCard = async (index: number, surface: Surface): Promise<void> => {
@@ -205,7 +222,9 @@ export const presentPack = async (
   });
 
   collector.on("end", async () => {
-    if (finished) return;
+    // Out of time, or the next pack was asked for: either way the button goes.
+    if (finished && !offering) return;
+    offering = false;
     await preload;
     await put(
       { editReply: (payload) => interaction.editReply(payload) },
@@ -218,6 +237,20 @@ export const presentPack = async (
       await press
         .reply({ content: "This pack isn't yours to open.", ephemeral: true })
         .catch(() => undefined);
+      return;
+    }
+    if (press.customId === PACK_BUTTON.again) {
+      // One press, one pack: the button is spent before anything is awaited.
+      if (!again || !offering || busy) return void (await press.deferUpdate().catch(() => undefined));
+      busy = true;
+      try {
+        await press.deferReply();
+        collector.stop();
+        await again.buy(press);
+      } catch (error) {
+        console.error("Error while buying another v2 pack", error);
+        await press.editReply("Something went wrong opening another pack.").catch(() => undefined);
+      }
       return;
     }
     // One step at a time: a second press while the first is still being
