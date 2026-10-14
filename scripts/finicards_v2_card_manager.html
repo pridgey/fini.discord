@@ -298,18 +298,31 @@ const isDirty = () => ed && (!ed.id || ed.candidate || ed.adjustTouched || JSON.
 
 const leaveOk = () => !isDirty() || confirm("Discard the changes to " + (readFields().card_name || "this card") + "?");
 
+// Whose image search is on the page. Results stay up while moving between
+// rarities of one character, so they need not be searched for again.
+let resultsFor = null;
+// A result already among the open card's candidates is marked as added.
+const markAdded = () => {
+  const have = new Set(ed.candidates.map((candidate) => candidate.source));
+  for (const tile of $("results").querySelectorAll(".cand")) tile.classList.toggle("added", have.has(tile.dataset.url));
+};
+
 const startEditor = async (state) => {
   ed = { candidate: null, adjustTouched: false, candidates: [], ...state };
   writeFields(ed.fields);
   ed.clean = JSON.stringify(readFields());
   $("editor").hidden = false;
-  $("results").replaceChildren();
-  $("wiki").value = "";
-  $("query").value = ed.fields.card_name;
+  if (resultsFor !== ed.fields.card_name) {
+    $("results").replaceChildren();
+    $("wiki").value = "";
+    $("query").value = ed.fields.card_name;
+    resultsFor = ed.fields.card_name;
+  }
   say(ed.id ? "" : "Not saved yet. Nothing is in the pool until you press Save.");
   drawHead();
   ed.candidates = await api("api/candidates?key=" + ed.key);
   drawCandidates();
+  markAdded();
   refreshArt();
   refreshPreviews();
 };
@@ -321,9 +334,11 @@ const openCard = (id) => {
   startEditor({ id, key: id, fields: fieldsOf(card), adjust: card.art_adjust, saved: card });
 };
 
-const openNew = (fields) => {
+const newKey = () => "tmp-" + Math.random().toString(36).slice(2, 10);
+
+const openNew = (fields, key = newKey()) => {
   if (ed && !leaveOk()) return;
-  startEditor({ id: null, key: "tmp-" + Math.random().toString(36).slice(2, 10), fields, adjust: null, saved: null });
+  startEditor({ id: null, key, fields, adjust: null, saved: null });
 };
 
 $("new-card").onclick = () => guard(async () => {
@@ -403,7 +418,14 @@ const drawRarityChips = () => {
       chip.className = "chip new"; chip.textContent = code + " · none"; chip.disabled = true;
     } else {
       chip.className = "chip new"; chip.textContent = "+ " + code; chip.title = "Start a " + rarity.replace("_", " ") + " of " + name;
-      chip.onclick = () => guard(async () => openNew(await api("api/new-rarity", { basedOn: ed.id, rarity })));
+      chip.onclick = () => guard(async () => {
+        // Asked before the server copies this card's candidates under the new key.
+        if (!leaveOk()) return;
+        const key = newKey();
+        const fields = await api("api/new-rarity", { basedOn: ed.id, rarity, key });
+        ed = null;
+        openNew(fields, key);
+      });
     }
     return chip;
   }));
@@ -583,6 +605,7 @@ const resultTiles = (hits) => {
     const tile = document.createElement("div");
     tile.className = "cand" + (have.has(hit.url) ? " added" : "");
     tile.title = hit.title;
+    tile.dataset.url = hit.url;
     tile.innerHTML = '<img loading="lazy" alt="" referrerpolicy="no-referrer"><span></span>';
     tile.querySelector("img").src = hit.thumb;
     tile.querySelector("span").textContent = hit.width + "×" + hit.height + " · " + hit.title;

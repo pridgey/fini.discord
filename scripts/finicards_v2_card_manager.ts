@@ -75,7 +75,7 @@ const rarityOf = (kind: unknown): CardRarity =>
 const kindOf = (row: { rarity: CardRarity; secret_art?: boolean }): Kind =>
   row.secret_art ? "secret_art" : row.rarity;
 /** The set a card made here goes into unless told otherwise. */
-const DEFAULT_SET = 3;
+const DEFAULT_SET = 4;
 /** v1's colour attribute, which rode along as a tag and is not wanted on new cards. */
 const COLOUR_TAGS = new Set(["red", "blue", "yellow", "purple", "green", "black", "light", "shadow", "item"]);
 
@@ -1127,6 +1127,16 @@ export const handleCardManager = async (request: Request, url: URL): Promise<Res
         flavour: "",
         artist: "",
       };
+      // The images gathered for the character come along, so they need not be
+      // found again. Copied, not shared: removing one here leaves the other's.
+      const from = folderOf(base.id ?? "");
+      const to = folderOf(String(body.key ?? ""));
+      const carried = from && to && from !== to ? await readdir(from).catch(() => []) : [];
+      if (carried.length > 0) await mkdir(to!, { recursive: true });
+      for (const name of carried) {
+        if (!SAFE_FILE.test(name) && name !== "sources.json" && name !== "artists.json") continue;
+        await copyFile(path.join(from!, name), path.join(to!, name));
+      }
       return json(fields);
     }
 
