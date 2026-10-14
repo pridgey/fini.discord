@@ -9,6 +9,16 @@ import {
 const BASE_PRICE = 10;
 const MAX_INITIAL_PRICE = 300;
 
+const JIKAN_URL = "https://api.jikan.moe/v4";
+// Jikan allows 3 requests a second and 60 a minute; one a second stays well clear.
+// Retries wait backoffMs, doubling each time, unless Jikan sends a Retry-After.
+// Exported so tests can shorten the waits.
+export const jikanTiming = { spacingMs: 1000, backoffMs: 2000, attempts: 5 };
+// A safety cap only - a season is read until Jikan says there is no next page
+const MAX_SEASON_PAGES = 30;
+// Unfinished anime the season lists missed, looked up one by one each run
+const MAX_STALE_REFRESHES = 150;
+
 // ============================================================================
 // Jikan API Types
 // ============================================================================
@@ -127,6 +137,10 @@ interface JikanSeasonResponse {
   data: JikanAnime[];
 }
 
+interface JikanAnimeResponse {
+  data: JikanAnime;
+}
+
 // ============================================================================
 // Database Types
 // ============================================================================
@@ -146,7 +160,7 @@ export type AnimeRecord = {
   initial_hype_score: number;
   initial_stock_price: number;
   volatility_rating: "low" | "medium" | "high" | "extreme";
-  last_synced?: string;
+  updated?: string;
 };
 
 export type AnimeStockRecord = {
@@ -167,12 +181,51 @@ type Season = "winter" | "spring" | "summer" | "fall";
 interface SeasonConfig {
   year: number;
   season: Season;
-  maxPages: number;
 }
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+let lastJikanRequest = 0;
+
+/**
+ * Fetches from Jikan, spacing requests out and backing off on 429s, 5xx errors
+ * and network failures. Returns null once it gives up, or for any other error.
+ */
+export async function jikanFetch<T>(path: string): Promise<T | null> {
+  const { spacingMs, backoffMs, attempts } = jikanTiming;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const wait = lastJikanRequest + spacingMs - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastJikanRequest = Date.now();
+
+    const response = await fetch(`${JIKAN_URL}${path}`).catch(() => null);
+    if (response?.ok) return (await response.json()) as T;
+
+    const retryable =
+      !response || response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === attempts) {
+      console.error(
+        `❌ Jikan ${path} failed after ${attempt} attempt(s):`,
+        response ? `${response.status} ${response.statusText}` : "no response",
+      );
+      return null;
+    }
+
+    // Jikan's Retry-After when it sends one, otherwise 2s, 4s, 8s, 16s, with jitter
+    const retryAfter = Number(response?.headers.get("retry-after"));
+    const backoff =
+      retryAfter > 0 ? retryAfter * 1000 : backoffMs * 2 ** (attempt - 1);
+    console.warn(
+      `   ⏳ Jikan ${path}: ${response?.status ?? "no response"}, retrying in ${Math.round(backoff / 1000)}s`,
+    );
+    await sleep(backoff + Math.random() * backoffMs * 0.25);
+  }
+  return null;
+}
 
 /**
  * Gets the current season based on the current month
@@ -209,14 +262,10 @@ function getSeasonsToSync(
     const season = seasonOrder[futureSeasonIndex];
     const year = currentYear + yearOffset;
 
-    seasons.push({
-      year,
-      season,
-      maxPages: 10, // Future seasons get full pages too
-    });
+    seasons.push({ year, season });
   }
 
-  // Add current + past seasons - ALL GET THE SAME NUMBER OF PAGES
+  // Add current + past seasons
   for (let i = 0; i <= seasonsBack; i++) {
     // Calculate which season and year this offset represents
     const offsetSeasonIndex = (currentSeasonIndex - i + 12) % 4;
@@ -225,11 +274,7 @@ function getSeasonsToSync(
     const season = seasonOrder[offsetSeasonIndex];
     const year = currentYear + yearOffset;
 
-    seasons.push({
-      year,
-      season,
-      maxPages: 10, // Same pages for all seasons
-    });
+    seasons.push({ year, season });
   }
 
   return seasons;
@@ -246,9 +291,7 @@ export const syncAllSeasons = async () => {
   const seasons = getSeasonsToSync(4, 4);
 
   console.log("📅 Syncing seasons:");
-  seasons.forEach((s) =>
-    console.log(`   - ${s.year} ${s.season} (${s.maxPages} pages)`),
-  );
+  seasons.forEach((s) => console.log(`   - ${s.year} ${s.season}`));
 
   let totalSynced = 0;
   let totalNew = 0;
@@ -261,10 +304,15 @@ export const syncAllSeasons = async () => {
     totalUpdated += result.updated;
   }
 
+  // Anime the season lists no longer carry - delayed to TBA, moved outside the
+  // window, or simply missing - would otherwise never be updated again
+  const refreshed = await refreshStaleAnime(new Date(startTime));
+
   const duration = ((Date.now() - startTime) / 1000).toFixed(2);
   console.log(`✅ Seasonal sync complete in ${duration}s`);
   console.log(`   Total: ${totalSynced} anime synced`);
   console.log(`   New: ${totalNew} | Updated: ${totalUpdated}`);
+  console.log(`   Refreshed outside the season lists: ${refreshed}`);
 };
 
 /**
@@ -275,7 +323,7 @@ async function syncSeason(config: SeasonConfig): Promise<{
   newAnime: number;
   updated: number;
 }> {
-  const { year, season, maxPages } = config;
+  const { year, season } = config;
   const seasonStartTime = Date.now();
   console.log(`📡 Syncing ${year} ${season}...`);
 
@@ -284,26 +332,16 @@ async function syncSeason(config: SeasonConfig): Promise<{
   let newAnime = 0;
   let updated = 0;
 
-  while (page <= maxPages) {
+  while (page <= MAX_SEASON_PAGES) {
     try {
-      // Rate limit: 1 request per second
-      if (page > 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
-
-      const response = await fetch(
-        `https://api.jikan.moe/v4/seasons/${year}/${season}?page=${page}`,
+      const json = await jikanFetch<JikanSeasonResponse>(
+        `/seasons/${year}/${season}?page=${page}`,
       );
 
-      if (!response.ok) {
-        console.error(
-          `❌ Failed to fetch ${year} ${season} page ${page}:`,
-          response.statusText,
-        );
+      if (!json) {
+        console.error(`❌ Giving up on ${year} ${season} at page ${page}`);
         break;
       }
-
-      const json: JikanSeasonResponse = await response.json();
 
       if (!json.data?.length) {
         console.log(`   No more data for ${year} ${season}`);
@@ -343,6 +381,55 @@ async function syncSeason(config: SeasonConfig): Promise<{
 }
 
 /**
+ * Looks up, one by one, unfinished anime that the season sync did not touch.
+ * Held anime go first, then the longest-untouched, up to MAX_STALE_REFRESHES.
+ */
+async function refreshStaleAnime(since: Date): Promise<number> {
+  let stale: AnimeRecord[];
+  let held: Set<string>;
+  try {
+    stale = await pb.collection<AnimeRecord>("anistock_anime").getFullList({
+      filter: pb.filter('status != "finished" && updated < {:since}', {
+        since,
+      }),
+      sort: "updated",
+    });
+    const holdings = await pb
+      .collection<{ anime: string }>("anistock_holdings")
+      .getFullList({ filter: "shares_owned > 0", fields: "anime" });
+    held = new Set(holdings.map((holding) => holding.anime));
+  } catch (err) {
+    console.error("❌ Could not list stale anime:", err);
+    return 0;
+  }
+
+  const queue = [
+    ...stale.filter((anime) => held.has(anime.id!)),
+    ...stale.filter((anime) => !held.has(anime.id!)),
+  ].slice(0, MAX_STALE_REFRESHES);
+
+  console.log(
+    `📡 Refreshing ${queue.length} of ${stale.length} stale anime directly...`,
+  );
+
+  let refreshed = 0;
+  for (const anime of queue) {
+    const json = await jikanFetch<JikanAnimeResponse>(`/anime/${anime.mal_id}`);
+    if (!json?.data) continue;
+
+    // A delayed anime with no date yet has no season; it keeps its last one
+    await upsertAnimeAndUpdateStock(
+      json.data,
+      json.data.year ?? anime.year,
+      json.data.season ?? anime.season,
+    );
+    refreshed++;
+  }
+
+  return refreshed;
+}
+
+/**
  * Upserts an anime record and creates a new stock price entry
  */
 async function upsertAnimeAndUpdateStock(
@@ -376,7 +463,6 @@ async function upsertAnimeAndUpdateStock(
           season,
           year,
           status: determineStatus(apiData),
-          last_synced: new Date().toISOString(),
         });
     } else {
       // Create new anime record
@@ -403,7 +489,6 @@ async function upsertAnimeAndUpdateStock(
           initial_hype_score: hypeScore,
           initial_stock_price: initialPrice,
           volatility_rating: getVolatilityRating(hypeScore),
-          last_synced: new Date().toISOString(),
         },
         {
           requestKey: `create-${apiData.mal_id}`,
