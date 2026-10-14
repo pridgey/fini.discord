@@ -1,5 +1,6 @@
 <!doctype html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Finicards v2 card manager</title>
 <style>
   * { box-sizing: border-box; }
@@ -18,9 +19,13 @@
   /* catalogue */
   header { position: sticky; top: 0; z-index: 2; background: #14162a; border-bottom: 1px solid #2b3050; padding: 12px 18px; }
   header h1 { font-size: 16px; margin: 0 8px 0 0; }
+  #q { width: 240px; } #wiki { width: 230px; } #query { flex: 1; min-width: 160px; }
+  .filters { display: contents; }
+  .grow { flex: 1; }
+  .mobile-only, .break { display: none; }
   #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; padding: 18px; }
   .tile { cursor: pointer; border-radius: 10px; padding: 6px; border: 1px solid transparent; }
-  .tile:hover { border-color: #5865f2; background: #1a1d36; }
+  @media (hover: hover) { .tile:hover { border-color: #5865f2; background: #1a1d36; } }
   .tile img { display: block; width: 100%; aspect-ratio: 606 / 849; border-radius: 8px; background: #0f1122; }
   .tile b { display: block; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tile.off img { opacity: .5; }
@@ -33,8 +38,9 @@
   #ed-head { display: flex; gap: 10px; align-items: center; padding: 10px 18px; border-bottom: 1px solid #2b3050; flex-wrap: wrap; }
   #ed-head h2 { font-size: 18px; margin: 0; }
   #ed-status { color: #f0c060; flex: 1; min-width: 120px; }
+  #ed-save { order: 1; }
   #ed-body { flex: 1; overflow-y: auto; display: grid; grid-template-columns: minmax(300px, 440px) minmax(280px, 380px) minmax(360px, 1fr); gap: 22px; padding: 16px 18px 80px; }
-  @media (max-width: 1250px) { #ed-body { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 1250px) { #ed-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
   .previews { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
   .previews figure { margin: 0; }
   .previews figcaption { font-size: 12px; color: #9aa1c4; margin-bottom: 4px; }
@@ -50,8 +56,8 @@
   .stats { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 8px; align-items: end; }
   #stat-note { font-size: 12px; margin: -4px 0 10px; }
   .good { color: #7fd6a0; } .bad { color: #ff7a7a; }
-  .chips { display: flex; gap: 6px; }
-  .chip { flex: 1; text-align: center; font-size: 12px; padding: 5px 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { flex: 1 1 70px; text-align: center; font-size: 12px; padding: 5px 0; }
   .chip.has { background: #2b3050; } .chip.here { border-color: #5865f2; background: #262b55; cursor: default; }
   .chip.new { border-style: dashed; color: #9aa1c4; }
   #source { position: relative; cursor: crosshair; display: inline-block; max-width: 100%; }
@@ -74,14 +80,68 @@
   #stats-box { position: fixed; inset: 0; z-index: 8; background: #000a; display: flex; align-items: center; justify-content: center; }
   #stats-box[hidden] { display: none; }
   #stats-box > div { background: #1a1d36; border: 1px solid #2b3050; border-radius: 10px; padding: 18px 22px; max-height: 86vh; overflow: auto; }
+  #stats-body { overflow-x: auto; }
   table { border-collapse: collapse; } th, td { padding: 5px 12px; text-align: right; border-bottom: 1px solid #2b3050; }
   th:first-child, td:first-child { text-align: left; }
+
+  /* phones */
+  @media (max-width: 700px) {
+    input, select, textarea { font-size: 16px; } /* any smaller and iOS zooms in on focus */
+    button { min-height: 36px; }
+    .mobile-only { display: inline-block; }
+    .break { display: block; flex-basis: 100%; height: 0; }
+
+    header { padding: 8px 10px; }
+    header .bar { gap: 6px; }
+    header h1 { display: none; }
+    #q { order: 1; flex: 1 1 0; min-width: 0; width: auto; }
+    #filters-toggle { order: 2; }
+    #new-card { order: 3; }
+    .filters { order: 4; display: none; flex-basis: 100%; grid-template-columns: 1fr 1fr; gap: 6px; }
+    header.open .filters { display: grid; }
+    .filters select { width: 100%; min-width: 0; }
+    .grow { display: none; }
+    #count { order: 5; flex: 1; font-size: 12px; }
+    #stats-open { order: 6; min-height: 0; padding: 3px 10px; font-size: 12px; }
+    #grid { grid-template-columns: repeat(auto-fill, minmax(105px, 1fr)); gap: 6px; padding: 8px; }
+    .tile { padding: 3px; }
+    .tile b { font-size: 13px; }
+    .tile small { font-size: 11px; }
+    .badge { margin-left: 2px; }
+
+    #ed-head { padding: 6px 10px; gap: 6px; }
+    #ed-head > * { order: 1; }
+    #ed-close .label { display: none; }
+    #ed-head h2 { flex: 1 1 0; min-width: 0; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #ed-head .break { order: 2; }
+    #ed-sub, #ed-revert, #ed-delete { order: 3; }
+    #ed-sub { flex: 1; }
+    #ed-status { order: 4; flex-basis: 100%; font-size: 13px; }
+    #ed-status:empty { display: none; }
+    #ed-body { grid-template-columns: minmax(0, 1fr); gap: 4px; padding: 12px 10px calc(60px + env(safe-area-inset-bottom)); }
+    .previews figure:has(.card) { width: calc(50% - 5px); }
+    .previews figure:has(.card) .card { width: 100%; }
+    .bar > .field { min-width: 0; }
+    .cgrid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
+    .cand img { height: 90px; }
+    .cand .x { min-height: 0; padding: 4px 9px; font-size: 14px; }
+    #find { flex: 1 1 100%; }
+    #wiki, #query { flex: 1 1 100%; width: auto; min-width: 0; }
+    #search, #search-danbooru, #search-scryfall { flex: 1; }
+    #drop .desk-only { display: none; }
+    #drop { padding: 14px; }
+    #lightbox { padding: 8px; }
+    #stats-box > div { margin: 8px; padding: 12px; max-width: calc(100vw - 16px); }
+    th, td { padding: 4px 6px; font-size: 12px; }
+  }
 </style>
 
 <header>
   <div class="bar">
     <h1>Finicards v2</h1>
-    <input id="q" placeholder="Search name, series or tag…" style="width:240px">
+    <input id="q" placeholder="Search name, series or tag…">
+    <button id="filters-toggle" class="mobile-only">Filters</button>
+    <span class="filters">
     <select id="f-set-filter"><option value="">All sets</option></select>
     <select id="f-rarity-filter"><option value="">All rarities</option><option value="common">Common</option><option value="uncommon">Uncommon</option><option value="full_art">Full-art</option><option value="secret_art">Secret Art</option></select>
     <select id="f-type-filter"><option value="">All types</option><option value="power">Power</option><option value="wit">Wit</option><option value="heart">Heart</option></select>
@@ -90,8 +150,9 @@
       <option value="noart">No artwork</option><option value="v2">Made for v2</option><option value="single">Only one rarity</option>
     </select>
     <select id="sort"><option value="name">Sort: name</option><option value="series">Sort: series</option><option value="set">Sort: set</option><option value="updated">Sort: recently changed</option></select>
+    </span>
     <span id="count" class="dim"></span>
-    <span style="flex:1"></span>
+    <span class="grow"></span>
     <button id="stats-open">Set stats</button>
     <button class="primary" id="new-card">+ New card</button>
   </div>
@@ -100,13 +161,15 @@
 
 <div id="editor" hidden>
   <div id="ed-head">
-    <button id="ed-close" title="Esc">← Catalogue</button>
+    <button id="ed-close" title="Esc">←<span class="label"> Catalogue</span></button>
     <button id="ed-prev" title="Left arrow">‹</button><button id="ed-next" title="Right arrow">›</button>
-    <h2 id="ed-title"></h2><small id="ed-sub"></small>
+    <h2 id="ed-title"></h2>
+    <button class="primary" id="ed-save" title="Ctrl+S">Save</button>
+    <i class="break"></i>
+    <small id="ed-sub"></small>
     <span id="ed-status"></span>
     <button id="ed-revert">Revert</button>
     <button class="danger" id="ed-delete">Delete</button>
-    <button class="primary" id="ed-save" title="Ctrl+S">Save</button>
   </div>
   <div id="ed-body">
     <div>
@@ -156,7 +219,7 @@
 
       <h3>Candidates <span id="cand-count" class="dim"></span></h3>
       <div class="cgrid" id="candidates"></div>
-      <div id="drop">Drop an image here, paste one (Ctrl+V), or <label style="color:#7fc8ff;cursor:pointer">choose a file<input type="file" id="file" accept="image/*" hidden></label></div>
+      <div id="drop"><span class="desk-only">Drop an image here, paste one (Ctrl+V), or </span><label style="color:#7fc8ff;cursor:pointer">choose a file<input type="file" id="file" accept="image/*" hidden></label></div>
 
       <h3>Find images</h3>
       <div class="bar">
@@ -164,8 +227,8 @@
         <span class="dim">Searches the best Fandom wikis, then Danbooru and Magic card art — both free of AI art, with artists named.</span>
       </div>
       <div class="bar" style="margin-top:8px">
-        <input id="wiki" placeholder="…or a wiki, e.g. naruto.fandom.com" style="width:230px">
-        <input id="query" placeholder="Search term or exact page title" style="flex:1;min-width:160px">
+        <input id="wiki" placeholder="…or a wiki, e.g. naruto.fandom.com">
+        <input id="query" placeholder="Search term or exact page title">
         <button id="search">Search</button>
         <button id="search-danbooru" title="Search Danbooru for the term (its own tags, e.g. iroh), or for this character if the box is empty">Danbooru</button>
         <label class="dim" title="On: only Danbooru posts rated general or sensitive. Off: every rating, explicit included." style="display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="danbooru-safe" checked>Safe only</label>
@@ -241,6 +304,8 @@ const drawGrid = () => {
     : a.card_name.localeCompare(b.card_name) || a.rarity.localeCompare(b.rarity));
 
   $("count").textContent = shown.length + " of " + cards.length + " cards";
+  const filtering = [set, rarity, type, state].filter(Boolean).length;
+  $("filters-toggle").textContent = filtering ? "Filters (" + filtering + ")" : "Filters";
   $("grid").replaceChildren(...shown.map((card) => {
     const tile = document.createElement("div");
     tile.className = "tile" + (card.active ? "" : " off");
@@ -253,6 +318,7 @@ const drawGrid = () => {
     return tile;
   }));
 };
+$("filters-toggle").onclick = () => document.querySelector("header").classList.toggle("open");
 for (const id of ["q", "f-set-filter", "f-rarity-filter", "f-type-filter", "f-state-filter", "sort"]) $(id).oninput = drawGrid;
 
 /* --------------------------------------------------------------- editor ---- */
