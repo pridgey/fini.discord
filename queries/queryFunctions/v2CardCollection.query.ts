@@ -1,7 +1,13 @@
 import { ButtonStyle, ContainerBuilder } from "discord.js";
 import { V2_USER_CARD, toBattleCard } from "../../modules/finicardsV2/cardStore";
-import { NEUTRAL_ACCENT, cardLine, rarityLabel } from "../../modules/finicardsV2/ui/theme";
-import type { V2UserCardRecord } from "../../types/PocketbaseTablesV2";
+import { getDecks } from "../../modules/finicardsV2/decks";
+import {
+  NEUTRAL_ACCENT,
+  activeKeyword,
+  cardLine,
+  rarityLabel,
+} from "../../modules/finicardsV2/ui/theme";
+import type { V2DeckRecord, V2UserCardRecord } from "../../types/PocketbaseTablesV2";
 import {
   QueryFunction,
   QueryParams,
@@ -48,6 +54,36 @@ const queryV2CardCollection = async ({
 };
 
 /**
+ * The names of the decks each card is in, by card id. A copy can sit in more
+ * than one deck, so each card gets a list.
+ */
+export const deckNamesByCard = (decks: V2DeckRecord[]): Map<string, string[]> => {
+  const names = new Map<string, string[]>();
+  for (const deck of decks) {
+    for (const cardId of new Set(deck.cards ?? [])) {
+      names.set(cardId, [...(names.get(cardId) ?? []), deck.name]);
+    }
+  }
+  return names;
+};
+
+/**
+ * The decks of every owner on the page. A page is one player's cards on one
+ * server, so this is one read; a failed read just leaves the deck names off.
+ */
+const decksForPage = async (items: V2UserCardRecord[]): Promise<V2DeckRecord[]> => {
+  const owners = new Map(items.map((item) => [`${item.user_id}:${item.server_id}`, item]));
+  try {
+    const lists = await Promise.all(
+      [...owners.values()].map((item) => getDecks(item.user_id, item.server_id)),
+    );
+    return lists.flat();
+  } catch {
+    return [];
+  }
+};
+
+/**
  * One section per card, each with a View button.
  *
  * `queryString` carries the owner label rather than a search term. The
@@ -68,18 +104,29 @@ const buildV2CardCollectionResult = async ({
     text.setContent(`## 🎴 ${queryString || "Collection"}`),
   );
 
+  const inDecks = deckNamesByCard(await decksForPage(items));
+
   for (const item of items) {
     // A row whose definition failed to expand can't be rendered or battled
     // with; skipping beats printing a blank line with a dead button.
     if (!item.expand?.card) continue;
 
     const card = toBattleCard({ ...item, definition: item.expand.card });
+    const keyword = activeKeyword(card);
+    const decks = inDecks.get(item.id ?? "") ?? [];
+    const details = [
+      rarityLabel(card),
+      keyword ? `_${keyword.name}_` : "",
+      decks.length > 0 ? `🃏 ${decks.join(", ")}` : "",
+      card.series || "no series",
+      `id \`${card.instanceId}\``,
+    ].filter(Boolean);
 
     container.addSectionComponents((section) =>
       section
         .addTextDisplayComponents((text) =>
           text.setContent(
-            `${cardLine(card)}\n-# ${rarityLabel(card)} · ${card.series || "no series"} · id \`${card.instanceId}\``,
+            `${cardLine(card)}\n-# ${details.join(" · ")}`,
           ),
         )
         .setButtonAccessory((button) =>
