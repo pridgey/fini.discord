@@ -13,6 +13,7 @@ import { ClientResponseError } from "pocketbase";
 import { checkMonitoredServices } from "./monitoring";
 import { expireStaleV2Battles } from "../finicardsV2/expireBattles";
 import { expireSharedFiles } from "../fileShare";
+import { runGeoDaily } from "../dailies/geo/daily";
 
 export const runPollTasks = (cl: Client) => {
   checkReminders(cl);
@@ -21,6 +22,7 @@ export const runPollTasks = (cl: Client) => {
   checkMonitoredServices(cl);
   expireStaleV2Battles(cl);
   reapExpiredShares();
+  runGeoDaily(cl);
   // checkHealthPings(cl);
 };
 

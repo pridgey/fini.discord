@@ -72,6 +72,8 @@ export const COMMAND_CATEGORIES: Record<string, string> = {
   horsey: "Games & Gambling",
   roll: "Games & Gambling",
   deathbattle: "Games & Gambling",
+  "geo-test": "Games & Gambling",
+  daily: "Games & Gambling",
 
   // Finicards
   finicard: "Finicards",
