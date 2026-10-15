@@ -9,137 +9,98 @@ import {
 const BASE_PRICE = 10;
 const MAX_INITIAL_PRICE = 300;
 
-const JIKAN_URL = "https://api.jikan.moe/v4";
-// Jikan allows 3 requests a second and 60 a minute; one a second stays well clear.
-// Retries wait backoffMs, doubling each time, unless Jikan sends a Retry-After.
+// MyAnimeList's own API. The public Jikan API, which scraped the same site, shut
+// down on 2026-10-01. Requests carry a client id from myanimelist.net/apiconfig.
+const MAL_URL = "https://api.myanimelist.net/v2";
+// The fields every anime is read with: what pricing and the anime record need
+const MAL_FIELDS = [
+  "alternative_titles",
+  "main_picture",
+  "synopsis",
+  "mean",
+  "rank",
+  "popularity",
+  "num_list_users",
+  "status",
+  "start_season",
+].join(",");
+// MAL's largest page
+const MAL_PAGE_SIZE = 500;
+// MAL publishes no rate limit; one request a second is polite and plenty.
+// Retries wait backoffMs, doubling each time, unless MAL sends a Retry-After.
+// A request that hears nothing back is given up on after timeoutMs.
 // Exported so tests can shorten the waits.
-export const jikanTiming = { spacingMs: 1000, backoffMs: 2000, attempts: 5 };
-// A safety cap only - a season is read until Jikan says there is no next page
-const MAX_SEASON_PAGES = 30;
+export const malTiming = {
+  spacingMs: 1000,
+  backoffMs: 2000,
+  attempts: 5,
+  timeoutMs: 30_000,
+};
+// A safety cap only - a season is read until MAL says there is no next page
+const MAX_SEASON_PAGES = 10;
 // Unfinished anime the season lists missed, looked up one by one each run
 const MAX_STALE_REFRESHES = 150;
 
 // ============================================================================
-// Jikan API Types
+// MyAnimeList API Types
 // ============================================================================
 
-interface JikanPagination {
-  last_visible_page: number;
-  has_next_page: boolean;
-  current_page: number;
-  items: {
-    count: number;
-    total: number;
-    per_page: number;
-  };
-}
-
-interface JikanTitle {
-  type: "Default" | "Synonym" | "Japanese" | "English";
+/** An anime as MAL's API returns it, with the fields in MAL_FIELDS. */
+export interface MalAnime {
+  id: number;
   title: string;
+  main_picture?: { medium: string; large?: string };
+  alternative_titles?: { en?: string; ja?: string; synonyms?: string[] };
+  synopsis?: string;
+  mean?: number;
+  rank?: number;
+  popularity?: number;
+  num_list_users?: number;
+  /** "not_yet_aired", "currently_airing" or "finished_airing" */
+  status?: string;
+  start_season?: { year: number; season: Season };
 }
 
-interface JikanImage {
+interface MalSeasonResponse {
+  data: { node: MalAnime }[];
+  paging?: { next?: string };
+}
+
+/**
+ * What a sync reads from one anime, whatever the source. MAL's API has no
+ * favourites count, so `favorites` is 0 and pricing falls back on the count
+ * recorded when the anime was first listed.
+ */
+export type AnimeSnapshot = {
+  mal_id: number;
+  title: string;
   image_url: string;
-  small_image_url: string;
-  large_image_url: string;
-}
-
-interface JikanImages {
-  jpg: JikanImage;
-  webp: JikanImage;
-}
-
-interface JikanNamedEntity {
-  mal_id: number;
-  type: string;
-  name: string;
-  url: string;
-}
-
-interface JikanBroadcast {
-  day: string;
-  time: string;
-  timezone: string;
-  string: string;
-}
-
-interface JikanAired {
-  from: string;
-  to: string;
-  prop: {
-    from: {
-      day: number;
-      month: number;
-      year: number;
-    };
-    to: {
-      day: number;
-      month: number;
-      year: number;
-    };
-  };
-  string: string;
-}
-
-interface JikanAnime {
-  mal_id: number;
-  url: string;
-  images: JikanImages;
-  trailer: {
-    youtube_id: string | null;
-    url: string | null;
-    embed_url: string | null;
-    images: {
-      image_url: string | null;
-      small_image_url: string | null;
-      medium_image_url: string | null;
-      large_image_url: string | null;
-      maximum_image_url: string | null;
-    };
-  };
-  approved: boolean;
-  titles: JikanTitle[];
-  title: string;
-  title_english: string | null;
-  title_japanese: string | null;
-  title_synonyms: string[];
-  type: string;
-  source: string;
-  episodes: number | null;
-  status: string;
-  airing: boolean;
-  aired: JikanAired;
-  duration: string;
-  rating: string;
-  score: number | null;
-  scored_by: number | null;
-  rank: number | null;
+  synopsis: string;
+  status: "upcoming" | "ongoing" | "finished";
   popularity: number;
   members: number;
   favorites: number;
-  synopsis: string | null;
-  background: string;
-  season: "winter" | "spring" | "summer" | "fall" | null;
+  score: number;
+  rank: number;
+  season: Season | null;
   year: number | null;
-  broadcast: JikanBroadcast | null;
-  producers: JikanNamedEntity[];
-  licensors: JikanNamedEntity[];
-  studios: JikanNamedEntity[];
-  genres: JikanNamedEntity[];
-  explicit_genres: JikanNamedEntity[];
-  themes: JikanNamedEntity[];
-  demographics: JikanNamedEntity[];
-}
+};
 
-interface JikanSeasonResponse {
-  pagination: JikanPagination;
-  data: JikanAnime[];
-}
-
-interface JikanAnimeResponse {
-  data: JikanAnime;
-}
+/** Reads MAL's answer into a snapshot. */
+export const snapshotOf = (anime: MalAnime): AnimeSnapshot => ({
+  mal_id: anime.id,
+  title: anime.alternative_titles?.en || anime.title,
+  image_url: anime.main_picture?.large || anime.main_picture?.medium || "",
+  synopsis: anime.synopsis || "",
+  status: determineStatus(anime.status),
+  popularity: anime.popularity || 0,
+  members: anime.num_list_users || 0,
+  favorites: 0,
+  score: anime.mean || 0,
+  rank: anime.rank || 0,
+  season: anime.start_season?.season ?? null,
+  year: anime.start_season?.year ?? null,
+});
 
 // ============================================================================
 // Database Types
@@ -189,38 +150,55 @@ interface SeasonConfig {
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-let lastJikanRequest = 0;
+let lastMalRequest = 0;
 
 /**
- * Fetches from Jikan, spacing requests out and backing off on 429s, 5xx errors
- * and network failures. Returns null once it gives up, or for any other error.
+ * Fetches from MAL's API, spacing requests out and backing off on 429s, 5xx
+ * errors and network failures. `path` may be a whole URL, as MAL's paging
+ * links are. Returns null once it gives up, or for any other error.
  */
-export async function jikanFetch<T>(path: string): Promise<T | null> {
-  const { spacingMs, backoffMs, attempts } = jikanTiming;
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    const wait = lastJikanRequest + spacingMs - Date.now();
-    if (wait > 0) await sleep(wait);
-    lastJikanRequest = Date.now();
+export async function malFetch<T>(path: string): Promise<T | null> {
+  const clientId = process.env.MAL_CLIENT_ID;
+  if (!clientId) {
+    console.error("❌ MAL_CLIENT_ID is not set; anime can't be synced without it");
+    return null;
+  }
 
-    const response = await fetch(`${JIKAN_URL}${path}`).catch(() => null);
+  const url = path.startsWith("http") ? path : `${MAL_URL}${path}`;
+  const { spacingMs, backoffMs, attempts, timeoutMs } = malTiming;
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const wait = lastMalRequest + spacingMs - Date.now();
+    if (wait > 0) await sleep(wait);
+    lastMalRequest = Date.now();
+
+    const response = await fetch(url, {
+      headers: { "X-MAL-CLIENT-ID": clientId },
+      signal: AbortSignal.timeout(timeoutMs),
+    }).catch(() => null);
     if (response?.ok) return (await response.json()) as T;
+
+    // A season MAL has yet to list, or an anime it has since removed
+    if (response?.status === 404) {
+      console.log(`   MAL has nothing at ${path.split("?")[0]}`);
+      return null;
+    }
 
     const retryable =
       !response || response.status === 429 || response.status >= 500;
     if (!retryable || attempt === attempts) {
       console.error(
-        `❌ Jikan ${path} failed after ${attempt} attempt(s):`,
+        `❌ MAL ${path} failed after ${attempt} attempt(s):`,
         response ? `${response.status} ${response.statusText}` : "no response",
       );
       return null;
     }
 
-    // Jikan's Retry-After when it sends one, otherwise 2s, 4s, 8s, 16s, with jitter
+    // MAL's Retry-After when it sends one, otherwise 2s, 4s, 8s, 16s, with jitter
     const retryAfter = Number(response?.headers.get("retry-after"));
     const backoff =
       retryAfter > 0 ? retryAfter * 1000 : backoffMs * 2 ** (attempt - 1);
     console.warn(
-      `   ⏳ Jikan ${path}: ${response?.status ?? "no response"}, retrying in ${Math.round(backoff / 1000)}s`,
+      `   ⏳ MAL ${path}: ${response?.status ?? "no response"}, retrying in ${Math.round(backoff / 1000)}s`,
     );
     await sleep(backoff + Math.random() * backoffMs * 0.25);
   }
@@ -287,6 +265,11 @@ export const syncAllSeasons = async () => {
   const startTime = Date.now();
   console.log("🚀 Starting seasonal anime sync...");
 
+  if (!process.env.MAL_CLIENT_ID) {
+    console.error("❌ MAL_CLIENT_ID is not set; skipping the anime sync");
+    return;
+  }
+
   // Get seasons to sync (current season + 4 seasons back + 4 future seasons = ~1.5 years)
   const seasons = getSeasonsToSync(4, 4);
 
@@ -331,15 +314,16 @@ async function syncSeason(config: SeasonConfig): Promise<{
   let synced = 0;
   let newAnime = 0;
   let updated = 0;
+  let next: string | undefined =
+    `/anime/season/${year}/${season}?limit=${MAL_PAGE_SIZE}&fields=${MAL_FIELDS}`;
 
-  while (page <= MAX_SEASON_PAGES) {
+  while (next && page <= MAX_SEASON_PAGES) {
     try {
-      const json = await jikanFetch<JikanSeasonResponse>(
-        `/seasons/${year}/${season}?page=${page}`,
-      );
+      const json: MalSeasonResponse | null = await malFetch<MalSeasonResponse>(next);
 
       if (!json) {
-        console.error(`❌ Giving up on ${year} ${season} at page ${page}`);
+        // malFetch has already said why; a 404 on page 1 is a season not yet listed
+        if (page > 1) console.error(`❌ Giving up on ${year} ${season} at page ${page}`);
         break;
       }
 
@@ -349,8 +333,8 @@ async function syncSeason(config: SeasonConfig): Promise<{
       }
 
       // Process each anime in this page
-      for (const animeData of json.data) {
-        const result = await upsertAnimeAndUpdateStock(animeData, year, season);
+      for (const { node } of json.data) {
+        const result = await upsertAnimeAndUpdateStock(snapshotOf(node), year, season);
 
         if (result.isNew) {
           newAnime++;
@@ -360,11 +344,7 @@ async function syncSeason(config: SeasonConfig): Promise<{
         synced++;
       }
 
-      // Check if there's a next page
-      if (!json.pagination?.has_next_page) {
-        break;
-      }
-
+      next = json.paging?.next;
       page++;
     } catch (err) {
       console.error(`❌ Error syncing ${year} ${season} page ${page}:`, err);
@@ -414,14 +394,17 @@ async function refreshStaleAnime(since: Date): Promise<number> {
 
   let refreshed = 0;
   for (const anime of queue) {
-    const json = await jikanFetch<JikanAnimeResponse>(`/anime/${anime.mal_id}`);
-    if (!json?.data) continue;
+    const json = await malFetch<MalAnime>(
+      `/anime/${anime.mal_id}?fields=${MAL_FIELDS}`,
+    );
+    if (!json?.id) continue;
 
     // A delayed anime with no date yet has no season; it keeps its last one
+    const snapshot = snapshotOf(json);
     await upsertAnimeAndUpdateStock(
-      json.data,
-      json.data.year ?? anime.year,
-      json.data.season ?? anime.season,
+      snapshot,
+      snapshot.year ?? anime.year,
+      snapshot.season ?? anime.season,
     );
     refreshed++;
   }
@@ -433,7 +416,7 @@ async function refreshStaleAnime(since: Date): Promise<number> {
  * Upserts an anime record and creates a new stock price entry
  */
 async function upsertAnimeAndUpdateStock(
-  apiData: JikanAnime,
+  apiData: AnimeSnapshot,
   year: number,
   season: string,
 ): Promise<{ isNew: boolean; record: AnimeRecord }> {
@@ -449,8 +432,7 @@ async function upsertAnimeAndUpdateStock(
     let animeRecord: AnimeRecord;
     let isNew = false;
 
-    const title =
-      apiData.titles?.find((t) => t.type === "English")?.title || apiData.title;
+    const title = apiData.title;
 
     if (existing) {
       // Update existing record with fresh data
@@ -458,11 +440,11 @@ async function upsertAnimeAndUpdateStock(
         .collection<AnimeRecord>("anistock_anime")
         .update(existing.id!, {
           title,
-          image_url: apiData.images?.webp?.image_url || existing.image_url,
+          image_url: apiData.image_url || existing.image_url,
           synopsis: apiData.synopsis || existing.synopsis,
           season,
           year,
-          status: determineStatus(apiData),
+          status: apiData.status,
         });
     } else {
       // Create new anime record
@@ -478,11 +460,11 @@ async function upsertAnimeAndUpdateStock(
         {
           mal_id: apiData.mal_id,
           title,
-          image_url: apiData.images?.webp?.image_url || "",
-          synopsis: apiData.synopsis || "",
+          image_url: apiData.image_url,
+          synopsis: apiData.synopsis,
           season,
           year,
-          status: determineStatus(apiData),
+          status: apiData.status,
           initial_popularity: apiData.popularity || 0,
           initial_members: apiData.members || 0,
           initial_favorites: apiData.favorites || 0,
@@ -542,7 +524,7 @@ async function upsertAnimeAndUpdateStock(
  */
 async function createStockEntry(
   animeRecord: AnimeRecord,
-  apiData: JikanAnime,
+  apiData: AnimeSnapshot,
 ): Promise<void> {
   try {
     // Calculate current hype score
@@ -616,21 +598,21 @@ function calculateInitialPrice(hypeScore: number): number {
 }
 
 /**
- * Determines anime status based on API data
- * Relies solely on the status string from the API
+ * Determines anime status from MAL's status: "not_yet_aired",
+ * "currently_airing" or "finished_airing".
  */
 function determineStatus(
-  apiData: JikanAnime,
+  status: string | undefined,
 ): "upcoming" | "ongoing" | "finished" {
-  const status = apiData.status?.toLowerCase() || "";
+  const normalised = (status ?? "").toLowerCase().replace(/_/g, " ");
 
   // Check for "not yet aired" first (upcoming)
-  if (status.includes("not yet aired")) {
+  if (normalised.includes("not yet aired")) {
     return "upcoming";
   }
 
   // Then check for finished/complete
-  if (status.includes("finished") || status.includes("complete")) {
+  if (normalised.includes("finished") || normalised.includes("complete")) {
     return "finished";
   }
 
