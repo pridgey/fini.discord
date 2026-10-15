@@ -137,7 +137,7 @@ export const buildPickerView = (
   const glossary = overflowing
     ? [
         ...ownKeywords,
-        `-# …and ${everyKeyword.length - ownKeywords.length} more on ${context.opponentName ?? "their"}${context.opponentName ? "'s" : ""} cards — **Keywords** lists them all.`,
+        `-# …and ${everyKeyword.length - ownKeywords.length} more on ${context.opponentName ?? "their"}${context.opponentName ? "'s" : ""} cards — **Abilities** lists them all.`,
       ]
     : everyKeyword;
 
@@ -156,7 +156,7 @@ export const buildPickerView = (
     utilities.push(
       new ButtonBuilder()
         .setCustomId(`v2_keywords:${battleId}`)
-        .setLabel("Keywords")
+        .setLabel("Abilities")
         .setEmoji("📖")
         .setStyle(ButtonStyle.Secondary),
     );

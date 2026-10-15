@@ -248,8 +248,8 @@ export const keywordReport = (
   if (fired.length === 0 && idle.length === 0) return [];
 
   return [
-    "**Keywords**",
-    ...(fired.length > 0 ? fired : ["No keyword changed a number this match."]),
+    "**Abilities**",
+    ...(fired.length > 0 ? fired : ["No ability changed a number this match."]),
     ...(idle.length > 0 ? [`-# Didn't trigger: ${idle.join(" · ")}`] : []),
   ];
 };

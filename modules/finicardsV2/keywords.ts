@@ -488,7 +488,7 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Purist",
     slug: "purist",
     grade: "standard",
-    description: `+${STANDARD_BONUS} to type stat if the opposing card has no keyword in play`,
+    description: `+${STANDARD_BONUS} to type stat if the opposing card has no ability in play`,
     stage: "conditional",
     order: 1,
     apply: (ctx) => {
@@ -513,7 +513,7 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Mimic",
     slug: "mimic",
     grade: "minor",
-    description: "Fights with the opposing card's keyword instead of its own",
+    description: "Fights with the opposing card's ability instead of its own",
     stage: "copy",
     order: 1,
     apply: (ctx) => {
@@ -528,7 +528,7 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Silence",
     slug: "silence",
     grade: "standard",
-    description: "The opposing card's keyword does nothing this round",
+    description: "The opposing card's ability does nothing this round",
     stage: "suppress",
     order: 1,
     apply: (ctx) => {
@@ -694,14 +694,14 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Spoiler",
     slug: "spoiler",
     grade: "minor",
-    description: "If this card loses its round, the opponent's next card has its keyword switched off",
+    description: "If this card loses its round, the opponent's next card has its ability switched off",
     stage: "postLoss",
     order: 1,
     apply: (ctx) => {
       if (ctx.slot === ctx.lineupLength) return;
       ctx.opponentState.silenceNext = true;
       ctx.notes.push(
-        `Spoiler: ${ctx.self.side} switches off the next opposing keyword`,
+        `Spoiler: ${ctx.self.side} switches off the next opposing ability`,
       );
     },
   },

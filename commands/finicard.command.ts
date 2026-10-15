@@ -211,7 +211,7 @@ export const data = new SlashCommandBuilder()
         option.setName("foil").setDescription("Only foils").setRequired(false),
       )
       .addBooleanOption((option) =>
-        option.setName("keyword").setDescription("Only cards that rolled a keyword").setRequired(false),
+        option.setName("ability").setDescription("Only cards that rolled an ability").setRequired(false),
       )
       .addStringOption((option) =>
         option
@@ -448,8 +448,8 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub
-      .setName("keywords")
-      .setDescription("The v2 keyword library and what each one does"),
+      .setName("abilities")
+      .setDescription("Every ability and what it does"),
   )
   .addSubcommand((sub) =>
     sub
@@ -529,7 +529,7 @@ export const execute = async (
           tier: interaction.options.getString("rarity") as CollectionTier | null,
           set: interaction.options.getInteger("set"),
           foil: interaction.options.getBoolean("foil"),
-          keyword: interaction.options.getBoolean("keyword"),
+          keyword: interaction.options.getBoolean("ability"),
           search: interaction.options.getString("search"),
         });
         const filter = asked.filter ? `${owner} && ${asked.filter}` : owner;
@@ -963,7 +963,7 @@ export const execute = async (
       }
 
       /* ------------------------------------------------------ keywords ---- */
-      case "keywords": {
+      case "abilities": {
         const byStage = KEYWORDS.reduce<Record<string, string[]>>(
           (accumulator, keyword) => {
             const stage = keyword.stage;
@@ -977,10 +977,10 @@ export const execute = async (
         );
 
         const body = [
-          "### v2 keyword library",
+          "### Abilities",
           RULES.keywordsEnabled
-            ? "_Keywords are **active** in battles._"
-            : "_Keywords are **switched off** - battles are pure stats for now._",
+            ? "_Abilities are **active** in battles._"
+            : "_Abilities are **switched off** - battles are pure stats for now._",
           "_The rarer the card, the less likely it carries one, and the less likely it is a strong one._",
           "",
           ...Object.entries(byStage).map(

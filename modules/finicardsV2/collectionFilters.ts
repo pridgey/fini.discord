@@ -99,7 +99,7 @@ export const buildCollectionQuery = (options: CollectionOptions = {}): Collectio
   }
   if (options.keyword) {
     parts.push('keyword != ""');
-    said.push("with a keyword");
+    said.push("with an ability");
   }
   const search = (options.search ?? "").trim().slice(0, 60);
   if (search) {

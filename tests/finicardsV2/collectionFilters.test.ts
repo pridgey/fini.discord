@@ -10,7 +10,7 @@ describe("collection filters and sorts", () => {
   test("each choice narrows, and they combine", () => {
     const query = buildCollectionQuery({ type: "wit", set: 3, foil: true, keyword: true });
     expect(query.filter).toBe('card.card_type = "wit" && card.set = 3 && foil = true && keyword != ""');
-    expect(query.summary).toBe("Wit · Set 3 · foil · with a keyword");
+    expect(query.summary).toBe("Wit · Set 3 · foil · with an ability");
   });
 
   test("Full Art means the plain ones; Secret Arts and Legendaries are their own", () => {

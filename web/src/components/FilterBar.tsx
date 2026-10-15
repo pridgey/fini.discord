@@ -42,7 +42,7 @@ export const FilterBar = ({ filters, onChange, sets, tiers, shown, total, compac
           </svg>
           <input
             type="search"
-            placeholder="Search name, series, tag or keyword"
+            placeholder="Search name, series, tag or ability"
             aria-label="Search cards"
             value={filters.search}
             onChange={(event) => set({ search: event.target.value })}
@@ -103,7 +103,7 @@ export const FilterBar = ({ filters, onChange, sets, tiers, shown, total, compac
             ✦ Foil
           </Chip>
           <Chip active={filters.keyword} onClick={() => set({ keyword: !filters.keyword })}>
-            Has keyword
+            Has ability
           </Chip>
         </div>
         {extra && <div className="chip-group">{extra}</div>}

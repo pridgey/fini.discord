@@ -155,12 +155,12 @@ export const keywordSheet = (
   hands: { name: string; cards: BattleCard[] }[],
 ): string =>
   [
-    "### Keywords in this battle",
+    "### Abilities in this battle",
     ...hands.map(({ name, cards }) => {
       const legend = keywordLegend(cards);
       return [
         `**${name}'s hand**`,
-        ...(legend.length > 0 ? legend : ["-# No keywords."]),
+        ...(legend.length > 0 ? legend : ["-# No abilities."]),
       ].join("\n");
     }),
   ].join("\n\n");

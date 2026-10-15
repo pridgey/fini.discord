@@ -89,7 +89,7 @@ describe("getCommandIndex", () => {
       "rarity",
       "set",
       "foil",
-      "keyword",
+      "ability",
       "search",
     ]);
   });

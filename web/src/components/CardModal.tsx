@@ -122,7 +122,7 @@ export const CardModal = ({
                   >
                     <span className="copy-text">
                       <b>
-                        {rolled ? rolled.name : "No keyword"}
+                        {rolled ? rolled.name : "No ability"}
                         {rolled?.grade && <em data-grade={rolled.grade.toLowerCase()}>{rolled.grade}</em>}
                       </b>
                       {rolled?.description && <small>{rolled.description}</small>}
@@ -140,7 +140,7 @@ export const CardModal = ({
             <div className="note">
               <h4>
                 {keyword.name}
-                {keyword.grade && <em>{keyword.grade} keyword</em>}
+                {keyword.grade && <em>{keyword.grade} ability</em>}
               </h4>
               {keyword.description && <p>{keyword.description}</p>}
             </div>
