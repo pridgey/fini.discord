@@ -88,6 +88,13 @@ export type DungeonConfig = {
    * straight line: uncommons for a long while, then the odds climb fast.
    */
   bossFullArtOdds: number[];
+  /**
+   * About one door choice in this many puts a card from the next unreleased
+   * set behind the plain fight door, as a "Sudden" enemy. 0 turns it off.
+   */
+  previewEvery: number;
+  /** Chance, 0-1, that a shop also sells one hand-redraw ware. */
+  specialChance: number;
 };
 
 /**
@@ -114,6 +121,8 @@ export const DUNGEON: DungeonConfig = {
   shopPity: 4,
   startingWards: 1,
   bossFullArtOdds: [0, 0, 0, 10, 25, 50, 80, 100],
+  previewEvery: 75,
+  specialChance: 0.6,
 };
 
 /** The player attacks as the challenger; the dungeon answers as the defender. */
@@ -152,6 +161,10 @@ export type Mods = {
   roll: number;
   /** Added to the cooldown, in rooms. Negative is faster. */
   cooldown: number;
+  /** Above 0, doors show the enemy behind them, not only its type. */
+  scout: number;
+  /** Above 0, doors hide what is behind them. A map sees through fog. */
+  fog: number;
 };
 
 const NO_MODS: Mods = {
@@ -163,6 +176,16 @@ const NO_MODS: Mods = {
   geld: 0,
   roll: 0,
   cooldown: 0,
+  scout: 0,
+  fog: 0,
+};
+
+/** How much the doors give away right now. */
+export const doorSight = (
+  state: Pick<DungeonState, "buffs">,
+): "fogged" | "scouted" | "plain" => {
+  const mods = modsOf(state);
+  return mods.scout > 0 ? "scouted" : mods.fog > 0 ? "fogged" : "plain";
 };
 
 export type Buff = {
@@ -181,7 +204,26 @@ export type Effect =
   | { kind: "recover" }
   | { kind: "geld"; amount: number }
   /** One lost fight is survived. */
-  | { kind: "ward" };
+  | { kind: "ward" }
+  /**
+   * A card in the hand falls asleep: it rests for `rooms` more rooms. The
+   * strongest is the ready card with the biggest type stat.
+   */
+  | { kind: "sleep"; rooms: number; pick: "random" | "strongest" }
+  /**
+   * Cards go back into the deck and others are dealt in their place: the whole
+   * hand, every card that is resting, or `count` cards at random. The new
+   * cards come in ready.
+   */
+  | { kind: "redraw"; pick: "all" | "resting" | "random"; count?: number }
+  /** Several effects at once - a reward with a sting in it. */
+  | { kind: "many"; effects: Effect[] }
+  /** The three-fight count starts again: the next fight is slot 1. */
+  | { kind: "resetLeg" }
+  /** A loaded die: the next failed event is rolled again. */
+  | { kind: "reroll" }
+  /** A strong coffee: wakes one resting card, whenever the player likes. */
+  | { kind: "coffee" };
 
 export const modsOf = (state: Pick<DungeonState, "buffs">): Mods => {
   const total = { ...NO_MODS };
@@ -224,6 +266,8 @@ export type FightRoom = {
   enemy: BattleCard;
   /** Geld for winning, before buffs. */
   geld: number;
+  /** The enemy is a sneak peek at a card from a set not out yet. */
+  preview?: boolean;
 };
 
 export type ShopOffer = {
@@ -245,6 +289,11 @@ export type EventRoom = {
   /** `stat + die` has to reach this. */
   target: number;
   reward: Effect;
+  /**
+   * What failing costs, when it is not the usual one door. An event with a
+   * fail effect leaves both doors open.
+   */
+  failEffect?: Effect;
   passText: string;
   failText: string;
 };
@@ -319,10 +368,50 @@ export type DungeonState = {
   /** The current three-fight keyword match. */
   leg: { rounds: RoundResult[]; states: Record<Side, SideState> };
   recap: Recap | null;
+  /** Loaded dice held. Each one rerolls a failed event, once. */
+  rerolls?: number;
+  /** Strong coffees held. Each one wakes a resting card. */
+  coffee?: number;
+  /**
+   * Hand cards waiting to go back into the deck, by id. The engine has no deck,
+   * so it only marks them; the store deals their replacements and clears this.
+   */
+  redraw?: string[];
 };
 
-/** The enemy pool and the dice, handed to anything that builds rooms. */
-export type RoomSource = { pool: BattleCard[]; random?: Random };
+/**
+ * The enemy pool and the dice, handed to anything that builds rooms.
+ * `preview` is the next unreleased set's cards, for the odd sneak peek, and
+ * `hand` the run's hand, for effects that reach into it.
+ */
+export type RoomSource = {
+  pool: BattleCard[];
+  preview?: BattleCard[];
+  hand?: BattleCard[];
+  random?: Random;
+};
+
+/**
+ * The cards a dungeon may preview: those of the lowest-numbered set with no
+ * card active yet, so work on a later set stays hidden until this one is out.
+ * Secret Arts stay secret, and a card without its own art is not ready to show.
+ */
+export const previewCards = (
+  definitions: V2CardDefinitionRecord[],
+): V2CardDefinitionRecord[] => {
+  const released = new Set(
+    definitions.filter((definition) => definition.active).map((definition) => definition.set ?? 0),
+  );
+  const upcoming = definitions
+    .map((definition) => definition.set ?? 0)
+    .filter((set) => set > 0 && !released.has(set))
+    .sort((a, b) => a - b)[0];
+  if (upcoming === undefined) return [];
+  return definitions.filter(
+    (definition) =>
+      definition.set === upcoming && !definition.secret_art && !!definition.art,
+  );
+};
 
 /** A pool card nobody owns, flattened for the engine. The base of an enemy. */
 export const enemyCard = (definition: V2CardDefinitionRecord): BattleCard =>
@@ -453,6 +542,8 @@ export const generateFight = (
   { pool, random = Math.random }: RoomSource,
   avoid: CardType[] = [],
   config: DungeonConfig = DUNGEON,
+  /** A card from an unreleased set to build the enemy on, in place of a roll. */
+  showcase?: BattleCard,
 ): FightRoom => {
   const typed = pool.filter((card) => !avoid.includes(card.type));
   const candidates = typed.length > 0 ? typed : pool;
@@ -468,7 +559,7 @@ export const generateFight = (
   const ranked = tiersFor(wanted)
     .map((rarity) => candidates.filter((card) => card.rarity === rarity))
     .find((matches) => matches.length > 0)!;
-  const base = pick(ranked, random);
+  const base = showcase ?? pick(ranked, random);
 
   const points = enemyPoints(depth, tier, config);
   const stats = { ...base.stats };
@@ -491,10 +582,14 @@ export const generateFight = (
   // Anything worth a title fights with a trick, even if its card has none.
   if (tier !== "normal" && !keyword) keyword = pick(KEYWORDS, random).slug;
 
+  // A sneak peek keeps its affix's stats but not its name: the card is the news.
+  if (showcase) name = `Sudden ${base.name}`;
+
   return {
     kind: "fight",
     tier,
     geld: fightGeld(depth, tier, config),
+    ...(showcase ? { preview: true } : {}),
     enemy: {
       ...base,
       instanceId: `enemy-${depth}-${Math.floor(random() * 1e9).toString(36)}`,
@@ -593,6 +688,48 @@ const WARES: Ware[] = [
   },
 ];
 
+/**
+ * Sold from a spare corner of the shelf rather than in place of a regular
+ * ware: the hand redraws, put on the regular shelf, crowded out the stat wares
+ * and with them about a fifth of a run's depth. The trick wares joined them
+ * here for the same reason.
+ */
+const SPECIALS: Ware[] = [
+  {
+    name: "Fresh Shuffle",
+    blurb: "Swap every resting card for a fresh one from your deck",
+    price: 10,
+    effect: { kind: "redraw", pick: "resting" },
+  },
+  {
+    name: "Mulligan",
+    blurb: "Redeal your whole hand from your deck, every card ready",
+    price: 14,
+    effect: { kind: "redraw", pick: "all" },
+  },
+  {
+    name: "Treasure Map",
+    blurb: "Doors show who's behind them, for 3 door choices",
+    price: 8,
+    effect: {
+      kind: "buff",
+      buff: { name: "Treasure Map", note: "doors show their enemy", mods: { scout: 1 }, rooms: 3 },
+    },
+  },
+  {
+    name: "Loaded Dice",
+    blurb: "Your next failed event is rolled again",
+    price: 10,
+    effect: { kind: "reroll" },
+  },
+  {
+    name: "Strong Coffee",
+    blurb: "Wake any resting card, whenever you like",
+    price: 8,
+    effect: { kind: "coffee" },
+  },
+];
+
 export const generateShop = (
   owned: Buff[],
   random: Random = Math.random,
@@ -609,6 +746,11 @@ export const generateShop = (
     offers.push({ ...ware, sold: false });
   }
 
+  if (config.specialChance > 0 && random() < config.specialChance) {
+    const { unique: _unique, ...special } = pick(SPECIALS, random);
+    offers.push({ ...special, sold: false });
+  }
+
   return { kind: "shop", offers };
 };
 
@@ -616,7 +758,7 @@ export const generateShop = (
 
 type Encounter = Pick<
   EventRoom,
-  "title" | "text" | "stat" | "passText" | "failText"
+  "title" | "text" | "stat" | "passText" | "failText" | "failEffect"
 > & { reward: (depth: number) => Effect };
 
 const tempBuff = (name: string, note: string, mods: Partial<Mods>): Effect => ({
@@ -690,6 +832,85 @@ const ENCOUNTERS: Encounter[] = [
     passText: "You share the meal and a story. Everyone feels better for it.",
     failText: "You say the wrong thing. The stranger kicks out the fire and blocks a door.",
   },
+  /* The ones below cost something other than a door when they go wrong. */
+  {
+    title: "The Lullaby Bard",
+    text: "A bard in a nightcap strums a lute so softly that the torches start to yawn.",
+    stat: "wit",
+    reward: (depth) => ({ kind: "geld", amount: 6 + depth }),
+    failEffect: { kind: "sleep", rooms: 3, pick: "strongest" },
+    passText: "You hum along deliberately off-key. The bard storms out and forgets the tip jar.",
+    failText: "Your best card is snoring before the second verse.",
+  },
+  {
+    title: "The Pickpocket Imp",
+    text: "An imp with very fast hands is rifling through your cards and whistling innocently.",
+    stat: "power",
+    reward: (depth) => ({ kind: "geld", amount: 8 + depth }),
+    failEffect: { kind: "redraw", pick: "random", count: 2 },
+    passText: "You hold him upside down until your cards fall out, along with his lunch money.",
+    failText: "He's gone with two of your cards and, for some reason, left two others in their place.",
+  },
+  {
+    title: "The Shuffling Corridor",
+    text: "The walls slide past each other like a magician's cups. Somewhere, a drumroll.",
+    stat: "heart",
+    reward: () => ({ kind: "redraw", pick: "resting" }),
+    failEffect: { kind: "redraw", pick: "all" },
+    passText: "You step through at just the right moment, and your tired cards are swapped for fresh ones.",
+    failText: "You come out the other end holding a completely different hand.",
+  },
+  {
+    title: "The Suspiciously Comfy Bed",
+    text: "A four-poster bed sits in the middle of the corridor. The pillows are perfect. It's a trap. Probably.",
+    stat: "power",
+    reward: () => ({ kind: "recover" }),
+    failEffect: { kind: "sleep", rooms: 2, pick: "random" },
+    passText: "You lie down for exactly one minute and spring back up. Every card is ready.",
+    failText: "Someone lies down for \"just five minutes\".",
+  },
+  {
+    title: "The Fog Machine",
+    text: "A wizard is testing a fog machine. It is working far, far too well.",
+    stat: "wit",
+    reward: () => ({
+      kind: "buff",
+      buff: { name: "Clear Eyes", note: "doors show their enemy", mods: { scout: 1 }, rooms: 3 },
+    }),
+    // One room: it is gone once a door has been taken.
+    failEffect: {
+      kind: "buff",
+      buff: { name: "Fog", note: "doors hidden", mods: { fog: 1 }, rooms: 1 },
+    },
+    passText: "You find the off switch. The wizard is furious, and you can see for miles.",
+    failText: "You can't see your own hand, let alone the doors.",
+  },
+  {
+    title: "The Cursed Idol",
+    text: "A golden idol with ruby eyes. Its plaque reads DO NOT TOUCH. Its other plaque reads PLEASE TOUCH.",
+    stat: "power",
+    reward: (depth) => ({
+      kind: "many",
+      effects: [
+        { kind: "geld", amount: 14 + 2 * depth },
+        { kind: "sleep", rooms: 2, pick: "random" },
+      ],
+    }),
+    failEffect: { kind: "sleep", rooms: 2, pick: "random" },
+    passText: "You pry the rubies loose. The empty sockets somehow still glare at you.",
+    failText: "The idol is unimpressed, and curses you with a nap anyway.",
+  },
+  {
+    title: "The Echo Chamber",
+    text: "A cave that repeats everything you say, a little louder and a little later.",
+    stat: "heart",
+    reward: (depth) => ({
+      kind: "many",
+      effects: [{ kind: "geld", amount: 4 + depth }, { kind: "resetLeg" }],
+    }),
+    passText: "You shout your own name and it comes back to you as a fresh start.",
+    failText: "It only repeats your worst joke, forever. You leave by the nearest exit.",
+  },
 ];
 
 export const eventTarget = (
@@ -749,7 +970,15 @@ export const generateDoors = (
     return restricted ? [first] : [first, fight("boss", [first.enemy.type])];
   }
 
-  const first = fight("normal");
+  // Rolled only when there is a set to preview, so a source without one
+  // draws the same dice it always did.
+  const preview = source.preview ?? [];
+  const showcase =
+    preview.length > 0 && config.previewEvery > 0 && random() * config.previewEvery < 1
+      ? pick(preview, random)
+      : undefined;
+
+  const first = generateFight(depth, "normal", source, [], config, showcase);
   if (restricted) return [first];
 
   const odds = { ...config.doorOdds };
@@ -845,36 +1074,131 @@ export const nextSlot = (
   config: DungeonConfig = DUNGEON,
 ): number => (state.leg.rounds.length % config.legLength) + 1;
 
-const applyEffect = (state: DungeonState, effect: Effect): void => {
+/** Puts a ready card to sleep. Returns what happened, for the recap. */
+const putToSleep = (
+  state: DungeonState,
+  effect: Extract<Effect, { kind: "sleep" }>,
+  source: RoomSource,
+): string[] => {
+  const awake = (source.hand ?? []).filter(
+    (card) => cooldownLeft(state, card.instanceId) === 0,
+  );
+  if (awake.length === 0) return ["💤 Every card is already resting, so nobody nods off."];
+
+  const sleeper =
+    effect.pick === "strongest"
+      ? awake.reduce((best, card) =>
+          card.stats[card.type] > best.stats[best.type] ? card : best,
+        )
+      : pick(awake, source.random ?? Math.random);
+  state.readyAt[sleeper.instanceId] = Math.max(
+    state.readyAt[sleeper.instanceId] ?? 0,
+    state.depth + effect.rooms + 1,
+  );
+  return [`💤 **${sleeper.name}** falls asleep for ${effect.rooms} rooms.`];
+};
+
+/** The hand cards a redraw sends back to the deck, by id, in hand order. */
+const redrawIds = (
+  state: DungeonState,
+  effect: Extract<Effect, { kind: "redraw" }>,
+  source: RoomSource,
+): string[] => {
+  const ids = (source.hand ?? []).map((card) => card.instanceId);
+  if (effect.pick === "all") return ids;
+  if (effect.pick === "resting") {
+    return ids.filter((id) => cooldownLeft(state, id) > 0);
+  }
+
+  const random = source.random ?? Math.random;
+  const left = [...ids];
+  const chosen = new Set<string>();
+  while (chosen.size < (effect.count ?? 1) && left.length > 0) {
+    chosen.add(left.splice(Math.min(left.length - 1, Math.floor(random() * left.length)), 1)[0]);
+  }
+  return ids.filter((id) => chosen.has(id));
+};
+
+/** Applies an effect. Returns any lines it has to add to the recap. */
+const applyEffect = (
+  state: DungeonState,
+  effect: Effect,
+  source: RoomSource = { pool: [] },
+): string[] => {
   switch (effect.kind) {
     case "buff":
       state.buffs.push(structuredClone(effect.buff));
-      return;
+      return [];
     case "recover":
       state.readyAt = {};
-      return;
+      return [];
     case "geld":
       state.geld += effect.amount;
-      return;
+      return [];
     case "ward":
       state.wards += 1;
-      return;
+      return [];
+    case "sleep":
+      return putToSleep(state, effect, source);
+    case "redraw": {
+      const ids = redrawIds(state, effect, source);
+      if (ids.length === 0) return ["🔀 Nothing to swap - every card is ready."];
+      state.redraw = [...new Set([...(state.redraw ?? []), ...ids])];
+      return [];
+    }
+    case "many":
+      return effect.effects.flatMap((each) => applyEffect(state, each, source));
+    case "resetLeg":
+      state.leg = freshLeg();
+      return ["🔁 The fight count starts over: your next fight is **slot 1**."];
+    case "reroll":
+      state.rerolls = (state.rerolls ?? 0) + 1;
+      return [];
+    case "coffee":
+      state.coffee = (state.coffee ?? 0) + 1;
+      return [];
   }
 };
 
 /** What an effect is, said in a few words. */
 export const describeEffect = (effect: Effect): string => {
   switch (effect.kind) {
-    case "buff":
-      return `${effect.buff.name} (${effect.buff.note}${
-        effect.buff.rooms === null ? "" : `, next ${effect.buff.rooms - 1} rooms`
-      })`;
+    case "buff": {
+      const { buff } = effect;
+      // Fog and maps are about doors, and last a number of door choices.
+      const doors = !!(buff.mods.scout || buff.mods.fog);
+      const span =
+        buff.rooms === null
+          ? ""
+          : doors
+            ? buff.rooms === 1
+              ? ", for the next doors"
+              : `, for the next ${buff.rooms} door choices`
+            : `, next ${buff.rooms - 1} rooms`;
+      return `${buff.name} (${buff.note}${span})`;
+    }
     case "recover":
       return "every card on cooldown is ready";
     case "geld":
       return `${effect.amount} geld`;
     case "ward":
       return "a ward charm";
+    case "sleep":
+      return `${effect.pick === "strongest" ? "your strongest ready card" : "a ready card"} falls asleep for ${effect.rooms} rooms`;
+    case "redraw":
+      return effect.pick === "all"
+        ? "your whole hand is redealt from your deck"
+        : effect.pick === "resting"
+          ? "every resting card is swapped for a fresh one from your deck"
+          : `${effect.count ?? 1} random cards are swapped for others from your deck`;
+    case "many":
+      return effect.effects.map(describeEffect).join(", and ");
+    case "resetLeg":
+      return "your next fight counts as slot 1 again";
+    case "reroll":
+      return "a loaded die (your next failed event is rolled again)";
+    case "coffee":
+      return "a strong coffee (wake any resting card, whenever you like)";
   }
 };
 
@@ -1046,13 +1370,20 @@ export const playEvent = (
   const room = next.room;
 
   const stat = buffedCard(card, mods).stats[room.stat];
-  const die = 1 + Math.min(config.event.die - 1, Math.floor(random() * config.event.die));
+  const roll = () => 1 + Math.min(config.event.die - 1, Math.floor(random() * config.event.die));
+  const first = roll();
+  // A loaded die is spent on the first roll that fails, and only then.
+  const rerolled =
+    stat + mods.roll + first < room.target && (next.rerolls ?? 0) > 0 ? roll() : null;
+  if (rerolled !== null) next.rerolls = (next.rerolls ?? 0) - 1;
+  const die = rerolled ?? first;
   const total = stat + mods.roll + die;
   const passed = total >= room.target;
 
   startCooldown(next, card.instanceId, config);
+  const effect = passed ? room.reward : room.failEffect;
+  const effectLines = effect ? applyEffect(next, effect, source) : [];
   if (passed) {
-    applyEffect(next, room.reward);
     next.stats.eventsPassed += 1;
     if (room.reward.kind === "geld") next.stats.geldEarned += room.reward.amount;
   }
@@ -1061,15 +1392,39 @@ export const playEvent = (
   const working = `${stat}${mods.roll ? ` + ${mods.roll}` : ""} + 🎲 ${die} = **${total}** vs ${room.target}`;
   next.recap = {
     lines: [
+      ...(rerolled !== null
+        ? [`🎲 A **${first}** isn't enough. The loaded die rolls again...`]
+        : []),
       `**${room.title}** — ${card.name} rolls ${working}: ${passed ? "passed" : "failed"}.`,
       passed
         ? `${room.passText} You gain ${describeEffect(room.reward)}.`
-        : `${room.failText} Only one door is left open.`,
+        : `${room.failText} ${failCost(room)}`,
+      ...effectLines,
     ],
   };
 
-  openDoors(next, source, !passed, config);
+  openDoors(next, source, !passed && !room.failEffect, config);
   return { state: next, passed, die, total };
+};
+
+/** What failing an event costs, said as a sentence. */
+export const failCost = (room: EventRoom): string =>
+  room.failEffect
+    ? `${capitalise(describeEffect(room.failEffect))}.`
+    : "Only one door is left open.";
+
+const capitalise = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
+
+/** Spends a strong coffee on a resting card in hand. Allowed in any room. */
+export const drinkCoffee = (state: DungeonState, card: BattleCard): DungeonState => {
+  if ((state.coffee ?? 0) <= 0) refuse("You're out of coffee.");
+  if (cooldownLeft(state, card.instanceId) === 0) refuse(`${card.name} is already awake.`);
+  const next = structuredClone(state);
+  next.step += 1;
+  next.coffee = (next.coffee ?? 0) - 1;
+  delete next.readyAt[card.instanceId];
+  next.recap = { lines: [`☕ **${card.name}** drinks a strong coffee and is wide awake.`] };
+  return next;
 };
 
 /** Walks past an event with no card to spare. Counts as failing it. */
@@ -1080,20 +1435,33 @@ export const skipEvent = (
 ): DungeonState => {
   const next = begin(state, "event");
   mark(next, "failed");
+  const { failEffect } = next.room;
   next.recap = {
     lines: [
-      `**${next.room.title}** — you leave it alone. ${next.room.failText} Only one door is left open.`,
+      `**${next.room.title}** — you leave it alone. ${next.room.failText} ${failCost(next.room)}`,
+      ...(failEffect ? applyEffect(next, failEffect, source) : []),
     ],
   };
-  openDoors(next, source, true, config);
+  openDoors(next, source, !failEffect, config);
   return next;
 };
 
-export const buyOffer = (state: DungeonState, index: number): DungeonState => {
+export const buyOffer = (
+  state: DungeonState,
+  index: number,
+  source: RoomSource = { pool: [] },
+): DungeonState => {
   const next = begin(state, "shop");
   const offer = next.room.offers[index];
 
   if (!offer || offer.sold) refuse("That's already gone from the shelf.");
+  if (
+    offer.effect.kind === "redraw" &&
+    offer.effect.pick === "resting" &&
+    !(source.hand ?? []).some((card) => cooldownLeft(next, card.instanceId) > 0)
+  ) {
+    refuse("None of your cards are resting, so there's nothing to swap.");
+  }
   if (next.geld < offer.price) {
     refuse(`${offer.name} costs ${offer.price} geld and you have ${next.geld}.`);
   }
@@ -1101,9 +1469,9 @@ export const buyOffer = (state: DungeonState, index: number): DungeonState => {
   next.geld -= offer.price;
   next.stats.geldSpent += offer.price;
   offer.sold = true;
-  applyEffect(next, offer.effect);
+  const lines = applyEffect(next, offer.effect, source);
   next.recap = {
-    lines: [`Bought **${offer.name}** for ${offer.price} geld — ${offer.blurb}.`],
+    lines: [`Bought **${offer.name}** for ${offer.price} geld — ${offer.blurb}.`, ...lines],
   };
   return next;
 };
@@ -1117,6 +1485,33 @@ export const leaveShop = (
   next.recap = null;
   openDoors(next, source, false, config);
   return next;
+};
+
+/**
+ * Deals replacements for the cards a move sent back to the deck, from the deck
+ * cards not already in the hand. Each new card takes its old card's place, so
+ * the hand's buttons keep their order. A deck with too few cards left swaps
+ * as many as it can.
+ */
+export const redealHand = (
+  hand: string[],
+  outgoing: string[],
+  deckIds: string[],
+  random: () => number = Math.random,
+): { hand: string[]; swapped: { from: string; to: string }[] } => {
+  const held = new Set(hand);
+  const spare = deckIds.filter((id) => !held.has(id));
+  const swapped: { from: string; to: string }[] = [];
+  const next = [...hand];
+
+  for (const from of outgoing) {
+    const slot = next.indexOf(from);
+    if (slot < 0 || spare.length === 0) continue;
+    const [to] = spare.splice(Math.min(spare.length - 1, Math.floor(random() * spare.length)), 1);
+    next[slot] = to;
+    swapped.push({ from, to });
+  }
+  return { hand: next, swapped };
 };
 
 /** Steps through a door into the next room, one room older. */

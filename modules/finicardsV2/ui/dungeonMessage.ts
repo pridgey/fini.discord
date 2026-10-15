@@ -25,6 +25,7 @@ import {
   cooldownLeft,
   describeEffect,
   doorHint,
+  doorSight,
   eventChance,
   modsOf,
   nextSlot,
@@ -43,6 +44,7 @@ import {
   TYPE_ACCENT,
   TYPE_NAME,
   WHEEL_HINT,
+  activeKeyword,
   cardLine,
   keywordLegend,
 } from "./theme";
@@ -72,6 +74,14 @@ export type DungeonMessageInput = {
   hand: { card: BattleCard; index: number }[];
   /** What the run paid, once it has ended. */
   reward?: DungeonReward | null;
+  /**
+   * The tutorial's buttons: its own ids, and only the move being taught
+   * switched on. Left out, every button belongs to the run.
+   */
+  controls?: {
+    id: (action: string) => string;
+    enabled: (action: string) => boolean;
+  };
 };
 
 export type BuiltDungeonMessage = {
@@ -91,6 +101,8 @@ export type DungeonImages = {
 
 /* A fixed name: a colliding or truncated one breaks `attachment://`. */
 const HAND_FILE = "dungeon-hand.png";
+/** Discord refuses a message with more files than this. */
+const MAX_ATTACHMENTS = 10;
 
 /* Twice the cards per row, so more pixels to keep each one sharp. */
 const DUNGEON_HAND_WIDTH = 1800;
@@ -99,8 +111,8 @@ const DUNGEON_NAME = "The dungeon";
 const SHOP_ACCENT = 0xffd166;
 const EVENT_ACCENT = 0xb18cff;
 
-const plural = (count: number, word: string): string =>
-  `${count} ${word}${count === 1 ? "" : "s"}`;
+const plural = (count: number, word: string, many = `${word}s`): string =>
+  `${count} ${count === 1 ? word : many}`;
 
 /** The hand as it plays right now: buffs applied, cooldowns counted. */
 const handView = (input: DungeonMessageInput) => {
@@ -118,17 +130,20 @@ export const buildDungeonMessage = async (
   input: DungeonMessageInput,
 ): Promise<BuiltDungeonMessage> => {
   if (input.state !== "active") {
+    const summary = await renderDungeonSummary({
+      progress: input.progress,
+      fell: input.state === "failed",
+      coin: input.reward?.kind === "coin" ? input.reward.amount : 0,
+    });
+    // A message carries ten attachments, the summary among them; a run that
+    // beat more bosses than that shows the first drops and lists the rest.
+    const shown = MAX_ATTACHMENTS - (summary ? 1 : 0);
     return composeDungeonMessage(input, {
       scene: null,
       hand: null,
-      summary: await renderDungeonSummary({
-        progress: input.progress,
-        fell: input.state === "failed",
-        coin: input.reward?.kind === "coin" ? input.reward.amount : 0,
-      }),
-      // A gallery holds ten items; a run that beat more bosses lists the rest.
+      summary,
       cards: await Promise.all(
-        (input.reward?.cards ?? []).slice(0, 10).map((card) => renderCardImage(card)),
+        (input.reward?.cards ?? []).slice(0, shown).map((card) => renderCardImage(card)),
       ),
     });
   }
@@ -178,7 +193,13 @@ const buffLine = (progress: DungeonState): string | null => {
   if (progress.buffs.length === 0) return null;
   const parts = progress.buffs.map(
     (buff) =>
-      `${buff.name} (${buff.note}${buff.rooms === null ? "" : `, ${plural(buff.rooms, "room")} left`})`,
+      `${buff.name} (${buff.note}${
+        buff.rooms === null
+          ? ""
+          : buff.mods.scout || buff.mods.fog
+            ? `, ${plural(buff.rooms, "door choice")} left`
+            : `, ${plural(buff.rooms, "room")} left`
+      })`,
   );
   return `-# Buffs: ${parts.join(" · ")}`;
 };
@@ -202,6 +223,19 @@ const roomAccent = (room: Room): number =>
     : room.kind === "event"
       ? EVENT_ACCENT
       : TYPE_ACCENT[room.enemy.type];
+
+/** A door's hint as the player can see it: nothing at all through fog. */
+const doorText = (room: Room, sight: ReturnType<typeof doorSight>): string =>
+  sight === "fogged" ? "???" : doorHint(room);
+
+const doorIcon = (room: Room, sight: ReturnType<typeof doorSight>): string =>
+  sight === "fogged" ? "🌫️" : doorEmoji(room);
+
+/** What a map shows behind a door: the enemy itself. */
+const scoutLine = (room: Room, index: number): string =>
+  room.kind === "fight"
+    ? `🗺️ Door ${index + 1}: ${cardLine(room.enemy)}${room.enemy.keyword ? ` · _${activeKeyword(room.enemy)?.name ?? ""}_` : ""}`
+    : `🗺️ Door ${index + 1}: ${doorHint(room)}`;
 
 const doorEmoji = (room: Room): string =>
   room.kind === "shop"
@@ -248,6 +282,12 @@ export const composeDungeonMessage = (
           `🪙 **${progress.geld} geld** (${coinFor(progress.geld)} fc if you walk out)`,
           ...(progress.wards > 0
             ? [`🛡️ ${plural(progress.wards, "ward")}`]
+            : []),
+          ...((progress.rerolls ?? 0) > 0
+            ? [`🎲 ${plural(progress.rerolls ?? 0, "loaded die", "loaded dice")}`]
+            : []),
+          ...((progress.coffee ?? 0) > 0
+            ? [`☕ ${plural(progress.coffee ?? 0, "coffee")}`]
             : []),
           ...(loot ? [loot] : []),
         ]
@@ -339,7 +379,9 @@ export const composeDungeonMessage = (
 
   /* ------------------------------------------------------------ active ---- */
   const files: AttachmentBuilder[] = [];
-  const id = (action: string) => `v2_dungeon:${runId}:${progress.step}:${action}`;
+  const id = (action: string) =>
+    input.controls?.id(action) ?? `v2_dungeon:${runId}:${progress.step}:${action}`;
+  const off = (action: string) => !!input.controls && !input.controls.enabled(action);
   const mods = modsOf(progress);
   const hand = handView(input);
   const ready = hand.filter((entry) => entry.cooldown === 0);
@@ -382,6 +424,7 @@ export const composeDungeonMessage = (
 
   if (phase === "doors") {
     const { doors } = progress;
+    const sight = doorSight(progress);
     scene
       .setAccentColor(NEUTRAL_ACCENT)
       .addTextDisplayComponents((text) =>
@@ -395,12 +438,17 @@ export const composeDungeonMessage = (
       scene,
       images.scene,
       DUNGEON_SCENE_FILE,
-      doors.map(doorHint).join(" or "),
-      doors.map((door, index) => `**${index + 1}** · ${doorEmoji(door)} ${doorHint(door)}`),
+      doors.map((door) => doorText(door, sight)).join(" or "),
+      doors.map((door, index) => `**${index + 1}** · ${doorIcon(door, sight)} ${doorText(door, sight)}`),
     );
     scene.addTextDisplayComponents((text) =>
       text.setContent(
-        "-# A door only tells you what kind of room is behind it. Every room you enter brings your resting cards one room closer.",
+        sight === "fogged"
+          ? "🌫️ The fog is too thick to see what's behind either door. Pick one and hope."
+          : [
+              ...(sight === "scouted" ? doors.map(scoutLine) : []),
+              "-# A door only tells you what kind of room is behind it. Every room you enter brings your resting cards one room closer.",
+            ].join("\n"),
       ),
     );
     buttonRows(
@@ -408,9 +456,10 @@ export const composeDungeonMessage = (
       doors.map((door, index) =>
         new ButtonBuilder()
           .setCustomId(id(`d${index}`))
-          .setLabel(`${index + 1} · ${doorHint(door)}`)
-          .setEmoji(doorEmoji(door))
-          .setStyle(ButtonStyle.Primary),
+          .setLabel(`${index + 1} · ${doorText(door, sight)}`)
+          .setEmoji(doorIcon(door, sight))
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(off(`d${index}`)),
       ),
     );
   } else {
@@ -426,8 +475,11 @@ export const composeDungeonMessage = (
       scene.addTextDisplayComponents((text) =>
         text.setContent(
           [
+            ...(room.preview
+              ? [`👀 **A sneak peek** — ${room.enemy.name.replace(/^Sudden /, "")} is from ${room.enemy.set ? `Set ${room.enemy.set}` : "a set"}, which isn't out yet.`]
+              : []),
             ...keywordLegend([room.enemy]),
-            `-# Play a card to fight. It rests for the next ${plural(Math.max(0, DUNGEON.cooldownRooms + mods.cooldown), "room")} either way. Lose and the run ends${progress.wards > 0 ? " - unless a ward breaks first" : ""}. For keywords this is **slot ${nextSlot(progress)} of ${DUNGEON.legLength}**.`,
+            `-# Play a card to fight. It rests for the next ${plural(Math.max(0, DUNGEON.cooldownRooms + mods.cooldown), "room")} either way. Lose and the run ends${progress.wards > 0 ? " - unless a ward breaks first" : ""}. For abilities this is **slot ${nextSlot(progress)} of ${DUNGEON.legLength}**.`,
             WHEEL_HINT,
           ].join("\n"),
         ),
@@ -440,7 +492,7 @@ export const composeDungeonMessage = (
         text.setContent(
           [
             `Play a card: its **${TYPE_NAME[room.stat]}** + 🎲 d${DUNGEON.event.die} has to reach **${room.target}**.`,
-            `-# Pass: ${describeEffect(room.reward)}. Fail: only one door to choose from next. The card rests either way.`,
+            `-# Pass: ${describeEffect(room.reward)}. Fail: ${room.failEffect ? describeEffect(room.failEffect) : "only one door to choose from next"}. The card rests either way.`,
           ].join("\n"),
         ),
       );
@@ -472,12 +524,13 @@ export const composeDungeonMessage = (
                 : `${offer.name} — ${offer.price} geld`,
             )
             .setStyle(ButtonStyle.Success)
-            .setDisabled(offer.sold || offer.price > progress.geld),
+            .setDisabled(offer.sold || offer.price > progress.geld || off(`b${index}`)),
         ),
         new ButtonBuilder()
           .setCustomId(id("leave"))
           .setLabel("Leave the shop")
-          .setStyle(ButtonStyle.Primary),
+          .setStyle(ButtonStyle.Primary)
+          .setDisabled(off("leave")),
       ]);
     }
   }
@@ -528,8 +581,26 @@ export const composeDungeonMessage = (
           .setCustomId(id(`c${entry.index}`))
           .setLabel(label)
           .setEmoji(TYPE_EMOJI[entry.card.type])
-          .setStyle(ButtonStyle.Secondary);
+          .setStyle(ButtonStyle.Secondary)
+          .setDisabled(off(`c${entry.index}`));
       }),
+    );
+  }
+
+  /* A coffee can be drunk in any room, on any card that is resting. */
+  if ((progress.coffee ?? 0) > 0) {
+    buttonRows(
+      handBlock,
+      hand
+        .filter((entry) => entry.cooldown > 0)
+        .map((entry) =>
+          new ButtonBuilder()
+            .setCustomId(id(`w${entry.index}`))
+            .setLabel(`Wake ${entry.card.name}`.slice(0, 80))
+            .setEmoji("☕")
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(off(`w${entry.index}`)),
+        ),
     );
   }
 
@@ -540,7 +611,8 @@ export const composeDungeonMessage = (
           new ButtonBuilder()
             .setCustomId(id("leave"))
             .setLabel("Walk past (counts as failing)")
-            .setStyle(ButtonStyle.Secondary),
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(off("leave")),
         ]
       : []),
     new ButtonBuilder()
@@ -548,7 +620,8 @@ export const composeDungeonMessage = (
       .setLabel(
         leaveWith > 0 ? `Walk out with ${leaveWith} fc` : "Walk out with nothing",
       )
-      .setStyle(ButtonStyle.Danger),
+      .setStyle(ButtonStyle.Danger)
+      .setDisabled(off("retreat")),
   ]);
 
   return {

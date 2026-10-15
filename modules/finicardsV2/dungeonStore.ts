@@ -5,7 +5,7 @@ import type {
 } from "../../types/PocketbaseTablesV2";
 import { pb } from "../../utilities/pocketbase";
 import { getCardDefinitions, loadLineupByIds } from "./cardStore";
-import { loadDeck, unplayableReason } from "./decks";
+import { getDeck, loadDeck, unplayableReason } from "./decks";
 import { dealHandFromDeck } from "./draw";
 import { summariseRun } from "./dungeonStats";
 import {
@@ -14,10 +14,13 @@ import {
   buyOffer,
   chooseDoor,
   createRun,
+  drinkCoffee,
   enemyCard,
   leaveShop,
   playEvent,
   playFight,
+  previewCards,
+  redealHand,
   skipEvent,
   type DungeonState,
   type RoomSource,
@@ -114,10 +117,66 @@ export const loadHand = async (
   });
 };
 
-/** The pool every enemy is built from. */
-const roomSource = async (): Promise<RoomSource> => ({
-  pool: (await getCardDefinitions()).map(enemyCard),
-});
+/**
+ * The pool every enemy is built from, the next set's sneak peeks, and - once a
+ * run is under way - its hand, for the effects that reach into it.
+ */
+const roomSource = async (run?: V2DungeonRunRecord): Promise<RoomSource> => {
+  const [definitions, hand] = await Promise.all([
+    getCardDefinitions({ includeInactive: true }),
+    run ? loadHand(run) : Promise.resolve([]),
+  ]);
+  return {
+    pool: definitions.filter((definition) => definition.active).map(enemyCard),
+    preview: previewCards(definitions).map(enemyCard),
+    hand: hand.map((entry) => entry.card),
+  };
+};
+
+/** Resolves a pending redraw: deals from the run's deck and says who swapped. */
+const applyRedraw = async (
+  run: V2DungeonRunRecord,
+  progress: DungeonState,
+): Promise<{ progress: DungeonState; hand: string[] }> => {
+  const hand = run.hand ?? [];
+  if (!progress.redraw?.length) return { progress, hand };
+
+  const deck = run.deck ? await getDeck(run.deck) : null;
+  const contents = deck ? await loadDeck(deck, run.server_id) : null;
+  const deckCards = contents?.cards ?? [];
+  const { hand: next, swapped } = redealHand(
+    hand,
+    progress.redraw,
+    deckCards.map((card) => card.instanceId),
+  );
+
+  const names = new Map(
+    [...deckCards, ...(await loadLineupByIds(progress.redraw))].map((card) => [card.instanceId, card.name]),
+  );
+  const readyAt = { ...progress.readyAt };
+  // New cards come in ready, even one that was played and swapped out before.
+  for (const { from, to } of swapped) {
+    delete readyAt[from];
+    delete readyAt[to];
+  }
+  const line =
+    swapped.length > 0
+      ? `🔀 ${swapped.map(({ from, to }) => `${names.get(from) ?? "a card"} → **${names.get(to) ?? "a card"}**`).join(", ")}.`
+      : "🔀 Your deck has no other cards to deal, so your hand stays as it is.";
+
+  return {
+    hand: next,
+    progress: {
+      ...progress,
+      readyAt,
+      redraw: undefined,
+      recap: {
+        ...(progress.recap ?? {}),
+        lines: [...(progress.recap?.lines ?? []), line],
+      },
+    },
+  };
+};
 
 export type StartRunInput = {
   serverId: string;
@@ -187,7 +246,9 @@ export type DungeonAction =
   /** Leave a shop, or walk past an event. */
   | { kind: "leave" }
   /** Walk out of the dungeon. */
-  | { kind: "retreat" };
+  | { kind: "retreat" }
+  /** Spend a strong coffee on the resting card at this index of the hand. */
+  | { kind: "wake"; handIndex: number };
 
 export type ActionOutcome =
   | { ok: false; reason: string }
@@ -226,14 +287,17 @@ export const act = async (
   }
 
   const save = async (
-    progress: DungeonState,
+    moved: DungeonState,
     next: V2DungeonRunState = "active",
-  ): Promise<ActionOutcome> => ({
-    ok: true,
-    run: await pb
-      .collection<V2DungeonRunRecord>(V2_DUNGEON_RUN)
-      .update(runId, { progress, state: next }),
-  });
+  ): Promise<ActionOutcome> => {
+    const { progress, hand } = await applyRedraw(run, moved);
+    return {
+      ok: true,
+      run: await pb
+        .collection<V2DungeonRunRecord>(V2_DUNGEON_RUN)
+        .update(runId, { progress, hand, state: next }),
+    };
+  };
 
   try {
     switch (action.kind) {
@@ -244,10 +308,19 @@ export const act = async (
         return await save(chooseDoor(state, action.index));
 
       case "buy":
-        return await save(buyOffer(state, action.index));
+        return await save(buyOffer(state, action.index, await roomSource(run)));
+
+      case "wake": {
+        const cardId = (run.hand ?? [])[action.handIndex];
+        const [card] = cardId ? await loadLineupByIds([cardId]) : [];
+        if (!card) {
+          return { ok: false, reason: "That card is no longer in your collection." };
+        }
+        return await save(drinkCoffee(state, card));
+      }
 
       case "leave": {
-        const source = await roomSource();
+        const source = await roomSource(run);
         return await save(
           state.room.kind === "event"
             ? skipEvent(state, source)
@@ -267,7 +340,7 @@ export const act = async (
           };
         }
 
-        const source = await roomSource();
+        const source = await roomSource(run);
 
         if (state.room.kind === "event") {
           return await save(playEvent(state, card, source).state);

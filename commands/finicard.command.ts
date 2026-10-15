@@ -93,6 +93,8 @@ import type {
   V2DeckRecord,
 } from "../types/PocketbaseTablesV2";
 import { splitBigString } from "../utilities/splitBigString";
+import { replayTutorial } from "../modules/finicardsV2/dungeonTutorial";
+import { buildTutorialMessage } from "../modules/finicardsV2/ui/dungeonTutorialMessage";
 
 /**
  * Finicards: the card game.
@@ -312,6 +314,11 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub
+      .setName("dungeon-tutorial")
+      .setDescription("Learn the dungeon with a borrowed hand - free, private, five rooms"),
+  )
+  .addSubcommand((sub) =>
+    sub
       .setName("pending")
       .setDescription("Battles waiting on your lineup"),
   )
@@ -479,9 +486,12 @@ export const execute = async (
   const serverName = interaction.guild?.name ?? "unknown guild name";
   const identifier = `${interaction.user.username}-${serverName}`;
 
-  /* A practice battle is shown only to the player running it, and whether a
-     reply is ephemeral is fixed at the moment it is deferred. */
-  const isPrivate = interaction.options.getSubcommand(false) === "practice";
+  /* A practice battle and the dungeon tutorial are shown only to the player
+     running them, and whether a reply is ephemeral is fixed at the moment it
+     is deferred. */
+  const isPrivate = ["practice", "dungeon-tutorial"].includes(
+    interaction.options.getSubcommand(false) ?? "",
+  );
   await interaction.deferReply(
     isPrivate ? { flags: [MessageFlags.Ephemeral] } : undefined,
   );
@@ -802,6 +812,16 @@ export const execute = async (
       }
 
       /* ------------------------------------------------------- dungeon ---- */
+      case "dungeon-tutorial": {
+        await interaction.editReply(
+          await buildTutorialMessage(replayTutorial([]), {
+            userId: interaction.user.id,
+            playerName: interaction.user.displayName,
+          }),
+        );
+        return;
+      }
+
       case "dungeon": {
         /* One run at a time. Asking again while one is live brings it back
            rather than charging for another - the fee is already paid, and the
@@ -818,7 +838,7 @@ export const execute = async (
 
         if (decks.length === 0) {
           await interaction.editReply(
-            `You have no decks. Build one with \`/finicard deck build name:Main\` - a dungeon run deals ${DUNGEON.handSize} cards from it.`,
+            `You have no decks. Build one with \`/finicard deck build name:Main\` - a dungeon run deals ${DUNGEON.handSize} cards from it. New to dungeons? \`/finicard dungeon-tutorial\` is free.`,
           );
           return;
         }

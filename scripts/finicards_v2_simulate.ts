@@ -42,6 +42,7 @@ import {
   payoutFor,
   playEvent,
   playFight,
+  redealHand,
   skipEvent,
   type DungeonState,
   type Room,
@@ -496,12 +497,31 @@ const gradeDungeon = () => {
     policy: Policy,
     random: () => number,
   ): { depth: number; coin: number; cards: number; fullArts: number } => {
-    const hand = dealHand(deck, DUNGEON.handSize, random);
-    const source: RoomSource = { pool: POOL, random };
-    let state = createRun(source)!;
+    let hand = dealHand(deck, DUNGEON.handSize, random);
+    const base: RoomSource = { pool: POOL, random };
+    let state = createRun(base)!;
     let fell = false;
+    const byId = new Map(deck.map((card) => [card.instanceId, card]));
 
     for (let guard = 0; guard < MAX_ROOMS * 4 && state.depth < MAX_ROOMS; guard++) {
+      // Deal for whatever the last move sent back to the deck, as the store does.
+      if (state.redraw?.length) {
+        const dealt = redealHand(
+          hand.map((card) => card.instanceId),
+          state.redraw,
+          deck.map((card) => card.instanceId),
+          random,
+        );
+        hand = dealt.hand.map((id) => byId.get(id)!);
+        const readyAt = { ...state.readyAt };
+        for (const { from, to } of dealt.swapped) {
+          delete readyAt[from];
+          delete readyAt[to];
+        }
+        state = { ...state, readyAt, redraw: undefined };
+      }
+      const source: RoomSource = { ...base, hand };
+
       if (state.phase === "doors") {
         const score = (room: Room, index: number): number => {
           if (room.kind === "shop") return state.geld >= 8 ? 3 : 0;
@@ -521,10 +541,27 @@ const gradeDungeon = () => {
         const affordable = room.offers
           .map((offer, index) => ({ offer, index }))
           .filter(({ offer }) => !offer.sold && offer.price <= state.geld)
+          // The bots never drink coffee, and see through every door anyway.
+          .filter(
+            ({ offer }) =>
+              offer.effect.kind !== "coffee" &&
+              !(offer.effect.kind === "buff" && offer.effect.buff.mods.scout),
+          )
+          // A redraw only when it would bring back enough of a resting hand.
+          .filter(({ offer }) => {
+            if (offer.effect.kind !== "redraw") return true;
+            const resting = hand.length - cards.length;
+            return offer.effect.pick === "all" ? resting >= 4 : resting >= 2;
+          })
           .sort((a, b) => a.offer.price - b.offer.price)[0];
-        state = affordable
-          ? buyOffer(state, affordable.index)
-          : leaveShop(state, source);
+        try {
+          state = affordable
+            ? buyOffer(state, affordable.index, source)
+            : leaveShop(state, source);
+        } catch {
+          // A ware with nothing to act on (a Fresh Shuffle with nothing resting).
+          state = leaveShop(state, source);
+        }
         continue;
       }
 

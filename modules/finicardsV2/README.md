@@ -215,16 +215,50 @@ Banked cards are drawn and granted when the run ends, on a walk out or a fall
 alike, and shown on the final message. A ward that carries you past a boss
 drops nothing.
 
-**Events.** Eight encounters, each asking for one stat. The card's stat (with
+**Events.** Fifteen encounters, each asking for one stat. The card's stat (with
 buffs) + d6 has to reach `9 + depth / 4`, and every button shows that card's
-chance. Passing pays the event's boon - geld, a temporary buff, a ward, or
-every card recovered. Failing never ends the run: the next choice is one door
-instead of two. An event can also be walked past, which counts as failing it.
+chance. Passing pays the event's boon - geld, a temporary buff, a ward, every
+card recovered, or the resting cards swapped for fresh ones. Failing never ends
+the run: the next choice is one door instead of two - or, for the four events
+that carry a `failEffect`, something else instead: a card falls asleep (the
+Lullaby Bard puts the strongest ready one out for 3 rooms, the Comfy Bed a
+random one for 2), or cards are swapped for others from the deck (the
+Pickpocket Imp takes 2 at random, the Shuffling Corridor the whole hand), or
+the next doors are hidden (the Fog Machine, whose boon is the opposite: three
+door choices that show their enemy). The Cursed Idol pays big geld but puts a
+card to sleep pass or fail, and the Echo Chamber restarts the three-fight count
+so the next fight is slot 1 - a second go for `Vanguard` and `Gambit`. A
+reward or a cost can be several effects at once (`{ kind: "many" }`). An event
+can also be walked past, which counts as failing it.
 
 **Shops.** Three wares off a shelf of ten, priced in geld: +1 to a stat for the
 run, War Paint (+2 type stat, 3 rooms), Hex Doll (enemies -1, 3 rooms),
-Smelling Salts, Quick Hands, Lucky Coin, Deep Pockets, Ward Charm. The hand
-strip and the card buttons show stats with buffs already applied.
+Smelling Salts, Quick Hands, Lucky Coin, Deep Pockets, Ward Charm. Most shops
+(`DUNGEON.specialChance`, 60%) also sell a fourth, special ware: Fresh Shuffle
+(every resting card swapped, 10), Mulligan (the whole hand redealt, 14),
+Treasure Map (the next 3 door choices show their enemy, 8), Loaded Dice (the
+next failed event is rolled again, 10) or Strong Coffee (wake any resting card,
+any time, 8). They sit beside the regular shelf rather than on it, because on it
+they crowded out the stat wares and cost runs about a fifth of their depth in
+the simulator.
+
+**Charges.** Loaded dice and coffees are held like wards and shown beside them.
+A loaded die is spent automatically on the first event roll that fails. A coffee
+is spent by the player: while they hold one, every resting card in hand gets a
+☕ Wake button, in any room and at the doors.
+
+**What a door shows** (`doorSight`). Fog (a one-room buff) hides the kind of
+room behind both doors - in the text, the buttons and the picture. A map (a
+buff counted in door choices) shows the enemy behind each fight door by name,
+stats and ability. A map sees through fog. The hand strip and
+the card buttons show stats with buffs already applied.
+
+**Redraws.** The engine has no deck, so a redraw only marks cards on
+`DungeonState.redraw`; the store (`act` in `dungeonStore.ts`) deals their
+replacements from the run's deck, from the cards not already in hand, each into
+its old card's place so the buttons keep their order. New cards come in ready.
+A deck with too few spare cards swaps what it can. The simulator deals redraws
+the same way, through the same `redealHand`.
 
 **Doors.** One door is always a fight, and after a shop or an event both are -
 a run cannot be walked on side rooms. Two fight doors are different types when
@@ -262,27 +296,39 @@ for, and a click for any other step is refused. One run per player per server:
 The payout is recorded on the run as it is paid, and a run that already carries
 one is never paid again.
 
+**The tutorial** (`/finicard dungeon-tutorial`, `dungeonTutorial.ts`) is five
+rooms on rails with a coach, private and free: a fight for the type wheel, an
+event (the Goose Tribunal) for stat checks and resting, a shop, a fight nobody
+can win for wards (seven raccoons in a trenchcoat, 99/99/99), and a boss for
+abilities - Captain Crouton's Last Stand lands in slot 3 - then the way out. It
+is a real run through the real engine and message, with a borrowed hand drawn
+in SVG (`tutorialArt.ts`), scripted rooms behind the doors and a die that always
+lands on 4. Nothing is stored: the moves so far ride in the button ids, every
+click replays them from the start, and the coach switches off every button but
+the move being taught. The tests walk every path it allows.
+
 ### How far it goes
 
-`bun run scripts/finicards_v2_simulate.ts --dungeon --keywords`, 1000 runs a
+`bun run scripts/finicards_v2_simulate.ts --dungeon --keywords`, 2000 runs a
 row. *careful* works out every clash and walks out when nothing in hand can win;
 *gut* plays the best-looking card and never walks out.
 
 | deck | player | avg room | median | p90 | avg fc | runs in profit | cards | full-arts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2 packs, all 10 cards | careful | 14.3 | 10 | 25 | 40.9 | 47% | 2.04 | 0.14 |
-| | gut | 12.0 | 10 | 20 | 6.5 | 9% | 1.01 | 0.01 |
-| 8 packs, best 20 | careful | 17.3 | 15 | 30 | 61.6 | 62% | 2.63 | 0.23 |
-| | gut | 14.6 | 12 | 25 | 11.3 | 18% | 1.41 | 0.04 |
-| 24 packs, best 20 | careful | 23.8 | 20 | 45 | 129.9 | 78% | 3.94 | 0.74 |
-| | gut | 19.1 | 15 | 36 | 28.7 | 31% | 2.02 | 0.18 |
-| full-arts only | careful | 31.4 | 29 | 55 | 239.4 | 91% | 5.47 | 1.46 |
-| | gut | 28.4 | 23 | 55 | 91.9 | 57% | 3.52 | 0.73 |
+| 2 packs, all 10 cards | careful | 14.1 | 10 | 25 | 37.2 | 48% | 2.00 | 0.11 |
+| | gut | 11.4 | 10 | 18 | 5.6 | 6% | 0.93 | 0.01 |
+| 8 packs, best 20 | careful | 17.2 | 15 | 30 | 61.7 | 60% | 2.61 | 0.27 |
+| | gut | 13.9 | 12 | 24 | 10.8 | 15% | 1.31 | 0.04 |
+| 24 packs, best 20 | careful | 23.3 | 20 | 41 | 131.6 | 78% | 3.84 | 0.71 |
+| | gut | 18.1 | 15 | 33 | 24.7 | 31% | 2.00 | 0.14 |
+| full-arts only | careful | 30.7 | 28 | 52 | 234.7 | 89% | 5.32 | 1.38 |
+| | gut | 25.5 | 20 | 49 | 68.9 | 53% | 3.16 | 0.55 |
 
 Against a 15 fc fee the dungeon is a Finicoin source for anyone who walks out
 in time and a sink for anyone who plays until they fall - the payout comes out
 of the Reserve either way. Bosses are the walls - medians sit on
-multiples of five. The bots shop and pick doors crudely, so read these as
+multiples of five. The bots shop and pick doors crudely - they never buy coffee
+or maps, which they could not use, and see through fog - so read these as
 shapes, not promises. Every number is in `DUNGEON` in `dungeon.ts`.
 
 ## Decks
@@ -618,6 +664,8 @@ the keyword was fixed per card; nothing reads it, and the import blanks it.
 | `battleStore.ts` | The two-phase challenge lifecycle and its state machine. |
 | `practice.ts` | What makes a battle a practice battle, and how its two hands are dealt. |
 | `dungeon.ts` | Pure dungeon rules: the dials, rooms and doors, fights, events, shops, buffs, cooldowns, payouts. |
+| `dungeonTutorial.ts` | The dungeon tutorial's script, cast and coach; replays a list of moves through the engine. |
+| `tutorialArt.ts` | The tutorial cast's artwork, hand-drawn SVG as `data:` URLs. |
 | `dungeonStore.ts` | The run lifecycle: one `act` per click, and its guards against stale or replayed ones. |
 | `cardArt/dungeonScene.ts` | The picture of the current room - fight, shop, event - or the doors out of it. |
 | `dungeonFlow.ts` | The entry fee, settling a finished run, and the one builder for a run's message. |

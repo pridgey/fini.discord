@@ -27,6 +27,10 @@ import {
   payoutFor,
   playEvent,
   playFight,
+  doorSight,
+  drinkCoffee,
+  previewCards,
+  redealHand,
   skipEvent,
   type Buff,
   type DungeonState,
@@ -36,9 +40,13 @@ import {
   type RoomSource,
   type ShopRoom,
 } from "../../modules/finicardsV2/dungeon";
-import { composeDungeonMessage } from "../../modules/finicardsV2/ui";
+import { buildDungeonMessage, composeDungeonMessage } from "../../modules/finicardsV2/ui";
 import type { BattleCard } from "../../modules/finicardsV2/types";
-import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
+import type {
+  CardRarity,
+  CardType,
+  V2CardDefinitionRecord,
+} from "../../types/PocketbaseTablesV2";
 
 const card = (
   id: string,
@@ -577,8 +585,10 @@ describe("finicards v2 dungeons", () => {
     it("stocks distinct wares, and never a second Quick Hands", () => {
       const owned: Buff = { name: "Quick Hands", note: "", mods: { cooldown: -1 }, rooms: null };
       for (let seed = 0; seed < 40; seed++) {
-        const names = generateShop([owned], seeded(seed)).offers.map((offer) => offer.name);
-        expect(names).toHaveLength(DUNGEON.shopOffers);
+        const offers = generateShop([owned], seeded(seed)).offers;
+        const names = offers.map((offer) => offer.name);
+        // The regular shelf, and sometimes one special ware beside it.
+        expect([DUNGEON.shopOffers, DUNGEON.shopOffers + 1]).toContain(offers.length);
         expect(new Set(names).size).toBe(names.length);
         expect(names).not.toContain("Quick Hands");
       }
@@ -756,6 +766,24 @@ describe("finicards v2 dungeons", () => {
       expect(done).toContain("Card Prize");
     });
 
+    it("keeps a long run's results within Discord's ten attachments", async () => {
+      const drops = Array.from({ length: 11 }, (_, i) => ({
+        ...card(`Prize ${i}`, "heart", [2, 4, 9]),
+        instanceId: `drop${i}abcdef`,
+      }));
+      const message = await buildDungeonMessage({
+        ...base,
+        state: "retreated",
+        progress: runIn(fightRoom(weak("e")), { depth: 65, geld: 2854 }),
+        hand: [],
+        reward: { kind: "none", cards: drops },
+      });
+
+      expect(message.files.length).toBeLessThanOrEqual(10);
+      // Every drop is still listed, pictured or not.
+      expect(textOf(message)).toContain("Card Prize 10");
+    });
+
     it("drops the buttons and states the payout once the run ends", () => {
       const progress = runIn(fightRoom(wall("e")), { depth: 6, geld: 80 });
       const payout = payoutFor(80, true);
@@ -883,6 +911,305 @@ describe("finicards v2 dungeons", () => {
         doors: [rooms[0], rooms[1]],
       });
       expect(doors!.subarray(0, 4).toString("hex")).toBe("89504e47");
+    });
+  });
+
+  describe("sneak peeks", () => {
+    const PREVIEW = [card("next", "wit", [3, 8, 4])];
+    const peek = (seed: number, config = DUNGEON) =>
+      generateDoors(
+        { depth: 2, room: fightRoom(weak("e")), buffs: [] },
+        { ...source(seed), preview: PREVIEW },
+        false,
+        config,
+      ).filter((door): door is FightRoom => door.kind === "fight" && !!door.preview);
+
+    it("puts a Sudden enemy behind about one door choice in previewEvery", () => {
+      const runs = 3000;
+      let seen = 0;
+      for (let seed = 0; seed < runs; seed++) {
+        const shown = peek(seed);
+        expect(shown.length).toBeLessThanOrEqual(1);
+        for (const door of shown) {
+          expect(door.enemy.name).toBe("Sudden Card next");
+          expect(door.tier).toBe("normal");
+        }
+        seen += shown.length;
+      }
+      const expected = runs / DUNGEON.previewEvery;
+      expect(seen).toBeGreaterThan(expected * 0.5);
+      expect(seen).toBeLessThan(expected * 1.5);
+    });
+
+    it("never previews behind a boss door, or when switched off", () => {
+      for (let seed = 0; seed < 300; seed++) {
+        const boss = generateDoors(
+          { depth: DUNGEON.bossEvery - 1, room: fightRoom(weak("e")), buffs: [] },
+          { ...source(seed), preview: PREVIEW, random: () => 0 },
+        );
+        expect(boss.some((door) => door.kind === "fight" && door.preview)).toBe(false);
+        expect(peek(seed, { ...DUNGEON, previewEvery: 0 })).toHaveLength(0);
+      }
+    });
+
+    it("rolls the same dice as before when there is nothing to preview", () => {
+      const room = fightRoom(weak("e"));
+      for (let seed = 0; seed < 20; seed++) {
+        const plain = generateDoors({ depth: 2, room, buffs: [] }, source(seed));
+        const empty = generateDoors({ depth: 2, room, buffs: [] }, { ...source(seed), preview: [] });
+        expect(empty).toEqual(plain);
+      }
+    });
+
+    const definition = (
+      id: string,
+      set: number,
+      active: boolean,
+      extra: Partial<V2CardDefinitionRecord> = {},
+    ) =>
+      ({ id, card_name: id, set, active, art: "art.webp", secret_art: false, ...extra }) as V2CardDefinitionRecord;
+
+    it("previews only the first set with nothing out, without secrets or unfinished art", () => {
+      const picked = previewCards([
+        definition("released", 3, true),
+        definition("held-back", 3, false),
+        definition("next", 4, false),
+        definition("next-secret", 4, false, { secret_art: true }),
+        definition("next-no-art", 4, false, { art: "" }),
+        definition("later", 5, false),
+        definition("unset", 0, false),
+      ]);
+      expect(picked.map((entry) => entry.id)).toEqual(["next"]);
+    });
+
+    it("previews nothing when every set is out", () => {
+      expect(previewCards([definition("a", 1, true), definition("b", 2, true)])).toEqual([]);
+    });
+  });
+
+  describe("effects that reach into the hand", () => {
+    const HAND = [
+      card("h0", "power", [7, 4, 4]),
+      card("h1", "wit", [3, 9, 3]),
+      card("h2", "heart", [4, 3, 8]),
+    ];
+    const withHand = (seed = 1): RoomSource => ({ ...source(seed), hand: HAND });
+    const stinger = (failEffect: EventRoom["failEffect"]): EventRoom => ({
+      ...eventRoom(99),
+      failEffect,
+    });
+
+    it("sings the strongest ready card to sleep, and keeps both doors open", () => {
+      const state = runIn(stinger({ kind: "sleep", rooms: 3, pick: "strongest" }));
+      const { state: next, passed } = playEvent(state, HAND[0], withHand());
+      expect(passed).toBe(false);
+      // h0 was played and rests; of the two left awake, h1's 9 is the biggest.
+      // Counted like a cooldown: resting the next 3 rooms reads 4 from this one.
+      expect(cooldownLeft(next, "h1")).toBe(4);
+      expect(cooldownLeft(next, "h2")).toBe(0);
+      expect(next.doors).toHaveLength(2);
+      expect(next.recap?.lines.join("\n")).toContain("Card h1** falls asleep for 3 rooms");
+    });
+
+    it("never wakes a card that is already resting for longer", () => {
+      const state = runIn(stinger({ kind: "sleep", rooms: 1, pick: "strongest" }), {
+        readyAt: { h1: 9 },
+      });
+      const next = playEvent(state, HAND[0], withHand()).state;
+      expect(next.readyAt.h1).toBe(9);
+    });
+
+    it("marks every resting card for a redraw, and only those", () => {
+      const state = runIn(stinger({ kind: "redraw", pick: "resting" }), {
+        readyAt: { h2: 5 },
+      });
+      // h0 rests from being played, h2 was already resting.
+      expect(playEvent(state, HAND[0], withHand()).state.redraw).toEqual(["h0", "h2"]);
+    });
+
+    it("marks the whole hand for a full redraw, and a count for a random one", () => {
+      expect(skipEvent(runIn(stinger({ kind: "redraw", pick: "all" })), withHand()).redraw).toEqual([
+        "h0",
+        "h1",
+        "h2",
+      ]);
+      for (let seed = 0; seed < 20; seed++) {
+        const marked = skipEvent(
+          runIn(stinger({ kind: "redraw", pick: "random", count: 2 })),
+          withHand(seed),
+        ).redraw!;
+        expect(new Set(marked).size).toBe(2);
+      }
+    });
+
+    it("refuses a Fresh Shuffle with nothing resting", () => {
+      const shop: ShopRoom = {
+        kind: "shop",
+        offers: [
+          {
+            name: "Fresh Shuffle",
+            blurb: "",
+            price: 10,
+            sold: false,
+            effect: { kind: "redraw", pick: "resting" },
+          },
+        ],
+      };
+      expect(() => buyOffer(runIn(shop, { geld: 20 }), 0, withHand())).toThrow("nothing to swap");
+      const bought = buyOffer(runIn(shop, { geld: 20, readyAt: { h1: 5 } }), 0, withHand());
+      expect(bought.redraw).toEqual(["h1"]);
+      expect(bought.geld).toBe(10);
+    });
+
+    it("deals each replacement into its old card's place, from cards not in hand", () => {
+      const dealt = redealHand(["a", "b", "c"], ["c", "a"], ["a", "b", "c", "d", "e"], () => 0);
+      expect(dealt.hand).toEqual(["e", "b", "d"]);
+      expect(dealt.swapped).toEqual([
+        { from: "c", to: "d" },
+        { from: "a", to: "e" },
+      ]);
+    });
+
+    it("swaps what it can when the deck runs out", () => {
+      const dealt = redealHand(["a", "b"], ["a", "b"], ["a", "b", "c"], () => 0);
+      expect(dealt.hand).toEqual(["c", "b"]);
+      expect(dealt.swapped).toHaveLength(1);
+    });
+  });
+
+  describe("tricks: fog, maps, idols, echoes, dice and coffee", () => {
+    const HAND = [card("h0", "power", [7, 4, 4]), card("h1", "wit", [3, 9, 3])];
+    /** Dice that land where they are told, in order. */
+    const dice = (...faces: number[]) => {
+      let next = 0;
+      return () => (faces[Math.min(next++, faces.length - 1)] - 1) / DUNGEON.event.die + 0.01;
+    };
+    const at = (room: EventRoom, random: () => number): RoomSource => ({
+      pool: POOL,
+      hand: HAND,
+      random,
+    });
+    const event = (overrides: Partial<EventRoom>): EventRoom => ({ ...eventRoom(9), ...overrides });
+    const FOG: Buff = { name: "Fog", note: "", mods: { fog: 1 }, rooms: 1 };
+    const MAP: Buff = { name: "Map", note: "", mods: { scout: 1 }, rooms: 3 };
+
+    it("lets a map see through fog", () => {
+      expect(doorSight({ buffs: [] })).toBe("plain");
+      expect(doorSight({ buffs: [FOG] })).toBe("fogged");
+      expect(doorSight({ buffs: [MAP] })).toBe("scouted");
+      expect(doorSight({ buffs: [FOG, MAP] })).toBe("scouted");
+    });
+
+    it("fogs only the doors right after the event", () => {
+      const room = event({
+        failEffect: { kind: "buff", buff: FOG },
+      });
+      // Power 7 + 1 misses a 9, and leaves both doors open under the fog.
+      const failed = playEvent(runIn(room), HAND[0], at(room, dice(1))).state;
+      expect(failed.doors).toHaveLength(2);
+      expect(doorSight(failed)).toBe("fogged");
+      expect(doorSight(chooseDoor(failed, 0))).toBe("plain");
+    });
+
+    it("keeps a map for three door choices", () => {
+      let state: DungeonState = runIn(fightRoom(weak("e")), { phase: "doors", doors: [fightRoom(weak("x"))], buffs: [MAP] });
+      for (let choice = 1; choice <= 3; choice++) {
+        expect(doorSight(state)).toBe("scouted");
+        state = { ...chooseDoor(state, 0), phase: "doors", doors: [fightRoom(weak("x"))] };
+      }
+      expect(doorSight(state)).toBe("plain");
+    });
+
+    it("pays the idol's gold with a nap, and naps anyway on a miss", () => {
+      const room = event({
+        reward: {
+          kind: "many",
+          effects: [{ kind: "geld", amount: 20 }, { kind: "sleep", rooms: 2, pick: "random" }],
+        },
+        failEffect: { kind: "sleep", rooms: 2, pick: "random" },
+      });
+      const passed = playEvent(runIn(room), HAND[0], at(room, dice(6))).state;
+      expect(passed.geld).toBe(20);
+      expect(cooldownLeft(passed, "h1")).toBeGreaterThan(0);
+
+      const failed = playEvent(runIn(room), HAND[0], at(room, dice(1))).state;
+      expect(failed.geld).toBe(0);
+      expect(cooldownLeft(failed, "h1")).toBeGreaterThan(0);
+      expect(failed.doors).toHaveLength(2);
+    });
+
+    it("starts the fight count over in the echo chamber", () => {
+      const room = event({ reward: { kind: "resetLeg" } });
+      const mid = playFight(runIn(fightRoom(weak("e"))), strong("s"), source()).state;
+      expect(nextSlot(mid)).toBe(2);
+      const echoed = playEvent({ ...mid, room, phase: "room" }, HAND[0], at(room, dice(6))).state;
+      expect(nextSlot(echoed)).toBe(1);
+    });
+
+    it("spends a loaded die on a miss, and only on a miss", () => {
+      const room = event({});
+      const saved = playEvent(runIn(room, { rerolls: 1 }), HAND[0], at(room, dice(1, 5)));
+      expect(saved.passed).toBe(true);
+      expect(saved.state.rerolls).toBe(0);
+      expect(saved.state.recap?.lines[0]).toContain("loaded die");
+
+      const lucky = playEvent(runIn(room, { rerolls: 1 }), HAND[0], at(room, dice(6)));
+      expect(lucky.passed).toBe(true);
+      expect(lucky.state.rerolls).toBe(1);
+    });
+
+    it("wakes a resting card with coffee, in any room", () => {
+      const tired = runIn(shopRoom(), { coffee: 1, readyAt: { h1: 9 } });
+      const awake = drinkCoffee(tired, HAND[1]);
+      expect(cooldownLeft(awake, "h1")).toBe(0);
+      expect(awake.coffee).toBe(0);
+      expect(awake.step).toBe(tired.step + 1);
+      expect(() => drinkCoffee(awake, HAND[1])).toThrow("out of coffee");
+      expect(() => drinkCoffee(runIn(shopRoom(), { coffee: 1 }), HAND[0])).toThrow("already awake");
+    });
+
+    describe("in the message", () => {
+      const base = {
+        runId: "run1",
+        userId: "u1",
+        playerName: "Fen",
+        entryFee: DUNGEON.entryFee,
+        state: "active" as const,
+        hand: HAND.map((entry, index) => ({ card: entry, index })),
+      };
+      const doors = [fightRoom(card("Lurker", "wit", [3, 9, 3])), shopRoom()];
+
+      it("hides the doors in fog, and names the enemy under a map", () => {
+        const fogged = textOf(
+          composeDungeonMessage(
+            { ...base, progress: runIn(fightRoom(weak("e")), { phase: "doors", doors, buffs: [FOG] }) },
+            { scene: null, hand: null },
+          ),
+        );
+        expect(fogged).toContain("???");
+        expect(fogged).not.toContain("Wit room");
+
+        const mapped = textOf(
+          composeDungeonMessage(
+            { ...base, progress: runIn(fightRoom(weak("e")), { phase: "doors", doors, buffs: [MAP] }) },
+            { scene: null, hand: null },
+          ),
+        );
+        expect(mapped).toContain("Door 1:");
+        expect(mapped).toContain("Card Lurker");
+      });
+
+      it("offers a wake button for each resting card while coffee lasts", () => {
+        const text = textOf(
+          composeDungeonMessage(
+            { ...base, progress: runIn(fightRoom(weak("e")), { coffee: 1, readyAt: { h1: 9 } }) },
+            { scene: null, hand: null },
+          ),
+        );
+        expect(text).toContain("v2_dungeon:run1:0:w1");
+        expect(text).not.toContain(":w0");
+        expect(text).toContain("1 coffee");
+      });
     });
   });
 });

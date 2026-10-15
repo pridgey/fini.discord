@@ -16,7 +16,10 @@ export const namespace = "v2_dungeon";
    together would both see the same step - and on a walk-out, both be paid. */
 const inFlight = new Set<string>();
 
-/** `c2` plays hand card 2, `d0` takes door 0, `b1` buys shelf item 1. */
+/**
+ * `c2` plays hand card 2, `d0` takes door 0, `b1` buys shelf item 1, `w3`
+ * spends a coffee on hand card 3.
+ */
 const parseAction = (raw: string): DungeonAction | null => {
   if (raw === "retreat" || raw === "leave") return { kind: raw };
 
@@ -30,6 +33,8 @@ const parseAction = (raw: string): DungeonAction | null => {
       return { kind: "door", index };
     case "b":
       return { kind: "buy", index };
+    case "w":
+      return { kind: "wake", handIndex: index };
     default:
       return null;
   }

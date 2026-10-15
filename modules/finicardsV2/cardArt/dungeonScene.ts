@@ -3,6 +3,8 @@ import type { CardType } from "../../../types/PocketbaseTablesV2";
 import {
   describeEffect,
   doorHint,
+  doorSight,
+  type Buff,
   type Effect,
   type EventRoom,
   type FightRoom,
@@ -249,11 +251,40 @@ const effectIcon = (effect: Effect, x: number, y: number): string => {
     case "buff":
       // A stoppered bottle, filled with the buff's colour.
       return `<path d="M${x - 3} ${y - 12} h6 v6 l6 9 a5 5 0 0 1 -4 8 h-10 a5 5 0 0 1 -4 -8 l6 -9 z" fill="#ffffff" fill-opacity="0.14" stroke="#ffffff" stroke-opacity="0.5" stroke-width="0.8"></path><path d="M${x - 6.5} ${y + 1} h13 l2.2 3.4 a4 4 0 0 1 -3.4 6 h-10.6 a4 4 0 0 1 -3.4 -6 z" fill="${colour}"></path><rect x="${x - 4}" y="${y - 14}" width="8" height="3" rx="1" fill="#8a6a45"></rect>`;
+    case "redraw":
+      // Two cards, fanned, mid-shuffle.
+      return `<rect x="${x - 11}" y="${y - 12}" width="13" height="18" rx="2" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.55" stroke-width="0.8" transform="rotate(-14 ${x - 4} ${y - 3})"></rect><rect x="${x - 2}" y="${y - 9}" width="13" height="18" rx="2" fill="${colour}" transform="rotate(12 ${x + 4} ${y})"></rect>`;
+    case "sleep":
+      // A crescent moon.
+      return `<path d="M${x + 4} ${y - 11} a11 11 0 1 0 6 18 a9 9 0 1 1 -6 -18 z" fill="${colour}"></path>`;
+    case "reroll":
+      // A die showing five.
+      return `<rect x="${x - 10}" y="${y - 10}" width="20" height="20" rx="4" fill="${colour}" transform="rotate(-10 ${x} ${y})"></rect>${[
+        [-5, -5],
+        [5, -5],
+        [0, 0],
+        [-5, 5],
+        [5, 5],
+      ]
+        .map(([dx, dy]) => `<circle cx="${x + dx}" cy="${y + dy}" r="1.9" fill="#3a2a05" transform="rotate(-10 ${x} ${y})"></circle>`)
+        .join("")}`;
+    case "coffee":
+      // A steaming cup.
+      return `<path d="M${x - 9} ${y - 3} h15 v7 a7 7 0 0 1 -7 7 h-1 a7 7 0 0 1 -7 -7 z" fill="${colour}"></path><path d="M${x + 6} ${y - 1} a4 4 0 0 1 0 8" fill="none" stroke="${colour}" stroke-width="2"></path><path d="M${x - 4} ${y - 7} q-2 -3 0 -6 M${x + 1} ${y - 7} q-2 -3 0 -6" fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="1.4" stroke-linecap="round"></path>`;
+    case "resetLeg":
+      return effectIcon({ kind: "recover" }, x, y);
+    case "many":
+      return effect.effects[0] ? effectIcon(effect.effects[0], x, y) : "";
   }
 };
 
 const shopScene = (room: ShopRoom, depth: number): string => {
-  const TILE = { width: 112, height: 98, y: 56, gap: 8 };
+  /* A fourth ware - a shop's occasional hand-redraw - narrows every tile, and
+     the name moves under the icon to keep its width. */
+  const compact = room.offers.length > 3;
+  const TILE = compact
+    ? { width: 86, height: 98, y: 56, gap: 6 }
+    : { width: 112, height: 98, y: 56, gap: 8 };
   const total = room.offers.length * TILE.width + (room.offers.length - 1) * TILE.gap;
   const left = (SCENE.width - total) / 2;
   const stripe = 20;
@@ -279,19 +310,29 @@ const shopScene = (room: ShopRoom, depth: number): string => {
     ...room.offers.map((offer, index) => {
       const x = left + index * (TILE.width + TILE.gap);
       const centre = x + TILE.width / 2;
-      const name = wrapToWidth(offer.name, TILE.width - 56, 2, { fontSize: 10, bold: true });
-      const blurb = wrapToWidth(offer.blurb, TILE.width - 14, 3, { fontSize: 6.6 });
+      const name = compact
+        ? wrapToWidth(offer.name, TILE.width - 14, 2, { fontSize: 9, bold: true })
+        : wrapToWidth(offer.name, TILE.width - 56, 2, { fontSize: 10, bold: true });
+      const blurb = wrapToWidth(offer.blurb, TILE.width - 14, 3, { fontSize: compact ? 6 : 6.6 });
+      const blurbTop = compact ? 36 + name.length * 10 + 2 : 56;
 
       return [
         `<g opacity="${offer.sold ? 0.32 : 1}">`,
         `<rect x="${n(x)}" y="${TILE.y}" width="${TILE.width}" height="${TILE.height}" rx="7" fill="#0b0c16" fill-opacity="0.78" stroke="${GOLD}" stroke-opacity="0.35"></rect>`,
         text(x + 8, TILE.y + 13, String(index + 1), { size: 8, weight: 700, mono: true, opacity: 0.55 }),
-        effectIcon(offer.effect, x + 24, TILE.y + 30),
+        compact
+          ? `<g transform="translate(${n(x + TILE.width - 20)} ${TILE.y + 18}) scale(0.7)">${effectIcon(offer.effect, 0, 0)}</g>`
+          : effectIcon(offer.effect, x + 24, TILE.y + 30),
         ...name.map((line, row) =>
-          text(x + 42, TILE.y + (name.length > 1 ? 26 : 32) + row * 11, line, { size: 10, weight: 800 }),
+          compact
+            ? text(x + 8, TILE.y + 36 + row * 10, line, { size: 9, weight: 800 })
+            : text(x + 42, TILE.y + (name.length > 1 ? 26 : 32) + row * 11, line, { size: 10, weight: 800 }),
         ),
         ...blurb.map((line, row) =>
-          text(x + 8, TILE.y + 56 + row * 8.4, line, { size: 6.6, opacity: 0.72 }),
+          text(x + 8, TILE.y + blurbTop + row * (compact ? 7.6 : 8.4), line, {
+            size: compact ? 6 : 6.6,
+            opacity: 0.72,
+          }),
         ),
         `<rect x="${n(centre - 30)}" y="${TILE.y + TILE.height - 17}" width="60" height="13" rx="6.5" fill="${GOLD}" fill-opacity="0.18"></rect>`,
         coin(centre - 21, TILE.y + TILE.height - 10.5, 3.6),
@@ -410,7 +451,23 @@ const doorEmblem = (room: Room, x: number, y: number): string => {
   ].join("");
 };
 
-const doorsScene = (doors: Room[], depth: number): string => {
+const FOG = "#9aa3b5";
+
+/** The door's label: its hint, the enemy's name under a map, or nothing in fog. */
+const doorLabel = (room: Room, sight: ReturnType<typeof doorSight>): string => {
+  if (sight === "fogged") return "???";
+  if (sight === "scouted" && room.kind === "fight") {
+    const name = room.enemy.name.toUpperCase();
+    return name.length > 18 ? `${name.slice(0, 17)}…` : name;
+  }
+  return doorHint(room).toUpperCase();
+};
+
+const doorsScene = (
+  doors: Room[],
+  depth: number,
+  sight: ReturnType<typeof doorSight>,
+): string => {
   const DOOR = { width: 84, top: 30, bottom: 150 };
   const centres =
     doors.length === 1
@@ -432,9 +489,9 @@ const doorsScene = (doors: Room[], depth: number): string => {
     ...doors.map((room, index) => {
       const centre = centres[index];
       const x = centre - DOOR.width / 2;
-      const colour = doorColour(room);
+      const colour = sight === "fogged" ? FOG : doorColour(room);
       const id = `door${index}`;
-      const hint = doorHint(room).toUpperCase();
+      const hint = doorLabel(room, sight);
 
       return [
         `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a3524"></stop><stop offset="1" stop-color="#2a1d14"></stop></linearGradient><radialGradient id="${id}spill"><stop offset="0" stop-color="${colour}" stop-opacity="0.7"></stop><stop offset="1" stop-color="${colour}" stop-opacity="0"></stop></radialGradient></defs>`,
@@ -450,7 +507,9 @@ const doorsScene = (doors: Room[], depth: number): string => {
         `<circle cx="${n(x + DOOR.width - 14)}" cy="${DOOR.bottom - 50}" r="4" fill="none" stroke="#c9a961" stroke-width="1.6"></circle>`,
         `<path d="${arch(x, DOOR.top, DOOR.width, DOOR.bottom)}" fill="none" stroke="${colour}" stroke-width="2" stroke-opacity="0.9"></path>`,
         `<rect x="${n(x + 3)}" y="${DOOR.bottom - 2}" width="${DOOR.width - 6}" height="2.5" fill="${colour}"></rect>`,
-        doorEmblem(room, centre, DOOR.top + 30),
+        sight === "fogged"
+          ? text(centre, DOOR.top + 40, "?", { size: 26, weight: 800, fill: FOG, anchor: "middle", opacity: 0.85 })
+          : doorEmblem(room, centre, DOOR.top + 30),
         `<rect x="${n(centre - 71)}" y="${DOOR.bottom + 9}" width="142" height="18" rx="9" fill="#0b0c16" fill-opacity="0.82" stroke="${colour}" stroke-opacity="0.6"></rect>`,
         text(centre, DOOR.bottom + 21.6, `${index + 1} · ${hint}`, {
           size: 8.5,
@@ -473,6 +532,8 @@ export type DungeonSceneInput = {
   depth: number;
   room: Room;
   doors: Room[];
+  /** The run's buffs, for whether fog hides the doors or a map shows them. */
+  buffs?: Buff[];
 };
 
 /** The scene's SVG. Exported for tests; `renderDungeonScene` is the caller's. */
@@ -483,7 +544,7 @@ export const buildDungeonSceneSvg = (
   const { room, depth } = input;
   const body =
     input.phase === "doors"
-      ? doorsScene(input.doors, depth)
+      ? doorsScene(input.doors, depth, doorSight({ buffs: input.buffs ?? [] }))
       : room.kind === "fight"
         ? fightScene(room, depth, art)
         : room.kind === "shop"
