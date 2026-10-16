@@ -51,7 +51,10 @@ export const execute = async (
   const existingMonitors = await pb
     .collection<MonitorRecord>("monitoring")
     .getFullList({
-      filter: `name = "${name}" && server_id = "${interaction.guild?.id}"`,
+      filter: pb.filter("name = {:name} && server_id = {:server}", {
+            name,
+            server: interaction.guild?.id ?? "",
+          }),
     });
 
   if (existingMonitors.length > 0) {

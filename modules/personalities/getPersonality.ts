@@ -15,10 +15,16 @@ export const getPersonalityByName = async ({
   personalityName,
   serverId,
 }: GetPersonalityByNameParams) => {
+  // Personalities belong to a server; outside one (a DM) none can match.
+  if (!serverId) return [];
   const retrievedPersonalities = await pb
     .collection<PersonalitiesRecord>("personalities")
     .getFullList({
-      filter: `user_id = "${userId}" && personality_name = "${personalityName}" && server_id = "${serverId}"`,
+      filter: pb.filter("user_id = {:userId} && personality_name = {:personalityName} && server_id = {:serverId}", {
+        userId,
+        personalityName,
+        serverId,
+      }),
     });
 
   return retrievedPersonalities;

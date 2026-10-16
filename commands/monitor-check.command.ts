@@ -30,7 +30,10 @@ export const execute = async (
       const results = await pb
         .collection<MonitorRecord>("monitoring")
         .getFullList({
-          filter: `name = "${name}" && (server_id = "All" || server_id = "${interaction.guildId}")`,
+          filter: pb.filter('name = {:name} && (server_id = "All" || server_id = {:server})', {
+            name,
+            server: interaction.guildId ?? "",
+          }),
         });
 
       const response = results.at(0);
