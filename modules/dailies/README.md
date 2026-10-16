@@ -23,9 +23,9 @@ rules; `geo/daily.ts` the posting and paying.
 
 A word puzzle in the spirit of LinkedIn's Wend, with a twist of its own: the thread.
 
-**On trial** while `WEAVE_LIVE` in `weave/daily.ts` is off: it isn't posted,
-only the bot admin can play it (`/daily weave` makes the day's puzzle on
-demand), and boards pay nothing and announce nothing. Turn it on to go live.
+Live since 2026-10-16. `WEAVE_LIVE` in `weave/daily.ts` puts it back on
+trial: not posted, only the bot admin can play it (`/daily weave` makes the
+day's puzzle on demand), and boards pay nothing and announce nothing.
 
 - **The grid.** 5x5 letters hold five hidden words of 4 to 6 letters that use
   every letter exactly once, each running up, down, left or right
@@ -34,9 +34,11 @@ demand), and boards pay nothing and announce nothing. Turn it on to go live.
 - **The thread.** The words' first letters spell a sixth, five-letter word -
   in some order: the generator hands the thread's letters to the words at
   random, so the grid gives no hint of the order, and the thread is an anagram.
-  The board shows which of its letters have been found, alphabetically, never
-  where they go. A player gets one guess, worth 15 fc - but only while a word
-  is still hidden, since with every word found all five letters are showing.
+  The board shows which of its letters are showing, alphabetically, never where
+  they go. A letter shows when its word is found or hinted. A player gets one
+  guess, paying 50 fc with no letters showing, then 25, 20, 15 and 10 with one
+  to four - so hinting toward the thread costs as much as finding words does.
+  With all five showing it can't be guessed.
 - **Playing.** `/daily weave` (or the post's "My board" button) shows a
   player's board, privately: the grid as an image (`render.ts`) with found
   words coloured along their paths and a hinted first letter ringed, the words
@@ -45,8 +47,10 @@ demand), and boards pay nothing and announce nothing. Turn it on to go live.
   at once - or the thread, and take a hint. A word counts if it's one of the
   five, wherever it's spelled. Boards save as they go.
 - **Pay.** 5 fc a word (3 if its hint was taken), paid as each is found, and
-  15 for the thread: up to 40 fc. Finishing every word is announced in the
-  channel.
+  up to 50 for the thread: up to 75 fc. The board says what's still possible,
+  which hints and showing letters bring down. Solving every word is announced
+  in the channel: "Aya solved today's Weave in 7 guesses and won 58 fc!",
+  counting every word guessed, right or wrong.
 - **Words.** `words.ts` is everyday English: the 10,000 most common US words
   without swears, kept if the system dictionary has them and doesn't list them
   capitalised (dropping most names), less a short blocklist.

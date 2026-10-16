@@ -12,6 +12,7 @@ import {
   checkWord,
   earned,
   findWord,
+  countGuesses,
   finished,
   guessThread,
   nextHint,
@@ -44,7 +45,7 @@ import {
  * play it (`/daily weave`), and boards pay nothing and announce nothing.
  * Turning it on is all it takes to go live.
  */
-export const WEAVE_LIVE = false;
+export const WEAVE_LIVE = true;
 
 /** Today's puzzle, made and saved if it doesn't exist yet. */
 export const ensureTodaysWeave = async (): Promise<WeaveRoundRecord> => {
@@ -66,7 +67,7 @@ export const weavePost = async (round: WeaveRoundRecord) => ({
     "",
     "Five hidden words use every letter once, each running up, down, left or right. Their first letters, in some order, spell a sixth word: the thread.",
     "",
-    `🪙 Up to **${MAX_FC} fc**: 5 a word, 3 if you took its hint, 15 for the thread.`,
+    `🪙 Up to **${MAX_FC} fc**: 5 a word, 3 if you took its hint, and up to 50 for the thread - the fewer of its letters showing when you guess it, the more.`,
     "",
     `-# Press **My board** to play. Your board is your own and saves as you go, until the next Weave at ${POST_TIME}.`,
   ].join("\n"),
@@ -204,23 +205,30 @@ const settle = async (
   const puzzle = puzzleOf(round);
   const done = finished(puzzle, progress);
   await saveWeaveProgress(play.id, progress, earned(puzzle, progress), done || play.finished);
-  // On trial: nothing paid, nothing said in the channel.
-  if (!WEAVE_LIVE) return;
+  // The first time a board is solved, the channel hears about it.
+  const solved = done && !play.finished ? solvedMessage(player, progress, puzzle) : null;
+  // On trial: nothing paid, nothing said in the channel - the player is shown
+  // what would have been said instead.
+  if (!WEAVE_LIVE) return solved;
   if (fc > 0) {
     await addCoin(player.userId, player.serverId, fc, player.username, player.serverName, "Reserve");
   }
-  if (done && !play.finished) {
+  if (solved) {
     const channelId = round.posts?.[player.serverId]?.channelId ?? fallbackChannelId;
-    if (channelId) {
-      const thread =
-        progress.threadGuess === puzzle.thread ? "thread ✅" : progress.threadGuess ? "thread ❌" : "thread not guessed";
-      await sendTo(
-        cl,
-        channelId,
-        `🧵 **${player.displayName}** finished today's Weave: ${progress.found.length}/${puzzle.words.length} words, ${thread} · **${earned(puzzle, progress)} fc**`,
-      );
-    }
+    if (channelId) await sendTo(cl, channelId, solved);
   }
+  return null;
+};
+
+/** "🧵 Aya solved today's Weave in 7 guesses and won 58 fc!" */
+export const solvedMessage = (
+  player: Pick<WeavePlayer, "displayName">,
+  progress: ReturnType<typeof progressOf>,
+  puzzle: ReturnType<typeof puzzleOf>,
+): string => {
+  const guesses = `${progress.guesses} ${progress.guesses === 1 ? "guess" : "guesses"}`;
+  const thread = progress.threadGuess === puzzle.thread ? ", thread and all," : "";
+  return `🧵 **${player.displayName}** solved today's Weave${thread} in ${guesses} and won **${earned(puzzle, progress)} fc**!`;
 };
 
 /** A board, as the player will see it. */
@@ -244,7 +252,11 @@ export const hintWeave = async (cl: Client, round: WeaveRoundRecord, player: Wea
   try {
     const progress = takeHint(puzzle, before);
     await settle(cl, round, play, player, progress, 0, null);
-    return boardFor(round, progress, "💡 A word's first letter is ringed. Finding that word pays 3 fc.");
+    return boardFor(
+      round,
+      progress,
+      "💡 A word's first letter is ringed. Finding that word pays 3 fc, and its letter now shows in the thread, so the thread pays less.",
+    );
   } finally {
     saving.delete(play.id);
   }
@@ -282,6 +294,8 @@ export const guessWeaveWords = async (
     for (const guess of parseWords(typed).slice(0, 10)) {
       const word = guess.toUpperCase();
       const result = checkWord(puzzle, progress, guess);
+      // A repeat of a word already found isn't a new guess.
+      if (result.kind !== "already") progress = countGuesses(progress, 1);
       if (result.kind === "wrong") lines.push(`❌ **${word}** isn't one of the words.`);
       else if (result.kind === "already") lines.push(`☑️ **${word}** is already found.`);
       else {
@@ -291,10 +305,12 @@ export const guessWeaveWords = async (
         lines.push(`✅ **${word}** · +${found.fc} fc`);
       }
     }
-    if (progress !== before) await settle(cl, round, play, player, progress, fc, fallbackChannelId);
+    const solved =
+      progress !== before ? await settle(cl, round, play, player, progress, fc, fallbackChannelId) : null;
 
     if (allFound(puzzle, progress) && !allFound(puzzle, before)) {
       lines.push(`🎉 That's every word: **${earned(puzzle, progress)} fc** in all.`);
+      if (solved) lines.push(`-# 🧪 On trial, so this wasn't posted. It would say: ${solved}`);
     } else if (
       progress.found.length === puzzle.words.length - 1 &&
       before.found.length < puzzle.words.length - 1 &&

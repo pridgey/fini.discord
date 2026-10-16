@@ -19,7 +19,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("weave")
-      .setDescription("Today's Weave: find five hidden words in a grid of letters (on trial: bot admin only)"),
+      .setDescription("Today's Weave: find five hidden words in a grid of letters"),
   );
 
 export const execute = async (

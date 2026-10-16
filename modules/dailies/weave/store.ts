@@ -26,6 +26,10 @@ export type WeavePlayRecord = {
   found: number[] | null;
   hinted: number[] | null;
   thread_guess: string;
+  /** What the thread paid, fixed when it was guessed. */
+  thread_fc: number;
+  /** Words guessed, right or wrong. */
+  guesses: number;
   paid: number;
   finished: boolean;
 };
@@ -70,7 +74,9 @@ export const progressOf = (play: WeavePlayRecord | null): WeaveProgress =>
     ? {
         found: play.found ?? [],
         hinted: play.hinted ?? [],
+        guesses: play.guesses ?? 0,
         threadGuess: play.thread_guess ? play.thread_guess : null,
+        threadFc: play.thread_fc ?? 0,
       }
     : NO_PROGRESS;
 
@@ -109,6 +115,8 @@ export const openWeavePlay = async (
       found: [],
       hinted: [],
       thread_guess: "",
+      thread_fc: 0,
+      guesses: 0,
       paid: 0,
       finished: false,
     })
@@ -130,6 +138,8 @@ export const saveWeaveProgress = (
     found: progress.found,
     hinted: progress.hinted,
     thread_guess: progress.threadGuess ?? "",
+    thread_fc: progress.threadFc,
+    guesses: progress.guesses,
     paid,
     finished,
   });

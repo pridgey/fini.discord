@@ -11,12 +11,14 @@ import {
   TextInputStyle,
 } from "discord.js";
 import {
-  MAX_FC,
-  THREAD_FC,
+  THREAD_PRIZES,
+  allFound,
   canGuessThread,
   earned,
   nextHint,
+  stillPossible,
   threadLetters,
+  threadPrizeNow,
   type WeaveProgress,
 } from "./game";
 import type { WeavePuzzle } from "./puzzle";
@@ -38,7 +40,7 @@ export type BoardInput = {
   roundId: string;
   puzzle: WeavePuzzle;
   progress: WeaveProgress;
-  /** What the last guess did, a line per word: "✅ PURSE · +5 fc". */
+  /** What the last guess did, a line per word: "✅ PURSE · +5 fc". Shown in a card of its own below the board. */
   note?: string;
   /** Weave isn't live yet: say that nothing is paid. */
   trial?: boolean;
@@ -64,24 +66,29 @@ const wordLines = (puzzle: WeavePuzzle, progress: WeaveProgress): string[] =>
 
 const threadLines = (puzzle: WeavePuzzle, progress: WeaveProgress): string[] => {
   const letters = threadLetters(puzzle, progress).toUpperCase().split("");
-  const known = letters.length > 0 ? letters.map((letter) => `**${letter}**`).join(" · ") : "none yet";
+  const showing = letters.length > 0 ? letters.map((letter) => `**${letter}**`).join(" · ") : "none yet";
   if (progress.threadGuess === puzzle.thread) {
-    return [`✅ **${puzzle.thread.toUpperCase()}** · **+${THREAD_FC} fc**`];
+    return [`✅ **${puzzle.thread.toUpperCase()}** · **+${progress.threadFc} fc**`];
   }
   if (progress.threadGuess !== null) {
     return [`❌ You guessed **${progress.threadGuess.toUpperCase()}**.`];
   }
-  if (progress.found.length === puzzle.words.length) {
-    return [`It was **${puzzle.thread.toUpperCase()}**. Every word was found before it was guessed.`];
+  if (allFound(puzzle, progress)) {
+    return [`It was **${puzzle.thread.toUpperCase()}**, spelled out before it was guessed.`];
+  }
+  if (!canGuessThread(puzzle, progress)) {
+    return [`Letters showing: ${showing}`, "-# Every letter is showing, so the thread can't be guessed any more."];
   }
   return [
-    `Letters found so far: ${known}`,
-    `-# A ${puzzle.thread.length}-letter word made of the words' first letters, in some order. Guess it before you find the last word for ${THREAD_FC} fc - you only get one guess.`,
+    `Letters showing: ${showing}`,
+    `A right guess now pays **${threadPrizeNow(puzzle, progress)} fc**.`,
+    `-# A ${puzzle.thread.length}-letter word made of the words' first letters, in some order. One guess. It's worth ${THREAD_PRIZES.join(", ")} fc with 0, 1, 2, 3 or 4 letters showing - a hint shows one too.`,
   ];
 };
 
 export const boardText = (input: BoardInput): string => {
   const { puzzle, progress } = input;
+  const done = allFound(puzzle, progress);
   return [
     "## 🧵 Weave",
     "-# Five hidden words use every letter once, each running up, down, left or right.",
@@ -92,11 +99,25 @@ export const boardText = (input: BoardInput): string => {
     "**🧵 The thread**",
     ...threadLines(puzzle, progress),
     "",
-    `🪙 **${earned(puzzle, progress)} fc** of ${MAX_FC}`,
-    ...(input.note ? ["", input.note] : []),
+    done
+      ? `🪙 **${earned(puzzle, progress)} fc** won`
+      : `🪙 **${earned(puzzle, progress)} fc** so far · up to **${stillPossible(puzzle, progress)} fc**`,
     ...(input.trial ? ["", "-# 🧪 On trial: only you can play it, and nothing is paid."] : []),
   ].join("\n");
 };
+
+const RIGHT_ACCENT = 0x5fa834;
+const WRONG_ACCENT = 0xd9534f;
+
+/**
+ * What the last guess did, in a small card under the board - where it's seen
+ * at once, and the board keeps its shape. Green if anything was right, red if
+ * every guess missed, the board's own colour otherwise.
+ */
+export const noteCard = (note: string) =>
+  new ContainerBuilder()
+    .setAccentColor(note.includes("✅") ? RIGHT_ACCENT : note.includes("❌") ? WRONG_ACCENT : ACCENT)
+    .addTextDisplayComponents((text) => text.setContent(note));
 
 /** The board: the image, the words and thread, and its buttons while there's anything left to do. */
 export const buildBoard = async (input: BoardInput) => {
@@ -134,7 +155,7 @@ export const buildBoard = async (input: BoardInput) => {
     );
   }
   return {
-    components: [container],
+    components: input.note ? [container, noteCard(input.note)] : [container],
     files: [new AttachmentBuilder(image, { name: WEAVE_IMAGE })],
     flags: [MessageFlags.IsComponentsV2] as const,
   };
@@ -167,7 +188,7 @@ export const threadModal = (roundId: string) =>
     .addLabelComponents(
       new LabelBuilder()
         .setLabel("The thread word")
-        .setDescription(`You get one guess, worth ${THREAD_FC} fc if it's right.`)
+        .setDescription("You get one guess. The fewer of its letters are showing, the more it pays.")
         .setTextInputComponent(
           new TextInputBuilder()
             .setCustomId("thread")

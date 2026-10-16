@@ -1,8 +1,8 @@
 import { describe, expect, it } from "bun:test";
 import sharp from "sharp";
 import { boardText, buildBoard } from "../../modules/dailies/weave/board";
-import { parseWords, weavePost, weaveResultsText } from "../../modules/dailies/weave/daily";
-import { NO_PROGRESS, findWord, takeHint } from "../../modules/dailies/weave/game";
+import { parseWords, solvedMessage, weavePost, weaveResultsText } from "../../modules/dailies/weave/daily";
+import { NO_PROGRESS, countGuesses, findWord, takeHint } from "../../modules/dailies/weave/game";
 import { generatePuzzle } from "../../modules/dailies/weave/puzzle";
 import { weaveBoardSvg } from "../../modules/dailies/weave/render";
 import type { WeavePlayRecord, WeaveRoundRecord } from "../../modules/dailies/weave/store";
@@ -28,8 +28,8 @@ describe("the Weave board", () => {
     expect(svg.match(/<polyline/g)).toHaveLength(1);
     for (const letter of puzzle.grid.toUpperCase()) expect(svg).toContain(`>${letter}</text>`);
     expect(svg).toContain('stroke="#f5b301"');
-    // The found word's first letter in the thread; the other four still "?".
-    expect(svg.match(/>\?<\/text>/g)).toHaveLength(puzzle.words.length - 1);
+    // The found word's and the hinted word's letters in the thread; the other three still "?".
+    expect(svg.match(/>\?<\/text>/g)).toHaveLength(puzzle.words.length - 2);
     const answers = weaveBoardSvg({ puzzle, progress: NO_PROGRESS, reveal: true });
     expect(answers.match(/<polyline/g)).toHaveLength(puzzle.words.length);
     expect(answers).not.toContain(">?</text>");
@@ -50,11 +50,36 @@ describe("the Weave board", () => {
     const text = boardText({ roundId: round.id, puzzle, progress: findWord(NO_PROGRESS, 0).progress });
     const lengths = [...text.matchAll(/\((\d)\)/g)].map((match) => Number(match[1]));
     expect(lengths).toEqual([...lengths].sort((a, b) => a - b));
-    expect(text).toContain(`Letters found so far: **${puzzle.words[0].word[0].toUpperCase()}**`);
+    expect(text).toContain(`Letters showing: **${puzzle.words[0].word[0].toUpperCase()}**`);
+    // One letter showing: the thread is worth 25 now, and the board says so.
+    expect(text).toContain("A right guess now pays **25 fc**");
+    expect(text).toContain("so far · up to **50 fc**");
     expect(text).toContain("in some order");
     // Sections are set apart by blank lines.
     expect(text).toContain("\n\n**Words**\n");
     expect(text).toContain("\n\n**🧵 The thread**\n");
+  });
+
+  it("puts what the last guess did in a card of its own under the board, coloured by how it went", async () => {
+    const wrong = await buildBoard({ roundId: round.id, puzzle, progress: NO_PROGRESS, note: "❌ **ZEBRA** isn't one of the words." });
+    expect(wrong.components).toHaveLength(2);
+    const card = wrong.components[1].toJSON() as any;
+    expect(card.accent_color).toBe(0xd9534f);
+    expect(JSON.stringify(card)).toContain("ZEBRA");
+    expect(JSON.stringify(wrong.components[0].toJSON())).not.toContain("ZEBRA");
+    const right = await buildBoard({ roundId: round.id, puzzle, progress: NO_PROGRESS, note: "✅ **PURSE** · +5 fc\n❌ **ZEBRA** isn't one of the words." });
+    expect((right.components[1].toJSON() as any).accent_color).toBe(0x5fa834);
+    expect((await buildBoard({ roundId: round.id, puzzle, progress: NO_PROGRESS })).components).toHaveLength(1);
+  });
+
+  it("announces a solve with the guesses it took and what it won", () => {
+    let progress = countGuesses(NO_PROGRESS, 7);
+    for (let i = 0; i < puzzle.words.length; i++) progress = findWord(progress, i).progress;
+    expect(solvedMessage({ displayName: "Aya" }, progress, puzzle)).toBe(
+      "🧵 **Aya** solved today's Weave in 7 guesses and won **25 fc**!",
+    );
+    const withThread = { ...progress, threadGuess: puzzle.thread, threadFc: 50 };
+    expect(solvedMessage({ displayName: "Aya" }, withThread, puzzle)).toContain("Weave, thread and all, in 7 guesses and won **75 fc**");
   });
 
   it("reads one or several typed words, each once", () => {
@@ -80,6 +105,8 @@ describe("the Weave board", () => {
       found: [0, 1],
       hinted: [],
       thread_guess: puzzle.thread,
+      thread_fc: 15,
+      guesses: 4,
       paid: 25,
       finished: false,
     };
