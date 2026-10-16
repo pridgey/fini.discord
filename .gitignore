@@ -16,7 +16,11 @@ fini.db.sqlite
 chat.json
 ml-models/model.js
 /pb_data
-/pb_migrations
+# The Pocketbase program and its download, kept beside the repo
+/pocketbase
+/pocketbase_*.zip
+# TTS debug states
+/debug_states/
 update.txt
 
 # rewind stuff

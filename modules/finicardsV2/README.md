@@ -21,20 +21,14 @@ fusion.
 
 ## Getting it running
 
-1. **Apply the schema.** `/pb_migrations` is gitignored, so the migration is
-   tracked here and copied into place:
+1. **Apply the schema.** The migrations are in `pb_migrations/`
+   (`1787292000_created_finicards_v2.js` onward) and apply the next time
+   Pocketbase starts - unapplied migrations run on boot.
 
-   ```bash
-   cp modules/finicardsV2/migrations/*.js pb_migrations/
-   # then restart Pocketbase - unapplied migrations run on boot
-   ```
-
-   The migrations create `v2_card_definition`, `v2_user_card`, `v2_battle`,
+   They create `v2_card_definition`, `v2_user_card`, `v2_battle`,
    `v2_deck`, `v2_dungeon_run` and `v2_free_pack`, and add what came later: a
    card's own artwork and crop, per-copy keywords, Secret Arts and copy
    numbers, Legendaries, set numbers, and a finished dungeon run's summary.
-   Copies are already in `pb_migrations/` and apply the next time Pocketbase
-   restarts.
 
 2. **Register the command.** `bun run register-commands` — `/finicard` is
    picked up automatically by the existing glob.
@@ -730,7 +724,6 @@ the keyword was fixed per card; nothing reads it, and the import blanks it.
 | `renderBattle.ts` | The two text renderers components can't improve on: the monospace card face (image-render fallback) and the id-bearing collection list. |
 | `cardArt/` | Card image rendering: palettes, per-template geometry, text fitting, generated blocks. |
 | `templates/` | The five card templates. `templates/mockups/` holds the original designs. |
-| `migrations/` | Tracked copies of the Pocketbase migrations. |
 
 Surface files outside the module: `commands/finicard.command.ts`,
 `buttons/individualButtons/v2Battle{Accept,Decline}.button.ts`,

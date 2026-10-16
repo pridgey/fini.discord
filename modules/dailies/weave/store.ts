@@ -5,7 +5,7 @@ import type { WeavePuzzle } from "./puzzle";
 
 /**
  * Weave's Pocketbase records: one puzzle a day, and one board per player per
- * server per day. See `migrations/1792300000_created_daily_weave.js`.
+ * server per day. See `pb_migrations/1792300000_created_daily_weave.js`.
  */
 
 const ROUNDS = "daily_weave_round";

@@ -39,10 +39,9 @@ With the binary or the weights missing, `/tts` says so up front rather than
 deferring and then failing. With no clips at all it still works, offering
 saved voices and the model's own default voice.
 
-Saved voices need two Pocketbase collections. The migration is tracked in
-`migrations/` because `/pb_migrations` is gitignored: copy it into
-`pb_migrations/` and restart Pocketbase, which applies unapplied migrations on
-boot.
+Saved voices need two Pocketbase collections, made by
+`pb_migrations/1791300000_created_tts_voices.js`; Pocketbase applies
+unapplied migrations on boot.
 
 The build needs cmake, which is less of a given than it sounds: Ubuntu 22.04
 does not ship one, and a Homebrew cmake on a box without Homebrew's gcc dies at

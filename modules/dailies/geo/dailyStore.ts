@@ -7,7 +7,7 @@ import type { RoundFacts } from "./messages";
 
 /**
  * The daily location game's Pocketbase records: one round a day, and one guess
- * per player per server per round. See `migrations/1792200000_created_daily_geo.js`.
+ * per player per server per round. See `pb_migrations/1792200000_created_daily_geo.js`.
  */
 
 const ROUNDS = "daily_geo_round";

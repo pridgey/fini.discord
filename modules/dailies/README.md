@@ -8,8 +8,7 @@ answers and leaderboard. `/daily <game>` brings the current round back for
 anyone who missed the post, and `/geo-test post-daily` (bot admin) posts the
 day's rounds early.
 
-Rounds and plays live in Pocketbase; the migrations are tracked in each game's
-`migrations/` folder, since `/pb_migrations` is gitignored.
+Rounds and plays live in Pocketbase; their migrations are in `pb_migrations/`.
 
 ## Where in the world (`geo/`)
 
