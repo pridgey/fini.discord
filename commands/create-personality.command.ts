@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
-import { clearAllHistory } from "../utilities/clearAllHistory";
+import { clearAllHistory } from "../modules/aiChat/clearAllHistory";
 import { createNewPersonality } from "../modules/personalities/createPersonality";
 import { personalityExistsForUser } from "../modules/personalities/getPersonality";
 import { setPersonalityActive } from "../modules/personalities/setPersonalityActive";

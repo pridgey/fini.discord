@@ -3,7 +3,7 @@ import { describe, it, expect, mock, beforeEach } from "bun:test";
 // Mock clearHistory utility
 const mockClearHistory = mock((_userId: string, _guildId: string, _provider: string) => Promise.resolve());
 
-mock.module("../../utilities/chatHistory", () => ({
+mock.module("../../modules/aiChat/chatHistory", () => ({
   clearHistory: mockClearHistory,
 }));
 

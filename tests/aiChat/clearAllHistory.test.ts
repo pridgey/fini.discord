@@ -1,11 +1,11 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { ALL_CHAT_TYPES } from "../../modules/aiChat/chatTypes";
-import { clearAllHistory } from "../../utilities/clearAllHistory";
+import { clearAllHistory } from "../../modules/aiChat/clearAllHistory";
 
 /*
  * The single-backend clear is injected rather than module-mocked. bun's
  * mock.module is process global and several command suites replace
- * utilities/chatHistory wholesale, so a module mock here would be silently
+ * modules/aiChat/chatHistory wholesale, so a module mock here would be silently
  * overwritten depending on file order - passing in isolation and testing
  * nothing in a full run.
  */

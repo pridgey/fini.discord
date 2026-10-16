@@ -1,5 +1,5 @@
 import { ButtonInteraction, ChatInputCommandInteraction } from "discord.js";
-import { Card, cardDeck } from "../../../types/games/blackjack.types";
+import { Card, cardDeck } from "./blackjack.types";
 import { getUserBalance } from "../../finicoin";
 import { randomNumber } from "../../../utilities/randomNumber";
 

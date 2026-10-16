@@ -5,7 +5,7 @@ import {
   readTexturesValue,
   renderSkinScript,
   SkinSpecError,
-} from "../../utilities/minecraft/botSkin";
+} from "../../modules/minecraft/botSkin";
 
 describe("parseSkinSpec", () => {
   it("parses an account spec", () => {

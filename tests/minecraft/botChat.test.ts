@@ -3,7 +3,7 @@ import {
   parseChatRequests,
   renderChatScript,
   splitForChat,
-} from "../../utilities/minecraft/botChat";
+} from "../../modules/minecraft/botChat";
 
 const TRIGGER = "hey fini";
 

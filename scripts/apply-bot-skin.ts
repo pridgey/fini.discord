@@ -19,9 +19,9 @@ import {
   renderSkinScript,
   resolveSkinSpec,
   SkinSpecError,
-} from "../utilities/minecraft/botSkin";
-import { MINECRAFT_BOT_NAMES, MINECRAFT_SERVER_DIR } from "../utilities/minecraft/minecraft.config";
-import { rconConfig } from "../utilities/minecraft/rcon.config";
+} from "../modules/minecraft/botSkin";
+import { MINECRAFT_BOT_NAMES, MINECRAFT_SERVER_DIR } from "../modules/minecraft/minecraft.config";
+import { rconConfig } from "../modules/minecraft/rcon.config";
 
 const SCRIPT_PATH = join(
   MINECRAFT_SERVER_DIR,

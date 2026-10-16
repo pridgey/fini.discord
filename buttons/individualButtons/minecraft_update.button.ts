@@ -1,7 +1,7 @@
 import { ButtonInteraction } from "discord.js";
 import { requireAdmin } from "../../utilities/discord/isAdmin";
-import { MINECRAFT_SERVER_DIR } from "../../utilities/minecraft/minecraft.config";
-import { checkForPackUpdate } from "../../utilities/minecraft/packUpdate";
+import { MINECRAFT_SERVER_DIR } from "../../modules/minecraft/minecraft.config";
+import { checkForPackUpdate } from "../../modules/minecraft/packUpdate";
 
 export const namespace = "minecraft_update";
 

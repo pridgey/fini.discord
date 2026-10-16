@@ -1,5 +1,5 @@
-import { MinecraftMonitor } from "../utilities/minecraft/minecraftMonitoring";
-import { rconConfig } from "../utilities/minecraft/rcon.config";
+import { MinecraftMonitor } from "../modules/minecraft/minecraftMonitoring";
+import { rconConfig } from "../modules/minecraft/rcon.config";
 
 const monitor = new MinecraftMonitor(rconConfig);
 

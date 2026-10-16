@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import { pb } from "../utilities/pocketbase";
 import type { HammerspaceRecord } from "../types/PocketbaseTables";
-import { logHammerspaceUsage } from "../utilities/hammerspace";
+import { logHammerspaceUsage } from "../modules/hammerspace/hammerspace";
 
 export const data = new SlashCommandBuilder()
   .setName("slap")

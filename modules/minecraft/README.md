@@ -255,7 +255,7 @@ npm run set-bot-skin -- 'url:https://host/fini.png#slim' # any PNG (unsigned)
 
 That generates `kubejs/server_scripts/fini_skin.js` in the modpack and reloads
 it. **The generated file is disposable** - a pack update deletes `kubejs/`, and
-re-running the command puts it back. `utilities/minecraft/botSkin.ts` is the
+re-running the command puts it back. `modules/minecraft/botSkin.ts` is the
 source of truth.
 
 ### Three things that will waste your time

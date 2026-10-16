@@ -1,25 +1,25 @@
 import { converseWithAI } from "../modules/aiChat/aiChat";
-import { CHAT_MARKER, parseChatRequests, splitForChat } from "../utilities/minecraft/botChat";
-import { BotControl } from "../utilities/minecraft/botControl";
-import { decideLifecycle } from "../utilities/minecraft/botLifecycle";
+import { CHAT_MARKER, parseChatRequests, splitForChat } from "../modules/minecraft/botChat";
+import { BotControl } from "../modules/minecraft/botControl";
+import { decideLifecycle } from "../modules/minecraft/botLifecycle";
 import {
   DEFAULT_WANDER_CONFIG,
   decideWander,
   initialWanderState,
   type Vec3,
   type WanderState,
-} from "../utilities/minecraft/botWander";
+} from "../modules/minecraft/botWander";
 import {
   MINECRAFT_BOT_NAMES,
   MINECRAFT_CHAT_TRIGGER,
-} from "../utilities/minecraft/minecraft.config";
-import { humanPlayers } from "../utilities/minecraft/parsePlayerList";
-import { rconConfig } from "../utilities/minecraft/rcon.config";
+} from "../modules/minecraft/minecraft.config";
+import { humanPlayers } from "../modules/minecraft/parsePlayerList";
+import { rconConfig } from "../modules/minecraft/rcon.config";
 import {
   getLogMarker,
   readLogSince,
   type LogMarker,
-} from "../utilities/minecraft/waitForServerReady";
+} from "../modules/minecraft/waitForServerReady";
 
 /**
  * Fini's presence in the Minecraft world: when the bot exists, where it walks,

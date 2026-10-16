@@ -7,7 +7,7 @@ import {
   getStateFromText,
 } from "../../modules/games/blackjack/blackjackUtilities";
 import { addCoin } from "../../modules/finicoin";
-import { Card } from "../../types/games/blackjack.types";
+import { Card } from "../../modules/games/blackjack/blackjack.types";
 
 export const namespace = "blackjack_stand";
 

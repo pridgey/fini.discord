@@ -19,7 +19,7 @@ const { execute } = await import("../../commands/blackjack.command");
 const { calculateHandScore, getStateFromText } = await import(
   "../../modules/games/blackjack/blackjackUtilities"
 );
-const { cardDeck } = await import("../../types/games/blackjack.types");
+const { cardDeck } = await import("../../modules/games/blackjack/blackjack.types");
 
 type Card = (typeof cardDeck)[number];
 

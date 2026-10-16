@@ -11,7 +11,7 @@ import {
   generateBlackjackMessage,
   getRandomCard,
 } from "../modules/games/blackjack/blackjackUtilities";
-import { Card } from "../types/games/blackjack.types";
+import { Card } from "../modules/games/blackjack/blackjack.types";
 
 type PlayerStats = {
   Cards: Card[];

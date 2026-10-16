@@ -6,7 +6,7 @@ import type {
   ChatCompletionSystemMessageParam,
 } from "openai/resources/index";
 import type { OpenAIError } from "openai/error";
-import { addHistory, getHistory } from "../../utilities/chatHistory";
+import { addHistory, getHistory } from "../aiChat/chatHistory";
 import { pb } from "../../utilities/pocketbase";
 import { PersonalitiesRecord } from "../../types/PocketbaseTables";
 

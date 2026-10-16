@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { decideLifecycle } from "../../utilities/minecraft/botLifecycle";
+import { decideLifecycle } from "../../modules/minecraft/botLifecycle";
 
 describe("decideLifecycle", () => {
   it("spawns the bot once somebody is playing", () => {

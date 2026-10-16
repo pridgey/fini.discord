@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   countHumanPlayers,
   parsePlayerList,
-} from "../../utilities/minecraft/parsePlayerList";
+} from "../../modules/minecraft/parsePlayerList";
 
 // Every string below is a verbatim `list` response from this server
 const EMPTY = "There are 0 of a max of 20 players online:";

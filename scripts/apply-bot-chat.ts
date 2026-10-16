@@ -14,12 +14,12 @@
  */
 import { join } from "path";
 import { Rcon } from "rcon-client";
-import { renderChatScript } from "../utilities/minecraft/botChat";
+import { renderChatScript } from "../modules/minecraft/botChat";
 import {
   MINECRAFT_CHAT_TRIGGER,
   MINECRAFT_SERVER_DIR,
-} from "../utilities/minecraft/minecraft.config";
-import { rconConfig } from "../utilities/minecraft/rcon.config";
+} from "../modules/minecraft/minecraft.config";
+import { rconConfig } from "../modules/minecraft/rcon.config";
 
 const SCRIPT_PATH = join(
   MINECRAFT_SERVER_DIR,

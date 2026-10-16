@@ -1,5 +1,5 @@
-import { pb } from "./pocketbase";
-import type { HammerspaceRecord } from "../types/PocketbaseTables";
+import { pb } from "../../utilities/pocketbase";
+import type { HammerspaceRecord } from "../../types/PocketbaseTables";
 
 /**
  * A utility function that updates the times_used for a hammerspace item by 1

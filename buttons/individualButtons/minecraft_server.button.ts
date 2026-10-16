@@ -1,19 +1,19 @@
 import { exec } from "child_process";
 import { ButtonInteraction } from "discord.js";
-import { MINECRAFT_PORT } from "../../utilities/minecraft/checkServerStatus";
-import { MINECRAFT_SERVER_DIR } from "../../utilities/minecraft/minecraft.config";
-import { ensureNeoForgeInstalled } from "../../utilities/minecraft/neoforgeInstaller";
+import { MINECRAFT_PORT } from "../../modules/minecraft/checkServerStatus";
+import { MINECRAFT_SERVER_DIR } from "../../modules/minecraft/minecraft.config";
+import { ensureNeoForgeInstalled } from "../../modules/minecraft/neoforgeInstaller";
 import {
   getLogMarker,
   SCREEN_SESSION,
   waitForServerReady,
-} from "../../utilities/minecraft/waitForServerReady";
-import { getPublicIP } from "../../utilities/misc/getPublicIp";
+} from "../../modules/minecraft/waitForServerReady";
+import { getPublicIP } from "../../modules/minecraft/getPublicIp";
 import {
   describeOutcome,
   ensureService,
   type ServiceName,
-} from "../../utilities/minecraft/serviceHealth";
+} from "../../modules/minecraft/serviceHealth";
 
 export const namespace = "minecraft_server";
 

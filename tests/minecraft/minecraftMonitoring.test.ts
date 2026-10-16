@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   describeRconError,
   MinecraftMonitor,
-} from "../../utilities/minecraft/minecraftMonitoring";
+} from "../../modules/minecraft/minecraftMonitoring";
 
 /**
  * Drives the state machine directly. `handlePlayerCount` is the whole of the

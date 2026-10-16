@@ -2,7 +2,7 @@ import { afterEach, describe, it, expect, mock, beforeEach, spyOn } from "bun:te
 
 // Mock logHammerspaceUsage utility
 const mockLogHammerspaceUsage = mock(() => Promise.resolve());
-mock.module("../../utilities/hammerspace", () => ({
+mock.module("../../modules/hammerspace/hammerspace", () => ({
   logHammerspaceUsage: mockLogHammerspaceUsage,
 }));
 

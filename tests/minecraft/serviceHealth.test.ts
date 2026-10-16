@@ -4,7 +4,7 @@ import {
   describeOutcome,
   matchesServiceProcess,
   SERVICE_PROCESSES,
-} from "../../utilities/minecraft/serviceHealth";
+} from "../../modules/minecraft/serviceHealth";
 
 describe("decideEnsure", () => {
   it("reports an already-running service without starting anything", () => {

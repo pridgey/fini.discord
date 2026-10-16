@@ -8,11 +8,11 @@ import {
 import {
   getServerStatus,
   MINECRAFT_PORT,
-} from "../utilities/minecraft/checkServerStatus";
+} from "../modules/minecraft/checkServerStatus";
 import { ADMIN_ID } from "../utilities/discord/isAdmin";
-import { checkForPackUpdate } from "../utilities/minecraft/packUpdate";
-import { getPublicIP } from "../utilities/misc/getPublicIp";
-import { getServerPlayers } from "../utilities/minecraft/getServerPlays";
+import { checkForPackUpdate } from "../modules/minecraft/packUpdate";
+import { getPublicIP } from "../modules/minecraft/getPublicIp";
+import { getServerPlayers } from "../modules/minecraft/getServerPlays";
 
 export const data = new SlashCommandBuilder()
   .setName("minecraft-server")

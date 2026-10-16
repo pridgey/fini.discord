@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   describeFailure,
   READY_PATTERN,
-} from "../../utilities/minecraft/waitForServerReady";
+} from "../../modules/minecraft/waitForServerReady";
 
 // All snippets below are copied verbatim from this server's own logs - the
 // boot checker exists because a fixed 10 second wait reported both of these

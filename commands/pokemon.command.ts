@@ -5,7 +5,7 @@ import {
   ContainerBuilder,
   MessageFlags,
 } from "discord.js";
-import { calculatePokemonTypeEffectiveness } from "../utilities/pokemonTypes/typeEffective";
+import { calculatePokemonTypeEffectiveness } from "../modules/pokemon/typeEffective";
 import { toCapitalize } from "../utilities/strings/toCapitalize";
 
 export const data = new SlashCommandBuilder()

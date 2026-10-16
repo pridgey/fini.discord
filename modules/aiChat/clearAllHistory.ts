@@ -1,4 +1,4 @@
-import { ALL_CHAT_TYPES } from "../modules/aiChat/chatTypes";
+import { ALL_CHAT_TYPES } from "./chatTypes";
 import { clearHistory } from "./chatHistory";
 
 /**
@@ -27,7 +27,7 @@ const SERVER_ID_FALLBACK = "unknown";
  * unreachable service cannot leave the remaining backends' history behind.
  *
  * Lives in its own module so it can be tested: the suite mocks
- * `utilities/chatHistory` wholesale, and bun's mock.module is process global,
+ * `modules/aiChat/chatHistory` wholesale, and bun's mock.module is process global,
  * so anything exported from there is unreachable in a full run.
  * @param userID The user's ID
  * @param guildID The server ID. Nullish becomes the same fallback the write

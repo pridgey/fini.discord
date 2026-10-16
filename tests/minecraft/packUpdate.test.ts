@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   isNewerVersion,
   versionFromFileName,
-} from "../../utilities/minecraft/packUpdate";
+} from "../../modules/minecraft/packUpdate";
 
 describe("versionFromFileName", () => {
   it.each([

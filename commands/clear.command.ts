@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
-import { clearAllHistory } from "../utilities/clearAllHistory";
+import { clearAllHistory } from "../modules/aiChat/clearAllHistory";
 
 export const data = new SlashCommandBuilder()
   .setName("clear")

@@ -1,6 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk/client";
-import { ChatRecord } from "../types/PocketbaseTables";
-import { pb } from "./pocketbase";
+import { ChatRecord } from "../../types/PocketbaseTables";
+import { pb } from "../../utilities/pocketbase";
 
 const MAX_HISTORY = 50;
 

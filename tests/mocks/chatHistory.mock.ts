@@ -23,7 +23,7 @@ export const initChatHistoryMocks = () => {
  * Call this once at the module level, then use initChatHistoryMocks() in beforeEach
  */
 export const setupChatHistoryModuleMock = () => {
-  mock.module("../../utilities/chatHistory", () => ({
+  mock.module("../../modules/aiChat/chatHistory", () => ({
     clearHistory: (...args: any[]) => mockClearHistory(...args),
     getHistory: (...args: any[]) => mockGetHistory(...args),
     addHistory: (...args: any[]) => mockAddHistory(...args),

@@ -10,7 +10,7 @@ import {
   normaliseHeading,
   type Vec3,
   type WanderState,
-} from "../../utilities/minecraft/botWander";
+} from "../../modules/minecraft/botWander";
 
 const at = (x: number, y: number, z: number): Vec3 => ({ x, y, z });
 

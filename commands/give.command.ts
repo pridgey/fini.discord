@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
-import { addCoin, getUserBalance } from "./../modules/finicoin";
+import { addCoin, getUserBalance } from "../modules/finicoin";
 
 export const data = new SlashCommandBuilder()
   .setName("give")

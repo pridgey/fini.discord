@@ -4,7 +4,7 @@ import {
   markAllPersonalitiesInactiveForUser,
   setPersonalityActiveByName,
 } from "../modules/personalities/setPersonalityActive";
-import { clearAllHistory } from "../utilities/clearAllHistory";
+import { clearAllHistory } from "../modules/aiChat/clearAllHistory";
 
 export const data = new SlashCommandBuilder()
   .setName("set-personality")

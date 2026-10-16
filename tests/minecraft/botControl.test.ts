@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { parseVec3, parseYaw } from "../../utilities/minecraft/botControl";
+import { parseVec3, parseYaw } from "../../modules/minecraft/botControl";
 
 // Both strings are verbatim RCON responses from this server
 const POS = "[0] FINI has the following entity data: [200.5d, 82.0d, 200.5d]";

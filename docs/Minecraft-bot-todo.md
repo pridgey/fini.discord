@@ -8,7 +8,7 @@ work today.
 
 Fini's in-game presence needs files that live in `/opt/minecraft/AllTheMons`,
 and [the documented update
-procedure](../utilities/minecraft/README.md#updating-the-modpack) replaces
+procedure](../modules/minecraft/README.md#updating-the-modpack) replaces
 `mods/` and `kubejs/` wholesale:
 
 | File | Restore with |
