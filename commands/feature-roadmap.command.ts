@@ -20,7 +20,6 @@ export const execute = async (
       "Finicards Set 3",
       "Geoguessr style game to earn Finicoin",
       "Brainstorm other daily challenges",
-      "Fix or remove the /weather command",
     ];
 
     await interaction.reply(

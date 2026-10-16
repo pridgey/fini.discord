@@ -72,7 +72,7 @@ describe("executeToolCall for fini_capabilities", () => {
     });
 
     expect(result).toContain("/finicard");
-    expect(result).not.toContain("/weather");
+    expect(result).not.toContain("/pokemon");
   });
 
   it("ignores malformed arguments rather than failing the call", async () => {

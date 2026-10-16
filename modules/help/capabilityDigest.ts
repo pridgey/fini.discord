@@ -56,7 +56,7 @@ const matches = (command: HelpCommand, topic: string): boolean => {
  * Renders the command list as text for a model.
  *
  * @param topic Optional free-text filter. A model asked for "cards" shouldn't
- *   have to read about `/weather`; anything that matches nothing falls back to
+ *   have to read about `/pokemon`; anything that matches nothing falls back to
  *   the full digest rather than returning an empty answer the model would then
  *   report as "Fini has no commands".
  * @returns The digest, grouped by category

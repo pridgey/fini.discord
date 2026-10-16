@@ -111,7 +111,6 @@ export const COMMAND_CATEGORIES: Record<string, string> = {
   convert: "Utilities",
   ytdlp: "Utilities",
   remind: "Utilities",
-  weather: "Utilities",
   pokemon: "Utilities",
   slap: "Utilities",
   add: "Utilities",

@@ -43,7 +43,7 @@ describe("getCapabilityDigest", () => {
     const cards = await getCapabilityDigest("card");
 
     expect(cards).toContain("/finicard");
-    expect(cards).not.toContain("/weather");
+    expect(cards).not.toContain("/pokemon");
   });
 
   it("falls back to everything when a topic matches nothing", async () => {
@@ -51,7 +51,7 @@ describe("getCapabilityDigest", () => {
     const digest = await getCapabilityDigest("zzzz-no-such-thing");
 
     expect(digest).toContain("/balance");
-    expect(digest).toContain("/weather");
+    expect(digest).toContain("/pokemon");
   });
 
   it("stays small enough to feed back to the local model", async () => {

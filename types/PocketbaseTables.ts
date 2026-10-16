@@ -64,15 +64,6 @@ export type PersonalitiesRecord = {
   server_id: string;
 };
 
-export type WeatherRecord = {
-  id?: string;
-  time: string;
-  server_id: string;
-  user_id: string;
-  city: string;
-  additional_prompt: string;
-};
-
 export type CardDefinitionRecord = {
   id?: string;
   card_name: string;
