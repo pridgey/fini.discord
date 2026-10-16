@@ -11,19 +11,18 @@ export const execute = async (
 ) => {
   try {
     const features = [
-      "~~See other users card collection with the /card-collection command~~",
-      "Legendary Cards (maybe part of set 2?)",
-      "De-dupe /card-collection listings",
-      "Add card fusion to Finicards",
-      "Add game mechanic to Finicards",
-      "Finicard trading",
-      "Finicards Set 3",
-      "Geoguessr style game to earn Finicoin",
-      "Brainstorm other daily challenges",
+      "~~Finicards v2: battles, dungeons, Legendaries and Secret Arts~~",
+      "~~Finicard trading~~",
+      "~~Where in the World: a daily location game~~",
+      "~~Weave: a daily word puzzle~~",
+      "One daily post for every daily game",
+      "Item cards that unlock Exodia, Shenron and Super Sonic",
+      "Sorting and filtering in /finicard collection",
+      "More of Fini's AI running on local models",
     ];
 
     await interaction.reply(
-      `# Current Feature Roadmap.${features.map((f) => `\n- ${f}`)}`,
+      `# Current Feature Roadmap${features.map((f) => `\n- ${f}`).join("")}`,
     );
   } catch (err) {
     const error: Error = err as Error;
