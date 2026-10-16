@@ -105,8 +105,8 @@ import { buildAbilitiesMessage } from "../modules/finicardsV2/ui/abilitiesMessag
  * One command with subcommands rather than a spread of top-level commands, so
  * the whole game is found in one place. It was named with a `-v2` suffix while
  * it was tested alongside the first game; v1's `/booster-pack`, `/card-collection`,
- * `/sell-card` and `/fuse-cards` were retired when it launched
- * (`commands/archived`).
+ * `/sell-card` and `/fuse-cards` were retired when it launched,
+ * and later deleted.
  */
 
 const MAX_PENDING_SHOWN = 5;

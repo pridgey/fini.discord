@@ -1,10 +1,9 @@
 /**
  * Finicards v2 - the battle-first card game described in `docs/Finicards-v2.md`.
  *
- * This module is completely independent of `modules/finicards`: separate
- * Pocketbase collections (`v2_*`), separate types, separate commands. Both can
- * run at the same time, and the switchover is a matter of retiring the v1
- * commands once v2 feels right.
+ * It replaced the first card game, whose code is gone: separate Pocketbase
+ * collections (`v2_*`), separate types, separate commands. Only the v1 card
+ * definitions remain, read by `convertLegacyCards`.
  *
  * Layering, innermost first:
  *   rules / keywords / statBudget   - data and pure maths, no I/O
