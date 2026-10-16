@@ -31,6 +31,7 @@ import {
   drinkCoffee,
   previewCards,
   redealHand,
+  shopPrice,
   skipEvent,
   type Buff,
   type DungeonState,
@@ -41,6 +42,7 @@ import {
   type ShopRoom,
 } from "../../modules/finicardsV2/dungeon";
 import { buildDungeonMessage, composeDungeonMessage } from "../../modules/finicardsV2/ui";
+import { buffLines } from "../../modules/finicardsV2/ui/dungeonMessage";
 import type { BattleCard } from "../../modules/finicardsV2/types";
 import type {
   CardRarity,
@@ -914,6 +916,84 @@ describe("finicards v2 dungeons", () => {
     });
   });
 
+  describe("the buff list", () => {
+    const buff = (name: string, mods: Record<string, number>, rooms: number | null) => ({
+      name,
+      note: "",
+      mods,
+      rooms,
+    });
+
+    it("adds up the for-the-run buffs and merges identical timed ones", () => {
+      const lines = buffLines([
+        buff("Whetstone", { power: 1 }, null),
+        buff("Whetstone", { power: 1 }, null),
+        buff("Owl Feather", { wit: 1 }, null),
+        buff("War Paint", { type: 2 }, 3),
+        buff("War Paint", { type: 2 }, 3),
+        buff("War Paint", { type: 2 }, 1),
+      ]);
+      expect(lines).toEqual([
+        "-# 💪 Your cards: +2 Power, +1 Wit · War Paint ×2: +4 type stat _(3 rooms)_ · War Paint: +2 type stat _(1 room)_",
+      ]);
+    });
+
+    it("puts each buff under what it changes, in a fixed order", () => {
+      const lines = buffLines([
+        buff("Treasure Map", { scout: 1 }, 2),
+        buff("Deep Pockets", { geld: 25 }, null),
+        buff("Hex Doll", { enemy: 1 }, 4),
+        buff("Quick Hands", { cooldown: -1 }, null),
+      ]);
+      expect(lines).toEqual([
+        "-# 🧿 Enemies: Hex Doll: −1 all stats _(4 rooms)_",
+        "-# 🪙 Geld: +25% from fights",
+        "-# ⏱️ Rest: 1 room shorter",
+        "-# 🗺️ Doors: Treasure Map: enemies shown _(2 door choices)_",
+      ]);
+      expect(buffLines([])).toEqual([]);
+    });
+  });
+
+  describe("shop prices", () => {
+    it("rise with depth, from the listed price in the first room", () => {
+      expect(shopPrice(12, 1)).toBe(12);
+      expect(shopPrice(12, 11)).toBe(24);
+      expect(shopPrice(12, 41)).toBe(60);
+    });
+
+    it("are charged at the depth the shop is found", () => {
+      const early = generateShop([], seeded(4)).offers;
+      const deep = generateShop([], seeded(4), DUNGEON, 31).offers;
+      expect(deep.map((offer) => offer.name)).toEqual(early.map((offer) => offer.name));
+      deep.forEach((offer, i) => expect(offer.price).toBe(shopPrice(early[i].price, 31)));
+    });
+  });
+
+  describe("Secret Art enemies", () => {
+    const fullArts = [
+      ...["a", "b", "c"].map((id) => card(id, "wit", [3, 9, 3], "", "full_art")),
+      ...["s1", "s2", "s3"].map((id) => ({ ...card(id, "wit", [3, 9, 3], "", "full_art"), secretArt: true })),
+    ];
+
+    it("turn up about as often as secretArtEnemyChance, not as often as they are in the pool", () => {
+      const runs = 4000;
+      let secret = 0;
+      for (let seed = 0; seed < runs; seed++) {
+        const fight = generateFight(20, "boss", { pool: fullArts, random: seeded(seed) });
+        if (fight.enemy.secretArt) secret++;
+      }
+      const expected = runs * DUNGEON.secretArtEnemyChance;
+      expect(secret).toBeGreaterThan(expected * 0.5);
+      expect(secret).toBeLessThan(expected * 1.5);
+    });
+
+    it("still fight when they are all a tier has", () => {
+      const onlySecret = fullArts.filter((enemy) => enemy.secretArt);
+      expect(generateFight(20, "boss", { pool: onlySecret, random: seeded(1) }).enemy.secretArt).toBe(true);
+    });
+  });
+
   describe("sneak peeks", () => {
     const PREVIEW = [card("next", "wit", [3, 8, 4])];
     const peek = (seed: number, config = DUNGEON) =>
@@ -939,6 +1019,13 @@ describe("finicards v2 dungeons", () => {
       const expected = runs / DUNGEON.previewEvery;
       expect(seen).toBeGreaterThan(expected * 0.5);
       expect(seen).toBeLessThan(expected * 1.5);
+    });
+
+    it("says so on the door, so the player can choose it", () => {
+      // Spread out: this generator's first draw barely moves between neighbouring seeds.
+      const shown = Array.from({ length: 300 }, (_, i) => peek(i * 7919)).flat();
+      expect(shown.length).toBeGreaterThan(0);
+      for (const door of shown) expect(doorHint(door)).toContain("sneak peek");
     });
 
     it("never previews behind a boss door, or when switched off", () => {

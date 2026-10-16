@@ -90,11 +90,23 @@ export type DungeonConfig = {
   bossFullArtOdds: number[];
   /**
    * About one door choice in this many puts a card from the next unreleased
-   * set behind the plain fight door, as a "Sudden" enemy. 0 turns it off.
+   * set behind the plain fight door, as a "Sudden" enemy, and the door says
+   * so. 0 turns it off.
    */
   previewEvery: number;
   /** Chance, 0-1, that a shop also sells one hand-redraw ware. */
   specialChance: number;
+  /**
+   * How much shop prices rise per room, as a share of the listed price: at
+   * 0.1 a ware costs twice its listed price by room 11. Geld from fights grows
+   * with depth, and fixed prices let a deep run clear every shelf.
+   */
+  shopInflation: number;
+  /**
+   * Chance, 0-1, that an enemy rolled from the full-art tier is a Secret Art.
+   * They are a third of that tier, and without this a third of bosses were.
+   */
+  secretArtEnemyChance: number;
 };
 
 /**
@@ -121,8 +133,10 @@ export const DUNGEON: DungeonConfig = {
   shopPity: 4,
   startingWards: 1,
   bossFullArtOdds: [0, 0, 0, 10, 25, 50, 80, 100],
-  previewEvery: 75,
+  previewEvery: 12,
   specialChance: 0.6,
+  shopInflation: 0.1,
+  secretArtEnemyChance: 0.04,
 };
 
 /** The player attacks as the challenger; the dungeon answers as the defender. */
@@ -559,7 +573,17 @@ export const generateFight = (
   const ranked = tiersFor(wanted)
     .map((rarity) => candidates.filter((card) => card.rarity === rarity))
     .find((matches) => matches.length > 0)!;
-  const base = showcase ?? pick(ranked, random);
+  // Secret Arts are rare in packs and should be rare here too. Rolled only
+  // when the tier holds both kinds, so other tiers draw the dice they did.
+  const plain = ranked.filter((card) => !card.secretArt);
+  const secret = ranked.filter((card) => card.secretArt);
+  const kind =
+    plain.length > 0 && secret.length > 0
+      ? random() < config.secretArtEnemyChance
+        ? secret
+        : plain
+      : ranked;
+  const base = showcase ?? pick(kind, random);
 
   const points = enemyPoints(depth, tier, config);
   const stats = { ...base.stats };
@@ -730,10 +754,15 @@ const SPECIALS: Ware[] = [
   },
 ];
 
+/** What a ware listed at `price` costs in a shop at `depth`. */
+export const shopPrice = (price: number, depth: number, config: DungeonConfig = DUNGEON): number =>
+  Math.round(price * (1 + Math.max(0, depth - 1) * config.shopInflation));
+
 export const generateShop = (
   owned: Buff[],
   random: Random = Math.random,
   config: DungeonConfig = DUNGEON,
+  depth = 1,
 ): ShopRoom => {
   const shelf = WARES.filter(
     (ware) => !ware.unique || !owned.some((buff) => buff.name === ware.name),
@@ -743,12 +772,12 @@ export const generateShop = (
   while (offers.length < config.shopOffers && shelf.length > 0) {
     const index = Math.min(shelf.length - 1, Math.floor(random() * shelf.length));
     const [{ unique: _unique, ...ware }] = shelf.splice(index, 1);
-    offers.push({ ...ware, sold: false });
+    offers.push({ ...ware, price: shopPrice(ware.price, depth, config), sold: false });
   }
 
   if (config.specialChance > 0 && random() < config.specialChance) {
     const { unique: _unique, ...special } = pick(SPECIALS, random);
-    offers.push({ ...special, sold: false });
+    offers.push({ ...special, price: shopPrice(special.price, depth, config), sold: false });
   }
 
   return { kind: "shop", offers };
@@ -994,7 +1023,7 @@ export const generateDoors = (
   let roll = random() * (odds.fight + odds.elite + odds.shop + odds.event);
   const second: Room =
     owed || (roll -= odds.shop) < 0
-      ? generateShop(state.buffs, random, config)
+      ? generateShop(state.buffs, random, config, depth)
       : (roll -= odds.event) < 0
         ? generateEvent(depth, random, config)
         : (roll -= odds.elite) < 0
@@ -1311,7 +1340,7 @@ export const playFight = (
     next.stats.cardWins[card.name] = (next.stats.cardWins[card.name] ?? 0) + 1;
     next.fightsWon += 1;
     mark(next, "won");
-    lines.push(`**${next.room.enemy.name}** falls. **+${geld} geld**.`);
+    lines.push(`✅ **${next.room.enemy.name}** falls · **+${geld} geld**`);
 
     if (next.room.tier === "boss") {
       next.bossesWon += 1;
@@ -1322,30 +1351,31 @@ export const playFight = (
           : "uncommon";
       next.loot.push(rarity);
       lines.push(
-        `🎴 The boss drops ${rarity === "full_art" ? "a **full-art** card" : "an **uncommon** card"}. It's banked - yours when the run ends, however it ends.`,
+        `🎴 The boss drops ${rarity === "full_art" ? "a **full-art** card" : "an **uncommon** card"}, banked: it's yours when the run ends, however it ends.`,
       );
     }
     openDoors(next, source, false, config);
   } else if (round.winner === "draw") {
     result = "stalemate";
     lines.push(
-      `A stalemate - **${next.room.enemy.name}** is still standing. Play another card.`,
+      `🤝 A stalemate: **${next.room.enemy.name}** is still standing. Play another card.`,
     );
   } else if (next.wards > 0) {
     result = "warded";
     next.wards -= 1;
     mark(next, "warded");
     lines.push(
-      `**${next.room.enemy.name}** wins, but your ward charm shatters and you slip past. No geld.`,
+      `🛡️ **${next.room.enemy.name}** wins, but your ward charm shatters and you slip past. No geld.`,
     );
     openDoors(next, source, false, config);
   } else {
     result = "fell";
     mark(next, "fell");
-    lines.push(`**${next.room.enemy.name}** wins. The run ends here.`);
+    lines.push(`💀 **${next.room.enemy.name}** wins. The run ends here.`);
   }
 
-  next.recap = { round, lines };
+  // A blank line sets the outcome apart from the clash above it.
+  next.recap = { round, lines: ["", ...lines] };
   return { state: next, round, result };
 };
 
@@ -1395,10 +1425,11 @@ export const playEvent = (
       ...(rerolled !== null
         ? [`🎲 A **${first}** isn't enough. The loaded die rolls again...`]
         : []),
-      `**${room.title}** — ${card.name} rolls ${working}: ${passed ? "passed" : "failed"}.`,
-      passed
-        ? `${room.passText} You gain ${describeEffect(room.reward)}.`
-        : `${room.failText} ${failCost(room)}`,
+      `**${room.title}**`,
+      `${card.name} rolls ${working} · ${passed ? "✅ passed" : "❌ failed"}`,
+      "",
+      `_${passed ? room.passText : room.failText}_`,
+      passed ? `✨ You gain ${describeEffect(room.reward)}.` : `💢 ${failCost(room)}`,
       ...effectLines,
     ],
   };
@@ -1438,7 +1469,10 @@ export const skipEvent = (
   const { failEffect } = next.room;
   next.recap = {
     lines: [
-      `**${next.room.title}** — you leave it alone. ${next.room.failText} ${failCost(next.room)}`,
+      `**${next.room.title}** · you leave it alone`,
+      "",
+      `_${next.room.failText}_`,
+      `💢 ${failCost(next.room)}`,
       ...(failEffect ? applyEffect(next, failEffect, source) : []),
     ],
   };
@@ -1558,6 +1592,8 @@ export const doorHint = (room: Room): string => {
   if (room.kind === "shop") return "Shop";
   if (room.kind === "event") return "Event";
   const type = `${TYPE_LABEL[room.enemy.type]} room`;
+  // A sneak peek says so, or a player could walk past the one door it's behind.
+  if (room.preview) return `${type} · 👀 sneak peek`;
   return room.tier === "boss"
     ? `Boss · ${type}`
     : room.tier === "elite"

@@ -200,6 +200,13 @@ are deliberately not bound by the 15-point budget or the spike ceilings:
 - elites and bosses always carry a keyword, rolled if their card has none
 - deeper rooms draw from better rarities; every 5th room is a boss behind both
   doors
+- an enemy drawn from the full-art tier is a Secret Art only 4% of the time
+  (`DUNGEON.secretArtEnemyChance`); they are a third of that tier, and left to
+  chance a third of bosses were Secret Arts
+- about one door choice in 12 (`DUNGEON.previewEvery`) puts a card from the
+  next unreleased set behind the fight door as a "Sudden" enemy, and the door
+  is marked 👀 sneak peek. It was one in 75, and players reaching rooms 40 and
+  65 had never been offered one
 - **the first 5 rooms are a warm-up** (`DUNGEON.warmup`): enemies are commons
   fighting 2 points under their card ("Drowsy"), no elites, and the room-5 boss
   is built on an uncommon rather than a full-art
@@ -241,6 +248,13 @@ next failed event is rolled again, 10) or Strong Coffee (wake any resting card,
 any time, 8). They sit beside the regular shelf rather than on it, because on it
 they crowded out the stat wares and cost runs about a fifth of their depth in
 the simulator.
+
+Prices are listed for the first room and rise 10% of that per room
+(`DUNGEON.shopInflation`, `shopPrice`): twice the list price by room 11, seven
+times by room 61. Fight pay grows with depth, and at fixed prices a deep run
+bought out every shelf. Fight pay still grows faster - 20% a room - so a deep
+shop is affordable but now costs a real share of the payout; prices that kept
+pace with fight pay put the 8-pack careful run below its entry fee.
 
 **Charges.** Loaded dice and coffees are held like wards and shown beside them.
 A loaded die is spent automatically on the first event roll that fails. A coffee
@@ -315,14 +329,19 @@ row. *careful* works out every clash and walks out when nothing in hand can win;
 
 | deck | player | avg room | median | p90 | avg fc | runs in profit | cards | full-arts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2 packs, all 10 cards | careful | 14.1 | 10 | 25 | 37.2 | 48% | 2.00 | 0.11 |
-| | gut | 11.4 | 10 | 18 | 5.6 | 6% | 0.93 | 0.01 |
-| 8 packs, best 20 | careful | 17.2 | 15 | 30 | 61.7 | 60% | 2.61 | 0.27 |
-| | gut | 13.9 | 12 | 24 | 10.8 | 15% | 1.31 | 0.04 |
-| 24 packs, best 20 | careful | 23.3 | 20 | 41 | 131.6 | 78% | 3.84 | 0.71 |
-| | gut | 18.1 | 15 | 33 | 24.7 | 31% | 2.00 | 0.14 |
-| full-arts only | careful | 30.7 | 28 | 52 | 234.7 | 89% | 5.32 | 1.38 |
-| | gut | 25.5 | 20 | 49 | 68.9 | 53% | 3.16 | 0.55 |
+| 2 packs, all 10 cards | careful | 12.7 | 10 | 20 | 15.3 | 29% | 1.72 | 0.04 |
+| | gut | 10.5 | 10 | 15 | 2.9 | 0% | 0.83 | 0.00 |
+| 8 packs, best 20 | careful | 15.4 | 14 | 25 | 23.0 | 43% | 2.24 | 0.13 |
+| | gut | 11.8 | 10 | 19 | 3.8 | 2% | 1.06 | 0.01 |
+| 24 packs, best 20 | careful | 20.1 | 17 | 35 | 41.4 | 58% | 3.19 | 0.38 |
+| | gut | 14.2 | 13 | 23 | 5.7 | 5% | 1.47 | 0.03 |
+| full-arts only | careful | 27.3 | 25 | 46 | 78.0 | 77% | 4.64 | 0.93 |
+| | gut | 18.5 | 15 | 32 | 10.4 | 16% | 2.23 | 0.14 |
+
+Since shop prices began rising with depth the bots - which buy whatever they
+can afford, cheapest first - carry far less geld out: the 8-pack careful row
+was 61.7 fc and 60% in profit at fixed prices. A player who shops with the
+payout in mind does better than they do.
 
 Against a 15 fc fee the dungeon is a Finicoin source for anyone who walks out
 in time and a sink for anyone who plays until they fall - the payout comes out

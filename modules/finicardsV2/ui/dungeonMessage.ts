@@ -30,7 +30,9 @@ import {
   modsOf,
   nextSlot,
   type DungeonReward,
+  type Buff,
   type DungeonState,
+  type Mods,
   type Room,
 } from "../dungeon";
 import { cardLabel } from "../lineupPicker";
@@ -189,19 +191,109 @@ const rewardLine = (
   return `🪙 **${reward.geld} geld** carried.${lost} It converts to **${reward.amount} fc**.`;
 };
 
-const buffLine = (progress: DungeonState): string | null => {
-  if (progress.buffs.length === 0) return null;
-  const parts = progress.buffs.map(
-    (buff) =>
-      `${buff.name} (${buff.note}${
-        buff.rooms === null
-          ? ""
-          : buff.mods.scout || buff.mods.fog
-            ? `, ${plural(buff.rooms, "door choice")} left`
-            : `, ${plural(buff.rooms, "room")} left`
-      })`,
-  );
-  return `-# Buffs: ${parts.join(" · ")}`;
+/**
+ * The groups buffs are shown in, by what they change. A buff that changes
+ * things in two groups shows in both.
+ */
+const BUFF_GROUPS: { icon: string; label: string; keys: (keyof Mods)[] }[] = [
+  { icon: "💪", label: "Your cards", keys: ["power", "wit", "heart", "type"] },
+  { icon: "🧿", label: "Enemies", keys: ["enemy"] },
+  { icon: "🪙", label: "Geld", keys: ["geld"] },
+  { icon: "🎲", label: "Events", keys: ["roll"] },
+  { icon: "⏱️", label: "Rest", keys: ["cooldown"] },
+  { icon: "🗺️", label: "Doors", keys: ["scout", "fog"] },
+];
+
+/** One kind of change, as a few words: "+2 Power", "enemies −1". */
+const modText = (key: keyof Mods, amount: number): string => {
+  switch (key) {
+    case "power":
+    case "wit":
+    case "heart":
+      return `+${amount} ${TYPE_NAME[key]}`;
+    case "type":
+      return `+${amount} type stat`;
+    case "enemy":
+      return `−${amount} all stats`;
+    case "geld":
+      return `+${amount}% from fights`;
+    case "roll":
+      return `+${amount} to rolls`;
+    case "cooldown":
+      return amount < 0
+        ? `${plural(-amount, "room")} shorter`
+        : `${plural(amount, "room")} longer`;
+    case "scout":
+      return "enemies shown";
+    case "fog":
+      return "hidden";
+    default:
+      return "";
+  }
+};
+
+/** What a buff changes within one group, joined: "+2 Power, +1 Heart". */
+const groupText = (mods: Partial<Mods>, keys: (keyof Mods)[]): string =>
+  keys
+    .filter((key) => (mods[key] ?? 0) !== 0)
+    .map((key) => modText(key, mods[key] ?? 0))
+    .join(", ");
+
+const roomsLeft = (buff: Buff): string =>
+  buff.rooms === null
+    ? ""
+    : buff.mods.scout || buff.mods.fog
+      ? plural(buff.rooms, "door choice")
+      : plural(buff.rooms, "room");
+
+/**
+ * The run's buffs, a line per group: what the for-the-run buffs add up to,
+ * then each timed one with how long it has left. Copies of a buff are one
+ * entry - three Whetstones are "+3 Power", two of the same War Paint "×2".
+ */
+export const buffLines = (buffs: Buff[]): string[] =>
+  BUFF_GROUPS.flatMap(({ icon, label, keys }) => {
+    const touches = (buff: Buff) => keys.some((key) => (buff.mods[key] ?? 0) !== 0);
+    const lasting = buffs.filter((buff) => buff.rooms === null && touches(buff));
+    const timed = buffs.filter((buff) => buff.rooms !== null && touches(buff));
+    if (lasting.length === 0 && timed.length === 0) return [];
+
+    const total: Partial<Mods> = {};
+    for (const buff of lasting) {
+      for (const key of keys) total[key] = (total[key] ?? 0) + (buff.mods[key] ?? 0);
+    }
+
+    const merged = new Map<string, { buff: Buff; count: number }>();
+    for (const buff of timed) {
+      const id = `${buff.name}|${buff.rooms}|${JSON.stringify(buff.mods)}`;
+      const entry = merged.get(id);
+      if (entry) entry.count++;
+      else merged.set(id, { buff, count: 1 });
+    }
+
+    const parts = [
+      ...(lasting.length > 0 ? [groupText(total, keys)] : []),
+      ...[...merged.values()].map(
+        ({ buff, count }) =>
+          `${buff.name}${count > 1 ? ` ×${count}` : ""}: ${groupText(
+            Object.fromEntries(keys.map((key) => [key, (buff.mods[key] ?? 0) * count])),
+            keys,
+          )} _(${roomsLeft(buff)})_`,
+      ),
+    ];
+    return [`-# ${icon} ${label}: ${parts.join(" · ")}`];
+  });
+
+/** Wards, loaded dice and coffee: the run's charges, on a line of their own. */
+const chargeLine = (progress: DungeonState): string | null => {
+  const charges = [
+    ...(progress.wards > 0 ? [`🛡️ ${plural(progress.wards, "ward")}`] : []),
+    ...((progress.rerolls ?? 0) > 0
+      ? [`🎲 ${plural(progress.rerolls ?? 0, "loaded die", "loaded dice")}`]
+      : []),
+    ...((progress.coffee ?? 0) > 0 ? [`☕ ${plural(progress.coffee ?? 0, "coffee")}`] : []),
+  ];
+  return charges.length > 0 ? charges.join(" · ") : null;
 };
 
 const roomTitle = (room: Room, depth: number): string => {
@@ -280,15 +372,6 @@ export const composeDungeonMessage = (
     state === "active"
       ? [
           `🪙 **${progress.geld} geld** (${coinFor(progress.geld)} fc if you walk out)`,
-          ...(progress.wards > 0
-            ? [`🛡️ ${plural(progress.wards, "ward")}`]
-            : []),
-          ...((progress.rerolls ?? 0) > 0
-            ? [`🎲 ${plural(progress.rerolls ?? 0, "loaded die", "loaded dice")}`]
-            : []),
-          ...((progress.coffee ?? 0) > 0
-            ? [`☕ ${plural(progress.coffee ?? 0, "coffee")}`]
-            : []),
           ...(loot ? [loot] : []),
         ]
       : [
@@ -296,7 +379,8 @@ export const composeDungeonMessage = (
           `${plural(progress.fightsWon, "fight")} won`,
         ];
 
-  const buffs = buffLine(progress);
+  const charges = state === "active" ? chargeLine(progress) : null;
+  const buffs = state === "active" ? buffLines(progress.buffs) : [];
   const header = new ContainerBuilder()
     .setAccentColor(accent)
     .addTextDisplayComponents((text) =>
@@ -304,7 +388,8 @@ export const composeDungeonMessage = (
         [
           headline,
           [`<@${input.userId}>`, ...status].join(" · "),
-          ...(state === "active" && buffs ? [buffs] : []),
+          ...(charges ? [charges] : []),
+          ...buffs,
         ].join("\n"),
       ),
     );
