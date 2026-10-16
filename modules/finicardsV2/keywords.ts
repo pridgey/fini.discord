@@ -342,7 +342,7 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Bulwark",
     slug: "bulwark",
     grade: "strong",
-    description: "+2 to all three defensive stats",
+    description: "+2 to whatever defensive stat is used",
     stage: "defense",
     order: 1,
     apply: (ctx) => {
@@ -729,7 +729,7 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Glass Cannon",
     slug: "glass_cannon",
     grade: "standard",
-    description: "+4 to type stat, but \u22123 to all three defensive stats",
+    description: "+4 to type stat, but \u22123 to whatever defensive stat is used",
     stage: "conditional",
     order: 1,
     apply: (ctx) => {
@@ -757,7 +757,7 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Fortress",
     slug: "fortress",
     grade: "strong",
-    description: `+${STANDARD_BONUS} to all three defensive stats, but never gets the type multiplier`,
+    description: `+${STANDARD_BONUS} to whatever defensive stat is used, but never gets the type multiplier`,
     stage: "matchup",
     order: 3,
     apply: (ctx) => {

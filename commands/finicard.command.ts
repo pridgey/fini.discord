@@ -95,6 +95,7 @@ import type {
 import { splitBigString } from "../utilities/splitBigString";
 import { replayTutorial } from "../modules/finicardsV2/dungeonTutorial";
 import { buildTutorialMessage } from "../modules/finicardsV2/ui/dungeonTutorialMessage";
+import { buildAbilitiesMessage } from "../modules/finicardsV2/ui/abilitiesMessage";
 
 /**
  * Finicards: the card game.
@@ -455,6 +456,32 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub
+      .setName("trade")
+      .setDescription("Offer another player a trade: your cards and fc for theirs")
+      .addUserOption((option) =>
+        option.setName("with").setDescription("Who to trade with").setRequired(true),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("give")
+          .setDescription("Your card ids, separated by spaces (from /finicard collection)")
+          .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("want")
+          .setDescription("Their card ids, separated by spaces (from /finicard collection)")
+          .setRequired(false),
+      )
+      .addIntegerOption((option) =>
+        option.setName("give_fc").setDescription("Finicoin you add to your side").setMinValue(0).setRequired(false),
+      )
+      .addIntegerOption((option) =>
+        option.setName("want_fc").setDescription("Finicoin you ask them to add").setMinValue(0).setRequired(false),
+      ),
+  )
+  .addSubcommand((sub) =>
+    sub
       .setName("abilities")
       .setDescription("Every ability and what it does"),
   )
@@ -486,10 +513,10 @@ export const execute = async (
   const serverName = interaction.guild?.name ?? "unknown guild name";
   const identifier = `${interaction.user.username}-${serverName}`;
 
-  /* A practice battle and the dungeon tutorial are shown only to the player
-     running them, and whether a reply is ephemeral is fixed at the moment it
-     is deferred. */
-  const isPrivate = ["practice", "dungeon-tutorial"].includes(
+  /* A practice battle, the dungeon tutorial and the abilities guide are shown
+     only to the player running them, and whether a reply is ephemeral is
+     fixed at the moment it is deferred. */
+  const isPrivate = ["practice", "dungeon-tutorial", "abilities"].includes(
     interaction.options.getSubcommand(false) ?? "",
   );
   await interaction.deferReply(
@@ -984,37 +1011,7 @@ export const execute = async (
 
       /* ------------------------------------------------------ keywords ---- */
       case "abilities": {
-        const byStage = KEYWORDS.reduce<Record<string, string[]>>(
-          (accumulator, keyword) => {
-            const stage = keyword.stage;
-            accumulator[stage] = accumulator[stage] ?? [];
-            accumulator[stage].push(
-              `• **${keyword.name}** (${GRADE_LABEL[keyword.grade]}) — ${keyword.description}`,
-            );
-            return accumulator;
-          },
-          {},
-        );
-
-        const body = [
-          "### Abilities",
-          RULES.keywordsEnabled
-            ? "_Abilities are **active** in battles._"
-            : "_Abilities are **switched off** - battles are pure stats for now._",
-          "_The rarer the card, the less likely it carries one, and the less likely it is a strong one._",
-          "",
-          ...Object.entries(byStage).map(
-            ([stage, entries]) =>
-              `**Resolves at: ${stage}**\n${entries.join("\n")}`,
-          ),
-          "",
-          "_Resolution order is fixed: copy → suppress → placement → conditional → matchup → defense → damage → outcome → post-round → post-loss → tiebreak._",
-        ].join("\n");
-
-        for (const [index, chunk] of splitBigString(body).entries()) {
-          if (index === 0) await interaction.editReply(chunk);
-          else await interaction.followUp(chunk);
-        }
+        await interaction.editReply(buildAbilitiesMessage());
         return;
       }
 
