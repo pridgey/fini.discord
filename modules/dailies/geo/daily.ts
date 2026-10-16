@@ -1,10 +1,4 @@
-import {
-  AttachmentBuilder,
-  ButtonStyle,
-  Client,
-  TextChannel,
-  type Message,
-} from "discord.js";
+import { AttachmentBuilder, ButtonStyle, Client } from "discord.js";
 import { addCoin } from "../../finicoin";
 import { getBotChannelForServer } from "../../../utilities/config/configUtils";
 import {
@@ -36,6 +30,7 @@ import {
   scoreGuess,
 } from "./messages";
 import { formatDistance } from "./score";
+import { POST_HOUR, POST_TIME, currentDay, sendTo } from "../shared";
 
 /**
  * The daily location game. Each day at noon a round is made and posted in every
@@ -48,10 +43,7 @@ import { formatDistance } from "./score";
 export const DAILY_BUTTON = "geodaily";
 export const DAILY_MODAL = "geodaily_guess";
 
-/** When the day's round goes up, in the bot's local time - Mountain, on friday. */
-export const POST_HOUR = 12;
-/** POST_HOUR, as the messages say it. */
-const POST_TIME = "noon Mountain time";
+export { POST_HOUR, currentDay } from "../shared";
 
 const ids = (roundId: string) => ({
   guess: `${DAILY_BUTTON}:guess:${roundId}`,
@@ -60,13 +52,6 @@ const ids = (roundId: string) => ({
 });
 
 export const modalId = (roundId: string, mode: "new" | "edit") => `${DAILY_MODAL}:${roundId}:${mode}`;
-
-/**
- * The day whose round is being played: today's from POST_HOUR, and until then
- * still yesterday's - a round stays open until the next one goes up.
- */
-export const currentDay = (now = new Date()): string =>
-  now.getHours() < POST_HOUR ? previousDay(dayKey(now)) : dayKey(now);
 
 /** Rounds tried before giving up for this minute, when a spot can't be named. */
 const ROUND_TRIES = 3;
@@ -140,15 +125,6 @@ export const resultsPost = async (round: DailyRoundRecord, guesses: DailyGuessRe
       }),
     ],
   };
-};
-
-const sendTo = async (cl: Client, channelId: string, payload: string | object): Promise<Message | null> => {
-  const channel = await cl.channels.fetch(channelId).catch(() => null);
-  if (!channel?.isTextBased()) return null;
-  return (channel as TextChannel).send(payload).catch((error) => {
-    console.error(`Daily geo: couldn't post in channel ${channelId}`, error);
-    return null;
-  });
 };
 
 /**

@@ -6,6 +6,7 @@ import {
 } from "discord.js";
 import { requireAdmin } from "../utilities/discord/isAdmin";
 import { postDaily } from "../modules/dailies/geo/daily";
+import { WEAVE_LIVE, postWeave } from "../modules/dailies/weave/daily";
 import { geocodeGuess } from "../modules/dailies/geo/geocode";
 import {
   guessMessage,
@@ -29,7 +30,7 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("post-daily")
-      .setDescription("Post today's real daily round now, without waiting for noon"),
+      .setDescription("Post today's daily rounds now, without waiting for noon"),
   )
   .addSubcommand((sub) =>
     sub
@@ -54,11 +55,13 @@ export const execute = async (
   await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
   if (interaction.options.getSubcommand() === "post-daily") {
-    const posted = await postDaily(interaction.client);
+    const geo = await postDaily(interaction.client);
+    // Weave posts only once it's live.
+    const weave = WEAVE_LIVE ? await postWeave(interaction.client) : 0;
     await interaction.editReply(
-      posted
-        ? `Posted today's daily in ${posted} server${posted === 1 ? "" : "s"}.`
-        : "Nothing new to post: today's round is already out everywhere with a bot channel, or no server has one set (`/config bot_channel`).",
+      geo || weave
+        ? `Posted today's location round in ${geo} server${geo === 1 ? "" : "s"}${WEAVE_LIVE ? ` and Weave in ${weave}` : ""}.`
+        : "Nothing new to post: today's rounds are already out everywhere with a bot channel, or no server has one set (`/config bot_channel`).",
     );
     return;
   }

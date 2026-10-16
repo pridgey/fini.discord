@@ -46,17 +46,7 @@ export type DailyGuessRecord = {
   checks: Check[];
 };
 
-/** The local date a round is for: "2026-10-16". */
-export const dayKey = (date = new Date()): string =>
-  [date.getFullYear(), date.getMonth() + 1, date.getDate()]
-    .map((part) => String(part).padStart(2, "0"))
-    .join("-");
-
-/** The day before `day`, as a key. */
-export const previousDay = (day: string): string => {
-  const [year, month, date] = day.split("-").map(Number);
-  return dayKey(new Date(year, month - 1, date - 1));
-};
+export { dayKey, previousDay } from "../shared";
 
 const notFound = (error: unknown) => error instanceof ClientResponseError && error.status === 404;
 

@@ -12,6 +12,7 @@ import { createLog } from "./modules/logger";
 import { chatWithUser_OpenAI } from "./modules/openai";
 import { runPollTasks } from "./modules/polling";
 import { runGeoDaily } from "./modules/dailies/geo/daily";
+import { runWeaveDaily } from "./modules/dailies/weave/daily";
 import { getCommandFiles } from "./utilities/interactionFiles/getInteractionFiles";
 import { splitBigString } from "./utilities/splitBigString";
 const { exec } = require("child_process");
@@ -97,7 +98,7 @@ client.once("clientReady", async (cl) => {
   }
 
   // A daily that is due goes out now rather than at the first poll a minute on.
-  runGeoDaily(cl);
+  runGeoDaily(cl).then(() => runWeaveDaily(cl));
 
   // Read update.txt for update logs and announce them
   const fileName = "update.txt";
