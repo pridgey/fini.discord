@@ -4,7 +4,6 @@ import {
   ChatInputCommandInteraction,
   MessageFlags,
 } from "discord.js";
-import OpenAI from "openai";
 import { converseWithAI } from "../modules/aiChat/aiChat";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -254,7 +253,7 @@ Erfiðr utilizes a special mask to magically transform his form into anything he
     const userMessage = `Here is all known information about this npc for you to use in the generation of this character. All other information should be created during generation: ${additionalInfo}`;
 
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-sonnet-5-5",
       system: prompt,
       messages: [
         {

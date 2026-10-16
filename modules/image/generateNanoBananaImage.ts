@@ -21,12 +21,12 @@ export const generateNanoBananaImage = async ({
     });
 
     return {
-      imageUrl: respond || "",
+      image: respond || "",
       success: true,
     };
   } catch (err: unknown) {
     return {
-      imageUrl: "",
+      image: "",
       success: false,
       error: (err as Error).message,
     };

@@ -1,5 +1,6 @@
 export type ImageGenerationResult = {
-  imageUrl: string;
+  /** A link to the image, or the image itself. */
+  image: string | Buffer;
   success: boolean;
   error?: string;
 };

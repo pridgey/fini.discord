@@ -3,9 +3,9 @@ import { ChatInputCommandInteraction, AttachmentBuilder } from "discord.js";
 import { addCoin, getUserBalance } from "../modules/finicoin";
 import { validatePrompt } from "../modules/image/validatePrompt";
 import {
-  DALLE_COST,
-  generateDalleImage,
-} from "../modules/image/generateDalleImage";
+  GPT_IMAGE_COST,
+  generateGptImage,
+} from "../modules/image/generateGptImage";
 import {
   generateFluxImage,
   FLUX_COST,
@@ -29,7 +29,7 @@ export const data = new SlashCommandBuilder()
       .setRequired(true)
       .addChoices(
         { name: `Flux-Schnell (${FLUX_COST} fini coin)`, value: "flux" },
-        { name: `DALL-E 3 (${DALLE_COST} fini coin)`, value: "dalle" },
+        { name: `GPT Image 2 (${GPT_IMAGE_COST} fini coin)`, value: "gpt-image" },
         {
           name: `Recraft V3 (${REFACTOR_COST} fini coin)`,
           value: "refactor",
@@ -69,8 +69,8 @@ export const execute = async (
   // Get cost based on model
   let cost = 0;
   switch (model) {
-    case "dalle":
-      cost = DALLE_COST;
+    case "gpt-image":
+      cost = GPT_IMAGE_COST;
       break;
     case "flux":
       cost = FLUX_COST;
@@ -114,8 +114,8 @@ export const execute = async (
     // Generate image based on model
     let result;
     switch (model) {
-      case "dalle":
-        result = await generateDalleImage({ prompt });
+      case "gpt-image":
+        result = await generateGptImage({ prompt });
         break;
       case "flux":
         result = await generateFluxImage({ prompt });
@@ -144,7 +144,7 @@ export const execute = async (
     }
 
     // Create attachment
-    const imageAttachment = new AttachmentBuilder(result.imageUrl, {
+    const imageAttachment = new AttachmentBuilder(result.image, {
       name: "image.jpg",
     });
 

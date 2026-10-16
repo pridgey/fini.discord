@@ -13,7 +13,7 @@ import { formatReplyContext } from "./formatReplyContext";
 import { CHAT_TYPE_ANTHROPIC } from "./chatTypes";
 
 const MAX_CHAT_TOKENS = 2000;
-const CURRENT_MODEL: Model = "claude-sonnet-4-5-20250929";
+const CURRENT_MODEL: Model = "claude-sonnet-5-5";
 
 export const converseWithClaude = async ({
   userID,

@@ -21,12 +21,12 @@ export const generateFluxImage = async ({
     });
 
     return {
-      imageUrl: respond[0] || "",
+      image: respond[0] || "",
       success: true,
     };
   } catch (err: unknown) {
     return {
-      imageUrl: "",
+      image: "",
       success: false,
       error: (err as Error).message,
     };
