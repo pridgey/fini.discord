@@ -165,7 +165,7 @@ export const toWebCard = (card: V2UserCardRecord): WebRow => ({
   foil: !!card.foil,
   keyword: card.keyword ?? "",
   legendary: card.legendary ?? "",
-  // A Legendary is the only one of its card on its server.
+  // A Legendary is the only one of its card with its animation on its server.
   serial: card.legendary ? 1 : (card.serial ?? 0),
   acquired_from: card.acquired_from ?? "",
   acquired: card.created ?? "",

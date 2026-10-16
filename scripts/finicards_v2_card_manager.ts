@@ -61,15 +61,19 @@ const MAX_BYTES = 40 * 1024 * 1024;
 const MAX_SIDE = 2400;
 
 const RARITIES: CardRarity[] = ["common", "uncommon", "full_art"];
-/** Copies allowed per server for a new card, by rarity - what the pool already uses. */
-const POPULATION: Record<CardRarity, number> = { common: 20, uncommon: 10, full_art: 1 };
+/**
+ * Copies allowed per server for a new card, by rarity. 0 is no limit: cards are
+ * unlimited since 2026-10-16, so that every set can be completed. A card can
+ * still be given a limit of its own.
+ */
+const POPULATION: Record<CardRarity, number> = { common: 0, uncommon: 0, full_art: 0 };
 /**
  * What the page calls a rarity. A Secret Art is a full-art with a flag on it,
  * but to someone making cards it is a fourth kind, so the page is given one
  * and it is turned back into rarity-and-flag here.
  */
 type Kind = CardRarity | "secret_art";
-const SECRET_ART_POPULATION = 3;
+const SECRET_ART_POPULATION = 0;
 const rarityOf = (kind: unknown): CardRarity =>
   kind === "secret_art" ? "full_art" : RARITIES.includes(kind as CardRarity) ? (kind as CardRarity) : "common";
 const kindOf = (row: { rarity: CardRarity; secret_art?: boolean }): Kind =>

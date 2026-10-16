@@ -15,7 +15,8 @@ import {
   rollLegendaryEffect,
   rollLegendaryTier,
 } from "../../modules/finicardsV2/legendary";
-import { availableLegendaries } from "../../modules/finicardsV2/packs";
+import { availableLegendaries, pickLegendary } from "../../modules/finicardsV2/packs";
+import { legendaryKey } from "../../modules/finicardsV2/cardStore";
 import { rarityLabel } from "../../modules/finicardsV2/ui/theme";
 import type { BattleCard, OwnedCard } from "../../modules/finicardsV2/types";
 import type { V2CardDefinitionRecord } from "../../types/PocketbaseTablesV2";
@@ -110,15 +111,30 @@ describe("legendary rules", () => {
 });
 
 describe("legendary cards", () => {
-  it("can be any full-art that has no Legendary on the server yet, and never a Secret Art", () => {
+  it("can be any full-art, and never a Secret Art", () => {
     const pool = [
       definition({ id: "a" }),
       definition({ id: "b" }),
       definition({ id: "secret", secret_art: true }),
       definition({ id: "common", rarity: "common" }),
     ];
-    expect(availableLegendaries(pool, new Set()).map((row) => row.id)).toEqual(["a", "b"]);
-    expect(availableLegendaries(pool, new Set(["a"])).map((row) => row.id)).toEqual(["b"]);
+    expect(availableLegendaries(pool).map((row) => row.id)).toEqual(["a", "b"]);
+  });
+
+  it("is one per card per animation on a server", () => {
+    const pool = [definition({ id: "a" }), definition({ id: "b" })];
+    // Tier 1 is Breathe and Drift. With Breathe taken on "a", a Breathe goes to "b".
+    const always = (value: number) => () => value;
+    expect(pickLegendary(pool, new Set([legendaryKey("a", "breathe")]), 1, always(0))).toMatchObject({
+      definition: { id: "b" },
+      effect: "breathe",
+    });
+    // With every card's Breathe taken, the tier's other animation is used.
+    const breathes = new Set(["a", "b"].map((id) => legendaryKey(id, "breathe")));
+    expect(pickLegendary(pool, breathes, 1, always(0))?.effect).toBe("drift");
+    // With the whole tier taken, there is no Legendary to give.
+    const tierTaken = new Set([...breathes, ...["a", "b"].map((id) => legendaryKey(id, "drift"))]);
+    expect(pickLegendary(pool, tierTaken, 1, always(0))).toBeNull();
   });
 
   it("is the one of its kind, whatever its card's own copies are numbered", () => {

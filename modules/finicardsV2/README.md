@@ -408,13 +408,15 @@ button onto them.
 /finicard pack set:Set 3      # 40 fc: five cards, all from that set
 ```
 
-Rarity odds per card are 70 / 25 / 5 (common / uncommon / full-art), and any
-card has a 3% chance of being foil. On top of those, each pack makes two rolls
+Rarity odds per card are 70 / 25 / 5 (common / uncommon / full-art) in a pack
+drawn from every set, and 75 / 22 / 3 in a set pack (`SET_PACK_ODDS`): a set
+pack narrows the draw to one set, which made it the way to farm that set's
+full-arts, so it is leaner on rares. Any card has a 3% chance of being foil. On top of those, each pack makes two rolls
 of its own, each of which replaces one card:
 
 | | chance per pack | notes |
 | --- | --- | --- |
-| Secret Art | 1% | only while one has room left on the server |
+| Secret Art | 1% | |
 | Legendary tier 1 / 2 / 3 / 4 | 1% / 0.5% / 0.29% / 0.17% | one roll, rarest checked first |
 
 **Opening a pack** (`packFlow.ts`) is v1's ritual: the sealed pack and an "Open
@@ -434,11 +436,13 @@ The pack art and its animation are files in `assets/`, drawn by
 `scripts/finicards_v2_pack_art.ts`. Run that script after changing the design;
 the game only reads the files.
 
-**Population.** A card can have a per-server cap (`population`, 0 for none):
-full-arts are held to 1 copy, Secret Arts to 3. A capped-out rarity falls down
-the ladder (full-art → uncommon → common). Once v1 collections convert, every
-set 1 and set 2 full-art is at its cap, so those only come out of a pack as
-Legendaries, which are counted apart.
+**Population.** A card can have a per-server cap (`population`, 0 for none),
+and a capped-out rarity falls down the ladder (full-art → uncommon → common).
+Since 2026-10-16 no card has one - every card's population was set to 0 and the
+card manager makes new cards with none - so that any player can complete a
+set. Full-arts used to be held to 1 copy per server and Secret Arts to 3, which
+left most full-arts claimed by whoever pulled them first. The scarce tier is
+now the Legendary.
 
 **Free packs** (`freePacks.ts`, `v2_free_pack`). A player owed one opens it
 before paying for a pack. It rolls no special by chance; it holds what was
@@ -456,8 +460,12 @@ stats.
   of its set's count.
 - **Legendary** is a *copy*: any full-art that is not a Secret Art can come out
   of a pack Legendary, with `v2_user_card.legendary` naming the animated effect
-  it carries. There is one Legendary of each card per server, counted apart
-  from the card's ordinary copies. It prints `L1`-`L4` and is shown as a
+  it carries. Each card has one Legendary per animation on a server - one
+  Breathe Goku, one Storm Goku, and so on, fourteen in all - counted apart from
+  its ordinary copies and printed "1 OF 1". A pack's Legendary roll picks a tier
+  and an animation, then a card without that animation yet; if every card has
+  it, the tier's other animations are tried. (Each card was once held to one
+  Legendary per server, whatever the animation.) It prints `L1`-`L4` and is shown as a
   looping GIF (`cardArt/legendaryGif.ts`); the effects and their tiers are in
   `legendary.ts`.
 

@@ -100,19 +100,20 @@ export const getPopulationCounts = async (
   return counts;
 };
 
-/** The definitions that already have their one Legendary copy on a server. */
-export const getLegendaryHolders = async (
-  serverId: string,
-): Promise<Set<string>> => {
-  const owned = await pb
-    .collection<V2UserCardRecord>(V2_USER_CARD)
-    .getFullList({
-      filter: `server_id = "${filterSafe(serverId)}" && legendary != ""`,
-      fields: "card",
-      requestKey: null,
-    });
-  return new Set(owned.map((card) => card.card));
+/**
+ * The Legendaries already pulled on a server, as "<definition id>:<effect>":
+ * each card has one Legendary per animation there.
+ */
+export const getLegendaryHolders = async (serverId: string): Promise<Set<string>> => {
+  const owned = await pb.collection<V2UserCardRecord>(V2_USER_CARD).getFullList({
+    filter: `server_id = "${filterSafe(serverId)}" && legendary != ""`,
+    fields: "card,legendary",
+    requestKey: null,
+  });
+  return new Set(owned.map((card) => legendaryKey(card.card, card.legendary ?? "")));
 };
+
+export const legendaryKey = (definitionId: string, effect: string) => `${definitionId}:${effect}`;
 
 /** A user's v2 cards, each already joined to its definition. */
 export const getUserCollection = async (
@@ -188,7 +189,7 @@ export const toBattleCard = (owned: OwnedCard): BattleCard => ({
   artist: owned.definition.artist ?? "",
   legendary: owned.legendary ?? "",
   secretArt: !!owned.definition.secret_art,
-  // A Legendary is the only one of its card on its server.
+  // A Legendary is the only one of its card with its animation on its server.
   population: owned.legendary ? 1 : (owned.definition.population ?? 0),
   serial: owned.legendary ? 1 : (owned.serial ?? 0),
   set: owned.definition.set ?? 0,

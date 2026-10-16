@@ -6,10 +6,12 @@ import {
   getCardDefinitions,
   getLegendaryHolders,
   getPopulationCounts,
+  legendaryKey,
   grantCard,
   rollCopyKeyword,
 } from "./cardStore";
 import {
+  LEGENDARY_EFFECTS,
   LEGENDARY_ODDS,
   rollLegendaryEffect,
   rollLegendaryTier,
@@ -32,6 +34,17 @@ export const PACK_ODDS: PackOdds = {
   common: 70,
   uncommon: 25,
   full_art: 5,
+};
+
+/**
+ * A set pack's odds: leaner on rares than a pack drawn from every set. A set
+ * pack narrows the draw to one set, which made it the way to farm that set's
+ * full-arts; this keeps it a way to fill out a set's commons and uncommons.
+ */
+export const SET_PACK_ODDS: PackOdds = {
+  common: 75,
+  uncommon: 22,
+  full_art: 3,
 };
 
 export const PACK_SIZE = 5;
@@ -128,20 +141,37 @@ export const availableSecretArts = (
         (counts.get(definition.id ?? "") ?? 0) < definition.population),
   );
 
-/**
- * Full-arts that can still come out Legendary on a server: each card has one
- * Legendary there, whatever the effect. Secret Arts are not animated.
- */
+/** Full-arts that can come out Legendary: every one but the Secret Arts, which are not animated. */
 export const availableLegendaries = (
   definitions: V2CardDefinitionRecord[],
-  holders: Set<string>,
 ): V2CardDefinitionRecord[] =>
-  definitions.filter(
-    (definition) =>
-      definition.rarity === "full_art" &&
-      !definition.secret_art &&
-      !holders.has(definition.id ?? ""),
-  );
+  definitions.filter((definition) => definition.rarity === "full_art" && !definition.secret_art);
+
+/**
+ * A Legendary of `tier`: an animation, and a card that has no Legendary with
+ * that animation on the server yet - each card has one per animation there.
+ * The rolled animation is tried first, then the tier's others; null when every
+ * card has every animation of the tier.
+ */
+export const pickLegendary = (
+  pool: V2CardDefinitionRecord[],
+  holders: Set<string>,
+  tier: LegendaryTier,
+  random: Random,
+): { definition: V2CardDefinitionRecord; effect: string } | null => {
+  const rolled = rollLegendaryEffect(tier, random());
+  const effects = [
+    rolled,
+    ...Object.keys(LEGENDARY_EFFECTS)
+      .filter((effect) => LEGENDARY_EFFECTS[effect] === tier && effect !== rolled)
+      .sort(),
+  ];
+  for (const effect of effects) {
+    const open = pool.filter((definition) => !holders.has(legendaryKey(definition.id ?? "", effect)));
+    if (open.length > 0) return { definition: open[Math.floor(random() * open.length)], effect };
+  }
+  return null;
+};
 
 export type OpenPackInput = {
   userId: string;
@@ -186,7 +216,11 @@ export const openPack = async (
   }
 
   const counts = await getPopulationCounts(input.serverId);
-  const rarities = rollPackRarities(size, input.odds ?? PACK_ODDS, random);
+  const rarities = rollPackRarities(
+    size,
+    input.odds ?? (input.set ? SET_PACK_ODDS : PACK_ODDS),
+    random,
+  );
 
   const pulls: OwnedCard[] = [];
   let shortfall = 0;
@@ -201,10 +235,9 @@ export const openPack = async (
 
   // The same again for a Legendary: its own roll, taking the place of one
   // card - and never the Secret Art's place, should a pack hold both.
-  const legendaries = availableLegendaries(
-    definitions,
-    await getLegendaryHolders(input.serverId),
-  );
+  const legendaries = availableLegendaries(definitions);
+  const legendaryHolders =
+    legendaries.length > 0 ? await getLegendaryHolders(input.serverId) : new Set<string>();
   const legendaryTier =
     legendaries.length > 0
       ? rollLegendaryTier(random(), input.legendaryOdds ?? LEGENDARY_ODDS)
@@ -215,12 +248,13 @@ export const openPack = async (
   }
 
   for (const [slot, rarity] of rarities.entries()) {
-    const legendary =
+    const pickedLegendary =
       slot === legendarySlot && legendaryTier
-        ? rollLegendaryEffect(legendaryTier, random())
-        : "";
-    const definition = legendary
-      ? legendaries[Math.floor(random() * legendaries.length)]
+        ? pickLegendary(legendaries, legendaryHolders, legendaryTier, random)
+        : null;
+    const legendary = pickedLegendary?.effect ?? "";
+    const definition = pickedLegendary
+      ? pickedLegendary.definition
       : slot === secretSlot
         ? secretArts[Math.floor(random() * secretArts.length)]
         : selectCard(definitions, counts, rarity, random);
