@@ -7,7 +7,7 @@ import {
   styleLabel,
   tempoChoices,
   tempoLabel,
-} from "../../modules/music-ai/prompt";
+} from "../../modules/musicAi/prompt";
 
 describe("choice lists", () => {
   it("stays inside Discord's 25 choice limit", () => {

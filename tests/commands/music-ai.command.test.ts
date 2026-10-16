@@ -10,7 +10,7 @@ import {
   DEFAULT_MUSIC_SECONDS,
   MAX_MUSIC_SECONDS,
   musicGenModelFiles,
-} from "../../modules/music-ai/musicGen";
+} from "../../modules/musicAi/musicGen";
 
 /**
  * As with the /tts and /convert tests, these cover the guards that run before

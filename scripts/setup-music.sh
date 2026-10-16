@@ -17,7 +17,7 @@ set -euo pipefail
 # The ONNX export, pinned to a revision.
 #
 # Pinned rather than tracking main for the same reason the qwentts.cpp commit
-# is: modules/music-ai/musicGen.ts names three specific graph files and
+# is: modules/musicAi/musicGen.ts names three specific graph files and
 # scripts/musicgen.ts asks for three specific dtypes, and a re-export that
 # renames or re-quantises any of them would break both. Bump this and check
 # the file list below together.
@@ -118,12 +118,12 @@ Generation runs on the CPU. Not for want of a GPU path: onnxruntime-node
 bundles WebGPU, it works on this Maxwell card through Vulkan, and on the same
 fp32 weights it is 1.8x faster than the CPU. It loses anyway, because WebGPU
 has no int8 kernels - the quantised graphs we install fall back per-node and
-end up 12x slower there than on the CPU. See modules/music-ai/README.md.
+end up 12x slower there than on the CPU. See modules/musicAi/README.md.
 
 A generation peaks around 3GB resident, which is most of what is free on a
 16GB host also running Pocketbase and the chat model. That is why /music-ai
 takes one of the two media slots and caps length at 15 seconds: 15s of audio
 takes about 68s of wall clock here, and 30s falls off a cliff into swap and
-never finishes. Raise MAX_MUSIC_SECONDS in modules/music-ai/musicGen.ts if you
+never finishes. Raise MAX_MUSIC_SECONDS in modules/musicAi/musicGen.ts if you
 run this somewhere with more headroom.
 EOF

@@ -108,7 +108,7 @@ export const setupPersonalityModuleMocks = () => {
       mockDeletePersonalityByName(...args),
   }));
 
-  mock.module("../../modules/personalities/updatePersonlity", () => ({
+  mock.module("../../modules/personalities/updatePersonality", () => ({
     updatePersonality: (...args: any[]) => mockUpdatePersonality(...args),
   }));
 };

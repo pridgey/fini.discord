@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import { getPersonalityByName } from "../modules/personalities/getPersonality";
-import { updatePersonality } from "../modules/personalities/updatePersonlity";
+import { updatePersonality } from "../modules/personalities/updatePersonality";
 
 export const data = new SlashCommandBuilder()
   .setName("edit-personality")

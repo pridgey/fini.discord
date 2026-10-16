@@ -27,7 +27,7 @@ import {
   isMusicGenConfigured,
   styleChoices,
   tempoChoices,
-} from "../modules/music-ai";
+} from "../modules/musicAi";
 
 /**
  * `/music-ai` - generates a short instrumental from a text description.

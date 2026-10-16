@@ -16,7 +16,7 @@ import {
   musicGenReadOnlyPaths,
   musicGenScript,
   type MusicRequest,
-} from "../../modules/music-ai/musicGen";
+} from "../../modules/musicAi/musicGen";
 
 /**
  * `buildMusicGenArgs` is asserted on rather than exercised, because a real run
