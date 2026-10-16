@@ -97,7 +97,12 @@ export type PackMessageInput = {
   note?: string;
   /** The label of a button that gets another pack like this one. Absent, there is none. */
   again?: string;
+  /** Who opened it - a pack bought from a button is posted by Fini, so it says. */
+  opener?: string;
 };
+
+/** "**Aya**'s pack", or "Pack" when nobody is named. */
+const packOf = (opener?: string) => (opener ? `**${opener}**'s pack` : "Pack");
 
 /** A pack pull: one block, one gallery, one line per card with its id. */
 export const buildPackMessage = async (
@@ -109,7 +114,7 @@ export const buildPackMessage = async (
     .setAccentColor(NEUTRAL_ACCENT)
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `## 🎴 Pack opened — ${input.cards.length} card${input.cards.length === 1 ? "" : "s"} ${compositionOf(input.cards)}`,
+        `## 🎴 ${input.opener ? `${input.opener}'s pack` : "Pack opened"} — ${input.cards.length} card${input.cards.length === 1 ? "" : "s"} ${compositionOf(input.cards)}`,
       ),
     );
 
@@ -133,7 +138,7 @@ export const buildPackMessage = async (
         input.cards
           .map(
             (card) =>
-              `${cardLine(card)}${specialMark(card)} · \`${card.instanceId}\``,
+              `${cardLine(card)}${specialMark(card)}${card.isNew ? " · 🆕 **New**" : ""} · \`${card.instanceId}\``,
           )
           .join("\n") || "_Nothing left in the pool._",
       ),
@@ -193,6 +198,7 @@ export const buildPackCoverMessage = async (input: {
   size: number;
   cost: number;
   note?: string;
+  opener?: string;
 }): Promise<BuiltCardMessage> => {
   const container = new ContainerBuilder()
     .setAccentColor(NEUTRAL_ACCENT)
@@ -202,7 +208,7 @@ export const buildPackCoverMessage = async (input: {
       ),
     )
     .addTextDisplayComponents((text) =>
-      text.setContent(`-# ${input.note ?? `${input.cost} fc`} · ${input.size} cards inside`),
+      text.setContent(`-# ${packOf(input.opener)} · ${input.note ?? `${input.cost} fc`} · ${input.size} cards inside`),
     )
     .addActionRowComponents(() =>
       new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -247,6 +253,9 @@ export const buildPackCardMessage = (input: {
   /** This card's place in the pack, from 0. */
   index: number;
   total: number;
+  opener?: string;
+  /** On the last card: the label of a button that gets another pack. */
+  again?: string;
 }): BuiltCardMessage => {
   const { card, media } = input;
   const keyword = findKeyword(card.keyword);
@@ -267,11 +276,16 @@ export const buildPackCardMessage = (input: {
       .setLabel(last ? "See the whole pack" : "Skip to the end")
       .setStyle(last ? ButtonStyle.Primary : ButtonStyle.Secondary),
   );
+  if (last && input.again) {
+    row.addComponents(
+      new ButtonBuilder().setCustomId(PACK_BUTTON.again).setLabel(input.again).setStyle(ButtonStyle.Success),
+    );
+  }
 
   const container = new ContainerBuilder()
     .setAccentColor(TYPE_ACCENT[card.type])
     .addTextDisplayComponents((text) =>
-      text.setContent(`-# Card ${input.index + 1} of ${input.total}`),
+      text.setContent(`-# ${packOf(input.opener)} · card ${input.index + 1} of ${input.total}`),
     )
     .addMediaGalleryComponents((gallery) =>
       gallery.addItems((item) =>
@@ -281,6 +295,7 @@ export const buildPackCardMessage = (input: {
     .addTextDisplayComponents((text) =>
       text.setContent(
         [
+          ...(card.isNew ? ["🆕 **New to your collection!**"] : []),
           `**${card.name}**${card.foil ? " ✨ foil" : ""} · ${rarityLabel(card)} · ${TYPE_NAME[card.type]} ${card.stats[card.type]}${
             card.legendary ? " · 👑" : card.secretArt ? " · 🌟" : ""
           }`,

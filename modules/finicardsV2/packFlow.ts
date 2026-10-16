@@ -110,6 +110,7 @@ export const presentPack = async (
     size: cards.length,
     cost: input.cost,
     note: input.note,
+    opener: input.opener,
   });
   const message = await interaction.editReply(cover);
 
@@ -176,7 +177,7 @@ export const presentPack = async (
   let shown = -1;
   let busy = false;
   let finished = false;
-  /** The whole pack is up with its "another pack" button still on it. */
+  /** The whole pack, or its last card, is up with an "another pack" button on it. */
   let offering = false;
 
   const showAll = async (surface: Surface) => {
@@ -202,9 +203,19 @@ export const presentPack = async (
 
     shown = index;
     const here = (screen += 1);
+    const last = index >= cards.length - 1;
     const view = (media: CardMedia) =>
-      buildPackCardMessage({ card, media, index, total: cards.length });
+      buildPackCardMessage({
+        card,
+        media,
+        index,
+        total: cards.length,
+        opener: input.opener,
+        // The last card offers the next pack too, without a trip to the summary.
+        again: last ? again?.label : undefined,
+      });
     await put(surface, view(first));
+    if (last && again) offering = true;
 
     // The reveal plays once; the card is then swapped for how it stays - a
     // Legendary's loop, a Secret Art's still.

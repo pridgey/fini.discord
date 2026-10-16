@@ -7,6 +7,7 @@ import {
   ChatInputCommandInteraction,
   ContainerBuilder,
   MessageFlags,
+  type GuildMember,
 } from "discord.js";
 import {
   buildCardMessage,
@@ -1245,9 +1246,10 @@ const openPackFor = async (
   const reimbursement =
     shortfall > 0 ? Math.round((cost / PACK_SIZE) * shortfall) : 0;
 
-  const cards = pulls.map((owned) => toBattleCard(owned));
+  const cards = pulls.map((owned) => ({ ...toBattleCard(owned), isNew: owned.isNew }));
   const pack = {
     cards,
+    opener: (interaction.member as GuildMember | null)?.displayName ?? interaction.user.displayName,
     cost,
     shortfall,
     reimbursement,

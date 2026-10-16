@@ -33,6 +33,8 @@ export type BattleCard = {
   legendary?: string;
   /** A Secret Art: a full-art with its own unique artwork, printed `SA`. */
   secretArt?: boolean;
+  /** Display only: a pack's pull that is the first copy of its card in the collection. */
+  isNew?: boolean;
   /** Most copies of this card a server can hold. 0 or absent = no limit. */
   population?: number;
   /** This copy's number among its card's copies on its server, from 1. */
@@ -114,4 +116,6 @@ export type CardDefinitionWithCount = V2CardDefinitionRecord & {
 
 export type OwnedCard = V2UserCardRecord & {
   definition: V2CardDefinitionRecord;
+  /** Set on a pack's pulls: the first copy of this card in the player's collection on the server. */
+  isNew?: boolean;
 };

@@ -100,6 +100,16 @@ export const getPopulationCounts = async (
   return counts;
 };
 
+/** The cards a player holds at least one copy of on a server, by definition id. */
+export const ownedDefinitionIds = async (userId: string, serverId: string): Promise<Set<string>> => {
+  const owned = await pb.collection<V2UserCardRecord>(V2_USER_CARD).getFullList({
+    filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}"`,
+    fields: "card",
+    requestKey: null,
+  });
+  return new Set(owned.map((copy) => copy.card));
+};
+
 /**
  * The Legendaries already pulled on a server, as "<definition id>:<effect>":
  * each card has one Legendary per animation there.

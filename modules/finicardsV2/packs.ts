@@ -6,6 +6,7 @@ import {
   getCardDefinitions,
   getLegendaryHolders,
   getPopulationCounts,
+  ownedDefinitionIds,
   legendaryKey,
   grantCard,
   rollCopyKeyword,
@@ -216,6 +217,8 @@ export const openPack = async (
   }
 
   const counts = await getPopulationCounts(input.serverId);
+  // What the player held before this pack, so its pulls can say they're new.
+  const held = await ownedDefinitionIds(input.userId, input.serverId);
   const rarities = rollPackRarities(
     size,
     input.odds ?? (input.set ? SET_PACK_ODDS : PACK_ODDS),
@@ -282,7 +285,10 @@ export const openPack = async (
       acquiredFrom: "pack",
     });
 
-    pulls.push({ ...record, definition });
+    // The first copy of a card is new; a second of it in the same pack isn't.
+    const isNew = !held.has(definitionId);
+    held.add(definitionId);
+    pulls.push({ ...record, definition, isNew });
   }
 
   return { pulls, shortfall };
