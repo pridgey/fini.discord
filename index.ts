@@ -465,5 +465,22 @@ client.on("interactionCreate", async (interaction) => {
   }
 });
 
+/**
+ * Pocketbase starts alongside the bot (`bun start`), and on a restart the bot
+ * can be ready first. Its first database call then fails and takes the bot
+ * down until systemd starts it again, about ten seconds later - long enough
+ * for commands to go unanswered. So the bot waits until Pocketbase answers
+ * before it logs in, for up to a minute.
+ */
+const waitForPocketbase = async () => {
+  const health = `${process.env.POCKETBASE_URL ?? ""}/api/health`;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const response = await fetch(health, { signal: AbortSignal.timeout(2000) }).catch(() => null);
+    if (response?.ok) return;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  console.error("Pocketbase didn't answer within a minute; logging in anyway");
+};
+
 // Let's gooooooo
-client.login(process.env.FINI_TOKEN);
+waitForPocketbase().then(() => client.login(process.env.FINI_TOKEN));
