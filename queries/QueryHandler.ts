@@ -10,8 +10,8 @@ import { animeDetailsQuery } from "./queryFunctions/AnimeDetails.query";
 import { animeHoldingQuery } from "./queryFunctions/AnimeHolding.query";
 import { helpCategoriesQuery } from "./queryFunctions/helpCategories.query";
 import { jackpotHistoryQuery } from "./queryFunctions/JackpotHistory.query";
-import { v2CardBinderQuery } from "./queryFunctions/v2CardBinder.query";
-import { v2CardCollectionQuery } from "./queryFunctions/v2CardCollection.query";
+import { v2CardBinderQuery } from "./queryFunctions/finicardBinder.query";
+import { v2CardCollectionQuery } from "./queryFunctions/finicardCollection.query";
 
 const queryDictionary = {
   anistock_details: animeDetailsQuery,

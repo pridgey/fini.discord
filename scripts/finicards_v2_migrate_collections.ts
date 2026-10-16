@@ -1,11 +1,11 @@
-import { rollCopyKeyword, V2_CARD_DEFINITION, V2_USER_CARD, nextSerial } from "../modules/finicardsV2/cardStore";
-import { LEGACY_FOIL_RARITIES } from "../modules/finicardsV2/convertLegacyCards";
+import { rollCopyKeyword, V2_CARD_DEFINITION, V2_USER_CARD, nextSerial } from "../modules/finicards/cardStore";
+import { LEGACY_FOIL_RARITIES } from "../modules/finicards/convertLegacyCards";
 import {
   ITEMS_PER_FREE_PACK,
   planFreePacks,
   V2_FREE_PACK,
   type ItemOwner,
-} from "../modules/finicardsV2/freePacks";
+} from "../modules/finicards/freePacks";
 import type { CardDefinitionRecord, UserCardRecord } from "../types/PocketbaseTables";
 import type { V2CardDefinitionRecord, V2UserCardRecord } from "../types/PocketbaseTablesV2";
 import { ADMIN_ID } from "../utilities/discord/isAdmin";

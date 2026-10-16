@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
-import { TYPE_ICON_PATHS } from "../modules/finicardsV2/cardArt/battleBoard";
-import { TYPE_PALETTES } from "../modules/finicardsV2/cardArt/palettes";
-import { TYPE_PRIORITY } from "../modules/finicardsV2/rules";
+import { TYPE_ICON_PATHS } from "../modules/finicards/cardArt/battleBoard";
+import { TYPE_PALETTES } from "../modules/finicards/cardArt/palettes";
+import { TYPE_PRIORITY } from "../modules/finicards/rules";
 import type { CardType } from "../types/PocketbaseTablesV2";
 
 /**
@@ -13,14 +13,14 @@ import type { CardType } from "../types/PocketbaseTablesV2";
  *   bun --env-file=.env run scripts/finicards_v2_type_emoji.ts            draw only
  *   bun --env-file=.env run scripts/finicards_v2_type_emoji.ts --upload   and upload
  *
- * Drawn into `modules/finicardsV2/assets`. With `--upload` they are also set as
+ * Drawn into `modules/finicards/assets`. With `--upload` they are also set as
  * emoji of the bot's own Discord application - which work in every server the
  * bot is in - and their ids are written to `type-emoji.json`, which is what the
  * game reads (`TYPE_EMOJI` in `rules.ts`). An emoji already there under the
  * same name is replaced. A different bot has different ids: run this for it.
  */
 
-const ASSETS = path.join(import.meta.dir, "..", "modules", "finicardsV2", "assets");
+const ASSETS = path.join(import.meta.dir, "..", "modules", "finicards", "assets");
 const IDS_FILE = path.join(ASSETS, "type-emoji.json");
 const SIZE = 128;
 const emojiName = (type: CardType) => `fc_${type}`;

@@ -56,7 +56,7 @@ import {
   voiceChoice,
   voiceNameProblem,
 } from "../modules/tts";
-import { saveVoiceRow } from "../buttons/individualButtons/tts_save_voice.button";
+import { saveVoiceRow } from "../buttons/individualButtons/ttsSaveVoice.button";
 
 /**
  * `/tts` - speaks text in a preset voice, a saved one, or one cloned from a

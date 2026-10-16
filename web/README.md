@@ -58,7 +58,7 @@ everything past that until the hour is up. Two things follow:
 | `web/api/file.ts` | Serves mailbox files through Vercel's CDN |
 | `web/src/lib/cards.ts` | Filtering, sorting and deck checks. Pure, tested in `tests/web/` |
 | `web/pocketbase/pb_migrations/` | The mailbox's schema and access rules |
-| `modules/finicardsV2/webSync/` | Fini's half: sending copies, answering requests |
+| `modules/finicards/webSync/` | Fini's half: sending copies, answering requests |
 | `scripts/finicards_v2_web_schema.ts` | Applies the mailbox's schema over its API |
 | `scripts/finicards_v2_web_sync.ts` | Runs the sync without the bot |
 | `scripts/finicards_v2_web_dev_login.ts` | Sign-in link for a local mailbox |

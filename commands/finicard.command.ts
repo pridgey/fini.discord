@@ -14,16 +14,16 @@ import {
   buildRevealMessage,
   compositionString,
   NEUTRAL_ACCENT,
-} from "../modules/finicardsV2/ui";
-import { buildCardPages, buildDeckPages } from "../modules/finicardsV2/cardPages";
+} from "../modules/finicards/ui";
+import { buildCardPages, buildDeckPages } from "../modules/finicards/cardPages";
 import {
   buildCollectionQuery,
   SORT_LABEL as COLLECTION_SORT_LABEL,
   TIER_LABEL as COLLECTION_TIER_LABEL,
   type CollectionSort,
   type CollectionTier,
-} from "../modules/finicardsV2/collectionFilters";
-import { V2_USER_CARD } from "../modules/finicardsV2/cardStore";
+} from "../modules/finicards/collectionFilters";
+import { V2_USER_CARD } from "../modules/finicards/cardStore";
 import { pb } from "../utilities/pocketbase";
 import {
   DECK_SIZE,
@@ -33,13 +33,13 @@ import {
   getDecks,
   loadDeck,
   updateDeckCards,
-} from "../modules/finicardsV2/decks";
+} from "../modules/finicards/decks";
 import {
   HAND_SIZE,
   MAX_HAND_SIZE,
   MIN_HAND_SIZE,
   clampHandSize,
-} from "../modules/finicardsV2/draw";
+} from "../modules/finicards/draw";
 import {
   collectionComposition,
   getCardDefinitions,
@@ -48,26 +48,26 @@ import {
   loadLineupByIds,
   resolveLineup,
   toBattleCard,
-} from "../modules/finicardsV2/cardStore";
+} from "../modules/finicards/cardStore";
 import {
   createChallenge,
   createPracticeBattle,
   getBattleRecordForUser,
   getPendingBattlesForUser,
-} from "../modules/finicardsV2/battleStore";
-import { DUNGEON } from "../modules/finicardsV2/dungeon";
+} from "../modules/finicards/battleStore";
+import { DUNGEON } from "../modules/finicards/dungeon";
 import {
   buildRunMessage,
   payEntryFee,
-} from "../modules/finicardsV2/dungeonFlow";
-import { getActiveRun, startRun } from "../modules/finicardsV2/dungeonStore";
-import { GRADE_LABEL, KEYWORDS } from "../modules/finicardsV2/keywords";
+} from "../modules/finicards/dungeonFlow";
+import { getActiveRun, startRun } from "../modules/finicards/dungeonStore";
+import { GRADE_LABEL, KEYWORDS } from "../modules/finicards/keywords";
 import {
   getUnopenedFreePacks,
   markFreePackOpened,
   passOnSpecial,
-} from "../modules/finicardsV2/freePacks";
-import { rollGuaranteedTier, type LegendaryTier } from "../modules/finicardsV2/legendary";
+} from "../modules/finicards/freePacks";
+import { rollGuaranteedTier, type LegendaryTier } from "../modules/finicards/legendary";
 import {
   availableSecretArts,
   BOOSTER_SETS,
@@ -75,18 +75,18 @@ import {
   PACK_COST,
   PACK_SIZE,
   SET_PACK_COST,
-} from "../modules/finicardsV2/packs";
-import { presentPack } from "../modules/finicardsV2/packFlow";
+} from "../modules/finicards/packs";
+import { presentPack } from "../modules/finicards/packFlow";
 import { createLog } from "../modules/logger/logger";
-import { runSell } from "../modules/finicardsV2/sellFlow";
-import { runTrade } from "../modules/finicardsV2/tradeFlow";
-import { renderCardFace } from "../modules/finicardsV2/renderBattle";
+import { runSell } from "../modules/finicards/sellFlow";
+import { runTrade } from "../modules/finicards/tradeFlow";
+import { renderCardFace } from "../modules/finicards/renderBattle";
 import {
   RARITY_LABEL,
   RULES,
   TYPE_EMOJI,
-} from "../modules/finicardsV2/rules";
-import { canAfford, stakeWager } from "../modules/finicardsV2/wagers";
+} from "../modules/finicards/rules";
+import { canAfford, stakeWager } from "../modules/finicards/wagers";
 import { addCoin, getUserBalance } from "../modules/finicoin";
 import { ADMIN_ID, isAdmin } from "../utilities/discord/isAdmin";
 import type {
@@ -95,9 +95,9 @@ import type {
   V2DeckRecord,
 } from "../types/PocketbaseTablesV2";
 import { splitBigString } from "../utilities/splitBigString";
-import { replayTutorial } from "../modules/finicardsV2/dungeonTutorial";
-import { buildTutorialMessage } from "../modules/finicardsV2/ui/dungeonTutorialMessage";
-import { buildAbilitiesMessage } from "../modules/finicardsV2/ui/abilitiesMessage";
+import { replayTutorial } from "../modules/finicards/dungeonTutorial";
+import { buildTutorialMessage } from "../modules/finicards/ui/dungeonTutorialMessage";
+import { buildAbilitiesMessage } from "../modules/finicards/ui/abilitiesMessage";
 
 /**
  * Finicards: the card game.

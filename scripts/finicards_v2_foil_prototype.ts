@@ -1,12 +1,12 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
-import { resolveArtSource } from "../modules/finicardsV2/cardArt/generateCardImage";
+import { resolveArtSource } from "../modules/finicards/cardArt/generateCardImage";
 import {
   LEGENDARY_GIF_EFFECTS,
   renderLegendaryGif,
-} from "../modules/finicardsV2/cardArt/legendaryGif";
-import type { BattleCard } from "../modules/finicardsV2/types";
+} from "../modules/finicards/cardArt/legendaryGif";
+import type { BattleCard } from "../modules/finicards/types";
 import type { V2CardDefinitionRecord } from "../types/PocketbaseTablesV2";
 import { pb } from "../utilities/pocketbase";
 
@@ -22,7 +22,7 @@ import { pb } from "../utilities/pocketbase";
  * `--delay` override an effect's own timing.
  *
  * The effects themselves live in the game now
- * (`modules/finicardsV2/cardArt/legendaryGif.ts`); this only drives them.
+ * (`modules/finicards/cardArt/legendaryGif.ts`); this only drives them.
  */
 
 const OUT_DIR = path.join(import.meta.dir, "test_images", "foil");

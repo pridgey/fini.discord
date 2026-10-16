@@ -7,12 +7,12 @@ import {
   PACK_OPENING_DELAY_MS,
   PACK_OPENING_FILE,
   PACK_OPENING_FRAMES,
-} from "../modules/finicardsV2/cardArt/packOpening";
-import { TYPE_PALETTES } from "../modules/finicardsV2/cardArt/palettes";
+} from "../modules/finicards/cardArt/packOpening";
+import { TYPE_PALETTES } from "../modules/finicards/cardArt/palettes";
 
 /**
  * Draws the v2 booster pack and its opening animation, and saves both where
- * the game reads them (`modules/finicardsV2/assets`).
+ * the game reads them (`modules/finicards/assets`).
  *
  *   bun run scripts/finicards_v2_pack_art.ts
  *

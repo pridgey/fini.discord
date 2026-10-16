@@ -48,7 +48,7 @@ mock.module("../../utilities/pocketbase", () => ({
 }));
 
 const { v2CardCollectionQuery } = await import(
-  "../../queries/queryFunctions/v2CardCollection.query"
+  "../../queries/queryFunctions/finicardCollection.query"
 );
 
 const render = (components: any[]): string =>

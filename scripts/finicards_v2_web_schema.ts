@@ -16,7 +16,7 @@
  */
 import { readdirSync } from "fs";
 import { join, resolve } from "path";
-import { remote, remoteUrl, signIn, webSyncEnabled } from "../modules/finicardsV2/webSync";
+import { remote, remoteUrl, signIn, webSyncEnabled } from "../modules/finicards/webSync";
 
 const MIGRATIONS = resolve(import.meta.dir, "../web/pocketbase/pb_migrations");
 const APPLIED = "web_schema";

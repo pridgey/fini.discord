@@ -3,7 +3,7 @@ import { type ReminderRecord } from "../../types/PocketbaseTables";
 import { pb } from "../../utilities/pocketbase";
 import { syncAllSeasons } from "../finistocks/stockData";
 import { checkMonitoredServices } from "./monitoring";
-import { expireStaleV2Battles } from "../finicardsV2/expireBattles";
+import { expireStaleV2Battles } from "../finicards/expireBattles";
 import { expireSharedFiles } from "../fileShare";
 import { runGeoDaily } from "../dailies/geo/daily";
 import { runWeaveDaily } from "../dailies/weave/daily";

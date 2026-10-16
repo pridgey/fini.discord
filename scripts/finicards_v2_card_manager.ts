@@ -6,15 +6,15 @@ import {
   loadArt,
   renderCardImage,
   resolveArtSource,
-} from "../modules/finicardsV2/cardArt/generateCardImage";
-import { renderDungeonScene } from "../modules/finicardsV2/cardArt/dungeonScene";
-import { renderHandStrip } from "../modules/finicardsV2/cardArt/handStrip";
-import { layoutFor } from "../modules/finicardsV2/cardArt/layouts";
-import { renumberSets, toBattleCard } from "../modules/finicardsV2/cardStore";
-import { SPIKE_GAMMA } from "../modules/finicardsV2/convertLegacyCards";
-import { RARITY_COST, RULES } from "../modules/finicardsV2/rules";
-import { deriveType, normalizeSpread, validateSpread } from "../modules/finicardsV2/statBudget";
-import type { BattleCard } from "../modules/finicardsV2/types";
+} from "../modules/finicards/cardArt/generateCardImage";
+import { renderDungeonScene } from "../modules/finicards/cardArt/dungeonScene";
+import { renderHandStrip } from "../modules/finicards/cardArt/handStrip";
+import { layoutFor } from "../modules/finicards/cardArt/layouts";
+import { renumberSets, toBattleCard } from "../modules/finicards/cardStore";
+import { SPIKE_GAMMA } from "../modules/finicards/convertLegacyCards";
+import { RARITY_COST, RULES } from "../modules/finicards/rules";
+import { deriveType, normalizeSpread, validateSpread } from "../modules/finicards/statBudget";
+import type { BattleCard } from "../modules/finicards/types";
 import type {
   ArtAdjust,
   CardRarity,

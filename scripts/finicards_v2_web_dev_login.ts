@@ -9,7 +9,7 @@
  * The site only accepts such a link in development - `bun run dev` - and the
  * script refuses to touch a mailbox that is not on this machine.
  */
-import { remote, remoteUrl, signIn, webSyncEnabled } from "../modules/finicardsV2/webSync";
+import { remote, remoteUrl, signIn, webSyncEnabled } from "../modules/finicards/webSync";
 
 const discordId = process.argv[2] ?? process.env.ADMIN_ID ?? "";
 const site = process.env.FINI_WEB_DEV_SITE ?? "http://127.0.0.1:5199";

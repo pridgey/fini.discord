@@ -1,1 +1,1 @@
-export { execute } from "./anistock_details.button";
+export { execute } from "./anistockDetails.button";

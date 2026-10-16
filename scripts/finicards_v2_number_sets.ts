@@ -1,4 +1,4 @@
-import { renumberSets } from "../modules/finicardsV2/cardStore";
+import { renumberSets } from "../modules/finicards/cardStore";
 
 /**
  * Numbers every card within its release set, for the "12/217" in the footer.

@@ -7,7 +7,7 @@
  * Against an empty mailbox this sends every card, its artwork and its
  * rendered face, which takes several minutes; after that, only what changed.
  */
-import { startWebSync, summaryLine, syncOnce, webSyncEnabled } from "../modules/finicardsV2/webSync";
+import { startWebSync, summaryLine, syncOnce, webSyncEnabled } from "../modules/finicards/webSync";
 
 /** The bot knows its servers by name; a script only knows what it is told. */
 const serverNames = (): Record<string, string> => {

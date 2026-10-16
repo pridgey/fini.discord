@@ -1,5 +1,5 @@
-import { V2_DUNGEON_RUN } from "../modules/finicardsV2/dungeonStore";
-import { summariseYears } from "../modules/finicardsV2/dungeonStats";
+import { V2_DUNGEON_RUN } from "../modules/finicards/dungeonStore";
+import { summariseYears } from "../modules/finicards/dungeonStats";
 import type { V2DungeonRunRecord } from "../types/PocketbaseTablesV2";
 import { pb } from "../utilities/pocketbase";
 

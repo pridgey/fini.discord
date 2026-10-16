@@ -244,7 +244,7 @@ export type V2DungeonRunRecord = {
 /** What a free pack is certain to hold beyond its ordinary rolls. */
 export type FreePackSpecial = "" | "secret_art" | "legendary";
 
-/** A booster a player is owed without paying. See `modules/finicardsV2/freePacks.ts`. */
+/** A booster a player is owed without paying. See `modules/finicards/freePacks.ts`. */
 export type V2FreePackRecord = {
   id?: string;
   user_id: string;

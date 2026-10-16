@@ -28,9 +28,9 @@
  *   4. Matches feel decisive - how often a match ends level on rounds.
  */
 
-import { resolveMatch } from "../modules/finicardsV2/battleEngine";
-import { buildDeckCards } from "../modules/finicardsV2/decks";
-import { HAND_SIZE, dealHand } from "../modules/finicardsV2/draw";
+import { resolveMatch } from "../modules/finicards/battleEngine";
+import { buildDeckCards } from "../modules/finicards/decks";
+import { HAND_SIZE, dealHand } from "../modules/finicards/draw";
 import {
   DUNGEON,
   buyOffer,
@@ -47,18 +47,18 @@ import {
   type DungeonState,
   type Room,
   type RoomSource,
-} from "../modules/finicardsV2/dungeon";
-import { PACK_ODDS, rollRarity } from "../modules/finicardsV2/packs";
-import { assignKeyword } from "../modules/finicardsV2/convertLegacyCards";
-import { GRADE_LABEL, KEYWORDS } from "../modules/finicardsV2/keywords";
+} from "../modules/finicards/dungeon";
+import { PACK_ODDS, rollRarity } from "../modules/finicards/packs";
+import { assignKeyword } from "../modules/finicards/convertLegacyCards";
+import { GRADE_LABEL, KEYWORDS } from "../modules/finicards/keywords";
 import {
   RARITY_COST,
   RULES,
   TYPE_BEATS,
   TYPE_PRIORITY,
-} from "../modules/finicardsV2/rules";
-import { normalizeSpread } from "../modules/finicardsV2/statBudget";
-import type { BattleCard } from "../modules/finicardsV2/types";
+} from "../modules/finicards/rules";
+import { normalizeSpread } from "../modules/finicards/statBudget";
+import type { BattleCard } from "../modules/finicards/types";
 import type { CardRarity, CardType } from "../types/PocketbaseTablesV2";
 
 /* -------------------------------------------------------------------------- */

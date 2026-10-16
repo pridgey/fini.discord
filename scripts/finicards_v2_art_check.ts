@@ -7,11 +7,11 @@ import {
   paddingBox,
   renderCardImage,
   trimPadding,
-} from "../modules/finicardsV2/cardArt/generateCardImage";
-import { renderDungeonScene } from "../modules/finicardsV2/cardArt/dungeonScene";
-import { renderHandStrip } from "../modules/finicardsV2/cardArt/handStrip";
-import { layoutFor } from "../modules/finicardsV2/cardArt/layouts";
-import type { BattleCard } from "../modules/finicardsV2/types";
+} from "../modules/finicards/cardArt/generateCardImage";
+import { renderDungeonScene } from "../modules/finicards/cardArt/dungeonScene";
+import { renderHandStrip } from "../modules/finicards/cardArt/handStrip";
+import { layoutFor } from "../modules/finicards/cardArt/layouts";
+import type { BattleCard } from "../modules/finicards/types";
 import type { CardDefinitionRecord } from "../types/PocketbaseTables";
 import type {
   ArtAdjust,

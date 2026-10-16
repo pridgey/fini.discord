@@ -30,9 +30,9 @@ import {
 } from "./modals/modalHandler";
 import { fileExists } from "./utilities/files/fileUtilities";
 import { resetShareDir, startShareServer } from "./modules/fileShare";
-import { startWebSync } from "./modules/finicardsV2/webSync";
-import { makeCardPoster } from "./modules/finicardsV2/webSync/showCard";
-import { startCardManager } from "./modules/finicardsV2/cardManagerServer";
+import { startWebSync } from "./modules/finicards/webSync";
+import { makeCardPoster } from "./modules/finicards/webSync/showCard";
+import { startCardManager } from "./modules/finicards/cardManagerServer";
 
 /**
  * Recorded as a command's output when its reply cannot be read back - the
