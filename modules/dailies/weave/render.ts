@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { threadLetters, type WeaveProgress } from "./game";
+import { canGuessThread, threadLetters, type WeaveProgress } from "./game";
 import { SIZE, colOf, rowOf, type WeavePuzzle } from "./puzzle";
 
 /**
@@ -82,8 +82,12 @@ export const weaveBoardSvg = ({ puzzle, progress, reveal = false }: RenderInput)
   // The thread: a box per letter. Until it's solved, the boxes hold the
   // letters found so far in alphabetical order - which letters, not where - in
   // one colour, so none can be matched to its word.
+  // Once the thread can't be guessed - guessed right or wrong, or every
+  // letter showing - the boxes spell it in order: green if the player got it,
+  // red if not. Until then its letters stay alphabetical, which isn't a word.
   const solved = reveal || progress.threadGuess === puzzle.thread;
-  const threadShown = solved ? [...puzzle.thread] : [...threadLetters(puzzle, { ...progress, found: shown })];
+  const over = solved || !canGuessThread(puzzle, progress);
+  const threadShown = over ? [...puzzle.thread] : [...threadLetters(puzzle, { ...progress, found: shown })];
   const boxGap = 12;
   const boxes = puzzle.thread.length;
   const boxesWidth = boxes * THREAD_BOX + (boxes - 1) * boxGap;
@@ -91,8 +95,8 @@ export const weaveBoardSvg = ({ puzzle, progress, reveal = false }: RenderInput)
   const thread = Array.from({ length: boxes }, (_, i) => {
     const x = boxesLeft + i * (THREAD_BOX + boxGap);
     const letter = threadShown[i];
-    const fill = solved ? "#5fa834" : letter ? TILE_FILL : "#3a3e57";
-    const ink = solved ? "#ffffff" : letter ? INK : "#8a8fa8";
+    const fill = solved ? "#5fa834" : over ? "#c4473f" : letter ? TILE_FILL : "#3a3e57";
+    const ink = over ? "#ffffff" : letter ? INK : "#8a8fa8";
     return [
       `<rect x="${x}" y="${THREAD_TOP}" width="${THREAD_BOX}" height="${THREAD_BOX}" rx="12" fill="${fill}"/>`,
       `<text x="${x + THREAD_BOX / 2}" y="${THREAD_TOP + THREAD_BOX / 2 + 13}" text-anchor="middle" font-family="${FONT}" font-size="36" font-weight="800" fill="${ink}">${letter ? letter.toUpperCase() : "?"}</text>`,

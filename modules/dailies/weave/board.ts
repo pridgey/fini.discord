@@ -71,13 +71,16 @@ const threadLines = (puzzle: WeavePuzzle, progress: WeaveProgress): string[] => 
     return [`✅ **${puzzle.thread.toUpperCase()}** · **+${progress.threadFc} fc**`];
   }
   if (progress.threadGuess !== null) {
-    return [`❌ You guessed **${progress.threadGuess.toUpperCase()}**.`];
+    return [
+      // One guess, so the answer gives nothing away by now.
+      `❌ You guessed **${progress.threadGuess.toUpperCase()}**. It was **${puzzle.thread.toUpperCase()}**.`,
+    ];
   }
   if (allFound(puzzle, progress)) {
     return [`It was **${puzzle.thread.toUpperCase()}**, spelled out before it was guessed.`];
   }
   if (!canGuessThread(puzzle, progress)) {
-    return [`Letters showing: ${showing}`, "-# Every letter is showing, so the thread can't be guessed any more."];
+    return [`It was **${puzzle.thread.toUpperCase()}**. Every letter showed before it was guessed.`];
   }
   return [
     `Letters showing: ${showing}`,

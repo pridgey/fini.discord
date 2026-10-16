@@ -35,6 +35,17 @@ describe("the Weave board", () => {
     expect(answers).not.toContain(">?</text>");
   });
 
+  it("spells the thread in order once it can't be guessed, never its letters sorted into a non-word", () => {
+    const missed = { ...allFound(), threadGuess: "wrong" };
+    const svg = weaveBoardSvg({ puzzle, progress: missed });
+    const boxes = [...svg.matchAll(/font-size="36"[^>]*>([A-Z?])<\/text>/g)].map((match) => match[1]).join("");
+    expect(boxes).toBe(puzzle.thread.toUpperCase());
+    expect(svg).toContain('fill="#c4473f"');
+    expect(boardText({ roundId: round.id, puzzle, progress: missed })).toContain(
+      `You guessed **WRONG**. It was **${puzzle.thread.toUpperCase()}**.`,
+    );
+  });
+
   it("is an image with the words, and buttons to guess and hint until every word is found", async () => {
     const board = await buildBoard({ roundId: round.id, puzzle, progress: NO_PROGRESS });
     const meta = await sharp((board.files[0] as any).attachment).metadata();
