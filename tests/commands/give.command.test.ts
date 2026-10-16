@@ -3,7 +3,7 @@ import type { ChatInputCommandInteraction } from "discord.js";
 
 // Mock finicoin module
 const mockAddCoin = mock(() => Promise.resolve());
-const mockGetUserBalance = mock(() => Promise.resolve(1000));
+const mockGetUserBalance = mock((): Promise<number | null | undefined> => Promise.resolve(1000));
 
 mock.module("../../modules/finicoin", () => ({
   addCoin: mockAddCoin,

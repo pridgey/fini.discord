@@ -290,7 +290,7 @@ Erfiðr utilizes a special mask to magically transform his form into anything he
     }
 
     const firstTextBlock = response.content.find(
-      (block) => block.type === "text",
+      (block): block is Anthropic.TextBlock => block.type === "text",
     );
     if (!firstTextBlock) {
       console.error(

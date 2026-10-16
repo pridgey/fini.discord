@@ -5,7 +5,7 @@ import { execute } from "../../commands/add.command";
 
 // Mock Pocketbase
 const mockCreate = mock(() => Promise.resolve({}));
-pb.collection = mock(() => ({ create: mockCreate }));
+pb.collection = mock(() => ({ create: mockCreate })) as unknown as typeof pb.collection;
 
 describe("add command", () => {
   let mockInteraction: any;

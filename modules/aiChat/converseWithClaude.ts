@@ -160,7 +160,7 @@ export const converseWithClaude = async ({
 
     const anthropicResponseText =
       anthropicMessageResponse.content
-        .filter((block) => block.type === "text")
+        .filter((block): block is Beta.BetaTextBlock => block.type === "text")
         ?.map((block) => block.text)
         .join("") || "";
 
