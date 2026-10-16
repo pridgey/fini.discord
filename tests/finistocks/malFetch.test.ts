@@ -8,6 +8,11 @@ const { malFetch, malTiming, snapshotOf } = await import(
 );
 
 const realFetch = globalThis.fetch;
+/**
+ * A timer can measure a millisecond or two short against Date.now() under
+ * load, which made these fail now and then. The waits still have to double.
+ */
+const TIMER_SLACK_MS = 3;
 let sentHeaders: (string | null)[] = [];
 const realTiming = { ...malTiming };
 const realClientId = process.env.MAL_CLIENT_ID;
@@ -125,9 +130,9 @@ describe("malFetch", () => {
     malTiming.backoffMs = 40;
     await malFetch("/anime/1");
     const gaps = times.slice(1).map((time, i) => time - times[i]);
-    expect(gaps[0]).toBeGreaterThanOrEqual(40);
-    expect(gaps[1]).toBeGreaterThanOrEqual(80);
-    expect(gaps[2]).toBeGreaterThanOrEqual(160);
+    expect(gaps[0]).toBeGreaterThanOrEqual(40 - TIMER_SLACK_MS);
+    expect(gaps[1]).toBeGreaterThanOrEqual(80 - TIMER_SLACK_MS);
+    expect(gaps[2]).toBeGreaterThanOrEqual(160 - TIMER_SLACK_MS);
   });
 
   it("follows Retry-After when MAL sends it", async () => {
@@ -140,7 +145,7 @@ describe("malFetch", () => {
       });
     }) as unknown as typeof fetch;
     await malFetch("/anime/1");
-    expect(times[1] - times[0]).toBeGreaterThanOrEqual(1000);
+    expect(times[1] - times[0]).toBeGreaterThanOrEqual(1000 - TIMER_SLACK_MS);
   });
 });
 
