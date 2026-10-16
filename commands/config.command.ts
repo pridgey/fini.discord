@@ -1,13 +1,13 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import { ConfigRecord } from "../types/PocketbaseTables";
-import { pb } from "../utilities/pocketbase";
 import {
   DEFAULT_HORSEY_NAMES,
   parseHorseyNames,
   serializeHorseyNames,
 } from "../modules/games/horsey/horseyNames";
 import { HORSE_COUNT } from "../modules/games/horsey/horseyUtilities";
+import { saveConfigForServer } from "../utilities/config/configUtils";
 
 export const data = new SlashCommandBuilder()
   .setName("config")
@@ -73,27 +73,15 @@ export const execute = async (
     return;
   }
 
-  const configRecord = await pb
-    .collection<ConfigRecord>("config")
-    .getFirstListItem(`server_id = "${interaction.guildId}"`)
-    .catch(() => null);
+  const botChannelName = interaction.guild?.channels.cache.get(
+    updates.bot_channel || "",
+  )?.name;
 
-  if (configRecord?.id) {
-    await pb.collection<ConfigRecord>("config").update(configRecord.id, updates);
-  } else {
-    const botChannelName = interaction.guild?.channels.cache.get(
-      updates.bot_channel || "",
-    )?.name;
-
-    await pb.collection<ConfigRecord>("config").create({
-      server_id: interaction.guildId || "",
-      bot_channel: updates.bot_channel || "",
-      horsey_names: updates.horsey_names || "",
-      identifier: `${interaction.guild?.name || "Unknown Server"}-${
-        botChannelName || "Unknown Channel"
-      }`,
-    });
-  }
+  await saveConfigForServer(
+    interaction.guildId || "",
+    updates,
+    `${interaction.guild?.name || "Unknown Server"}-${botChannelName || "Unknown Channel"}`,
+  );
 
   // Confirm what actually changed, so an admin can see a reset took effect
   // rather than wondering whether a blank value did anything.
