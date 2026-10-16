@@ -490,10 +490,20 @@ Selling (`market.ts`):
   a confirm. Fini pays 2 / 5 / 10 for a common / uncommon / full-art, 25 for a
   Secret Art and 50 for a Legendary; a foil pays half again, rounded up.
 - **To a player.** `/finicard sell card:<id> price:<fc>` offers it to
-  anyone, or to one player with `who:`. This is trading.
+  anyone, or to one player with `who:`. To swap cards rather than sell them,
+  see **Trading** below.
 
 A sold card is taken out of every deck it was in. A card in a battle or dungeon
 run that is already under way can still be sold; that is a known gap.
+
+**Trading** (`tradeFlow.ts`). `/finicard trade with:@player give:<ids>
+want:<ids> give_fc:<fc> want_fc:<fc>` offers an exchange: up to five cards a
+side, plus Finicoin either way, any of it optional but not all of it. The offer
+is public, with every card pictured. Only the other player can accept or
+decline, and only the one who offered can cancel; it expires after ten minutes.
+Nothing moves until it is accepted, and then everything is checked again -
+both players must still own their cards and cover their coin - before the coin
+and the cards change hands. Traded cards leave any decks they were in.
 
 ## Set numbers
 

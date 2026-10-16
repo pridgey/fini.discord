@@ -78,6 +78,7 @@ import {
 import { presentPack } from "../modules/finicardsV2/packFlow";
 import { createLog } from "../modules/logger/logger";
 import { runSell } from "../modules/finicardsV2/sellFlow";
+import { runTrade } from "../modules/finicardsV2/tradeFlow";
 import { renderCardFace } from "../modules/finicardsV2/renderBattle";
 import {
   RARITY_LABEL,
@@ -1018,6 +1019,11 @@ export const execute = async (
       /* ---------------------------------------------------------- sell ---- */
       case "sell": {
         await runSell(interaction, { serverId, serverName });
+        return;
+      }
+
+      case "trade": {
+        await runTrade(interaction, { serverId, serverName });
         return;
       }
 
