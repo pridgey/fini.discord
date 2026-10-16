@@ -22,8 +22,7 @@ import {
   handleButtonInteraction,
   loadButtonHandlers,
 } from "./buttons/buttonHandler";
-import { converseWithAI } from "./modules/aiChat/aiChat";
-import { ReplyContext } from "./modules/aiChat/formatReplyContext";
+import { answerHeyFini, isHeyFini } from "./modules/aiChat/heyFini";
 import {
   handleModalInteraction,
   loadModalHandlers,
@@ -158,7 +157,6 @@ client.on("messageCreate", async (message: Message) => {
   // Lowercase makes comparisons way easier
   const messageText = message.content;
   const messageTextLower = messageText.toLowerCase();
-  const messageUser = message.author.id;
 
   // Good bot reaction
   if (messageTextLower === "good fini") {
@@ -171,87 +169,8 @@ client.on("messageCreate", async (message: Message) => {
   }
 
   // Fini chat
-  if (messageTextLower.startsWith("hey fini")) {
-    const channel = message.channel;
-
-    // Send temporary typing message, loop until we are done
-    const typingLoop = setInterval(() => {
-      channel.sendTyping();
-    }, 1000 * 11);
-
-    await channel.sendTyping();
-
-    // Grab any attachments if they exist
-    // const allAttachments = message.attachments; // TODO: Implement multiple attachments
-
-    let response: string;
-    let command = "hey fini";
-
-    let messageReply;
-    if (message.reference?.messageId) {
-      try {
-        messageReply = await message.fetchReference();
-      } catch (err) {
-        console.error("Error fetching message reference:", err);
-      }
-    }
-    const replyText = messageReply?.content?.replaceAll("hey fini", "").trim();
-
-    // Who wrote the quoted message changes what the user is asking for, so
-    // pass the attribution along rather than just the text. Prefer the server
-    // nickname - that's the name the rest of the channel is using for them.
-    const reply: ReplyContext | undefined =
-      messageReply && replyText?.length
-        ? {
-            text: replyText,
-            authorName:
-              messageReply.member?.displayName ||
-              messageReply.author.displayName ||
-              messageReply.author.username,
-            authorIsUser: messageReply.author.id === messageUser,
-            authorIsSelf: messageReply.author.id === message.client.user.id,
-            authorIsBot: messageReply.author.bot,
-          }
-        : undefined;
-
-    console.log("Debug - Message Reference:", { reply });
-
-    // New AI Conversion logic. converseWithAI reads the user's /chat-config
-    // preference and routes to local llama.cpp (default) or Claude.
-    response = await converseWithAI({
-      userID: messageUser,
-      message: messageText.replace(command, ""),
-      reply,
-      server: message.guildId ?? "unknown",
-      attachment: message.attachments.at(0),
-    });
-
-    // DEPRECATED
-    // Open AI Text
-    // response = await chatWithUser_OpenAI(
-    //   messageUser,
-    //   messageText.replace(command, ""),
-    //   message.guildId ?? "unknown",
-    //   attachment,
-    // );
-
-    // Log hey fini interaction
-    await createLog({
-      user_id: message.author.id,
-      server_id: message.guild?.id || "unknown",
-      command,
-      input: messageText,
-      output: response,
-    });
-
-    // Clear typing loop
-    clearInterval(typingLoop);
-
-    // Split response to discord-sizable chunks
-    const replyArray = splitBigString(response);
-
-    // Send replies
-    replyArray.forEach(async (str) => await message.reply(str));
+  if (isHeyFini(messageText)) {
+    await answerHeyFini(message);
   } else {
     // Regular messages should be rewarded finicoin
     await rewardCoin(message);
