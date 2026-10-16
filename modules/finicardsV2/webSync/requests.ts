@@ -19,8 +19,10 @@ import { remote } from "./remote";
  * database as if the request were a slash command typed by a stranger -
  * because the mailbox is public, and it may be exactly that.
  *
- * Only decks can be asked for. Packs, selling and trades stay in Discord, so
- * the worst a bad request can do is rearrange a deck.
+ * Decks can be asked for, and a card can be shown in Discord. Packs, selling
+ * and trades stay in Discord, so the worst a bad request can do is rearrange a
+ * deck - or post one of the player's own cards in the bot channel, at most
+ * once a minute.
  */
 
 export type WebRequestRecord = {
@@ -28,7 +30,7 @@ export type WebRequestRecord = {
   /** The mailbox's user id - not a Discord id. */
   user: string;
   server_id: string;
-  kind: "deck_save" | "deck_delete";
+  kind: "deck_save" | "deck_delete" | "card_show";
   payload: unknown;
   status: "pending" | "applied" | "rejected";
   created: string;
@@ -119,6 +121,31 @@ export const decideDeckRequest = (
 };
 
 /**
+ * Posts one of a player's cards in their server's bot channel, as the View
+ * button shows it. Returns false when the server has no bot channel. Given by
+ * the bot, which holds the Discord client; without it, cards can't be shown.
+ */
+export type CardPoster = (serverId: string, discordId: string, copyId: string) => Promise<boolean>;
+
+/** One card shown a minute, per player: the button is not a way to flood a channel. */
+export const SHOW_COOLDOWN_MS = 60 * 1000;
+const lastShown = new Map<string, number>();
+
+/** Decides a request to show a card. Pure: the card must be one the player holds. */
+export const decideCardShow = (
+  payload: unknown,
+  owned: Set<string>,
+): { ok: false; reason: string } | { ok: true; cardId: string } => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { ok: false, reason: "That request could not be read." };
+  }
+  const { card } = payload as Record<string, unknown>;
+  if (typeof card !== "string" || !card) return { ok: false, reason: "That request could not be read." };
+  if (!owned.has(card)) return { ok: false, reason: "That card is no longer in your collection." };
+  return { ok: true, cardId: card };
+};
+
+/**
  * The Discord id behind a mailbox user, as Pocketbase recorded it at sign-in.
  * Read from the mailbox's own table - never from anything the request says.
  */
@@ -139,6 +166,7 @@ export type RequestOutcome = {
 export const resolveRequest = async (
   request: WebRequestRecord,
   now: number = Date.now(),
+  { showCard }: { showCard?: CardPoster } = {},
 ): Promise<RequestOutcome> => {
   const reject = (message: string): RequestOutcome => ({ status: "rejected", message });
 
@@ -152,6 +180,19 @@ export const resolveRequest = async (
 
   const collection = await getUserCollection(discordId, request.server_id);
   if (collection.length === 0) return reject("You have no cards on that server.");
+
+  if (request.kind === "card_show") {
+    if (!showCard) return reject("Fini can't post cards right now.");
+    const decision = decideCardShow(request.payload, new Set(collection.map((card) => card.id ?? "")));
+    if (!decision.ok) return reject(decision.reason);
+    const wait = (lastShown.get(discordId) ?? 0) + SHOW_COOLDOWN_MS - now;
+    if (wait > 0) return reject(`You can show another card in ${Math.ceil(wait / 1000)} seconds.`);
+    if (!(await showCard(request.server_id, discordId, decision.cardId))) {
+      return reject("That server has no bot channel. An admin can set one with /config bot_channel.");
+    }
+    lastShown.set(discordId, now);
+    return { status: "applied", message: "Posted in the server's bot channel." };
+  }
 
   const decks = await getDecks(discordId, request.server_id);
   const decision = decideDeckRequest(

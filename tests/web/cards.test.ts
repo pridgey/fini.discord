@@ -108,6 +108,20 @@ describe("filtering", () => {
     expect(names({ search: "vanguard" })).toEqual(["Chopper"]);
   });
 
+  test("duplicates keeps every copy of a card held more than once, foils and all", () => {
+    const goku = { id: "goku", card_name: "Goku" };
+    const held = [
+      card(goku),
+      card(goku, { foil: true }),
+      card({ id: "vegeta", card_name: "Vegeta" }),
+    ];
+    const shown = applyFilters(held, { ...NO_FILTERS, duplicates: true }, meta);
+    expect(shown.map((entry) => entry.def.card_name)).toEqual(["Goku", "Goku"]);
+    expect(filtersActive({ ...NO_FILTERS, duplicates: true })).toBe(true);
+    // Counted before anything else narrows the view: the foil Goku is still a duplicate on its own.
+    expect(applyFilters(held, { ...NO_FILTERS, duplicates: true, foil: true }, meta)).toHaveLength(1);
+  });
+
   test("chips narrow, and combine", () => {
     expect(names({ types: ["wit", "heart"] })).toEqual(["Chopper", "Aang"]);
     expect(names({ tiers: ["full_art"] })).toEqual(["Broly"]);

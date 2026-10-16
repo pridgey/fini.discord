@@ -54,6 +54,7 @@ export const setLabel = (card: Card): string => {
 
 /** "2 of 3" for a copy of a card limited to a handful per server. */
 export const limitedLabel = (card: Card): string => {
+  // A Legendary is the only one of its card with its animation on its server.
   const population = card.legendary ? 1 : card.def.population;
   if (!population || population >= 5) return "";
   return `${Math.min(Math.max(card.serial, 1), population)} of ${population}`;
@@ -99,6 +100,8 @@ export type Filters = {
   set: number;
   foil: boolean;
   keyword: boolean;
+  /** Only cards held more than once: every copy of each. */
+  duplicates: boolean;
   sort: SortKey;
 };
 
@@ -109,6 +112,7 @@ export const NO_FILTERS: Filters = {
   set: 0,
   foil: false,
   keyword: false,
+  duplicates: false,
   sort: "newest",
 };
 
@@ -118,7 +122,8 @@ export const filtersActive = (filters: Filters): boolean =>
   filters.tiers.length > 0 ||
   filters.set !== 0 ||
   filters.foil ||
-  filters.keyword;
+  filters.keyword ||
+  filters.duplicates;
 
 const matchesSearch = (card: Card, meta: Meta, needle: string): boolean =>
   [
@@ -146,9 +151,19 @@ const SORTERS: Record<SortKey, (a: Card, b: Card, meta: Meta) => number> = {
 };
 
 /** The cards that pass `filters`, in its order. Ties fall back to name. */
+/** How many copies of each card are held, by definition - a foil or a Legendary is a copy too. */
+export const copyCounts = (cards: Card[]): Map<string, number> => {
+  const counts = new Map<string, number>();
+  for (const card of cards) counts.set(card.def.id, (counts.get(card.def.id) ?? 0) + 1);
+  return counts;
+};
+
 export const applyFilters = (cards: Card[], filters: Filters, meta: Meta): Card[] => {
   const needle = filters.search.trim().toLowerCase();
   const sorter = SORTERS[filters.sort];
+  // Counted across everything held, before any other filter, so a duplicate
+  // stays one whatever else narrows the view.
+  const counts = filters.duplicates ? copyCounts(cards) : null;
   return cards
     .filter(
       (card) =>
@@ -157,7 +172,8 @@ export const applyFilters = (cards: Card[], filters: Filters, meta: Meta): Card[
         (filters.tiers.length === 0 || filters.tiers.includes(tierOf(card))) &&
         (!filters.set || card.def.set === filters.set) &&
         (!filters.foil || card.foil) &&
-        (!filters.keyword || !!card.keyword),
+        (!filters.keyword || !!card.keyword) &&
+        (!counts || (counts.get(card.def.id) ?? 0) > 1),
     )
     .sort((a, b) => sorter(a, b, meta) || byName(a, b) || a.id.localeCompare(b.id));
 };
@@ -219,7 +235,8 @@ export const narrowing = (filters: Filters): boolean =>
   filters.types.length > 0 ||
   filters.tiers.length > 0 ||
   filters.foil ||
-  filters.keyword;
+  filters.keyword ||
+  filters.duplicates;
 
 /**
  * Blanks only mean something when the grid is a set in number order with

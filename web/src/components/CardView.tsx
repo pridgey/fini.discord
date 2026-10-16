@@ -51,8 +51,13 @@ export const CardView = memo(function CardView({
     if (!node || (event.pointerType === "touch" && size !== "hero")) return;
     node.dataset.active = "true";
     const box = node.getBoundingClientRect();
-    const x = (event.clientX - box.left) / box.width;
-    const y = (event.clientY - box.top) / box.height;
+    // A finger keeps driving the card after it slides off the edge (touch
+    // pointers stay with the element they started on). Held to the card, the
+    // light and tilt stop at its edge rather than running the foil's gradient
+    // past its end and showing where it stops.
+    const clamp = (value: number) => Math.min(1, Math.max(0, value));
+    const x = clamp((event.clientX - box.left) / box.width);
+    const y = clamp((event.clientY - box.top) / box.height);
     node.style.setProperty("--mx", `${(x * 100).toFixed(1)}%`);
     node.style.setProperty("--my", `${(y * 100).toFixed(1)}%`);
     node.style.setProperty("--rx", `${((0.5 - y) * 14).toFixed(2)}deg`);

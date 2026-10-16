@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   keywordOf,
   legendaryTier,
@@ -8,6 +8,7 @@ import {
   tierOf,
   TYPE_LABEL,
 } from "../lib/cards";
+import { ask } from "../lib/store";
 import { TYPES, type Card, type Deck, type Meta } from "../lib/types";
 import { TypeIcon } from "./bits";
 import { CardView } from "./CardView";
@@ -62,6 +63,15 @@ export const CardModal = ({
   const limited = limitedLabel(card);
   const obtained = date(card.acquired);
   const ceiling = Math.max(meta.rules.statTotal - 3, 1);
+
+  // "See in Discord": Fini posts the card in the server's bot channel.
+  const [showing, setShowing] = useState<{ busy: boolean; message?: string; ok?: boolean }>({ busy: false });
+  useEffect(() => setShowing({ busy: false }), [card.id]);
+  const showInDiscord = async () => {
+    setShowing({ busy: true });
+    const result = await ask(card.server_id, { kind: "card_show", payload: { card: card.id } });
+    setShowing({ busy: false, message: result.message, ok: result.ok });
+  };
 
   return (
     <div className="modal" role="dialog" aria-modal="true" aria-label={card.def.card_name} onClick={onClose}>
@@ -179,6 +189,17 @@ export const CardModal = ({
             <dt>Copy</dt>
             <dd className="mono">{card.id}</dd>
           </dl>
+
+          <div className="modal-actions">
+            <button type="button" className="button discord" disabled={showing.busy} onClick={showInDiscord}>
+              {showing.busy ? "Asking Fini…" : "See in Discord"}
+            </button>
+            {showing.message && (
+              <p className="modal-answer" data-ok={showing.ok} role="status">
+                {showing.message}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

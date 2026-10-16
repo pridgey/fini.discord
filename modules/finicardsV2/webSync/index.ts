@@ -1,6 +1,6 @@
 import { watchRequests } from "./realtime";
 import { signIn, webSyncEnabled } from "./remote";
-import { answerRequest, pendingRequests, resolveRequest } from "./requests";
+import { answerRequest, pendingRequests, resolveRequest, type CardPoster } from "./requests";
 import { forgetMailbox, summaryLine, syncOnce } from "./sync";
 
 /**
@@ -48,6 +48,7 @@ export type WebSyncHandle = { stop: () => void };
  */
 export const startWebSync = (
   serverNames: () => Record<string, string>,
+  showCard?: CardPoster,
 ): WebSyncHandle | null => {
   if (!webSyncEnabled()) return null;
 
@@ -110,7 +111,7 @@ export const startWebSync = (
             });
             continue;
           }
-          const outcome = await resolveRequest(request).catch((error) => {
+          const outcome = await resolveRequest(request, Date.now(), { showCard }).catch((error) => {
             console.error("Web sync: request failed:", error);
             return {
               status: "rejected" as const,
@@ -118,7 +119,10 @@ export const startWebSync = (
             };
           });
           // The deck is in the mailbox before the site is told it was saved.
-          if (outcome.status === "applied") await syncOnce(serverNames()).catch(() => undefined);
+          // Showing a card changes nothing there.
+          if (outcome.status === "applied" && request.kind !== "card_show") {
+            await syncOnce(serverNames()).catch(() => undefined);
+          }
           await answerRequest(request, outcome);
         }
       });

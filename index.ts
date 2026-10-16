@@ -32,6 +32,7 @@ import {
 import { fileExists } from "./utilities/files/fileUtilities";
 import { resetShareDir, startShareServer } from "./modules/fileShare";
 import { startWebSync } from "./modules/finicardsV2/webSync";
+import { makeCardPoster } from "./modules/finicardsV2/webSync/showCard";
 import { startCardManager } from "./modules/finicardsV2/cardManagerServer";
 
 /**
@@ -71,8 +72,9 @@ client.once("clientReady", async (cl) => {
 
   /* The Finicards site: copies collections out to a public mailbox and takes
    * deck requests back. Off unless FINI_WEB_POCKETBASE_URL is set. */
-  startWebSync(() =>
-    Object.fromEntries(cl.guilds.cache.map((guild) => [guild.id, guild.name])),
+  startWebSync(
+    () => Object.fromEntries(cl.guilds.cache.map((guild) => [guild.id, guild.name])),
+    makeCardPoster(cl),
   );
 
   /* The card manager, for the home network. Off unless FINI_CARD_MANAGER_PORT

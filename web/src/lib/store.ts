@@ -84,7 +84,9 @@ export const useData = (signedIn: boolean) => {
 
 export type DeckRequest =
   | { kind: "deck_save"; payload: { deckId?: string; name: string; cards: string[] } }
-  | { kind: "deck_delete"; payload: { deckId: string } };
+  | { kind: "deck_delete"; payload: { deckId: string } }
+  /** Fini posts the card in the server's bot channel, as the View button does. */
+  | { kind: "card_show"; payload: { card: string } };
 
 const ANSWER_EVERY_MS = 600;
 const ANSWER_WITHIN_MS = 25_000;

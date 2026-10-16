@@ -5,7 +5,7 @@ import type {
   V2UserCardRecord,
 } from "../../types/PocketbaseTablesV2";
 import { DECK_SIZE, MAX_DECKS_PER_USER } from "../../modules/finicardsV2/decks";
-import { decideDeckRequest } from "../../modules/finicardsV2/webSync/requests";
+import { decideCardShow, decideDeckRequest } from "../../modules/finicardsV2/webSync/requests";
 import {
   artKeyOf,
   buildSnapshot,
@@ -260,5 +260,23 @@ describe("deck requests from the site", () => {
       expect(save(payload).ok).toBe(false);
     }
     expect(decideDeckRequest("grant_card", { name: "Ok", cards: ids(20) }, owned, decks).ok).toBe(false);
+  });
+});
+
+describe("showing a card in Discord from the site", () => {
+  const owned = new Set(["mine1", "mine2"]);
+
+  test("goes ahead for a card the player holds", () => {
+    expect(decideCardShow({ card: "mine1" }, owned)).toEqual({ ok: true, cardId: "mine1" });
+  });
+
+  test("refuses someone else's card, or a request it can't read", () => {
+    expect(decideCardShow({ card: "theirs" }, owned)).toEqual({
+      ok: false,
+      reason: "That card is no longer in your collection.",
+    });
+    for (const payload of [null, "mine1", ["mine1"], {}, { card: 7 }, { card: "" }]) {
+      expect(decideCardShow(payload, owned).ok).toBe(false);
+    }
   });
 });

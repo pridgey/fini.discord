@@ -1123,3 +1123,24 @@ blockquote { margin: 0; padding-left: 12px; border-left: 2px solid var(--line-2)
   *, *::before, *::after { animation: none !important; transition: none !important; }
   .card-face { transform: none !important; }
 }
+
+/* "See in Discord" under a card's details, and Fini's answer beside it. */
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  margin-top: 18px;
+}
+.modal-answer {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted, #b9bdd4);
+}
+.modal-answer[data-ok="false"] { color: #ff9a8a; }
+.modal-actions .button.discord {
+  padding: 10px 18px;
+  font-size: 14px;
+  border-radius: 10px;
+  box-shadow: none;
+}

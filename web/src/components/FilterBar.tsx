@@ -105,6 +105,13 @@ export const FilterBar = ({ filters, onChange, sets, tiers, shown, total, compac
           <Chip active={filters.keyword} onClick={() => set({ keyword: !filters.keyword })}>
             Has ability
           </Chip>
+          <Chip
+            active={filters.duplicates}
+            onClick={() => set({ duplicates: !filters.duplicates })}
+            title="Only cards you hold more than one of"
+          >
+            Duplicates
+          </Chip>
         </div>
         {extra && <div className="chip-group">{extra}</div>}
         <div className="filters-count">
