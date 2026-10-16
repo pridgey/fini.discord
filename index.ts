@@ -18,7 +18,6 @@ import { splitBigString } from "./utilities/splitBigString";
 const { exec } = require("child_process");
 import { readFile, writeFile } from "fs/promises";
 import { initializeServerBank } from "./modules/finicoin/initialize";
-import { chatWithUser_Llama } from "./modules/llama/converse";
 import {
   handleButtonInteraction,
   loadButtonHandlers,
@@ -235,47 +234,6 @@ client.on("messageCreate", async (message: Message) => {
     //   message.guildId ?? "unknown",
     //   attachment,
     // );
-
-    // Log hey fini interaction
-    await createLog({
-      user_id: message.author.id,
-      server_id: message.guild?.id || "unknown",
-      command,
-      input: messageText,
-      output: response,
-    });
-
-    // Clear typing loop
-    clearInterval(typingLoop);
-
-    // Split response to discord-sizable chunks
-    const replyArray = splitBigString(response);
-
-    // Send replies
-    replyArray.forEach(async (str) => await message.reply(str));
-  } else if (messageTextLower.startsWith("hey ollama")) {
-    const channel = message.channel;
-
-    // Send temporary typing message, loop until we are done
-    const typingLoop = setInterval(() => {
-      channel.sendTyping();
-    }, 1000 * 11);
-
-    await channel.sendTyping();
-
-    // Grab any attachments if they exist
-    const allAttachments = message.attachments;
-
-    let response;
-    let command = "hey ollama";
-
-    // Ollama AI Text
-    response = await chatWithUser_Llama(
-      messageUser,
-      messageText.replace(command, ""),
-      message.guildId ?? "unknown",
-      allAttachments,
-    );
 
     // Log hey fini interaction
     await createLog({

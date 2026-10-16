@@ -24,7 +24,6 @@
     "discord.js": "latest",
     "gif-encoder-2": "^1.0.5",
     "glob": "^10.3.10",
-    "ollama": "^0.5.16",
     "openai": "^4.36.0",
     "pocketbase": "latest",
     "prettier": "^2.7.1",
