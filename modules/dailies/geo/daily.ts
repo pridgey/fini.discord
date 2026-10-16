@@ -22,6 +22,7 @@ import {
   button,
   creditLine,
   guessView,
+  pastRevealView,
   photoFiles,
   placeName,
   revealView,
@@ -213,6 +214,32 @@ export const cannotGuess = async (
   return null;
 };
 
+/**
+ * A player's result for the current round shown again, if they've played it:
+ * the map, each check and what it paid, as when they locked in.
+ */
+export const playedResult = async (
+  round: DailyRoundRecord | null,
+  serverId: string,
+  userId: string,
+) => {
+  if (!round || round.day !== currentDay()) return null;
+  const played = await findGuess(round.id, serverId, userId);
+  if (!played) return null;
+  const view = await pastRevealView(factsOf(round), round.place, {
+    lat: played.guess_lat,
+    lon: played.guess_lon,
+    label: played.label,
+    km: played.km,
+    total: played.total,
+    checks: played.checks ?? [],
+  });
+  return {
+    ...view,
+    content: `${view.content}\n-# You've played this round. The next one is up at ${POST_TIME}.`,
+  };
+};
+
 export type Player = {
   serverId: string;
   serverName: string;
@@ -293,6 +320,8 @@ export const todaysRoundFor = async (serverId: string, userId: string) => {
       content: `There's no round up right now. The next one posts at ${POST_TIME}.`,
     };
   }
+  const result = await playedResult(round, serverId, userId);
+  if (result) return result;
   const refusal = await cannotGuess(round, serverId, userId);
   if (refusal) return { content: refusal };
   return roundPost(round, await roundPhotos(round));

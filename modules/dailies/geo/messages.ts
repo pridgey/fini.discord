@@ -105,7 +105,7 @@ export const scoreGuess = (facts: RoundFacts, place: PlaceInfo, guess: GeocodedG
 
 const MARK: Record<Check["outcome"], string> = { earned: "✅", missed: "❌", locked: "🔒" };
 
-const checkLine = (check: Check) =>
+export const checkLine = (check: Check) =>
   check.outcome === "earned"
     ? `✅ ${check.label} **+${check.fc}**`
     : `${MARK[check.outcome]} ${check.label}${check.note ? ` · _${check.note}_` : ""}`;
@@ -116,6 +116,47 @@ export const placeName = (place: PlaceInfo) =>
 
 export const creditLine = (facts: RoundFacts) =>
   `-# Photos by ${facts.credit} via ${facts.source}, ${facts.license}. Places and map © OpenStreetMap contributors.`;
+
+/** A guess as it was saved: enough to show its result again. */
+export type SavedGuess = {
+  lat: number;
+  lon: number;
+  label: string;
+  km: number;
+  /** Coin paid, after the photo multiplier. */
+  total: number;
+  checks: Check[];
+};
+
+/**
+ * A player's result shown again - from the guess as saved, so it reads as it
+ * did when they locked in. The closeness bonus isn't saved apart, so it's what
+ * the total holds beyond the checks.
+ */
+export const pastRevealView = async (facts: RoundFacts, place: PlaceInfo, guess: SavedGuess) => {
+  const multiplier = photoMultiplier(facts.photoCount);
+  const fromChecks = guess.checks.reduce((sum, check) => sum + (check.outcome === "earned" ? check.fc : 0), 0);
+  const bonus = Math.max(0, Math.round(guess.total / multiplier) - fromChecks);
+  const map = await renderMap([
+    { lat: guess.lat, lon: guess.lon, color: "#3b82f6", label: "You" },
+    { ...facts.answer, color: "#ef4444", label: "Here" },
+  ]);
+  return {
+    content: [
+      `📏 **${formatDistance(guess.km)}** away · 🪙 you won **${guess.total} fc** of ${maxPayFor(facts.photoCount)}`,
+      "",
+      ...guess.checks.map(checkLine),
+      bonus > 0 ? `🎯 Landing close **+${bonus}**` : null,
+      guess.total > 0 ? photoLine(facts.photoCount) : null,
+      "",
+      `It was taken in **${placeName(place)}**. You guessed ${guess.label}.`,
+      creditLine(facts),
+    ]
+      .filter((line) => line !== null)
+      .join("\n"),
+    files: [new AttachmentBuilder(map, { name: "reveal.png" })],
+  };
+};
 
 /** The answer beside the guess, each check, and what it paid. */
 export const revealView = async (

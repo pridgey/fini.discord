@@ -104,6 +104,8 @@ const nominatim = async <T>(path: "search" | "reverse", params: Record<string, s
 type NominatimPlace = {
   lat: string;
   lon: string;
+  /** The place's own name: "Dubai". */
+  name?: string;
   display_name: string;
   addresstype?: string;
   address?: NominatimAddress;
@@ -119,6 +121,18 @@ export const describePlace = async (point: LatLon): Promise<PlaceInfo | null> =>
     zoom: "10",
   });
   return found.error || !found.address ? null : placeFromAddress(found.address);
+};
+
+/**
+ * The places a found guess is in. A guess that names a town or smaller is in
+ * that town - and when Nominatim files the town under a key the address
+ * doesn't spell as one ("administrative": "Dubai"), the place's own name
+ * stands in, or the guess would have no town to be judged by.
+ */
+export const guessPlace = (found: Pick<NominatimPlace, "name" | "address" | "addresstype">): PlaceInfo => {
+  const place = placeFromAddress(found.address);
+  if (!place.city && levelOf(found.addresstype) === "city" && found.name) place.city = found.name;
+  return place;
 };
 
 /** The place a guess names, or null when nothing matches. */
@@ -142,7 +156,7 @@ export const geocodeGuess = async (text: string): Promise<GeocodedGuess | null> 
     lat: Number(first.lat),
     lon: Number(first.lon),
     label: first.display_name,
-    place: placeFromAddress(first.address),
+    place: guessPlace(first),
     level: levelOf(first.addresstype),
   };
 };

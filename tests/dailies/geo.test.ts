@@ -3,7 +3,7 @@ import sharp from "sharp";
 import { parseCoordinates } from "../../modules/dailies/geo/geocode";
 import { clueScore, MIN_CLUES } from "../../modules/dailies/geo/clues";
 import { continentOf } from "../../modules/dailies/geo/continents";
-import { levelOf, placeFromAddress, type GeocodedGuess, type PlaceInfo } from "../../modules/dailies/geo/geocode";
+import { guessPlace, levelOf, placeFromAddress, type GeocodedGuess, type PlaceInfo } from "../../modules/dailies/geo/geocode";
 import { judgeGuess, MAX_PAY, photoMultiplier } from "../../modules/dailies/geo/judge";
 import { mapillaryNear, neighboursOf, panoramaxNear, viewsOf, type Candidate } from "../../modules/dailies/geo/imagery";
 import { fitZoom, project, renderMap } from "../../modules/dailies/geo/map";
@@ -228,6 +228,28 @@ describe("places", () => {
     expect(placeFromAddress({ village: "Mercœur", municipality: "Brioude", state: "Auvergne-Rhône-Alpes", country_code: "fr" }).city).toBe(
       "Mercœur",
     );
+  });
+});
+
+describe("a guess's own town", () => {
+  it("is the place itself when Nominatim files a city under another key, as it does Dubai", () => {
+    // What the place search returned for "Dubai" on 2026-10-16.
+    const dubai = guessPlace({
+      name: "Dubai",
+      addresstype: "administrative",
+      address: {
+        administrative: "Dubai",
+        state: "Dubai Emirate",
+        "ISO3166-2-lvl4": "AE-DU",
+        country: "United Arab Emirates",
+        country_code: "ae",
+      },
+    });
+    expect(dubai).toMatchObject({ city: "Dubai", provinceCode: "AE-DU", countryCode: "AE" });
+    // A country or a province names no town, whatever it's called.
+    expect(guessPlace({ name: "Japan", addresstype: "country", address: { country: "Japan", country_code: "jp" } }).city).toBeUndefined();
+    // An address that does give a town keeps it.
+    expect(guessPlace({ name: "Fushimi-Inari", addresstype: "railway", address: { city: "Kyoto", country_code: "jp" } }).city).toBe("Kyoto");
   });
 });
 
