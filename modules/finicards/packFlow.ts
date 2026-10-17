@@ -5,6 +5,7 @@ import {
   type ButtonInteraction,
   type ChatInputCommandInteraction,
   type Message,
+  type MessageEditAttachmentData,
 } from "discord.js";
 import {
   LEGENDARY_REVEAL_MS,
@@ -84,6 +85,18 @@ export type PackAgain = {
   buy: (press: ButtonInteraction) => Promise<void>;
 };
 
+/**
+ * Files already on a message, to keep on an edit that uploads more. Each goes
+ * by id and file name: Discord matches a screen's `attachment://name` against
+ * the name, and discord.js would send a kept Attachment with it under `name`,
+ * which Discord doesn't read - so a screen that pointed at a kept file while
+ * uploading another was refused.
+ */
+export const keepAttachments = (
+  attachments: Iterable<Attachment>,
+): (MessageEditAttachmentData & { filename: string })[] =>
+  [...attachments].map((attachment) => ({ id: attachment.id, filename: attachment.name }));
+
 export const presentPack = async (
   interaction: ChatInputCommandInteraction | ButtonInteraction,
   input: Omit<PackMessageInput, "reveal" | "again">,
@@ -136,7 +149,7 @@ export const presentPack = async (
         return void (await surface.editReply(layout));
       }
       await surface.acknowledge?.();
-      hold(await surface.editReply({ ...layout, files: missing, attachments: [...held.values()] }));
+      hold(await surface.editReply({ ...layout, files: missing, attachments: keepAttachments(held.values()) }));
     } catch (error) {
       // The message was not carrying what we thought. Send the screen whole.
       console.error("Pack screen sent in full after a failed quick edit", error);
@@ -167,7 +180,7 @@ export const presentPack = async (
           ...opening.files,
           ...drawn.map((media) => new AttachmentBuilder(media.buffer, { name: media.name })),
         ],
-        attachments: [...held.values()],
+        attachments: keepAttachments(held.values()),
       }),
     );
   })().catch((error) => console.error("Couldn't preload a v2 pack's images", error));

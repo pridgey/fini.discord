@@ -98,3 +98,27 @@ describe("collector buttons and the button router", () => {
     expect(isCollectorButton("booster_pack_open:1:2")).toBe(false);
   });
 });
+
+describe("keeping a pack's files on an edit", () => {
+  it("sends each kept file with its file name, so attachment:// can find it", async () => {
+    const { Attachment, AttachmentBuilder, MessagePayload } = await import("discord.js");
+    const { keepAttachments } = await import("../../modules/finicards/packFlow");
+    // The constructor is private in the typings, not at runtime: it is how discord.js builds one from Discord's JSON.
+    const onMessage = new (Attachment as unknown as new (data: object) => import("discord.js").Attachment)({
+      id: "111",
+      filename: "booster-pack.png",
+      size: 1,
+      url: "https://cdn.example/booster-pack.png",
+      proxy_url: "https://media.example/booster-pack.png",
+    });
+
+    // The body discord.js would send for the preload's edit: a kept file and a new one.
+    const payload = new MessagePayload({ client: { options: {} } } as never, {
+      files: [new AttachmentBuilder(Buffer.from(""), { name: "card-1.png" })],
+      attachments: keepAttachments([onMessage]),
+    }).resolveBody();
+    const sent = JSON.parse(JSON.stringify((payload.body as { attachments: unknown[] }).attachments));
+
+    expect(sent).toEqual([{ id: "111", filename: "booster-pack.png" }, { id: "0" }]);
+  });
+});
