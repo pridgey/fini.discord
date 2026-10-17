@@ -140,15 +140,15 @@ client.once("clientReady", async (cl) => {
 
       // Each server's system channel gets the update, its parts in order. A
       // server Fini can't post in is skipped rather than stopping the rest.
-      const parts = splitBigString(fileContents.toString());
+      // The heading is split along with the text, so the first part can't
+      // go over Discord's limit once it's added.
       const heading = `**${new Date().toLocaleDateString()} Update:**\r\n`;
+      const parts = splitBigString(heading + fileContents.toString());
       for (const partial of guilds.values()) {
         try {
           const guild = await partial.fetch();
-          for (const [index, part] of parts.entries()) {
-            await guild.systemChannel?.send(
-              `${index === 0 ? heading : ""}${part}`,
-            );
+          for (const part of parts) {
+            await guild.systemChannel?.send(part);
           }
         } catch (err) {
           console.error(
