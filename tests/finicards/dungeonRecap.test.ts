@@ -67,9 +67,10 @@ describe("damage table", () => {
     expect(damageTable(clash(hinata, robin))).toBe(
       [
         "```",
-        "                   Attack  Defence  Dmg",
-        "Hinata Hyuga       7       6          1",
-        "Sudden Nico Robin  6+3=9   7+2=9      0",
+        "                  │ Attack │ Defence │ Dmg",
+        "──────────────────┼────────┼─────────┼────",
+        "Hinata Hyuga      │ 7      │ 6       │   1",
+        "Sudden Nico Robin │ 6+3=9  │ 7+2=9   │   0",
         "```",
       ].join("\n"),
     );
@@ -78,16 +79,20 @@ describe("damage table", () => {
   it("shows the multiplier, Pierce, and the stat a Feint went for", () => {
     const piercer = card("Naruto", "power", [8, 3, 4], "pierce");
     const feinter = card("Zoro", "heart", [7, 2, 6], "feint");
-    const [, , naruto, zoro] = damageTable(clash(piercer, feinter)).split("\n");
-    expect(naruto).toBe("Naruto  8        7-3=4      4");
-    expect(zoro).toBe("Zoro    6x1.5=9  3 Wit      6");
+    const [, , , naruto, zoro] = damageTable(clash(piercer, feinter)).split(
+      "\n",
+    );
+    expect(naruto).toBe("Naruto │ 8       │ 7-3=4   │   4");
+    expect(zoro).toBe("Zoro   │ 6x1.5=9 │ 3 Wit   │   6");
   });
 
   it("falls back to the total for rounds stored before the parts were", () => {
     const round = clash(hinata, robin);
     const { defense: _gone, ...old } = round.defender;
-    const [, , , stored] = damageTable({ ...round, defender: old }).split("\n");
-    expect(stored).toBe("Sudden Nico Robin  6+3=9   9          0");
+    const [, , , , stored] = damageTable({ ...round, defender: old }).split(
+      "\n",
+    );
+    expect(stored).toBe("Sudden Nico Robin │ 6+3=9  │ 9       │   0");
   });
 
   it("names each card's bonuses under the table, once", () => {

@@ -70,18 +70,18 @@ describe("finicards v2 result without a battle board", () => {
 
   it("shows the working as a table of attack, defence and damage", () => {
     expect(text).toContain("7x1.5=10");
-    expect(text).toMatch(/```\n +Attack +Defence +Dmg\n/);
+    expect(text).toMatch(/```\n +│ Attack +│ Defence +│ Dmg\n─+┼/);
   });
 
-  it("parenthesises negative damage so a scoreline stays readable", () => {
-    expect(text).toContain("(-4)");
+  it("sets the scores apart with vs, so a negative one stays readable", () => {
+    expect(text).toMatch(/· \*{0,2}-?\d+\*{0,2} vs \*{0,2}-4\*{0,2} ·/);
   });
 
-  it("leads each round with who won it and keeps them in one block", () => {
+  it("leads each round with the matchup and keeps them in one block", () => {
     for (const round of result.rounds) {
       expect(text).toContain(`\`R${round.slot}\``);
     }
-    expect(text).toMatch(/Fen \+\d/);
+    expect(text).not.toMatch(/Fen \+\d/);
     expect(
       json.components.filter((c: any) => c.type === SEPARATOR).length,
     ).toBe(2);

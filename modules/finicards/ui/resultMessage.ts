@@ -105,7 +105,8 @@ const fitName = (name: string): string =>
  * Both attacks of a round as a small table: each card's attack, the defence it
  * hit, and the damage that left. Every bonus sits in the cell it changed, so a
  * `Bulwark` shows on the attack it blocked rather than on its own card's swing.
- * A code block, because Discord renders no markdown tables.
+ * A code block, because Discord renders no markdown tables, ruled with
+ * box-drawing lines so the cells read apart.
  */
 export const damageTable = (round: RoundResult): string => {
   const rows = [
@@ -130,9 +131,10 @@ export const damageTable = (round: RoundResult): string => {
           ? cell.padStart(widths[column])
           : cell.padEnd(widths[column]),
       )
-      .join("  ")
-      .trimEnd();
-  return ["```", ...rows.map(line), "```"].join("\n");
+      .join(" │ ");
+  const rule = widths.map((width) => "─".repeat(width)).join("─┼─");
+  const [header, ...body] = rows.map(line);
+  return ["```", header, rule, ...body, "```"].join("\n");
 };
 
 /** `Nico Robin: Giant Slayer +3 · Hinata Hyuga: Bulwark +2 def` - who did what. */
@@ -336,19 +338,12 @@ export const roundBlock = (
 ): string => {
   const { challenger, defender } = round;
 
-  const verdict =
-    round.winner === "draw"
-      ? "**Draw**"
-      : `**${names[round.winner]} +${Math.abs(challenger.damage - defender.damage)}**`;
-
-  // Negative damage is legal and worth seeing, but "4 – -4" is hard to parse.
-  const score = (combat: SideCombat, side: Side) => {
-    const value = combat.damage < 0 ? `(${combat.damage})` : `${combat.damage}`;
-    return round.winner === side ? `**${value}**` : value;
-  };
+  // The winner shows as the bold score; "vs" keeps a negative one readable.
+  const score = (combat: SideCombat, side: Side) =>
+    round.winner === side ? `**${combat.damage}**` : `${combat.damage}`;
 
   return [
-    `\`R${round.slot}\` ${verdict} · ${TYPE_EMOJI[challenger.printedType]} ${challenger.card.name} ${score(challenger, "challenger")} – ${score(defender, "defender")} ${defender.card.name} ${TYPE_EMOJI[defender.printedType]}`,
+    `\`R${round.slot}\` ${TYPE_EMOJI[challenger.printedType]} ${challenger.card.name} · ${score(challenger, "challenger")} vs ${score(defender, "defender")} · ${defender.card.name} ${TYPE_EMOJI[defender.printedType]}`,
     damageTable(round),
     `-# ${[multiplierNote(round, names), bonusNote(round)].filter(Boolean).join(" · ")}`,
     ...round.notes.map((note) => `-# ↳ ${namedNote(note, names)}`),
