@@ -4,9 +4,11 @@ import { runGame } from "../modules/finicoin";
 import { grabGif } from "../utilities/gif";
 import { randomNumber } from "../utilities/randomNumber";
 
-// Game config
-const PrizeMultiplier = 1;
-const winningGifs = [
+/** A win pays the bet back once over. */
+const PRIZE_MULTIPLIER = 1;
+
+/** Shown when the GIF search finds nothing. */
+const WINNING_GIFS = [
   "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExMmIxeW14YWE2eWU0NjFnN3p0cmVzZ2tmenN6ZGU5cmhwYmI1NHo5NiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/fT3PPZwB2lZMk/giphy.gif",
   "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExeWJyamRhdHRqcDFlbGdsOHplNzNza2Q3dDh4ZzZkYm55cHAycmlucyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/ErZ8hv5eO92JW/giphy.gif",
   "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExcTIwNWkzbnU4eGFjaTQ2ZjE2MHNmMGc1YmZzaGkya3cwcjE5ZnIxNiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/JXibbAa7ysN9K/giphy.gif",
@@ -18,7 +20,7 @@ const winningGifs = [
   "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXkxampsamhtMG82ano0M3h5OXMyb240MGRqaTQybmYxejAweW40YiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3NnnS6Q8hVPZC/giphy.gif",
   "https://media3.giphy.com/media/v1.Y2lkPTc5MGI3NjExcG12ZDZld2hkam92NjFqNXI3dG9vdHBkeG4yOW9lNXdkbHlnZ2V2NyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/INlJUYclnafdu/giphy.gif",
 ];
-const losingGifs = [
+const LOSING_GIFS = [
   "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExNms1Z292NWpydDk3cHV6dXNuanppZGRncXhleWJldmJiNHdjdnhjZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0Iy33dWjmywkCnNS/giphy.gif",
   "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExd3RhZTFqMW1xeG42aXBkOTVpbnRvZnIxaHFjcXczc2ZvZDgxdHpocCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/4QxQgWZHbeYwM/giphy.gif",
   "https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNWN5NmlncHd0ZWY5MDB6bzhiY2ZqOWExdzVtZ2Q4M2x5aDJ5c2VubCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Y4z9olnoVl5QI/giphy.gif",
@@ -60,13 +62,14 @@ export const data = new SlashCommandBuilder()
       ]),
   );
 
+const pickOne = (gifs: string[]) =>
+  gifs[randomNumber(0, gifs.length - 1, true)];
+
 export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const bet = Math.abs(
-    parseFloat(interaction?.options?.get("bet")?.value?.toString() || "") || 0,
-  );
+  const bet = Math.abs(interaction.options.getNumber("bet") ?? 0);
   const option = interaction.options.getString("option") || "Even";
 
   if (bet < 0.1) {
@@ -74,7 +77,6 @@ export const execute = async (
     return;
   }
 
-  // Call runGame() to run pre-game checks
   const { rewardWager, userBalance, userHasFunds } = await runGame(
     interaction.user.id,
     interaction.guildId || "unknown guild id",
@@ -84,71 +86,64 @@ export const execute = async (
   );
 
   if (!userHasFunds) {
-    // User doesn't have the funds, let them know
-    interaction.reply(
+    await interaction.reply(
       `You do not have enough Finicoin to complete this transaction\n**Current Balance:** ${userBalance.toLocaleString()}\n**Your Wager:** ${bet.toLocaleString()}`,
     );
-  } else {
-    try {
-      // The user has the appropriate funds. Play the game
-      const randomNum = randomNumber(0, 9, true);
-      const outcome = randomNum % 2 === 0 ? "Even" : "Odd";
-      const userHasWon = outcome === option;
-      let gif = await grabGif(
-        `waifu ${userHasWon ? "winner" : "failure"}`,
-        "giphy",
-      );
+    return;
+  }
 
-      // If the gif call fails, use a fallback gif url
-      if (!gif) {
-        const randomIndex = randomNumber(0, 9, true);
-        gif = userHasWon ? winningGifs[randomIndex] : losingGifs[randomIndex];
-      }
+  // The GIF search can take longer than Discord waits for a first answer.
+  await interaction.deferReply();
 
-      // Run postgame
-      await rewardWager(userHasWon, PrizeMultiplier);
+  const outcome = randomNumber(0, 9, true) % 2 === 0 ? "Even" : "Odd";
+  const userHasWon = outcome === option;
+  let settled = false;
 
-      // Build Result Embed
-      const resultEmbed = new EmbedBuilder({
-        color: 0xffea00,
-        title: "Even / Odd",
-        description: userHasWon
-          ? `${outcome} === ${outcome}`
-          : `${outcome} != ${option}`,
-        image: {
-          url: gif,
-        },
-        fields: [
-          {
-            name: "Your Bet",
-            value: bet.toLocaleString(),
-            inline: true,
+  try {
+    // Settle the bet before anything that only decorates the result.
+    await rewardWager(userHasWon, PRIZE_MULTIPLIER);
+    settled = true;
+
+    const gif =
+      (await grabGif(`waifu ${userHasWon ? "winner" : "failure"}`, "giphy")) ||
+      pickOne(userHasWon ? WINNING_GIFS : LOSING_GIFS);
+
+    await interaction.editReply({
+      embeds: [
+        new EmbedBuilder({
+          color: 0xffea00,
+          title: "Even / Odd",
+          description: userHasWon
+            ? `${outcome} === ${outcome}`
+            : `${outcome} != ${option}`,
+          image: { url: gif },
+          fields: [
+            { name: "Your Bet", value: bet.toLocaleString(), inline: true },
+            {
+              name: "Your Winnings",
+              value: userHasWon ? bet.toLocaleString() : "0",
+              inline: true,
+            },
+          ],
+          footer: {
+            text: `New Balance: ${(userHasWon
+              ? userBalance + bet
+              : userBalance - bet
+            ).toLocaleString()}`,
           },
-          {
-            name: "Your Winnings",
-            value: userHasWon ? bet.toLocaleString() : "0",
-            inline: true,
-          },
-        ],
-        footer: {
-          text: `New Balance: ${(userHasWon
-            ? userBalance + bet
-            : userBalance - bet
-          ).toLocaleString()}`,
-        },
-      });
-
-      // Reply
-      await interaction.reply({
-        embeds: [resultEmbed],
-      });
-    } catch (err) {
-      // An issue with the game
-      await interaction.reply(
-        "An error occurred during running the game. Your finicoin has been refunded.",
-      );
-    } finally {
-      logCommand();
-    }
+        }),
+      ],
+    });
+  } catch (err) {
+    console.error("Error running /evenodd:", err);
+    await interaction
+      .editReply(
+        settled
+          ? `Something went wrong showing the result, but your bet is settled: it was ${outcome}, so you ${userHasWon ? `won ${bet.toLocaleString()}` : `lost ${bet.toLocaleString()}`} finicoin.`
+          : "Something went wrong before your bet was settled, so no finicoin changed hands.",
+      )
+      .catch(() => undefined);
+  } finally {
+    logCommand();
   }
 };
