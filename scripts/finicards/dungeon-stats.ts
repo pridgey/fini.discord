@@ -25,7 +25,7 @@ const runs = await pb
   .collection<V2DungeonRunRecord>(V2_DUNGEON_RUN)
   .getFullList({
     ...(server
-      ? { filter: `server_id = "${server.replace(/["\\]/g, "")}"` }
+      ? { filter: pb.filter("server_id = {:server_id}", { server_id: server }) }
       : {}),
     sort: "created",
   });

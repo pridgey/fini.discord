@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 import { mockConsole, restoreConsole } from "../mocks/console.mock";
+import PocketBase from "pocketbase";
 
 /**
  * The shared page renderer, exercised through the `help_commands` query - the
@@ -47,6 +48,7 @@ const buildRow = ((args: RowArgs) => {
 
 mock.module("../../utilities/pocketbase", () => ({
   pb: {
+    filter: PocketBase.prototype.filter,
     collection: () => ({
       getOne: async () => {
         if (!storedContext) throw new Error("not found");

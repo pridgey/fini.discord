@@ -8,6 +8,7 @@ import {
 import { BINDER_PAGE_SIZE } from "./cardArt";
 import { DECK_SIZE, loadDeck } from "./decks";
 import { compositionString } from "./ui/theme";
+import { pb } from "../../utilities/pocketbase";
 
 /**
  * A set of a player's cards as pages - the list, or the binder - with
@@ -82,6 +83,24 @@ export const buildCardPages = async (input: CardPagesInput) => {
  * the deck. Null when none of its cards are still owned - there is nothing to
  * page through, and the caller says so.
  */
+/** The deck's own cards in the owner's collection, by copy id. */
+const deckFilter = (
+  deck: V2DeckRecord,
+  cards: { instanceId: string }[],
+): string => {
+  const ids = Object.fromEntries(
+    cards.map((card, i) => [`id${i}`, card.instanceId]),
+  );
+  const anyId = Object.keys(ids)
+    .map((name) => `id = {:${name}}`)
+    .join(" || ");
+  return pb.filter(`user_id = {:user} && server_id = {:server} && (${anyId})`, {
+    user: deck.user_id,
+    server: deck.server_id,
+    ...ids,
+  });
+};
+
 export const buildDeckPages = async (
   deck: V2DeckRecord,
   input: { viewerId: string; binder: boolean },
@@ -106,8 +125,6 @@ export const buildDeckPages = async (
     heading: `Deck: ${deck.name} — ${contents.cards.length} cards ${compositionString(composition)}${
       notes.length > 0 ? ` · ⚠️ ${notes.join(", ")}` : ""
     }`,
-    filter: `user_id = "${deck.user_id}" && server_id = "${deck.server_id}" && (${contents.cards
-      .map((card) => `id = "${card.instanceId}"`)
-      .join(" || ")})`,
+    filter: deckFilter(deck, contents.cards),
   });
 };

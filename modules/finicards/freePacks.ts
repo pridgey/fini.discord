@@ -97,16 +97,16 @@ export const planFreePacks = (
   return { packs, unplaced };
 };
 
-const filterSafe = (value: string): string =>
-  (value ?? "").replace(/["\\]/g, "\\$&");
-
 /** A player's free packs still to open on a server, oldest first. */
 export const getUnopenedFreePacks = async (
   userId: string,
   serverId: string,
 ): Promise<V2FreePackRecord[]> =>
   pb.collection<V2FreePackRecord>(V2_FREE_PACK).getFullList({
-    filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}" && opened = false`,
+    filter: pb.filter(
+      "user_id = {:user_id} && server_id = {:server_id} && opened = false",
+      { user_id: userId, server_id: serverId },
+    ),
     sort: "created",
     requestKey: null,
   });
@@ -130,7 +130,10 @@ export const passOnSpecial = async (
 ): Promise<boolean> => {
   const open = (
     await pb.collection<V2FreePackRecord>(V2_FREE_PACK).getFullList({
-      filter: `server_id = "${filterSafe(serverId)}" && opened = false && special = ""`,
+      filter: pb.filter(
+        'server_id = {:server_id} && opened = false && special = ""',
+        { server_id: serverId },
+      ),
       requestKey: null,
     })
   ).filter((pack) => pack.user_id !== exclude);

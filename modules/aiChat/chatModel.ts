@@ -35,7 +35,12 @@ export const getUserChatModel = async (
 ): Promise<ChatModel> => {
   const record = await pb
     .collection<ChatConfigRecord>("chat_config")
-    .getFirstListItem(`user_id = "${userID}" && server_id = "${serverID}"`)
+    .getFirstListItem(
+      pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: userID,
+        server_id: serverID,
+      }),
+    )
     .catch(() => null);
 
   return isChatModel(record?.model) ? record.model : DEFAULT_CHAT_MODEL;
@@ -57,7 +62,12 @@ export const setUserChatModel = async (
 ) => {
   const existingRecord = await pb
     .collection<ChatConfigRecord>("chat_config")
-    .getFirstListItem(`user_id = "${userID}" && server_id = "${serverID}"`)
+    .getFirstListItem(
+      pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: userID,
+        server_id: serverID,
+      }),
+    )
     .catch(() => null);
 
   if (existingRecord?.id) {

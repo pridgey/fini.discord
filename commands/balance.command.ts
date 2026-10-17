@@ -32,9 +32,10 @@ export const execute = async (
       const usersCurrentEarnings = await pb
         .collection<MessageRewardStats>("message_reward_stats")
         .getFullList({
-          filter: `user_id = "${interaction.user.id}" && server_id = "${
-            interaction.guildId ?? "unknown guild id"
-          }"`,
+          filter: pb.filter("user_id = {:user} && server_id = {:server}", {
+            user: interaction.user.id,
+            server: interaction.guildId ?? "unknown guild id",
+          }),
         });
 
       await interaction.reply(

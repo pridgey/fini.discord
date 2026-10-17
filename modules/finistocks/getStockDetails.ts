@@ -7,7 +7,7 @@ import { pb } from "../../utilities/pocketbase";
 export const getStockDetails = async (aniStockId: string) => {
   const response = await pb
     .collection<AniStock_Stock>("anistock_stock")
-    .getFirstListItem(`anime = "${aniStockId}"`, {
+    .getFirstListItem(pb.filter("anime = {:anime}", { anime: aniStockId }), {
       sort: "-created",
     });
 

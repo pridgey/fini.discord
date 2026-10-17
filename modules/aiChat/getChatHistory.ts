@@ -15,7 +15,10 @@ export const getChatHistory = async (
 ) => {
   // Grab the user history
   const userHistory = await pb.collection<ChatRecord>("chat").getFullList({
-    filter: `user_id = "${userID}" && server_id = "${guildID}" && chatType = "${chatType}"`,
+    filter: pb.filter(
+      "user_id = {:user_id} && server_id = {:server_id} && chatType = {:chatType}",
+      { user_id: userID, server_id: guildID, chatType },
+    ),
     sort: "created",
   });
 

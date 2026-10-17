@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import PocketBase from "pocketbase";
 
 // Mock pocketbase
 const mockGetFirstListItem = mock((_query?: string) =>
@@ -10,6 +11,7 @@ const mockCollection = mock(() => ({
 
 mock.module("../../utilities/pocketbase", () => ({
   pb: {
+    filter: PocketBase.prototype.filter,
     collection: mockCollection,
   },
 }));
@@ -194,7 +196,7 @@ describe("jackpot command", () => {
       await execute(mockInteraction, mockLogCommand);
 
       expect(mockGetFirstListItem).toHaveBeenCalledWith(
-        'user_id = "Jackpot" && server_id = "null"',
+        'user_id = "Jackpot" && server_id = null',
       );
     });
 
@@ -205,7 +207,7 @@ describe("jackpot command", () => {
       await execute(mockInteraction, mockLogCommand);
 
       expect(mockGetFirstListItem).toHaveBeenCalledWith(
-        'user_id = "Jackpot" && server_id = "undefined"',
+        'user_id = "Jackpot" && server_id = null',
       );
     });
   });

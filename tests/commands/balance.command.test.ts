@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import PocketBase from "pocketbase";
 
 // Mock finicoin module
 const mockGetUserBalance = mock((): Promise<number | null | undefined> =>
@@ -17,6 +18,7 @@ const mockCollection = mock(() => ({
 mock.module("../../utilities/pocketbase", () => ({
   pb: {
     collection: mockCollection,
+    filter: PocketBase.prototype.filter,
   },
 }));
 

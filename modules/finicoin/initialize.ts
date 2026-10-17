@@ -15,7 +15,9 @@ export const initializeServerBank = async (
   const bankQueryResponse = await pb
     .collection<BankRecord>("bank")
     .getFullList({
-      filter: `server_id = "${serverId}" && user_id = "Reserve"`,
+      filter: pb.filter('server_id = {:server_id} && user_id = "Reserve"', {
+        server_id: serverId,
+      }),
     });
 
   const bankReserveRecord = bankQueryResponse?.[0];
@@ -34,7 +36,9 @@ export const initializeServerBank = async (
   const jackpotQueryResponse = await pb
     .collection<BankRecord>("bank")
     .getFullList({
-      filter: `server_id = "${serverId}" && user_id = "Jackpot"`,
+      filter: pb.filter('server_id = {:server_id} && user_id = "Jackpot"', {
+        server_id: serverId,
+      }),
     });
 
   const jackpotRecord = jackpotQueryResponse?.[0];

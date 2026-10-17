@@ -8,6 +8,7 @@ import {
   createPaginationContext,
   createPaginationRow,
 } from "../utilities/pagination/pagination";
+import { pb } from "../utilities/pocketbase";
 
 export const data = new SlashCommandBuilder()
   .setName("anistock")
@@ -147,7 +148,11 @@ export const execute = async (
           userId: interaction.user.id,
           queryId: query.id,
           perPage: 1,
-          filter: `user_id = "u${interaction.user.id}" && server_id = "s${interaction.guildId}"`,
+          // Holdings store their ids with a u / s prefix.
+          filter: pb.filter("user_id = {:user} && server_id = {:server}", {
+            user: `u${interaction.user.id}`,
+            server: `s${interaction.guildId}`,
+          }),
         });
 
         const paginationRow = createPaginationRow({

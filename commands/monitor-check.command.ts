@@ -96,7 +96,9 @@ export const execute = async (
       const response = await pb
         .collection<MonitorRecord>("monitoring")
         .getFullList({
-          filter: `server_id = "All" || server_id = "${interaction.guildId}"`,
+          filter: pb.filter('server_id = "All" || server_id = {:server_id}', {
+            server_id: interaction.guildId,
+          }),
         });
 
       if (response.length === 0) {

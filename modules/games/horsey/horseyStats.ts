@@ -27,7 +27,9 @@ export const recordRaceResult = async (
   try {
     const existing = await pb
       .collection<HorseyStatsRecord>("horsey_stats")
-      .getFullList({ filter: `server_id = "${serverId}"` });
+      .getFullList({
+        filter: pb.filter("server_id = {:server_id}", { server_id: serverId }),
+      });
 
     for (let horse = 1; horse <= HORSE_COUNT; horse++) {
       const record = existing.find((row) => row.horse === horse);
@@ -66,7 +68,9 @@ export const getHorseyStats = async (
   try {
     const rows = await pb
       .collection<HorseyStatsRecord>("horsey_stats")
-      .getFullList({ filter: `server_id = "${serverId}"` });
+      .getFullList({
+        filter: pb.filter("server_id = {:server_id}", { server_id: serverId }),
+      });
 
     return rows.sort((a, b) => a.horse - b.horse);
   } catch (err) {

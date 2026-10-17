@@ -94,7 +94,7 @@ export async function deleteExpiredPaginationContexts(): Promise<void> {
     const expiredContexts = await pb
       .collection<PaginationContext>("pagination_context")
       .getList(1, 100, {
-        filter: `updated < "${expirationTime}"`,
+        filter: pb.filter("updated < {:updated}", { updated: expirationTime }),
         requestKey: "get-expired-contexts",
       });
 

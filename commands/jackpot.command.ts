@@ -38,11 +38,11 @@ export const execute = async (
       return;
     }
 
-    const bankRecord = await pb
-      .collection<BankRecord>("bank")
-      .getFirstListItem(
-        `user_id = "Jackpot" && server_id = "${interaction.guildId}"`,
-      );
+    const bankRecord = await pb.collection<BankRecord>("bank").getFirstListItem(
+      pb.filter('user_id = "Jackpot" && server_id = {:server_id}', {
+        server_id: interaction.guildId,
+      }),
+    );
 
     if (
       !!bankRecord &&
@@ -90,7 +90,9 @@ export const execute = async (
 const showJackpotHistory = async (interaction: ChatInputCommandInteraction) => {
   await interaction.deferReply();
 
-  const queryFilter = `server_id = "${interaction.guildId}"`;
+  const queryFilter = pb.filter("server_id = {:server_id}", {
+    server_id: interaction.guildId,
+  });
 
   const historyQuery = QueryHandler("jackpot_history");
   const queryResults = await historyQuery.query({

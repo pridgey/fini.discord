@@ -113,7 +113,9 @@ const resolveGuildName = async (guildId: string): Promise<string> => {
 /** Recovers wins from the `log` table. This is the pass that carries amounts. */
 const backfillFromLog = async () => {
   const filter = guildFilter
-    ? `command = "jackpot" && server_id = "${guildFilter}"`
+    ? pb.filter('command = "jackpot" && server_id = {:server_id}', {
+        server_id: guildFilter,
+      })
     : `command = "jackpot"`;
 
   const logs = await pb

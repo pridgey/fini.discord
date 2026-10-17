@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
+import PocketBase from "pocketbase";
 
 const mockCreate = mock((data?: any) =>
   Promise.resolve({ id: "rec1", ...data }),
@@ -12,7 +13,7 @@ const mockCollection = mock(() => ({
 }));
 
 mock.module("../../utilities/pocketbase", () => ({
-  pb: { collection: mockCollection },
+  pb: { collection: mockCollection, filter: PocketBase.prototype.filter },
 }));
 
 const { recordJackpotWin, findJackpotWin } =

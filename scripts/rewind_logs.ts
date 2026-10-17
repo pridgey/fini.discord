@@ -40,9 +40,10 @@ const getData = async () => {
   console.log(`Running for ${YEAR} and server ${SERVER_CHOICE}...`);
 
   const data = await pb.collection<LogRecord>("log").getFullList({
-    filter: `created > ${YEAR - 1} && created < ${
-      YEAR + 1
-    } && server_id = "${SERVER}"`,
+    filter: pb.filter(
+      "created > {:after} && created < {:before} && server_id = {:server}",
+      { after: YEAR - 1, before: YEAR + 1, server: SERVER },
+    ),
   });
 
   console.log(`Query returned ${data.length} records.`);

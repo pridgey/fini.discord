@@ -66,7 +66,7 @@ const loadCard = async (): Promise<{
   const definition = await pb
     .collection<V2CardDefinitionRecord>("v2_card_definition")
     .getFirstListItem(
-      `card_name ~ "${wanted.replace(/"/g, "")}" && rarity = "full_art"`,
+      pb.filter('card_name ~ {:wanted} && rarity = "full_art"', { wanted }),
     );
 
   // A card's own artwork file wins over a linked image, as it does in the game.

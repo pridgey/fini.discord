@@ -155,7 +155,7 @@ const fromFile = (file: string, fallback: CardRarity): Subject => {
 const fromPool = async (set?: number): Promise<Subject[]> => {
   const legacy = await pb
     .collection<CardDefinitionRecord>("card_definition")
-    .getFullList(set ? { filter: `set = ${set}` } : {});
+    .getFullList(set ? { filter: pb.filter("set = {:set}", { set }) } : {});
   const definitions = await pb
     .collection<V2CardDefinitionRecord>("v2_card_definition")
     .getFullList();

@@ -13,7 +13,9 @@ export const execute = async (
 ) => {
   try {
     const allBalances = await pb.collection<BankRecord>("bank").getFullList({
-      filter: `server_id = "${interaction.guildId}"`,
+      filter: pb.filter("server_id = {:server_id}", {
+        server_id: interaction.guildId,
+      }),
       sort: "-balance",
     });
 

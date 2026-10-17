@@ -37,15 +37,15 @@ export const DECK_SIZE = 20;
 export const MAX_DECKS_PER_USER = 10;
 export const MAX_DECK_NAME_LENGTH = 32;
 
-const filterSafe = (value: string): string =>
-  (value ?? "").replace(/["\\]/g, "\\$&");
-
 export const getDecks = async (
   userId: string,
   serverId: string,
 ): Promise<V2DeckRecord[]> =>
   pb.collection<V2DeckRecord>(V2_DECK).getFullList({
-    filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}"`,
+    filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+      user_id: userId,
+      server_id: serverId,
+    }),
     sort: "name",
   });
 

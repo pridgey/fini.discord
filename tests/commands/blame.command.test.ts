@@ -1,8 +1,10 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import PocketBase from "pocketbase";
 
 // Mock pocketbase - needs to be done before importing command
 let mockGetFirstListItem = mock(() => Promise.resolve(null as any));
 let mockPb = {
+  filter: PocketBase.prototype.filter,
   collection: mock(() => ({
     getFirstListItem: mockGetFirstListItem,
   })),
@@ -240,7 +242,7 @@ describe("blame command", () => {
       await execute(mockInteraction, mockLogCommand);
 
       expect(mockGetFirstListItem).toHaveBeenCalledWith(
-        'item = "item" && (server_id = "All" || server_id = "null")',
+        'item = "item" && (server_id = "All" || server_id = null)',
       );
     });
 
@@ -308,15 +310,18 @@ describe("blame command", () => {
   });
 
   describe("Special characters in item names", () => {
-    it("should handle items with quotes", async () => {
-      mockInteraction.options.get = mock(() => ({
-        value: 'item with "quotes"',
-      }));
+    it("should keep quotes in an item name inside the search", async () => {
+      const typed = 'x" || item != "';
+      mockInteraction.options.get = mock(() => ({ value: typed }));
       mockGetFirstListItem.mockResolvedValueOnce(null);
 
       await execute(mockInteraction, mockLogCommand);
 
-      expect(mockGetFirstListItem).toHaveBeenCalled();
+      // Escaped into one string, so it can't widen the search to other items.
+      const filter = String(
+        (mockGetFirstListItem.mock.calls[0] as unknown[])[0],
+      );
+      expect(filter).toStartWith(`item = ${JSON.stringify(typed)} && (`);
     });
 
     it("should handle items with special characters", async () => {

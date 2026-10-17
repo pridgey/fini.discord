@@ -58,7 +58,7 @@ export const queryAnime = async (
         const animeByMalId = await pb
           .collection<AniStock_Detail>("anistock_details")
           .getList(page, perPage, {
-            filter: `mal_id = ${Number(query)}`,
+            filter: pb.filter("mal_id = {:mal_id}", { mal_id: Number(query) }),
           });
 
         if (animeByMalId.items.length > 0) {

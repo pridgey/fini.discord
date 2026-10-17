@@ -432,9 +432,12 @@ async function upsertAnimeAndUpdateStock(
     // Check if anime already exists
     const existing = await pb
       .collection<AnimeRecord>("anistock_anime")
-      .getFirstListItem(`mal_id = ${apiData.mal_id}`, {
-        requestKey: `fetch-${apiData.mal_id}`,
-      })
+      .getFirstListItem(
+        pb.filter("mal_id = {:mal_id}", { mal_id: apiData.mal_id }),
+        {
+          requestKey: `fetch-${apiData.mal_id}`,
+        },
+      )
       .catch(() => null);
 
     let animeRecord: AnimeRecord;
@@ -555,10 +558,13 @@ async function createStockEntry(
     // Get the most recent stock entry
     const latestStock = await pb
       .collection<AnimeStockRecord>("anistock_stock")
-      .getFirstListItem(`anime = "${animeRecord.id}"`, {
-        sort: "-created",
-        requestKey: `latest-stock-${animeRecord.mal_id}`,
-      })
+      .getFirstListItem(
+        pb.filter("anime = {:anime}", { anime: animeRecord.id }),
+        {
+          sort: "-created",
+          requestKey: `latest-stock-${animeRecord.mal_id}`,
+        },
+      )
       .catch(() => null);
 
     // Only create a new entry if price has changed (or this is the first entry)

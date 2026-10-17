@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import PocketBase from "pocketbase";
 
 // Mock pocketbase
 const mockGetFullList = mock((_options?: any) => Promise.resolve([] as any[]));
@@ -8,6 +9,7 @@ const mockCollection = mock(() => ({
 
 mock.module("../../utilities/pocketbase", () => ({
   pb: {
+    filter: PocketBase.prototype.filter,
     collection: mockCollection,
   },
 }));
@@ -278,7 +280,7 @@ describe("richlist command", () => {
       await execute(mockInteraction, mockLogCommand);
 
       expect(mockGetFullList).toHaveBeenCalledWith({
-        filter: 'server_id = "null"',
+        filter: "server_id = null",
         sort: "-balance",
       });
     });

@@ -39,7 +39,10 @@ export const showCollection = async (
     return;
   }
 
-  const owner = `user_id = "${target.id}" && server_id = "${serverId}"`;
+  const owner = pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+    user_id: target.id,
+    server_id: serverId,
+  });
   const asked = buildCollectionQuery({
     sort: interaction.options.getString("sort") as CollectionSort | null,
     type: interaction.options.getString("type") as CardType | null,

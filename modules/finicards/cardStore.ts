@@ -20,10 +20,6 @@ export const V2_CARD_DEFINITION = "v2_card_definition";
 export const V2_USER_CARD = "v2_user_card";
 export const V2_BATTLE = "v2_battle";
 
-/** Escapes a value for a Pocketbase filter string. */
-const filterSafe = (value: string): string =>
-  (value ?? "").replace(/["\\]/g, "\\$&");
-
 export const getCardDefinitions = async (options?: {
   includeInactive?: boolean;
 }): Promise<V2CardDefinitionRecord[]> =>
@@ -92,7 +88,9 @@ export const getPopulationCounts = async (
 ): Promise<Map<string, number>> => {
   const owned = await pb
     .collection<V2UserCardRecord>(V2_USER_CARD)
-    .getFullList({ filter: `server_id = "${filterSafe(serverId)}"` });
+    .getFullList({
+      filter: pb.filter("server_id = {:server_id}", { server_id: serverId }),
+    });
 
   const counts = new Map<string, number>();
   for (const card of owned) {
@@ -111,7 +109,10 @@ export const ownedDefinitionIds = async (
   const owned = await pb
     .collection<V2UserCardRecord>(V2_USER_CARD)
     .getFullList({
-      filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}"`,
+      filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: userId,
+        server_id: serverId,
+      }),
       fields: "card",
       requestKey: null,
     });
@@ -128,7 +129,9 @@ export const getLegendaryHolders = async (
   const owned = await pb
     .collection<V2UserCardRecord>(V2_USER_CARD)
     .getFullList({
-      filter: `server_id = "${filterSafe(serverId)}" && legendary != ""`,
+      filter: pb.filter('server_id = {:server_id} && legendary != ""', {
+        server_id: serverId,
+      }),
       fields: "card,legendary",
       requestKey: null,
     });
@@ -148,7 +151,10 @@ export const getUserCollection = async (
   const owned = await pb
     .collection<V2UserCardRecord>(V2_USER_CARD)
     .getFullList({
-      filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}"`,
+      filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: userId,
+        server_id: serverId,
+      }),
       sort: "-created",
       expand: "card",
       // Practice loads two decks at once; the SDK would auto-cancel the first.
@@ -348,7 +354,10 @@ export const grantCard = async (
   const siblings = await pb
     .collection<V2UserCardRecord>(V2_USER_CARD)
     .getFullList({
-      filter: `server_id = "${filterSafe(input.serverId)}" && card = "${filterSafe(input.definitionId)}"`,
+      filter: pb.filter("server_id = {:server_id} && card = {:card}", {
+        server_id: input.serverId,
+        card: input.definitionId,
+      }),
       fields: "serial,legendary",
       requestKey: null,
     });

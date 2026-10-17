@@ -48,9 +48,6 @@ import type { BattleCard } from "./types";
 
 export const V2_DUNGEON_RUN = "v2_dungeon_run";
 
-const filterSafe = (value: string): string =>
-  (value ?? "").replace(/["\\]/g, "\\$&");
-
 export const getRun = async (
   runId: string,
 ): Promise<V2DungeonRunRecord | null> => {
@@ -96,7 +93,10 @@ export const getActiveRun = async (
   const runs = await pb
     .collection<V2DungeonRunRecord>(V2_DUNGEON_RUN)
     .getFullList({
-      filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}" && state = "active"`,
+      filter: pb.filter(
+        'user_id = {:user_id} && server_id = {:server_id} && state = "active"',
+        { user_id: userId, server_id: serverId },
+      ),
       sort: "-created",
     });
 

@@ -61,7 +61,10 @@ export const addCoin = async (
   try {
     // Check if record exists
     const bankResponse = await pb.collection<BankRecord>("bank").getFullList({
-      filter: `user_id = "${userID}" && server_id = "${guildID}"`,
+      filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: userID,
+        server_id: guildID,
+      }),
     });
 
     let bankRecord = bankResponse?.[0];
@@ -82,7 +85,10 @@ export const addCoin = async (
 
     // Ensure source account has the balance to transfer
     const sourceResponse = await pb.collection<BankRecord>("bank").getFullList({
-      filter: `user_id = "${fromUserID}" && server_id = "${guildID}"`,
+      filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: fromUserID,
+        server_id: guildID,
+      }),
     });
 
     const sourceRecord = sourceResponse?.[0];
@@ -131,9 +137,12 @@ export const addCoin = async (
  */
 export const getUserBalance = async (userID: string, guildID: string) => {
   try {
-    const bankRecord = await pb
-      .collection<BankRecord>("bank")
-      .getFirstListItem(`user_id = "${userID}" && server_id = "${guildID}"`);
+    const bankRecord = await pb.collection<BankRecord>("bank").getFirstListItem(
+      pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: userID,
+        server_id: guildID,
+      }),
+    );
 
     return parseFloat(bankRecord.balance.toFixed(2) || "0");
   } catch (err) {

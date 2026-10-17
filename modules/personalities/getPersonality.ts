@@ -71,7 +71,10 @@ export const getAllPersonalitiesForUser = async ({
   const retrievedPersonalities = await pb
     .collection<PersonalitiesRecord>("personalities")
     .getFullList({
-      filter: `user_id = "${userId}" && server_id = "${serverId}"`,
+      filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: userId,
+        server_id: serverId,
+      }),
     });
 
   return retrievedPersonalities;

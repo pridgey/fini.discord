@@ -32,7 +32,10 @@ export const execute = async (
     const response = await pb
       .collection<HammerspaceRecord>("hammerspace")
       .getFirstListItem(
-        `item = "${hammerspaceItem}" && (server_id = "All" || server_id = "${interaction.guildId}")`,
+        pb.filter(
+          'item = {:item} && (server_id = "All" || server_id = {:server_id})',
+          { item: hammerspaceItem, server_id: interaction.guildId },
+        ),
       );
 
     if (response) {

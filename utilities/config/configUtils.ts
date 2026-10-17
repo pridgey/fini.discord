@@ -9,7 +9,9 @@ export const getConfigForServer = async (
 ): Promise<ConfigRecord | null> => {
   const configRecord = await pb
     .collection<ConfigRecord>("config")
-    .getFirstListItem(`server_id = "${serverId}"`)
+    .getFirstListItem(
+      pb.filter("server_id = {:server_id}", { server_id: serverId }),
+    )
     .catch(() => null);
 
   return configRecord;

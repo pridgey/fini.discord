@@ -59,7 +59,10 @@ export const findSellable = async (
   const owned = await pb
     .collection<V2UserCardRecord>(V2_USER_CARD)
     .getFullList({
-      filter: `user_id = "${userId.replace(/["\\]/g, "")}" && server_id = "${serverId.replace(/["\\]/g, "")}" && id ~ "${needle}"`,
+      filter: pb.filter(
+        "user_id = {:user_id} && server_id = {:server_id} && id ~ {:id}",
+        { user_id: userId, server_id: serverId, id: needle },
+      ),
       requestKey: null,
     });
   const matches = owned.filter((copy) => (copy.id ?? "").startsWith(needle));
@@ -85,7 +88,10 @@ export const removeFromDecks = async (
   copyId: string,
 ): Promise<number> => {
   const decks = await pb.collection<V2DeckRecord>(V2_DECK).getFullList({
-    filter: `user_id = "${userId.replace(/["\\]/g, "")}" && server_id = "${serverId.replace(/["\\]/g, "")}"`,
+    filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+      user_id: userId,
+      server_id: serverId,
+    }),
     requestKey: null,
   });
   let changed = 0;

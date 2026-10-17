@@ -54,7 +54,10 @@ export const rewardCoin = async (message: Message) => {
   const messageRewardResponse = await pb
     .collection<MessageRewardStats>("message_reward_stats")
     .getFullList({
-      filter: `user_id = "${userId}" && server_id = "${serverId}"`,
+      filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {
+        user_id: userId,
+        server_id: serverId,
+      }),
     });
 
   let userChat = messageRewardResponse?.[0];

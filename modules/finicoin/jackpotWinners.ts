@@ -67,7 +67,14 @@ export const findJackpotWin = async (
     return await pb
       .collection<JackpotWinnerRecord>("jackpot_winners")
       .getFirstListItem(
-        `server_id = "${serverId}" && user_id = "${userId}" && won_at = "${toPocketbaseDate(wonAt)}"`,
+        pb.filter(
+          "server_id = {:server_id} && user_id = {:user_id} && won_at = {:won_at}",
+          {
+            server_id: serverId,
+            user_id: userId,
+            won_at: toPocketbaseDate(wonAt),
+          },
+        ),
         { requestKey: null },
       );
   } catch {

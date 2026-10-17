@@ -41,9 +41,6 @@ import type { MatchResult, Side } from "./types";
  * the store stays a pure persistence boundary.
  */
 
-const filterSafe = (value: string): string =>
-  (value ?? "").replace(/["\\]/g, "\\$&");
-
 export type CreateChallengeInput = {
   serverId: string;
   channelId: string;
@@ -367,11 +364,11 @@ export const getPendingBattlesForUser = async (
   userId: string,
   serverId: string,
 ): Promise<V2BattleRecord[]> => {
-  const safeUser = filterSafe(userId);
-  const safeServer = filterSafe(serverId);
-
   const open = await pb.collection<V2BattleRecord>(V2_BATTLE).getFullList({
-    filter: `server_id = "${safeServer}" && (state = "awaiting_defender" || state = "awaiting_lineups") && (challenger_id = "${safeUser}" || defender_id = "${safeUser}")`,
+    filter: pb.filter(
+      'server_id = {:server} && (state = "awaiting_defender" || state = "awaiting_lineups") && (challenger_id = {:user} || defender_id = {:user})',
+      { server: serverId, user: userId },
+    ),
     sort: "-created",
   });
 
@@ -399,7 +396,10 @@ export const findStaleBattles = async (
     .replace("T", " ");
 
   return pb.collection<V2BattleRecord>(V2_BATTLE).getFullList({
-    filter: `(state = "awaiting_defender" || state = "awaiting_lineups") && created < "${cutoff}"`,
+    filter: pb.filter(
+      '(state = "awaiting_defender" || state = "awaiting_lineups") && created < {:created}',
+      { created: cutoff },
+    ),
     sort: "created",
   });
 };
@@ -415,11 +415,11 @@ export const getBattleRecordForUser = async (
   userId: string,
   serverId: string,
 ): Promise<{ wins: number; losses: number; draws: number }> => {
-  const safeUser = filterSafe(userId);
-  const safeServer = filterSafe(serverId);
-
   const battles = await pb.collection<V2BattleRecord>(V2_BATTLE).getFullList({
-    filter: `state = "resolved" && server_id = "${safeServer}" && (challenger_id = "${safeUser}" || defender_id = "${safeUser}")`,
+    filter: pb.filter(
+      'state = "resolved" && server_id = {:server} && (challenger_id = {:user} || defender_id = {:user})',
+      { server: serverId, user: userId },
+    ),
   });
 
   let wins = 0;
