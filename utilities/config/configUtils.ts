@@ -27,6 +27,18 @@ export const getBotChannelForServer = async (
 };
 
 /**
+ * Where Finicards posts in a server: its own channel when an admin set one,
+ * the bot channel otherwise.
+ */
+export const getFinicardsChannelForServer = async (
+  serverId: string,
+): Promise<string | null> => finicardsChannelOf(await getConfigForServer(serverId));
+
+export const finicardsChannelOf = (
+  config: Pick<ConfigRecord, "bot_channel" | "finicards_channel"> | null,
+): string | null => config?.finicards_channel || config?.bot_channel || null;
+
+/**
  * Applies `updates` to a server's config, creating the record the first time.
  * @param identifier "server-channel", stored on a new record for reading the table by eye
  */
@@ -46,6 +58,7 @@ export const saveConfigForServer = async (
     server_id: serverId,
     bot_channel: updates.bot_channel || "",
     horsey_names: updates.horsey_names || "",
+    finicards_channel: updates.finicards_channel || "",
     identifier,
   });
 };

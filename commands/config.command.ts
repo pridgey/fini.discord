@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
+import { ChannelType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
 import { ConfigRecord } from "../types/PocketbaseTables";
 import {
   DEFAULT_HORSEY_NAMES,
@@ -26,6 +26,21 @@ export const data = new SlashCommandBuilder()
       .setDescription(
         `Names for the ${HORSE_COUNT} /horsey racers, comma separated. Leave blank to reset.`,
       )
+      .setRequired(false),
+  )
+  .addChannelOption((option) =>
+    option
+      .setName("finicards_channel")
+      .setDescription(
+        "Where Finicards posts cards shown from the website. (Default: the bot channel)",
+      )
+      .addChannelTypes(ChannelType.GuildText)
+      .setRequired(false),
+  )
+  .addBooleanOption((option) =>
+    option
+      .setName("finicards_channel_reset")
+      .setDescription("Go back to posting Finicards in the bot channel")
       .setRequired(false),
   )
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
@@ -56,6 +71,13 @@ export const execute = async (
   const botChannelOption = interaction.options.get("bot_channel");
   if (botChannelOption) {
     updates.bot_channel = botChannelOption.value?.toString() || "";
+  }
+
+  const finicardsChannelOption = interaction.options.get("finicards_channel");
+  if (interaction.options.getBoolean("finicards_channel_reset")) {
+    updates.finicards_channel = "";
+  } else if (finicardsChannelOption) {
+    updates.finicards_channel = finicardsChannelOption.value?.toString() || "";
   }
 
   const horseyNamesOption = interaction.options.get("horsey_names");
@@ -92,6 +114,14 @@ export const execute = async (
       updates.bot_channel
         ? `Bot channel set to <#${updates.bot_channel}>.`
         : "Bot channel cleared.",
+    );
+  }
+
+  if (updates.finicards_channel !== undefined) {
+    confirmations.push(
+      updates.finicards_channel
+        ? `Finicards will post cards from the website in <#${updates.finicards_channel}>.`
+        : "Finicards will post cards from the website in the bot channel.",
     );
   }
 

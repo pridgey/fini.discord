@@ -21,7 +21,7 @@ import { remote } from "./remote";
  *
  * Decks can be asked for, and a card can be shown in Discord. Packs, selling
  * and trades stay in Discord, so the worst a bad request can do is rearrange a
- * deck - or post one of the player's own cards in the bot channel, at most
+ * deck - or post one of the player's own cards in the Finicards channel, at most
  * once a minute.
  */
 
@@ -121,8 +121,8 @@ export const decideDeckRequest = (
 };
 
 /**
- * Posts one of a player's cards in their server's bot channel, as the View
- * button shows it. Returns false when the server has no bot channel. Given by
+ * Posts one of a player's cards in their server's Finicards channel, as the View
+ * button shows it. Returns false when the server has no channel to post in. Given by
  * the bot, which holds the Discord client; without it, cards can't be shown.
  */
 export type CardPoster = (serverId: string, discordId: string, copyId: string) => Promise<boolean>;
@@ -188,10 +188,10 @@ export const resolveRequest = async (
     const wait = (lastShown.get(discordId) ?? 0) + SHOW_COOLDOWN_MS - now;
     if (wait > 0) return reject(`You can show another card in ${Math.ceil(wait / 1000)} seconds.`);
     if (!(await showCard(request.server_id, discordId, decision.cardId))) {
-      return reject("That server has no bot channel. An admin can set one with /config bot_channel.");
+      return reject("That server has no channel for Finicards. An admin can set one with /config finicards_channel.");
     }
     lastShown.set(discordId, now);
-    return { status: "applied", message: "Posted in the server's bot channel." };
+    return { status: "applied", message: "Posted in the server's Finicards channel." };
   }
 
   const decks = await getDecks(discordId, request.server_id);

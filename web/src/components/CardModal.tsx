@@ -64,7 +64,7 @@ export const CardModal = ({
   const obtained = date(card.acquired);
   const ceiling = Math.max(meta.rules.statTotal - 3, 1);
 
-  // "See in Discord": Fini posts the card in the server's bot channel.
+  // "See in Discord": Fini posts the card in the server's Finicards channel.
   const [showing, setShowing] = useState<{ busy: boolean; message?: string; ok?: boolean }>({ busy: false });
   useEffect(() => setShowing({ busy: false }), [card.id]);
   const showInDiscord = async () => {

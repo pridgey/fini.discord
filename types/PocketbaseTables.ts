@@ -224,6 +224,8 @@ export type ConfigRecord = {
    * Empty or absent means the built-in names are used.
    */
   horsey_names?: string;
+  /** Where Finicards posts. Empty or absent means the bot channel. */
+  finicards_channel?: string;
   identifier: string;
 };
 

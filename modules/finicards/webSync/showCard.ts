@@ -1,18 +1,19 @@
 import { Client, TextChannel, TextDisplayBuilder } from "discord.js";
-import { getBotChannelForServer } from "../../../utilities/config/configUtils";
+import { getFinicardsChannelForServer } from "../../../utilities/config/configUtils";
 import { getOwnedCard, toBattleCard } from "../cardStore";
 import { buildCardMessage } from "../ui";
 import type { CardPoster } from "./requests";
 
 /**
  * "See in Discord" from the Finicards site: the card posted in the server's
- * bot channel as the View button shows it, under a line saying whose it is.
+ * Finicards channel - the bot channel, unless /config finicards_channel names
+ * another - as the View button shows it, under a line saying whose it is.
  * The player is named but not pinged - they pressed the button.
  */
 export const makeCardPoster =
   (cl: Client): CardPoster =>
   async (serverId, discordId, copyId) => {
-    const channelId = await getBotChannelForServer(serverId);
+    const channelId = await getFinicardsChannelForServer(serverId);
     if (!channelId) return false;
     const channel = await cl.channels.fetch(channelId).catch(() => null);
     if (!channel?.isTextBased()) return false;
