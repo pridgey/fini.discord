@@ -18,7 +18,11 @@ export const saveChatMessage = async (
   anthropic?: Anthropic,
 ) => {
   // Add the new record(s)
-  const bigStrings = splitBigString(chatRecord.message, 4000);
+  // Stored pieces are joined back together, so no code fences are added.
+  const bigStrings = splitBigString(chatRecord.message, {
+    maxLength: 4000,
+    closeCodeBlocks: false,
+  });
   for (const msg of bigStrings) {
     const newRecord = { ...chatRecord, message: msg };
     await pb
