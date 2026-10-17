@@ -936,6 +936,23 @@ describe("finicards v2 dungeons", () => {
       expect(done).toContain("Card Prize");
     });
 
+    it("shows the last fight after a fall, but not after a walk out", () => {
+      const won = playFight(
+        runIn(fightRoom(weak("e"))),
+        strong("s"),
+        source(),
+      ).state;
+      const ended = (state: "failed" | "retreated") =>
+        textOf(
+          composeDungeonMessage(
+            { ...base, state, progress: won, hand: [] },
+            noImages,
+          ),
+        );
+      expect(ended("failed")).toContain("`R1`");
+      expect(ended("retreated")).not.toContain("`R1`");
+    });
+
     it("keeps a long run's results within Discord's ten attachments", async () => {
       const drops = Array.from({ length: 11 }, (_, i) => ({
         ...card(`Prize ${i}`, "heart", [2, 4, 9]),

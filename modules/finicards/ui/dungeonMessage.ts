@@ -420,7 +420,9 @@ export const composeDungeonMessage = (
       ),
     );
 
-  if (progress.recap) {
+  // What the last click did. A fall keeps the fight that ended the run; a walk
+  // out has nothing to explain, and a fight from before it reads as live.
+  if (progress.recap && state !== "retreated") {
     const { round, lines } = progress.recap;
     header
       .addSeparatorComponents((separator) => separator)
