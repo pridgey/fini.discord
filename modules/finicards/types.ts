@@ -67,6 +67,13 @@ export type SideCombat = {
   attackValue: number;
   /** The opponent's stat matching this attack, after their defensive keywords. */
   defenseFaced: number;
+  /**
+   * How `defenseFaced` was reached: the opponent's stat it hit (the matching
+   * one, or the lowest after `Feint`), its printed value, what their keywords
+   * added to it, and what this card's `Pierce` took off. Absent on results
+   * stored before it was tracked.
+   */
+  defense?: { stat: CardType; base: number; bonus: number; pierce: number };
   damage: number;
   /** Human-readable list of what modified this attack. */
   bonuses: string[];

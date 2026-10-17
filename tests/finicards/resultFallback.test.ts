@@ -68,9 +68,9 @@ describe("finicards v2 result without a battle board", () => {
     expect(text).toContain("×1.5");
   });
 
-  it("shows the working, in small text", () => {
-    expect(text).toContain("7×1.5=10");
-    expect(text).toMatch(/− \d+ (Power|Heart|Wit)/);
+  it("shows the working as a table of attack, defence and damage", () => {
+    expect(text).toContain("7x1.5=10");
+    expect(text).toMatch(/```\n +Attack +Defence +Dmg\n/);
   });
 
   it("parenthesises negative damage so a scoreline stays readable", () => {

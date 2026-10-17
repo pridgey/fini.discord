@@ -29,6 +29,7 @@ import {
   eventChance,
   modsOf,
   nextSlot,
+  weakenedEnemy,
   type DungeonReward,
   type Buff,
   type DungeonState,
@@ -38,6 +39,7 @@ import {
 import { cardLabel } from "../lineupPicker";
 import { TYPE_EMOJI } from "../rules";
 import type { BattleCard, Side } from "../types";
+import { enemyAbilityLines } from "./enemyAbility";
 import { roundBlock } from "./resultMessage";
 import {
   DRAW_ACCENT,
@@ -564,6 +566,7 @@ export const composeDungeonMessage = (
               ? [`👀 **A sneak peek** — ${room.enemy.name.replace(/^Sudden /, "")} is from ${room.enemy.set ? `Set ${room.enemy.set}` : "a set"}, which isn't out yet.`]
               : []),
             ...keywordLegend([room.enemy]),
+            ...enemyAbilityLines(progress, weakenedEnemy(room.enemy, mods)),
             `-# Play a card to fight. It rests for the next ${plural(Math.max(0, DUNGEON.cooldownRooms + mods.cooldown), "room")} either way. Lose and the run ends${progress.wards > 0 ? " - unless a ward breaks first" : ""}. For abilities this is **slot ${nextSlot(progress)} of ${DUNGEON.legLength}**.`,
             WHEEL_HINT,
           ].join("\n"),

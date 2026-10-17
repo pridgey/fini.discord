@@ -250,6 +250,14 @@ bought out every shelf. Fight pay still grows faster - 20% a room - so a deep
 shop is affordable but now costs a real share of the payout; prices that kept
 pace with fight pay put the 8-pack careful run below its entry fee.
 
+Shops in the warm-up (rooms 1-5) sell at list price. Before the first boss a
+shop is paid for out of two or three small fights - 11 geld by room 3, 18 by
+room 4 - and with prices rising from room 1 that bought one ware at most, which
+players noticed. After the boss the curve picks up where it would have been
+(half again by room 6), and the boss's purse covers the step. Starting the
+curve after the warm-up instead cut every later price too and lifted payouts by
+half (8-pack careful 23 fc to 37 fc), so only the warm-up is exempt.
+
 **Charges.** Loaded dice and coffees are held like wards and shown beside them.
 A loaded die is spent automatically on the first event roll that fails. A coffee
 is spent by the player: while they hold one, every resting card in hand gets a
@@ -292,7 +300,17 @@ end of and no ceiling for `Momentum`, so keywords see it as a string of
 three-fight legs: slot 1, 2, 3, then slot 1 again with fresh keyword state. The
 fight room says which slot it is. Keywords that read "your lineup" (`Trinity`,
 `Thrifty`, `Kinship`) see the cards played so far this leg plus the one being
-played.
+played - for the enemy, that is the enemies fought so far this leg, including
+itself again after a stalemate.
+
+None of that is visible from a keyword's description, so the fight room adds a
+**Here:** line under the enemy's (`ui/enemyAbility.ts`): whether its ability is
+live this fight and why, in dungeon terms. Where the bonus depends only on the
+enemy's side it runs the keyword's own hook against the leg, so the number shown
+is the one it will fight with; where it depends on the card you choose, it says
+what to look for. Tiebreak keywords are called out as doing nothing, since a
+fight is one round. Bonuses earlier fights handed on (`Martyr`, `Rally`,
+`Parting Shot`, `Spoiler`) get a line of their own.
 
 **Progress lives in the row, not the button ids** - the opposite of the lineup
 picker, deliberately. `v2_dungeon_run.progress` holds the whole `DungeonState`:
@@ -323,14 +341,19 @@ row. *careful* works out every clash and walks out when nothing in hand can win;
 
 | deck | player | avg room | median | p90 | avg fc | runs in profit | cards | full-arts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2 packs, all 10 cards | careful | 12.7 | 10 | 20 | 15.3 | 29% | 1.72 | 0.04 |
-| | gut | 10.5 | 10 | 15 | 2.9 | 0% | 0.83 | 0.00 |
-| 8 packs, best 20 | careful | 15.4 | 14 | 25 | 23.0 | 43% | 2.24 | 0.13 |
-| | gut | 11.8 | 10 | 19 | 3.8 | 2% | 1.06 | 0.01 |
-| 24 packs, best 20 | careful | 20.1 | 17 | 35 | 41.4 | 58% | 3.19 | 0.38 |
-| | gut | 14.2 | 13 | 23 | 5.7 | 5% | 1.47 | 0.03 |
-| full-arts only | careful | 27.3 | 25 | 46 | 78.0 | 77% | 4.64 | 0.93 |
-| | gut | 18.5 | 15 | 32 | 10.4 | 16% | 2.23 | 0.14 |
+| 2 packs, all 10 cards | careful | 12.8 | 10 | 20 | 15.8 | 31% | 1.76 | 0.07 |
+| | gut | 10.3 | 10 | 15 | 2.9 | 1% | 0.82 | 0.00 |
+| 8 packs, best 20 | careful | 15.4 | 15 | 25 | 23.1 | 41% | 2.24 | 0.12 |
+| | gut | 11.9 | 10 | 18 | 3.8 | 2% | 1.09 | 0.01 |
+| 24 packs, best 20 | careful | 19.8 | 17 | 35 | 39.7 | 58% | 3.13 | 0.34 |
+| | gut | 14.4 | 13 | 23 | 5.9 | 6% | 1.51 | 0.04 |
+| full-arts only | careful | 27.4 | 25 | 46 | 86.1 | 76% | 4.66 | 0.96 |
+| | gut | 18.7 | 15 | 32 | 10.8 | 15% | 2.24 | 0.15 |
+
+The same run also reports the first shop each run walks into: the room, the
+geld in hand, and how much of the shelf that buys, cheapest first. The bots skip
+a shop while they hold under 8 geld, so it reads early shops kinder than a
+player who walks in with 5 does.
 
 Since shop prices began rising with depth the bots - which buy whatever they
 can afford, cheapest first - carry far less geld out: the 8-pack careful row
@@ -914,12 +937,26 @@ for 7 but not why. Spelling it out fixed that and produced five lines a round -
 correct, complete, and far too much to read three times over.
 
 The layout now splits by *need*. The headline of each round carries who won and
-by how much; the derivation sits underneath in small text you can skip:
+by how much; the derivation sits underneath as a small table, one row per
+attack, with the matchup and the bonuses named in small text below it:
 
+````
+`R1` **Aya +1** · 🧠 Hinata Hyuga **1** – 0 Sudden Nico Robin 🧠
 ```
-`R1` **Fen +2** · 🔴 Oathbound Knight **7** – 5 Storm Caller 🟠
--# 🔴 Heart beats 🟠 Power — ×1.5 to Fen · 7×1.5=10 − 3 Heart vs 9 − 4 Power
+                   Attack  Defence  Dmg
+Hinata Hyuga       7       6          1
+Sudden Nico Robin  6+3=9   7+2=9      0
 ```
+-# 🧠 Wit mirror — no bonus, the higher stat wins · Hinata Hyuga: Bulwark +2 def · Sudden Nico Robin: Giant Slayer +3
+````
+
+It replaced one compressed line (`7 − 6 Wit +Bulwark +2 def vs 9 − 9 Wit +Giant
+Slayer +3`) that put each bonus on its own card's attack: a `Bulwark` read as
+part of Hinata's swing when it raised the defence Robin hit, and Giant Slayer's
++3 read as still to be added to a 9 that already held it. In the table every
+bonus sits in the cell it changed. It is a code block because Discord renders
+no markdown tables; the engine keeps each defence's parts on `SideCombat.defense`
+for it, and a round stored before that shows the defence as a plain total.
 
 All three rounds live in one block with one separator - three bordered sections
 for three rounds reads as three times the content. The full sentence-by-sentence

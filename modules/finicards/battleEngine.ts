@@ -8,7 +8,7 @@ import type {
 } from "./keywords";
 import { combatKeyword, createSideState, findKeyword } from "./keywords";
 import type { BattleRules } from "./rules";
-import { RULES, TYPE_BEATEN_BY, typeMultiplierFor } from "./rules";
+import { RULES, TYPE_BEATEN_BY, TYPE_PRIORITY, typeMultiplierFor } from "./rules";
 import type {
   BattleCard,
   MatchResult,
@@ -35,6 +35,10 @@ import type {
  * The product is floored, which is what reproduces the doc's worked examples
  * exactly (7 x 1.5 - 3 = 7, and 9 x 1.5 - 2 = 11).
  */
+
+/** The stat a `Feint` goes for: the lowest, the first of a tie in type order. */
+const lowestStat = (stats: Record<CardType, number>): CardType =>
+  TYPE_PRIORITY.reduce((low, type) => (stats[type] < stats[low] ? type : low));
 
 const otherSide = (side: Side): Side =>
   side === "challenger" ? "defender" : "challenger";
@@ -217,9 +221,10 @@ export const resolveRound = ({
     const attackValue = Math.floor(self.attackStat * self.multiplier);
     // The defender defends with the stat matching the incoming attack, unless
     // a `Feint` goes for whichever of the three is weakest.
-    const defendingStat = self.targetLowest
-      ? Math.min(...Object.values(defenderCardOfThis.stats))
-      : defenderCardOfThis.stats[attackType];
+    const defendingType = self.targetLowest
+      ? lowestStat(defenderCardOfThis.stats)
+      : attackType;
+    const defendingStat = defenderCardOfThis.stats[defendingType];
     const defenseFaced = Math.max(
       0,
       defendingStat + opponent.defenseBonus - self.pierce,
@@ -240,6 +245,12 @@ export const resolveRound = ({
       multiplier: self.multiplier,
       attackValue,
       defenseFaced,
+      defense: {
+        stat: defendingType,
+        base: defendingStat,
+        bonus: opponent.defenseBonus,
+        pierce: self.pierce,
+      },
       damage: attackValue - defenseFaced,
       bonuses: self.bonuses,
       activeKeyword: self.keyword?.slug ?? "",

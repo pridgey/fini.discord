@@ -956,8 +956,14 @@ describe("finicards v2 dungeons", () => {
   });
 
   describe("shop prices", () => {
-    it("rise with depth, from the listed price in the first room", () => {
+    it("hold at the listed price through the warm-up", () => {
       expect(shopPrice(12, 1)).toBe(12);
+      expect(shopPrice(12, 4)).toBe(12);
+      expect(shopPrice(12, DUNGEON.warmup.rooms)).toBe(12);
+    });
+
+    it("rise with depth after the first boss", () => {
+      expect(shopPrice(12, 6)).toBe(18);
       expect(shopPrice(12, 11)).toBe(24);
       expect(shopPrice(12, 41)).toBe(60);
     });

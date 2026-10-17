@@ -99,7 +99,9 @@ export type DungeonConfig = {
   /**
    * How much shop prices rise per room, as a share of the listed price: at
    * 0.1 a ware costs twice its listed price by room 11. Geld from fights grows
-   * with depth, and fixed prices let a deep run clear every shelf.
+   * with depth, and fixed prices let a deep run clear every shelf. Shops in the
+   * warm-up sell at list price: before the first boss they are paid for out of
+   * a few small fights, and the boss's purse is what covers the jump after.
    */
   shopInflation: number;
   /**
@@ -754,9 +756,11 @@ const SPECIALS: Ware[] = [
   },
 ];
 
-/** What a ware listed at `price` costs in a shop at `depth`. */
+/** What a ware listed at `price` costs in a shop at `depth`. List price in the warm-up. */
 export const shopPrice = (price: number, depth: number, config: DungeonConfig = DUNGEON): number =>
-  Math.round(price * (1 + Math.max(0, depth - 1) * config.shopInflation));
+  depth <= config.warmup.rooms
+    ? price
+    : Math.round(price * (1 + (depth - 1) * config.shopInflation));
 
 export const generateShop = (
   owned: Buff[],

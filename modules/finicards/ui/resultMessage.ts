@@ -71,17 +71,68 @@ export const buildBreakdown = (
       : []),
   ].join("\n\n");
 
-/** `7×1.5=10 − 3 Heart` - the working, compressed to fit a small-text line. */
-const workingOf = (combat: SideCombat): string => {
-  const attack =
-    combat.multiplier === 1
-      ? `${combat.attackStat}`
-      : `${combat.attackStat}×${combat.multiplier}=${combat.attackValue}`;
-  const bonuses =
-    combat.bonuses.length > 0 ? ` +${combat.bonuses.join(" +")}` : "";
+const SIDES: Side[] = ["challenger", "defender"];
 
-  return `${attack} − ${combat.defenseFaced} ${TYPE_NAME[combat.printedType]}${bonuses}`;
+/** `+3`, `-2` - plain ASCII, so a code block's columns stay lined up. */
+const offset = (amount: number): string =>
+  amount === 0 ? "" : amount > 0 ? `+${amount}` : `${amount}`;
+
+/** `6+3=9`, `(6+3)x1.5=13`, or just `7` - an attack and what built it. */
+const attackCell = (combat: SideCombat): string => {
+  const change = offset(combat.attackStat - combat.baseAttackStat);
+  const sum = `${combat.baseAttackStat}${change}`;
+  if (combat.multiplier !== 1) {
+    return `${change ? `(${sum})` : sum}x${combat.multiplier}=${combat.attackValue}`;
+  }
+  return change ? `${sum}=${combat.attackStat}` : sum;
 };
+
+/** `7+2=9`, `5+2-3=4 Heart` - the defence an attack hit and what built it. */
+const defenseCell = (combat: SideCombat): string => {
+  const { defense } = combat;
+  // Rounds stored before the parts were tracked only have the total.
+  if (!defense) return `${combat.defenseFaced}`;
+  const parts = `${defense.base}${offset(defense.bonus)}${offset(-defense.pierce)}`;
+  const value = parts === `${defense.base}` ? parts : `${parts}=${combat.defenseFaced}`;
+  // Only worth naming the stat when `Feint` moved it off the matching one.
+  return defense.stat === combat.printedType ? value : `${value} ${TYPE_NAME[defense.stat]}`;
+};
+
+const NAME_WIDTH = 18;
+
+const fitName = (name: string): string =>
+  name.length > NAME_WIDTH ? `${name.slice(0, NAME_WIDTH - 1)}…` : name;
+
+/**
+ * Both attacks of a round as a small table: each card's attack, the defence it
+ * hit, and the damage that left. Every bonus sits in the cell it changed, so a
+ * `Bulwark` shows on the attack it blocked rather than on its own card's swing.
+ * A code block, because Discord renders no markdown tables.
+ */
+export const damageTable = (round: RoundResult): string => {
+  const rows = [
+    ["", "Attack", "Defence", "Dmg"],
+    ...SIDES.map((side) => {
+      const combat = round[side];
+      return [fitName(combat.card.name), attackCell(combat), defenseCell(combat), `${combat.damage}`];
+    }),
+  ];
+  const widths = rows[0].map((_, column) => Math.max(...rows.map((row) => row[column].length)));
+  const line = (row: string[]) =>
+    row
+      .map((cell, column) =>
+        column === row.length - 1 ? cell.padStart(widths[column]) : cell.padEnd(widths[column]),
+      )
+      .join("  ")
+      .trimEnd();
+  return ["```", ...rows.map(line), "```"].join("\n");
+};
+
+/** `Nico Robin: Giant Slayer +3 · Hinata Hyuga: Bulwark +2 def` - who did what. */
+const bonusNote = (round: RoundResult): string =>
+  SIDES.filter((side) => round[side].bonuses.length > 0)
+    .map((side) => `${round[side].card.name}: ${round[side].bonuses.join(", ")}`)
+    .join(" · ");
 
 /** The same round written out in full, for the detail view. */
 const verboseRound = (
@@ -140,8 +191,6 @@ const multiplierNote = (
     names.challenger,
   );
 };
-
-const SIDES: Side[] = ["challenger", "defender"];
 
 /** Engine notes name the side; players know each other by name. */
 const namedNote = (note: string, names: Record<Side, string>): string =>
@@ -280,7 +329,8 @@ export const roundBlock = (
 
   return [
     `\`R${round.slot}\` ${verdict} · ${TYPE_EMOJI[challenger.printedType]} ${challenger.card.name} ${score(challenger, "challenger")} – ${score(defender, "defender")} ${defender.card.name} ${TYPE_EMOJI[defender.printedType]}`,
-    `-# ${multiplierNote(round, names)} · ${workingOf(challenger)} vs ${workingOf(defender)}`,
+    damageTable(round),
+    `-# ${[multiplierNote(round, names), bonusNote(round)].filter(Boolean).join(" · ")}`,
     ...round.notes.map((note) => `-# ↳ ${namedNote(note, names)}`),
   ].join("\n");
 };
