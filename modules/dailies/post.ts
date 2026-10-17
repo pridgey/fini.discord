@@ -1,11 +1,16 @@
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ContainerBuilder,
+  MessageFlags,
   type Client,
 } from "discord.js";
+import sharp from "sharp";
+import { warnAndUse } from "../../utilities/fallback";
 import { getBotChannelForServer } from "../../utilities/config/configUtils";
-import { DAILY_BUTTON, ensureTodaysRound } from "./geo/daily";
+import { DAILY_BUTTON, ensureTodaysRound, guessMap } from "./geo/daily";
 import {
   getRound,
   guessesFor,
@@ -24,7 +29,8 @@ import {
 } from "./shared";
 import { buttonId as weaveButtonId } from "./weave/board";
 import { WEAVE_LIVE, ensureTodaysWeave } from "./weave/daily";
-import { MAX_FC, earned, finished } from "./weave/game";
+import { MAX_FC, NO_PROGRESS, earned, finished } from "./weave/game";
+import { renderWeaveBoard } from "./weave/render";
 import {
   getWeaveRound,
   progressOf,
@@ -37,12 +43,16 @@ import {
 
 /**
  * The daily post: one message a day in each server's bot channel, however
- * many daily games there are and however many people play them.
+ * many daily games there are and however many people play them. Two cards:
  *
- *   - yesterday's answers, and the top three in each game
- *   - today's games, each with a button that opens a private round
- *   - a live line under each game, which the bot keeps up to date by editing
- *     the post as people play - in place of a message for every player
+ *   - Yesterday: each game's answer and top three, over one wide image of
+ *     every game's solved state side by side (the guess map, the solved grid)
+ *     so the post stays short however many games there are
+ *   - Today: each game with a live line, which the bot keeps up to date by
+ *     editing the post as people play, and a button that opens it privately
+ *
+ * Finishing a game is also announced in a small card of its own, linking
+ * back to the post (`announceFinish`).
  *
  * The post is rebuilt from what's stored each time, so an update is "build it
  * again and edit". It's recorded on each game's round, marked `combined`, so
@@ -69,14 +79,16 @@ const podium = (scores: { name: string; fc: number }[]): string =>
 const playedBoards = (plays: WeavePlayRecord[]) =>
   plays.filter((play) => (play.found ?? []).length > 0 || play.thread_guess);
 
-/** Yesterday's answers and podiums, for the games that were posted yesterday. */
+/** Yesterday's answers and podiums, a paragraph per game posted yesterday. */
 export const recapLines = (yesterday: Games): string[] => {
-  const lines: string[] = [];
+  const games: string[] = [];
   if (yesterday.geo) {
     const { round, guesses } = yesterday.geo;
-    lines.push(
-      `🌍 Where in the world was **${placeName(round.place)}**.`,
-      `-# ${podium(guesses.map((guess) => ({ name: guess.username, fc: guess.total })))}`,
+    games.push(
+      [
+        `🌍 Where in the world was **${placeName(round.place)}**.`,
+        `-# ${podium(guesses.map((guess) => ({ name: guess.username, fc: guess.total })))}`,
+      ].join("\n"),
     );
   }
   if (yesterday.weave) {
@@ -87,14 +99,16 @@ export const recapLines = (yesterday: Games): string[] => {
         fc: earned(puzzle, progressOf(play)),
       }))
       .sort((a, b) => b.fc - a.fc);
-    lines.push(
-      `🧵 Weave's thread was **${puzzle.thread.toUpperCase()}**: ${puzzle.words
-        .map((word) => word.word.toUpperCase())
-        .join(", ")}.`,
-      `-# ${podium(scores)}`,
+    games.push(
+      [
+        `🧵 Weave's thread was **${puzzle.thread.toUpperCase()}**: ${puzzle.words
+          .map((word) => word.word.toUpperCase())
+          .join(", ")}.`,
+        `-# ${podium(scores)}`,
+      ].join("\n"),
     );
   }
-  return lines.length ? ["**Yesterday**", ...lines] : [];
+  return games;
 };
 
 /** "Played by 4 · best **Aya** 214 fc" */
@@ -126,26 +140,66 @@ const weaveLive = (
     : `Nobody's solved it yet${who}.`;
 };
 
-/** Today's games, each with what it pays and its live line. */
+/** Today's games, a paragraph each: what it pays, and its live line. */
 export const todayLines = (today: Games): string[] => {
-  const lines = ["**Today**"];
+  const games: string[] = [];
   if (today.geo) {
-    lines.push(
-      `🌍 **Where in the world** · up to ${maxPayFor(today.geo.round.photos.length)} fc`,
-      `-# ${geoLive(today.geo.guesses)}`,
+    games.push(
+      [
+        `🌍 **Where in the world** · up to ${maxPayFor(today.geo.round.photos.length)} fc`,
+        `-# ${geoLive(today.geo.guesses)}`,
+      ].join("\n"),
     );
   }
   if (today.weave) {
-    lines.push(
-      `🧵 **Weave** · up to ${MAX_FC} fc`,
-      `-# ${weaveLive(today.weave.round, today.weave.plays)}`,
+    games.push(
+      [
+        `🧵 **Weave** · up to ${MAX_FC} fc`,
+        `-# ${weaveLive(today.weave.round, today.weave.plays)}`,
+      ].join("\n"),
     );
   }
-  return lines;
+  return games;
 };
 
-/** The whole post: text, and a button for each of today's games. */
-export const dailyPost = (yesterday: Games, today: Games) => {
+/** The file yesterday's image is attached as. */
+export const RECAP_IMAGE = "dailies-yesterday.png";
+const RECAP_ACCENT = 0x6b7280;
+const TODAY_ACCENT = 0x5865f2;
+
+/** Games in a card, an empty line between each. */
+const paragraphs = (games: string[]) => games.join("\n\n");
+
+/**
+ * The whole post: a Yesterday card (when anything was posted yesterday) and a
+ * Today card with a button for each game. `withImage` puts yesterday's image
+ * in the first card; it must match whether the message carries the file.
+ */
+export const dailyPost = (
+  yesterday: Games,
+  today: Games,
+  { withImage = false }: { withImage?: boolean } = {},
+) => {
+  const cards: ContainerBuilder[] = [];
+  const recap = recapLines(yesterday);
+  if (recap.length) {
+    const card = new ContainerBuilder()
+      .setAccentColor(RECAP_ACCENT)
+      .addTextDisplayComponents((text) =>
+        text.setContent(`## 🗓️ Yesterday\n${paragraphs(recap)}`),
+      );
+    if (withImage) {
+      card.addMediaGalleryComponents((gallery) =>
+        gallery.addItems((item) =>
+          item
+            .setURL(`attachment://${RECAP_IMAGE}`)
+            .setDescription("Yesterday's games, solved"),
+        ),
+      );
+    }
+    cards.push(card);
+  }
+
   const buttons: ButtonBuilder[] = [];
   if (today.geo) {
     buttons.push(
@@ -165,19 +219,80 @@ export const dailyPost = (yesterday: Games, today: Games) => {
         .setStyle(ButtonStyle.Primary),
     );
   }
-  const recap = recapLines(yesterday);
-  return {
-    content: [
-      "## 📅 Today's dailies",
-      ...(recap.length ? [...recap, ""] : []),
-      ...todayLines(today),
-      "",
-      `-# Each game opens privately, just for you. New games at ${POST_TIME}.`,
-    ].join("\n"),
-    components: buttons.length
-      ? [new ActionRowBuilder<ButtonBuilder>().addComponents(buttons)]
-      : [],
-  };
+  const todayCard = new ContainerBuilder()
+    .setAccentColor(TODAY_ACCENT)
+    .addTextDisplayComponents((text) =>
+      text.setContent(
+        `## 📅 Today's dailies\n${paragraphs(todayLines(today))}\n\n-# Each game opens privately, just for you. New games at ${POST_TIME}.`,
+      ),
+    );
+  if (buttons.length) {
+    todayCard.addActionRowComponents(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(buttons),
+    );
+  }
+  cards.push(todayCard);
+
+  return { components: cards, flags: [MessageFlags.IsComponentsV2] as const };
+};
+
+/** Each image is scaled to this height and laid side by side. */
+const RECAP_HEIGHT = 360;
+const RECAP_GAP = 24;
+
+/**
+ * Yesterday's games in one wide image: the location game's map of everyone's
+ * guesses beside Weave's solved grid. One short strip rather than an image a
+ * game keeps the post from growing tall. Null if there's nothing to show, or
+ * nothing could be drawn.
+ */
+export const recapImage = async (yesterday: Games): Promise<Buffer | null> => {
+  const drawn = await Promise.all([
+    yesterday.geo
+      ? guessMap(yesterday.geo.round, yesterday.geo.guesses).catch(
+          warnAndUse(null, "draw yesterday's guess map"),
+        )
+      : null,
+    yesterday.weave
+      ? renderWeaveBoard({
+          puzzle: puzzleOf(yesterday.weave.round),
+          progress: NO_PROGRESS,
+          reveal: true,
+        }).catch(warnAndUse(null, "draw yesterday's Weave"))
+      : null,
+  ]);
+  const images = await Promise.all(
+    drawn
+      .filter((image): image is Buffer => !!image)
+      .map((image) =>
+        sharp(image)
+          .resize({ height: RECAP_HEIGHT })
+          .png()
+          .toBuffer({ resolveWithObject: true }),
+      ),
+  );
+  if (!images.length) return null;
+
+  const width =
+    images.reduce((sum, image) => sum + image.info.width, 0) +
+    RECAP_GAP * (images.length - 1);
+  let left = 0;
+  const layers = images.map((image) => {
+    const layer = { input: image.data, left, top: 0 };
+    left += image.info.width + RECAP_GAP;
+    return layer;
+  });
+  return sharp({
+    create: {
+      width,
+      height: RECAP_HEIGHT,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(layers)
+    .png()
+    .toBuffer();
 };
 
 /* ------------------------------------------------------------- loading */
@@ -217,13 +332,30 @@ const yesterdayIn = async (day: string, serverId: string): Promise<Games> => {
   );
 };
 
-/** Today's post as it should read now, for one server. */
+/**
+ * Today's post as it should read now, for one server. `image` draws yesterday's
+ * image and attaches it (a new post); `hasImage` lays the post out around the
+ * image the message already carries (an edit, which keeps its files).
+ */
 const buildPost = async (
   rounds: { geo: DailyRoundRecord | null; weave: WeaveRoundRecord | null },
   day: string,
   serverId: string,
-) =>
-  dailyPost(await yesterdayIn(day, serverId), await gamesOn(rounds, serverId));
+  mode: { image: true } | { hasImage: boolean },
+) => {
+  const [yesterday, today] = await Promise.all([
+    yesterdayIn(day, serverId),
+    gamesOn(rounds, serverId),
+  ]);
+  if ("hasImage" in mode) {
+    return dailyPost(yesterday, today, { withImage: mode.hasImage });
+  }
+  const image = await recapImage(yesterday);
+  return {
+    ...dailyPost(yesterday, today, { withImage: !!image }),
+    files: image ? [new AttachmentBuilder(image, { name: RECAP_IMAGE })] : [],
+  };
+};
 
 /* ------------------------------------------------------------- posting */
 
@@ -258,7 +390,7 @@ export const postDailies = async (cl: Client): Promise<number> => {
     const message = await sendTo(
       cl,
       channelId,
-      await buildPost({ geo, weave }, day, guild.id),
+      await buildPost({ geo, weave }, day, guild.id, { image: true }),
     );
     if (!message) continue;
 
@@ -324,7 +456,10 @@ export const updateDailyPost = async (cl: Client, serverId: string) => {
     weave:
       weave?.posts?.[serverId]?.messageId === post.messageId ? weave : null,
   };
-  await message.edit(await buildPost(rounds, day, serverId));
+  const hasImage = message.attachments.some(
+    (attachment) => attachment.name === RECAP_IMAGE,
+  );
+  await message.edit(await buildPost(rounds, day, serverId, { hasImage }));
 };
 
 /**
@@ -346,4 +481,144 @@ export const refreshDailyPost = (cl: Client, serverId: string): void => {
       );
     }, REFRESH_DELAY_MS),
   );
+};
+
+/* ------------------------------------------------------------- finishing */
+
+/** Someone finishing a game, as the announcement tells it. */
+export type Finish =
+  | { game: "geo"; name: string; total: number; cityRight: boolean }
+  | {
+      game: "weave";
+      name: string;
+      guesses: number;
+      fc: number;
+      thread: boolean;
+    };
+
+/** "🌍 **Aya** played today's Where in the World and won **267 fc**, right down to the city!" */
+export const finishText = (finish: Finish): string => {
+  if (finish.game === "geo") {
+    const result =
+      finish.total > 0
+        ? `won **${finish.total} fc**${finish.cityRight ? ", right down to the city" : ""}!`
+        : "came away empty-handed.";
+    return `🌍 **${finish.name}** played today's **Where in the World** and ${result}`;
+  }
+  const guesses = `${finish.guesses} ${finish.guesses === 1 ? "guess" : "guesses"}`;
+  return `🧵 **${finish.name}** solved today's **Weave**${finish.thread ? ", thread and all," : ""} in ${guesses} and won **${finish.fc} fc**!`;
+};
+
+const FINISH_ACCENT = { geo: 0x3b82f6, weave: 0x8f6fd8 } as const;
+
+/**
+ * A small card in the bot channel when someone finishes a game, with a link to
+ * today's post so others can join in. Goes where today's post is, or to the bot
+ * channel if there's no post yet.
+ */
+export const announceFinish = async (
+  cl: Client,
+  serverId: string,
+  finish: Finish,
+): Promise<void> => {
+  const day = currentDay();
+  const [geo, weave] = await Promise.all([
+    getRound(day).catch(() => null),
+    getWeaveRound(day).catch(() => null),
+  ]);
+  const post = [geo?.posts?.[serverId], weave?.posts?.[serverId]].find(
+    (candidate) => candidate?.combined,
+  );
+  const channelId = post?.channelId ?? (await getBotChannelForServer(serverId));
+  if (!channelId) return;
+
+  const card = new ContainerBuilder()
+    .setAccentColor(FINISH_ACCENT[finish.game])
+    .addTextDisplayComponents((text) => text.setContent(finishText(finish)));
+  if (post) {
+    card.addActionRowComponents(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setStyle(ButtonStyle.Link)
+          .setLabel("Play today's dailies")
+          .setURL(
+            `https://discord.com/channels/${serverId}/${post.channelId}/${post.messageId}`,
+          ),
+      ),
+    );
+  }
+  await sendTo(cl, channelId, {
+    components: [card],
+    flags: [MessageFlags.IsComponentsV2],
+    allowedMentions: { parse: [] },
+  });
+};
+
+/**
+ * What the game handlers call after a play: the post's live line catches up,
+ * and a finished game is announced. Never throws - the play has already
+ * happened, and its player has their result.
+ */
+export const dailyPlayed = (
+  cl: Client,
+  serverId: string,
+  finish: Finish | null = null,
+): void => {
+  refreshDailyPost(cl, serverId);
+  if (finish) {
+    announceFinish(cl, serverId, finish).catch((error) =>
+      console.error(
+        `Dailies: couldn't announce a finish in ${serverId}`,
+        error,
+      ),
+    );
+  }
+};
+
+/**
+ * Sends today's post again in every server that has one, and removes the old
+ * message: for when the post's layout changes mid-day. The new message becomes
+ * today's post, so the live line and the announcements point at it.
+ */
+export const repostDailies = async (cl: Client): Promise<number> => {
+  const day = currentDay();
+  const [geo, weave] = await Promise.all([
+    getRound(day).catch(() => null),
+    WEAVE_LIVE ? getWeaveRound(day).catch(() => null) : Promise.resolve(null),
+  ]);
+  let reposted = 0;
+  for (const guild of cl.guilds.cache.values()) {
+    const old = [geo?.posts?.[guild.id], weave?.posts?.[guild.id]].find(
+      (post) => post?.combined,
+    );
+    if (!old) continue;
+    const rounds = {
+      geo: geo?.posts?.[guild.id]?.messageId === old.messageId ? geo : null,
+      weave:
+        weave?.posts?.[guild.id]?.messageId === old.messageId ? weave : null,
+    };
+    const message = await sendTo(
+      cl,
+      old.channelId,
+      await buildPost(rounds, day, guild.id, { image: true }),
+    );
+    if (!message) continue;
+
+    const post: DailyPost = {
+      channelId: old.channelId,
+      messageId: message.id,
+      combined: true,
+    };
+    if (rounds.geo) await recordPost(rounds.geo.id, guild.id, post);
+    if (rounds.weave) await recordWeavePost(rounds.weave.id, guild.id, post);
+
+    const channel = await cl.channels.fetch(old.channelId).catch(() => null);
+    if (channel?.isTextBased()) {
+      await channel.messages
+        .delete(old.messageId)
+        .catch(warnAndUse(undefined, "remove the old daily post"));
+    }
+    reposted++;
+  }
+  return reposted;
 };

@@ -188,18 +188,31 @@ export const parseWords = (typed: string): string[] => [
   ),
 ];
 
-/** Typed guesses at the words - one or several - saved and paid for the right ones. */
+/** A board finished just now, for the daily post's announcement. */
+export type WeaveSolve = { guesses: number; fc: number; thread: boolean };
+
+/**
+ * Typed guesses at the words - one or several - saved and paid for the right
+ * ones. Returns the board, and the solve when this guess finished it (live only).
+ */
 export const guessWeaveWords = async (
   round: WeaveRoundRecord,
   player: WeavePlayer,
   typed: string,
-) => {
+): Promise<{
+  board: Awaited<ReturnType<typeof boardFor>>;
+  solve: WeaveSolve | null;
+}> => {
   const puzzle = puzzleOf(round);
   const play = await playOf(round, player);
   const before = progressOf(play);
   if (allFound(puzzle, before))
-    return boardFor(round, before, "You've found every word today.");
-  if (saving.has(play.id)) return boardFor(round, before);
+    return {
+      board: await boardFor(round, before, "You've found every word today."),
+      solve: null,
+    };
+  if (saving.has(play.id))
+    return { board: await boardFor(round, before), solve: null };
 
   saving.add(play.id);
   try {
@@ -242,7 +255,15 @@ export const guessWeaveWords = async (
     ) {
       lines.push("-# One word left - your last chance to guess the thread.");
     }
-    return boardFor(round, progress, lines.join("\n"));
+    const solve: WeaveSolve | null =
+      WEAVE_LIVE && allFound(puzzle, progress) && !allFound(puzzle, before)
+        ? {
+            guesses: progress.guesses,
+            fc: earned(puzzle, progress),
+            thread: progress.threadGuess === puzzle.thread,
+          }
+        : null;
+    return { board: await boardFor(round, progress, lines.join("\n")), solve };
   } finally {
     saving.delete(play.id);
   }

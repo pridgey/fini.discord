@@ -8,7 +8,7 @@ import {
   playableWeave,
 } from "../../modules/dailies/weave/daily";
 import { weavePlayerOf } from "../../modules/dailies/weave/player";
-import { refreshDailyPost } from "../../modules/dailies/post";
+import { dailyPlayed } from "../../modules/dailies/post";
 
 export const namespace = WEAVE_THREAD_MODAL;
 
@@ -41,7 +41,6 @@ export const execute: ModalHandler["execute"] = async (
     weavePlayerOf(interaction, interaction.member as GuildMember | null),
     interaction.fields.getTextInputValue("thread"),
   );
-  if (interaction.guildId)
-    refreshDailyPost(interaction.client, interaction.guildId);
+  if (interaction.guildId) dailyPlayed(interaction.client, interaction.guildId);
   await interaction.editReply({ ...board, attachments: [] });
 };

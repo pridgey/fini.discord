@@ -25,7 +25,7 @@ const fakePb = {
   collection: (_name: string): unknown => ({}),
 };
 mock.module("../../utilities/pocketbase", () => ({ pb: fakePb }));
-const { postDailies, updateDailyPost } =
+const { announceFinish, postDailies, updateDailyPost } =
   await import("../../modules/dailies/post");
 
 beforeEach(() => {
@@ -60,6 +60,15 @@ beforeEach(() => {
   };
 });
 
+/** Everything a payload says, as text: its content, or its cards. */
+const textOf = (payload: { content?: string; components?: unknown[] }) =>
+  payload.content ??
+  JSON.stringify(
+    (payload.components ?? []).map(
+      (part) => (part as { toJSON?: () => unknown }).toJSON?.() ?? part,
+    ),
+  );
+
 /** A client in two servers, whose channel records what's sent and edited. */
 const fakeClient = () => {
   const sent: string[] = [];
@@ -67,14 +76,15 @@ const fakeClient = () => {
   let next = 0;
   const channel = {
     isTextBased: () => true,
-    send: async (payload: { content: string }) => {
-      sent.push(payload.content);
+    send: async (payload: { content?: string; components?: unknown[] }) => {
+      sent.push(textOf(payload));
       return { id: `msg${++next}` };
     },
     messages: {
       fetch: async (id: string) => ({
-        edit: async (payload: { content: string }) =>
-          void edited.push({ id, content: payload.content }),
+        attachments: { some: () => false },
+        edit: async (payload: { components?: unknown[] }) =>
+          void edited.push({ id, content: textOf(payload) }),
       }),
     },
   };
@@ -134,5 +144,25 @@ describe("posting the daily", () => {
     await updateDailyPost(client, "serverA");
 
     expect(edited).toEqual([]);
+  });
+
+  it("announces a finished game with a link back to the post", async () => {
+    const { client, sent } = fakeClient();
+    await postDailies(client);
+
+    await announceFinish(client, "serverA", {
+      game: "geo",
+      name: "graham1",
+      total: 267,
+      cityRight: true,
+    });
+
+    const announcement = sent.at(-1)!;
+    expect(announcement).toContain(
+      "graham1** played today's **Where in the World",
+    );
+    expect(announcement).toContain(
+      "https://discord.com/channels/serverA/bots/msg1",
+    );
   });
 });

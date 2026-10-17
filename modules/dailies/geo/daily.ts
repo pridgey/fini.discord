@@ -8,6 +8,7 @@ import {
   getRound,
   roundPhotos,
   saveGuess,
+  type DailyGuessRecord,
   type DailyRoundRecord,
 } from "./dailyStore";
 import { describePlace, type GeocodedGuess, type PlaceInfo } from "./geocode";
@@ -25,6 +26,7 @@ import {
 import { formatDistance } from "./score";
 import { POST_TIME, currentDay } from "../shared";
 import { warnAndUse } from "../../../utilities/fallback";
+import { renderMap, type Pin } from "./map";
 
 /**
  * The daily location game. Each day at noon a round is made and goes up in the
@@ -89,6 +91,33 @@ export const roundPost = (round: DailyRoundRecord, photos: Buffer[]) => ({
     row(button(ids(round.id).guess, "Make a guess", ButtonStyle.Primary, "📍")),
   ],
 });
+
+/**
+ * A round's answer on a map with everyone's guesses: the answer in red, up to
+ * eight guesses in blue with names. With no guesses there's only the answer,
+ * shown at country scale.
+ */
+export const guessMap = (
+  round: DailyRoundRecord,
+  guesses: DailyGuessRecord[],
+): Promise<Buffer> => {
+  // The answer goes last, so it is drawn over any guess that landed on it.
+  const pins: Pin[] = [
+    ...guesses.slice(0, 8).map((guess) => ({
+      lat: guess.guess_lat,
+      lon: guess.guess_lon,
+      color: "#3b82f6",
+      label: guess.username,
+    })),
+    {
+      lat: round.answer_lat,
+      lon: round.answer_lon,
+      color: "#ef4444",
+      label: "Here",
+    },
+  ];
+  return renderMap(pins, pins.length > 1 ? { line: false } : { zoom: 6 });
+};
 
 /* ------------------------------------------------------------- guessing */
 
@@ -174,7 +203,13 @@ export const lockDailyGuess = async (
   round: DailyRoundRecord,
   player: Player,
 ): Promise<
-  { reveal: Awaited<ReturnType<typeof revealView>> } | { refusal: string }
+  | {
+      reveal: Awaited<ReturnType<typeof revealView>>;
+      /** What it paid, and whether it named the right town: for the announcement. */
+      total: number;
+      cityRight: boolean;
+    }
+  | { refusal: string }
 > => {
   const k = key(round.id, player.serverId, player.userId);
   const guess = pending.get(k);
@@ -223,6 +258,10 @@ export const lockDailyGuess = async (
       reveal: await revealView(facts, round.place, guess, scored, {
         paid: true,
       }),
+      total: scored.total,
+      cityRight: scored.verdict.checks.some(
+        (check) => check.kind === "city" && check.outcome === "earned",
+      ),
     };
   } finally {
     locking.delete(k);

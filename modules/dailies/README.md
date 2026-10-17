@@ -7,22 +7,33 @@ Games with one round a day for everyone, which go up at noon Mountain time
 
 One message a day in each server's bot channel (`/config bot_channel`),
 however many games there are and however many people play. Servers without a
-bot channel are skipped.
+bot channel are skipped. It's two cards:
 
-- **Yesterday:** each game's answer and its top three.
-- **Today:** each game, what it pays, and a button that opens it privately.
-- **A live line** under each game - "Played by 4 · best **Aya** 214 fc", or
-  "Solved by **Aya** (7 guesses), **Fen** (12) · 6 playing" - which the bot
-  keeps current by editing the post a few seconds after someone plays (plays
-  close together share one edit). This is instead of a message per player.
+- **Yesterday:** each game's answer and its top three, with an empty line
+  between games, over **one image** of every game's solved state side by
+  side - the map of everyone's guesses beside the solved Weave grid, scaled to
+  one short strip (`recapImage`) so the post doesn't grow tall as games are
+  added.
+- **Today:** each game, what it pays, and a live line - "Played by 4 · best
+  **Aya** 214 fc", "Solved by **Aya** (7 guesses), **Fen** (12) · 6 playing" -
+  which the bot keeps current by editing the post a few seconds after someone
+  plays (plays close together share one edit). A button for each game opens it
+  privately.
 
-The post is rebuilt from what's stored each time. It's recorded on every
-game's round as the server's post, marked `combined`; the live line only ever
-edits a post marked that way, never a game's own post from before. A new
-daily adds a recap line, a today line and a button.
+The post is rebuilt from what's stored each time; an edit sends only the cards,
+so the image it was posted with stays. It's recorded on every game's round as
+the server's post, marked `combined`; the live line only ever edits a post
+marked that way, never a game's own post from before. A new daily adds a
+recap paragraph, a picture in the strip, a today paragraph and a button.
 
-`/daily <game>` opens a game for anyone who'd rather type, and
-`/geo-test post-daily` (bot admin) sends the day's post early.
+**Finishing a game** - locking in a location guess, or finding Weave's last
+word - is also announced in a small card in the same channel, with a button
+linking back to the day's post (`announceFinish`). The game handlers report
+plays through `dailyPlayed`, which updates the live line and announces.
+
+`/daily <game>` opens a game for anyone who'd rather type. `/geo-test
+post-daily` (bot admin) sends the day's post early, and `/geo-test
+repost-daily` sends it again in the current layout, removing the old one.
 
 Rounds and plays live in Pocketbase; their migrations are in `pb_migrations/`.
 

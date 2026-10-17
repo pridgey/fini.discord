@@ -6,7 +6,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { requireAdmin } from "../utilities/discord/isAdmin";
-import { postDailies } from "../modules/dailies/post";
+import { postDailies, repostDailies } from "../modules/dailies/post";
 import { geocodeGuess } from "../modules/dailies/geo/geocode";
 import {
   guessMessage,
@@ -36,6 +36,13 @@ export const data = new SlashCommandBuilder()
   )
   .addSubcommand((sub) =>
     sub
+      .setName("repost-daily")
+      .setDescription(
+        "Send today's daily post again in its current layout, removing the old one",
+      ),
+  )
+  .addSubcommand((sub) =>
+    sub
       .setName("guess")
       .setDescription("Guess where your test round's photos were taken")
       .addStringOption((option) =>
@@ -56,6 +63,16 @@ export const execute: SlashCommand["execute"] = async (
   logCommand();
 
   await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+  if (interaction.options.getSubcommand() === "repost-daily") {
+    const reposted = await repostDailies(interaction.client);
+    await interaction.editReply(
+      reposted
+        ? `Reposted today's daily in ${reposted} server${reposted === 1 ? "" : "s"}.`
+        : "There's no daily post today to repost.",
+    );
+    return;
+  }
 
   if (interaction.options.getSubcommand() === "post-daily") {
     const posted = await postDailies(interaction.client);

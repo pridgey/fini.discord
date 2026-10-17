@@ -8,7 +8,7 @@ import {
   playableWeave,
 } from "../../modules/dailies/weave/daily";
 import { weavePlayerOf } from "../../modules/dailies/weave/player";
-import { refreshDailyPost } from "../../modules/dailies/post";
+import { dailyPlayed } from "../../modules/dailies/post";
 
 export const namespace = WEAVE_WORDS_MODAL;
 
@@ -36,13 +36,22 @@ export const execute: ModalHandler["execute"] = async (
   }
 
   await interaction.deferUpdate();
-  const board = await guessWeaveWords(
+  const player = weavePlayerOf(
+    interaction,
+    interaction.member as GuildMember | null,
+  );
+  const { board, solve } = await guessWeaveWords(
     playable.round,
-    weavePlayerOf(interaction, interaction.member as GuildMember | null),
+    player,
     interaction.fields.getTextInputValue("words"),
   );
-  if (interaction.guildId)
-    refreshDailyPost(interaction.client, interaction.guildId);
+  if (interaction.guildId) {
+    dailyPlayed(
+      interaction.client,
+      interaction.guildId,
+      solve && { game: "weave", name: player.displayName, ...solve },
+    );
+  }
   // A fresh image replaces the old one rather than piling up beside it.
   await interaction.editReply({ ...board, attachments: [] });
 };

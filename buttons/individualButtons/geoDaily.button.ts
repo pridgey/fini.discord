@@ -10,7 +10,7 @@ import {
 } from "../../modules/dailies/geo/daily";
 import { findGuess, getRoundById } from "../../modules/dailies/geo/dailyStore";
 import { guessModal } from "../../modules/dailies/geo/messages";
-import { refreshDailyPost } from "../../modules/dailies/post";
+import { dailyPlayed } from "../../modules/dailies/post";
 
 export const namespace = DAILY_BUTTON;
 
@@ -84,16 +84,24 @@ export const execute: ButtonHandler["execute"] = async (
       });
       return;
     }
+    const displayName =
+      (interaction.member as GuildMember | null)?.displayName ??
+      interaction.user.displayName;
     const result = await lockDailyGuess(round, {
       serverId,
       serverName: interaction.guild?.name ?? "unknown guild name",
       userId: interaction.user.id,
       username: interaction.user.username,
-      displayName:
-        (interaction.member as GuildMember | null)?.displayName ??
-        interaction.user.displayName,
+      displayName,
     });
-    if ("reveal" in result) refreshDailyPost(interaction.client, serverId);
+    if ("reveal" in result) {
+      dailyPlayed(interaction.client, serverId, {
+        game: "geo",
+        name: displayName,
+        total: result.total,
+        cityRight: result.cityRight,
+      });
+    }
     await interaction.editReply(
       "reveal" in result
         ? { ...result.reveal, components: [], attachments: [] }

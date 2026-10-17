@@ -3,7 +3,15 @@ import type {
   DailyGuessRecord,
   DailyRoundRecord,
 } from "../../modules/dailies/geo/dailyStore";
-import { dailyPost, recapLines, todayLines } from "../../modules/dailies/post";
+import sharp from "sharp";
+import {
+  RECAP_IMAGE,
+  dailyPost,
+  finishText,
+  recapImage,
+  recapLines,
+  todayLines,
+} from "../../modules/dailies/post";
 import { generatePuzzle } from "../../modules/dailies/weave/puzzle";
 import type {
   WeavePlayRecord,
@@ -54,6 +62,19 @@ const board = (
   finished,
 });
 const ALL_WORDS = [0, 1, 2, 3, 4];
+
+type Post = ReturnType<typeof dailyPost>;
+/** Every text in a post's cards, joined. */
+const textOf = (post: Post) =>
+  post.components
+    .flatMap((card) => card.toJSON().components)
+    .map((part) => ("content" in part ? part.content : ""))
+    .join("\n");
+/** The custom ids of a post's buttons. */
+const buttonIds = (post: Post) =>
+  JSON.stringify(post.components.map((card) => card.toJSON())).match(
+    /(geodaily|weave):[^"]+/g,
+  ) ?? [];
 
 describe("the daily post", () => {
   it("recaps yesterday: each answer and the top three", () => {
@@ -137,14 +158,7 @@ describe("the daily post", () => {
         weave: { round: weaveRound, plays: [] },
       },
     );
-    const ids = both.components.flatMap((row) =>
-      row
-        .toJSON()
-        .components.map(
-          (button) => (button as { custom_id: string }).custom_id,
-        ),
-    );
-    expect(ids).toEqual([
+    expect(buttonIds(both)).toEqual([
       `geodaily:play:${geoRound.id}`,
       `weave:${weaveRound.id}:open`,
     ]);
@@ -154,7 +168,75 @@ describe("the daily post", () => {
       { geo: null, weave: null },
       { geo: { round: geoRound, guesses: [] }, weave: null },
     );
-    expect(geoOnly.content).not.toContain("Weave");
-    expect(geoOnly.components[0].toJSON().components).toHaveLength(1);
+    expect(textOf(geoOnly)).not.toContain("Weave");
+    expect(buttonIds(geoOnly)).toHaveLength(1);
+  });
+
+  it("puts Yesterday and Today in cards of their own, a blank line between games", () => {
+    const games = {
+      geo: { round: geoRound, guesses: [guess("Aya", 214)] },
+      weave: { round: weaveRound, plays: [] },
+    };
+    const post = dailyPost(games, games, { withImage: true });
+    const [yesterday, today] = post.components.map((card) => card.toJSON());
+
+    expect(post.components).toHaveLength(2);
+    expect(JSON.stringify(yesterday)).toContain("Yesterday");
+    expect(JSON.stringify(yesterday)).toContain(`attachment://${RECAP_IMAGE}`);
+    expect(JSON.stringify(today)).toContain("Today's dailies");
+    expect(textOf(post)).toContain("fc\n\n🧵");
+  });
+
+  it("leaves out the Yesterday card when nothing was posted yesterday, and the image when there isn't one", () => {
+    const today = { geo: { round: geoRound, guesses: [] }, weave: null };
+    expect(
+      dailyPost({ geo: null, weave: null }, today).components,
+    ).toHaveLength(1);
+
+    const noImage = dailyPost(
+      { geo: { round: geoRound, guesses: [] }, weave: null },
+      today,
+    );
+    expect(JSON.stringify(noImage.components[0].toJSON())).not.toContain(
+      "attachment://",
+    );
+  });
+});
+
+describe("yesterday's image", () => {
+  it("is one short strip, whatever games it holds", async () => {
+    const image = await recapImage({
+      geo: null,
+      weave: { round: weaveRound, plays: [] },
+    });
+    const { height } = await sharp(image!).metadata();
+    expect(height).toBe(360);
+    expect(await recapImage({ geo: null, weave: null })).toBeNull();
+  });
+});
+
+describe("finishing a game", () => {
+  it("tells the channel what the player won", () => {
+    expect(
+      finishText({ game: "geo", name: "graham1", total: 267, cityRight: true }),
+    ).toBe(
+      "🌍 **graham1** played today's **Where in the World** and won **267 fc**, right down to the city!",
+    );
+    expect(
+      finishText({ game: "geo", name: "Bo", total: 0, cityRight: false }),
+    ).toBe(
+      "🌍 **Bo** played today's **Where in the World** and came away empty-handed.",
+    );
+    expect(
+      finishText({
+        game: "weave",
+        name: "Aya",
+        guesses: 7,
+        fc: 58,
+        thread: true,
+      }),
+    ).toBe(
+      "🧵 **Aya** solved today's **Weave**, thread and all, in 7 guesses and won **58 fc**!",
+    );
   });
 });
