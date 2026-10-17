@@ -119,6 +119,12 @@ const EVENT_ACCENT = 0xb18cff;
 const plural = (count: number, word: string, many = `${word}s`): string =>
   `${count} ${count === 1 ? word : many}`;
 
+/** "Play a card to fight. It then rests for 2 rooms." */
+const restLine = (rooms: number): string =>
+  rooms > 0
+    ? `-# Play a card to fight. It then rests for ${plural(rooms, "room")}.`
+    : "-# Play a card to fight. It's ready again straight after.";
+
 /** The hand as it plays right now: buffs applied, cooldowns counted. */
 const handView = (input: DungeonMessageInput) => {
   const mods = modsOf(input.progress);
@@ -591,17 +597,26 @@ export const composeDungeonMessage = (
       ]);
       scene.addTextDisplayComponents((text) =>
         text.setContent(
+          // Sections a blank line apart: the enemy and its ability, which
+          // slot this fight is, then how to play it.
           [
-            ...(room.preview
-              ? [
-                  `👀 **A sneak peek** — ${room.enemy.name.replace(/^Sudden /, "")} is from ${room.enemy.set ? `Set ${room.enemy.set}` : "a set"}, which isn't out yet.`,
-                ]
-              : []),
-            ...keywordLegend([room.enemy]),
-            ...enemyAbilityLines(progress, weakenedEnemy(room.enemy, mods)),
-            `-# Play a card to fight. It rests for the next ${plural(Math.max(0, DUNGEON.cooldownRooms + mods.cooldown), "room")} either way. Lose and the run ends${progress.wards > 0 ? " - unless a ward breaks first" : ""}. For abilities this is **slot ${nextSlot(progress)} of ${DUNGEON.legLength}**.`,
-            WHEEL_HINT,
-          ].join("\n"),
+            [
+              ...(room.preview
+                ? [
+                    `👀 **A sneak peek** — ${room.enemy.name.replace(/^Sudden /, "")} is from ${room.enemy.set ? `Set ${room.enemy.set}` : "a set"}, which isn't out yet.`,
+                  ]
+                : []),
+              ...keywordLegend([room.enemy]),
+              ...enemyAbilityLines(progress, weakenedEnemy(room.enemy, mods)),
+            ],
+            [
+              `-# For abilities this is **slot ${nextSlot(progress)} of ${DUNGEON.legLength}**.`,
+            ],
+            [restLine(DUNGEON.cooldownRooms + mods.cooldown), WHEEL_HINT],
+          ]
+            .filter((section) => section.length > 0)
+            .map((section) => section.join("\n"))
+            .join("\n\n"),
         ),
       );
     }

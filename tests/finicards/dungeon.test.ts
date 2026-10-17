@@ -792,6 +792,40 @@ describe("finicards v2 dungeons", () => {
       expect(text).toContain("ready in 2 rooms");
     });
 
+    it("spaces the fight room out: the enemy's ability, its slot, then how to play", () => {
+      const fighter = { ...wall("e"), keyword: "intimidate" };
+      const text = textOf(
+        composeDungeonMessage(
+          {
+            ...base,
+            progress: runIn(fightRoom(fighter), { depth: 2 }),
+            hand,
+          },
+          noImages,
+        ),
+      );
+
+      // A blank line after the ability, another after the slot.
+      expect(text).toMatch(
+        /Intimidate[^"]*\\n\\n-# For abilities this is \*\*slot 1 of \d\*\*\.\\n\\n-# Play a card to fight\. It then rests for \d rooms\.\\n-# /,
+      );
+      expect(text).not.toContain("Lose and the run ends");
+    });
+
+    it("starts the fight room at the slot when the enemy has no ability", () => {
+      const text = textOf(
+        composeDungeonMessage(
+          {
+            ...base,
+            progress: runIn(fightRoom(wall("e")), { depth: 2 }),
+            hand,
+          },
+          noImages,
+        ),
+      );
+      expect(text).toContain('"content":"-# For abilities this is');
+    });
+
     it("shows doors as hints, without the room behind them", () => {
       const secret = fightRoom(card("Secret", "wit", [3, 9, 3]), "elite");
       const message = composeDungeonMessage(
