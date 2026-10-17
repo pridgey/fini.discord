@@ -345,7 +345,7 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
         id,
         body: {
           art_key: key,
-          art: art ? new File([art], `${id}.webp`, { type: "image/webp" }) : null,
+          art: art ? new File([new Uint8Array(art)], `${id}.webp`, { type: "image/webp" }) : null,
         },
         bytes: art?.length ?? 0,
         done: () => {
@@ -391,7 +391,7 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
         body: {
           face_key: key,
           face: new File([face], `${id}.webp`, { type: "image/webp" }),
-          animation: animation ? new File([animation], `${id}.gif`, { type: "image/gif" }) : null,
+          animation: animation ? new File([new Uint8Array(animation)], `${id}.gif`, { type: "image/gif" }) : null,
         },
         bytes: face.length + (animation?.length ?? 0),
         done: () => {

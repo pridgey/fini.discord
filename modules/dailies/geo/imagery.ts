@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 import { clueScore, MIN_CLUES } from "./clues";
 import { USER_AGENT } from "./geocode";
 import { PLACES } from "./places";
@@ -196,7 +196,7 @@ const download = async (url: string): Promise<Buffer | null> => {
   return response?.ok ? Buffer.from(await response.arrayBuffer()) : null;
 };
 
-const reencode = (image: sharp.Sharp) =>
+const reencode = (image: Sharp) =>
   image.resize({ width: PHOTO_WIDTH, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
 
 /**

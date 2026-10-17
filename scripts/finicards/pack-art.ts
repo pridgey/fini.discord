@@ -1,7 +1,7 @@
 import GifEncoder from "gif-encoder-2";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-import sharp from "sharp";
+import sharp, { type OverlayOptions } from "sharp";
 import {
   PACK_COVER_FILE,
   PACK_OPENING_DELAY_MS,
@@ -225,7 +225,7 @@ const drawOpening = async (front: Buffer, back: Buffer): Promise<Buffer> => {
     const t = index / (PACK_OPENING_FRAMES - 1);
     const cx = CANVAS.w / 2;
     const cy = CANVAS.h / 2;
-    const layers: sharp.OverlayOptions[] = [];
+    const layers: OverlayOptions[] = [];
 
     const turn = ease(span(t, ...BEAT.flip));
     // The zip runs at a steady pace: it is a pull, not a swing.

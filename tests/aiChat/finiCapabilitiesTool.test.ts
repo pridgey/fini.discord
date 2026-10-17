@@ -53,7 +53,7 @@ describe("executeToolCall for fini_capabilities", () => {
     globalThis.fetch = (async () => {
       called = true;
       throw new Error("executeToolCall must not POST a locally-served tool");
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const result = await executeToolCall({
       function: { name: FINI_CAPABILITIES_TOOL_NAME, arguments: "{}" },
@@ -104,7 +104,7 @@ describe("getAvailableTools", () => {
     // 403 feature_disabled is what llama.cpp returns with no MCP servers
     // configured. Previously that meant an empty list and no retrieval pass.
     globalThis.fetch = (async () =>
-      new Response("feature_disabled", { status: 403 })) as typeof fetch;
+      new Response("feature_disabled", { status: 403 })) as unknown as typeof fetch;
 
     const tools = await getAvailableTools();
 

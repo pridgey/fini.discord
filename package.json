@@ -18,23 +18,23 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.72.1",
     "@blockzilla101/citation": "^1.3.0",
-    "@discordjs/builders": "latest",
-    "@huggingface/transformers": "^4.3.0",
-    "date-fns": "^3.2.0",
-    "discord.js": "latest",
+    "@discordjs/builders": "^1.14.1",
+    "@huggingface/transformers": "^4.3.1",
+    "date-fns": "^3.6.0",
+    "discord.js": "^14.27.0",
     "gif-encoder-2": "^1.0.5",
-    "glob": "^10.3.10",
-    "pocketbase": "latest",
-    "prettier": "^2.7.1",
+    "glob": "^10.5.0",
+    "pocketbase": "^0.28.1",
+    "prettier": "^2.8.8",
     "rcon-client": "^4.2.5",
     "replicate": "^0.32.1",
     "seedrandom": "^3.0.5",
-    "sharp": "^0.33.5"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
-    "@types/bun": "^1.0.4",
+    "@types/bun": "^1.4.3",
     "concurrently": "^8.2.2",
-    "typescript": "^5.3.3"
+    "typescript": "^5.9.3"
   },
   "overrides": {
     "@napi-rs/canvas": "0.1.59"

@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type OverlayOptions } from "sharp";
 import { USER_AGENT } from "./geocode";
 import type { LatLon } from "./score";
 
@@ -123,7 +123,7 @@ export const renderMap = async (
   const lastX = Math.floor((left + width - 1) / TILE);
   const lastY = Math.floor((top + height - 1) / TILE);
 
-  const layers: sharp.OverlayOptions[] = [];
+  const layers: OverlayOptions[] = [];
   await Promise.all(
     Array.from({ length: lastX - firstX + 1 }, (_, i) => firstX + i).flatMap((x) =>
       Array.from({ length: lastY - firstY + 1 }, (_, j) => firstY + j).map(async (y) => {

@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
 import GifEncoder from "gif-encoder-2";
-import sharp from "sharp";
+import sharp, { type Blend, type Sharp } from "sharp";
 import type { ArtAdjust } from "../../../types/PocketbaseTablesV2";
 import type { LegendaryTier } from "../legendary";
 import type { BattleCard } from "../types";
@@ -59,7 +59,7 @@ type MaskName = "edges" | "dark";
 
 type Layer = {
   svg: string;
-  blend: sharp.Blend;
+  blend: Blend;
   /** Only light the card where this mask is open. */
   mask?: MaskName;
 };
@@ -767,7 +767,7 @@ const cardFrame = async (
  */
 const buildMasks = async (card: Buffer): Promise<Record<MaskName, Buffer>> => {
   const grey = sharp(card).flatten({ background: "#000000" }).greyscale();
-  const finish = (image: sharp.Sharp) => image.toColourspace("srgb").png().toBuffer();
+  const finish = (image: Sharp) => image.toColourspace("srgb").png().toBuffer();
 
   return {
     edges: await finish(

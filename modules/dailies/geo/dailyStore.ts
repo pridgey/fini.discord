@@ -80,7 +80,7 @@ export const createRound = async (
     answer_lon: round.answer.lon,
     place,
     photos: round.photos.map(
-      (photo, i) => new File([photo], `view-${i + 1}.jpg`, { type: "image/jpeg" }),
+      (photo, i) => new File([new Uint8Array(photo)], `view-${i + 1}.jpg`, { type: "image/jpeg" }),
     ),
     credit: round.credit,
     license: round.license,
@@ -104,7 +104,7 @@ export const roundPhotos = async (round: DailyRoundRecord): Promise<Buffer[]> =>
       return response?.ok ? Buffer.from(await response.arrayBuffer()) : null;
     }),
   );
-  return photos.filter((photo): photo is Buffer => !!photo);
+  return photos.filter((photo) => photo !== null);
 };
 
 export const factsOf = (round: DailyRoundRecord): RoundFacts => ({
