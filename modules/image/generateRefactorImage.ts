@@ -1,5 +1,6 @@
 import Replicate from "replicate";
 import { ImageGenerationParams, ImageGenerationResult } from "./types";
+import { fromReplicateOutput } from "./replicateOutput";
 
 export const REFACTOR_COST = 20;
 
@@ -12,7 +13,7 @@ export const generateRefactorImage = async ({
   try {
     const replicate = new Replicate();
 
-    const respond: any = await replicate.run("recraft-ai/recraft-v3", {
+    const output = await replicate.run("recraft-ai/recraft-v3", {
       input: {
         size: "1365x1024",
         prompt,
@@ -21,10 +22,7 @@ export const generateRefactorImage = async ({
       },
     });
 
-    return {
-      image: respond || "",
-      success: true,
-    };
+    return fromReplicateOutput(output);
   } catch (err: unknown) {
     return {
       image: "",

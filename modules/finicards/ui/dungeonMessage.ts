@@ -5,6 +5,7 @@ import {
   ButtonStyle,
   ContainerBuilder,
   MessageFlags,
+  type MediaGalleryItemBuilder,
 } from "discord.js";
 import type { V2DungeonRunState } from "../../../types/PocketbaseTablesV2";
 import {
@@ -467,7 +468,7 @@ export const composeDungeonMessage = (
       header.addMediaGalleryComponents((gallery) =>
         gallery.addItems(
           ...drops.map(
-            (drop) => (item: any) =>
+            (drop) => (item: MediaGalleryItemBuilder) =>
               item
                 .setURL(`attachment://${drop.name}`)
                 .setDescription(drop.description),

@@ -1,5 +1,6 @@
 import Replicate from "replicate";
 import { ImageGenerationParams, ImageGenerationResult } from "./types";
+import { fromReplicateOutput } from "./replicateOutput";
 
 export const FLUX_COST = 0;
 
@@ -12,7 +13,7 @@ export const generateFluxImage = async ({
   try {
     const replicate = new Replicate();
 
-    const respond: any = await replicate.run("black-forest-labs/flux-schnell", {
+    const output = await replicate.run("black-forest-labs/flux-schnell", {
       input: {
         prompt,
         disable_safety_checker: true,
@@ -20,10 +21,7 @@ export const generateFluxImage = async ({
       },
     });
 
-    return {
-      image: respond[0] || "",
-      success: true,
-    };
+    return fromReplicateOutput(output);
   } catch (err: unknown) {
     return {
       image: "",

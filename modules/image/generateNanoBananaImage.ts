@@ -1,5 +1,6 @@
 import Replicate from "replicate";
 import { ImageGenerationParams, ImageGenerationResult } from "./types";
+import { fromReplicateOutput } from "./replicateOutput";
 
 export const NANO_BANANA_COST = 30;
 
@@ -13,17 +14,14 @@ export const generateNanoBananaImage = async ({
   try {
     const replicate = new Replicate();
 
-    const respond: any = await replicate.run("google/nano-banana", {
+    const output = await replicate.run("google/nano-banana", {
       input: {
         prompt,
         image_input: imageInput ? [imageInput] : undefined,
       },
     });
 
-    return {
-      image: respond || "",
-      success: true,
-    };
+    return fromReplicateOutput(output);
   } catch (err: unknown) {
     return {
       image: "",

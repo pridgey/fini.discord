@@ -13,7 +13,8 @@ export type ChatRecord = {
   author: "bot" | "user";
   chatType: string;
   server_id: string;
-  attachment?: any;
+  /** The Anthropic file id of an uploaded attachment, deleted with the message. */
+  attachment?: string;
 };
 
 export type HammerspaceRecord = {

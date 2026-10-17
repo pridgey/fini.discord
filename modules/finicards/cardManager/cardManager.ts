@@ -192,7 +192,7 @@ const listCandidates = async (key: string) => {
 const artistFromSource = async (source: string): Promise<string | null> => {
   try {
     const url = new URL(source);
-    const lookup = async (address: string): Promise<any> => {
+    const lookup = async <T>(address: string): Promise<T | null> => {
       const response = await fetch(address, {
         headers: {
           "User-Agent": agentFor(address),
@@ -203,13 +203,15 @@ const artistFromSource = async (source: string): Promise<string | null> => {
       // "No such post" is an answer; anything else is the site being busy.
       if (response.status === 404) return null;
       if (!response.ok) throw new Error(`${response.status}`);
-      return response.json();
+      return (await response.json()) as T;
     };
 
     if (url.hostname === "cdn.donmai.us") {
       const md5 = url.pathname.match(/([0-9a-f]{32})\.\w+$/)?.[1];
       const post = md5
-        ? await lookup(`https://danbooru.donmai.us/posts.json?md5=${md5}`)
+        ? await lookup<DanbooruPost | DanbooruPost[]>(
+            `https://danbooru.donmai.us/posts.json?md5=${md5}`,
+          )
         : null;
       return danbooruArtist(
         (Array.isArray(post) ? post[0] : post)?.tag_string_artist,
@@ -218,7 +220,7 @@ const artistFromSource = async (source: string): Promise<string | null> => {
     if (url.hostname === "cards.scryfall.io") {
       const id = url.pathname.match(/([0-9a-f-]{36})\.\w+$/)?.[1];
       const card = id
-        ? await lookup(`https://api.scryfall.com/cards/${id}`)
+        ? await lookup<ScryfallCard>(`https://api.scryfall.com/cards/${id}`)
         : null;
       const back = url.pathname.includes("/back/");
       return String(
@@ -367,6 +369,42 @@ const wikiApi = async (domain: string): Promise<string | null> => {
   return null;
 };
 
+/*
+ * The parts of outside APIs' answers this file reads. They are other people's
+ * JSON, so every field is optional or checked where it's used.
+ */
+type DanbooruTag = { name: string; post_count: number };
+type DanbooruPost = {
+  tag_string_artist?: string;
+  tag_string?: string;
+  file_url?: string;
+  file_ext?: string;
+  preview_file_url?: string;
+  image_width: number;
+  image_height: number;
+  created_at?: string;
+  media_asset?: { variants?: { type: string; url: string }[] };
+};
+type ScryfallFace = {
+  name?: string;
+  artist?: string;
+  image_uris?: { art_crop?: string };
+};
+type ScryfallCard = ScryfallFace & {
+  set_name?: string;
+  card_faces?: ScryfallFace[];
+};
+type CommonsPage = {
+  title?: string;
+  imageinfo?: {
+    url: string;
+    thumburl?: string;
+    mime?: string;
+    width: number;
+    height: number;
+  }[];
+};
+
 type SearchHit = {
   title: string;
   url: string;
@@ -408,8 +446,12 @@ const searchWiki = async (
           signal: AbortSignal.timeout(60000),
         },
       );
-      const body = await response.json();
-      for (const page of Object.values<any>(body?.query?.pages ?? {})) {
+      const body = (await response.json()) as {
+        query?: { pages?: Record<string, CommonsPage> };
+        /** Where the next page of results starts, while there is one. */
+        continue?: Record<string, string>;
+      };
+      for (const page of Object.values(body?.query?.pages ?? {})) {
         const info = page.imageinfo?.[0];
         if (!info || !/^image\/(jpeg|png|webp)$/.test(info.mime ?? ""))
           continue;
@@ -460,8 +502,10 @@ const fandomCommunities = async (
       },
     );
     if (!response.ok) return [];
-    const body = await response.json();
-    return (body.results ?? []).map((result: any) => ({
+    const body = (await response.json()) as {
+      results?: { url: string; name?: string; pageCount?: number }[];
+    };
+    return (body.results ?? []).map((result) => ({
       domain: new URL(result.url).hostname,
       name: String(result.name ?? ""),
       pages: Number(result.pageCount ?? 0),
@@ -484,7 +528,10 @@ const wikiKnows = async (domain: string, name: string): Promise<boolean> => {
       },
     );
     const wanted = name.toLowerCase().split(/\s+/)[0];
-    const results: any[] = (await response.json())?.query?.search ?? [];
+    const body = (await response.json()) as {
+      query?: { search?: { title?: string }[] };
+    };
+    const results = body?.query?.search ?? [];
     return results.some((result) =>
       String(result.title).toLowerCase().includes(wanted),
     );
@@ -602,7 +649,7 @@ const NAME_FILLER = new Set([
   "prince",
 ]);
 
-const fetchJson = async (url: string): Promise<any> => {
+const fetchJson = async <T>(url: string): Promise<T | null> => {
   const response = await fetch(url, {
     headers: { "User-Agent": agentFor(url), Accept: "application/json" },
     signal: AbortSignal.timeout(30000),
@@ -611,7 +658,7 @@ const fetchJson = async (url: string): Promise<any> => {
   if (response.status === 404) return null;
   if (!response.ok)
     throw new Error(`${new URL(url).hostname} answered ${response.status}`);
-  return response.json();
+  return (await response.json()) as T;
 };
 
 /**
@@ -658,7 +705,7 @@ const danbooruTags = async (
   const found = new Map<string, number>();
   await Promise.all(
     [...patterns].map(async (pattern) => {
-      const tags = await fetchJson(
+      const tags = await fetchJson<DanbooruTag[]>(
         `${DANBOORU}/tags.json?${new URLSearchParams({
           "search[name_or_alias_matches]": pattern,
           "search[category]": "4",
@@ -717,7 +764,7 @@ const danbooruPosts = async (
   era: "before" | "since",
   safe: boolean,
 ): Promise<SearchHit[]> => {
-  const posts = await fetchJson(
+  const posts = await fetchJson<DanbooruPost[]>(
     `${DANBOORU}/posts.json?${new URLSearchParams({
       tags: `${tags} date:${era === "before" ? "<" : ">="}${BEFORE_GENERATORS}${safe ? " rating:g,s" : ""} order:score`,
       limit: "200",
@@ -731,7 +778,7 @@ const danbooruPosts = async (
     // Banned outright, but belt and braces - and "assisted" is allowed there.
     if (/\bai-(generated|assisted)\b/.test(post.tag_string ?? "")) continue;
     const artist = danbooruArtist(post.tag_string_artist);
-    const variants: any[] = post.media_asset?.variants ?? [];
+    const variants = post.media_asset?.variants ?? [];
     hits.push({
       title: `${artist || "unknown artist"} · ${String(post.created_at).slice(0, 4)}`,
       url: post.file_url,
@@ -795,9 +842,9 @@ const searchScryfall = async (
   name: string,
   raw: string,
 ): Promise<HitGroup[]> => {
-  const find = async (query: string): Promise<any[]> =>
+  const find = async (query: string): Promise<ScryfallCard[]> =>
     (
-      await fetchJson(
+      await fetchJson<{ data?: ScryfallCard[] }>(
         `https://api.scryfall.com/cards/search?${new URLSearchParams({ q: query, unique: "art" })}`,
       )
     )?.data ?? [];
@@ -819,7 +866,7 @@ const searchScryfall = async (
   const hits = await Promise.all(
     cards.slice(0, 40).flatMap((card) =>
       (card.image_uris ? [card] : (card.card_faces ?? [])).map(
-        async (face: any): Promise<SearchHit | null> => {
+        async (face: ScryfallFace): Promise<SearchHit | null> => {
           const url = face.image_uris?.art_crop;
           if (!url) return null;
           // Crops are near 626x457 but not exactly; ask rather than assume.
@@ -890,27 +937,39 @@ type EditorState = {
   adjust?: ArtAdjust | null;
 };
 
-const cleanFields = (raw: any): Fields => ({
-  card_name: String(raw?.card_name ?? "").trim(),
-  series: String(raw?.series ?? "").trim(),
-  rarity: rarityOf(raw?.rarity),
-  secret_art: raw?.rarity === "secret_art",
-  power: Math.round(Number(raw?.power) || 0),
-  wit: Math.round(Number(raw?.wit) || 0),
-  heart: Math.round(Number(raw?.heart) || 0),
-  tags: (Array.isArray(raw?.tags) ? raw.tags : [])
-    .map((tag: unknown) => slug(String(tag)))
-    .filter(Boolean)
-    .slice(0, 12),
-  set: Math.max(0, Math.round(Number(raw?.set) || 0)),
-  population: Math.max(0, Math.round(Number(raw?.population) || 0)),
-  active: !!raw?.active,
-  flavour: String(raw?.flavour ?? "").trim(),
-  artist: String(raw?.artist ?? "").trim(),
-});
+const cleanFields = (input: unknown): Fields => {
+  const raw = (input ?? {}) as Partial<Record<keyof Fields, unknown>>;
+  return {
+    card_name: String(raw?.card_name ?? "").trim(),
+    series: String(raw?.series ?? "").trim(),
+    rarity: rarityOf(raw?.rarity),
+    secret_art: raw?.rarity === "secret_art",
+    power: Math.round(Number(raw?.power) || 0),
+    wit: Math.round(Number(raw?.wit) || 0),
+    heart: Math.round(Number(raw?.heart) || 0),
+    tags: (Array.isArray(raw.tags) ? raw.tags : [])
+      .map((tag: unknown) => slug(String(tag)))
+      .filter(Boolean)
+      .slice(0, 12),
+    set: Math.max(0, Math.round(Number(raw?.set) || 0)),
+    population: Math.max(0, Math.round(Number(raw?.population) || 0)),
+    active: !!raw?.active,
+    flavour: String(raw?.flavour ?? "").trim(),
+    artist: String(raw?.artist ?? "").trim(),
+  };
+};
 
-const cleanAdjust = (raw: any): ArtAdjust | null => {
-  if (!raw || typeof raw !== "object") return null;
+type RawShares = Record<
+  "x" | "y" | "left" | "top" | "right" | "bottom",
+  unknown
+>;
+
+const cleanAdjust = (input: unknown): ArtAdjust | null => {
+  if (!input || typeof input !== "object") return null;
+  const raw = input as {
+    focus?: Partial<RawShares>;
+    trim?: Partial<RawShares>;
+  };
   const adjust: ArtAdjust = {};
   const share = (value: unknown) =>
     Math.min(Math.max(Number(value) || 0, 0), 1);
@@ -1266,7 +1325,10 @@ const jpegResponse = async (image: Buffer, cache = "no-store") =>
     { headers: { "Content-Type": "image/jpeg", "Cache-Control": cache } },
   );
 
-const stateOf = (raw: any): EditorState => {
+const stateOf = (input: unknown): EditorState => {
+  const raw = (input ?? {}) as Partial<
+    Record<"key" | "id" | "fields" | "candidate" | "adjust", unknown>
+  >;
   const key = String(raw?.key ?? raw?.id ?? "");
   if (!SAFE_KEY.test(key)) throw new Error("Bad card key");
   return {
