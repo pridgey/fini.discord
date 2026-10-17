@@ -2,6 +2,7 @@ import { ClientResponseError } from "pocketbase";
 import { pb } from "../../../utilities/pocketbase";
 import { NO_PROGRESS, type WeaveProgress } from "./game";
 import type { WeavePuzzle } from "./puzzle";
+import type { DailyPost } from "../shared";
 
 /**
  * Weave's Pocketbase records: one puzzle a day, and one board per player per
@@ -14,7 +15,7 @@ const PLAYS = "daily_weave_play";
 export type WeaveRoundRecord = WeavePuzzle & {
   id: string;
   day: string;
-  posts: Record<string, { channelId: string; messageId: string }> | null;
+  posts: Record<string, DailyPost> | null;
 };
 
 export type WeavePlayRecord = {
@@ -59,7 +60,7 @@ export const createWeaveRound = (
 export const recordWeavePost = async (
   roundId: string,
   serverId: string,
-  post: { channelId: string; messageId: string },
+  post: DailyPost,
 ) => {
   const round = await pb.collection<WeaveRoundRecord>(ROUNDS).getOne(roundId);
   await pb

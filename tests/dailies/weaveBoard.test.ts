@@ -1,12 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import sharp from "sharp";
 import { boardText, buildBoard } from "../../modules/dailies/weave/board";
-import {
-  parseWords,
-  solvedMessage,
-  weavePost,
-  weaveResultsText,
-} from "../../modules/dailies/weave/daily";
+import { parseWords, solvedMessage } from "../../modules/dailies/weave/daily";
 import {
   NO_PROGRESS,
   countGuesses,
@@ -15,10 +10,7 @@ import {
 } from "../../modules/dailies/weave/game";
 import { generatePuzzle } from "../../modules/dailies/weave/puzzle";
 import { weaveBoardSvg } from "../../modules/dailies/weave/render";
-import type {
-  WeavePlayRecord,
-  WeaveRoundRecord,
-} from "../../modules/dailies/weave/store";
+import type { WeaveRoundRecord } from "../../modules/dailies/weave/store";
 
 const seeded = (seed: number) => () => {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -170,31 +162,5 @@ describe("the Weave board", () => {
   it("stops offering the thread once every word is found", () => {
     const text = boardText({ roundId: round.id, puzzle, progress: allFound() });
     expect(text).toContain(`It was **${puzzle.thread.toUpperCase()}**`);
-  });
-
-  it("posts the grid as an image, and the next day the answers and who did what", async () => {
-    const post = await weavePost(round);
-    expect(post.content).toContain("Today's Weave");
-    expect(post.files).toHaveLength(1);
-    const play: WeavePlayRecord = {
-      id: "p",
-      round: round.id,
-      server_id: "s",
-      user_id: "u",
-      username: "Weaver",
-      found: [0, 1],
-      hinted: [],
-      thread_guess: puzzle.thread,
-      thread_fc: 15,
-      guesses: 4,
-      paid: 25,
-      finished: false,
-    };
-    const results = weaveResultsText(round, [play]);
-    expect(results).toContain(
-      `the thread was **${puzzle.thread.toUpperCase()}**`,
-    );
-    expect(results).toContain("🥇 **Weaver** · 25 fc · 2/5 words · thread ✅");
-    expect(weaveResultsText(round, [])).toContain("Nobody played it.");
   });
 });

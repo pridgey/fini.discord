@@ -13,7 +13,8 @@ import type { RoundFacts } from "./messages";
 const ROUNDS = "daily_geo_round";
 const GUESSES = "daily_geo_guess";
 
-export type DailyPost = { channelId: string; messageId: string };
+export type { DailyPost } from "../shared";
+import type { DailyPost } from "../shared";
 
 export type DailyRoundRecord = {
   id: string;

@@ -73,7 +73,7 @@ export const execute: ButtonHandler["execute"] = async (
     await interaction.deferUpdate();
     // A fresh image replaces the old one rather than piling up beside it.
     await interaction.editReply({
-      ...(await hintWeave(interaction.client, playable.round, player)),
+      ...(await hintWeave(playable.round, player)),
       attachments: [],
     });
   }

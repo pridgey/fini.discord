@@ -6,8 +6,7 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { requireAdmin } from "../utilities/discord/isAdmin";
-import { postDaily } from "../modules/dailies/geo/daily";
-import { WEAVE_LIVE, postWeave } from "../modules/dailies/weave/daily";
+import { postDailies } from "../modules/dailies/post";
 import { geocodeGuess } from "../modules/dailies/geo/geocode";
 import {
   guessMessage,
@@ -59,13 +58,11 @@ export const execute: SlashCommand["execute"] = async (
   await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
   if (interaction.options.getSubcommand() === "post-daily") {
-    const geo = await postDaily(interaction.client);
-    // Weave posts only once it's live.
-    const weave = WEAVE_LIVE ? await postWeave(interaction.client) : 0;
+    const posted = await postDailies(interaction.client);
     await interaction.editReply(
-      geo || weave
-        ? `Posted today's location round in ${geo} server${geo === 1 ? "" : "s"}${WEAVE_LIVE ? ` and Weave in ${weave}` : ""}.`
-        : "Nothing new to post: today's rounds are already out everywhere with a bot channel, or no server has one set (`/config bot_channel`).",
+      posted
+        ? `Posted today's daily in ${posted} server${posted === 1 ? "" : "s"}.`
+        : "Nothing new to post: today's daily is already out everywhere with a bot channel, or no server has one set (`/config bot_channel`).",
     );
     return;
   }

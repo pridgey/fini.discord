@@ -6,15 +6,18 @@ import {
   lockDailyGuess,
   modalId,
   playedResult,
+  todaysRoundFor,
 } from "../../modules/dailies/geo/daily";
 import { findGuess, getRoundById } from "../../modules/dailies/geo/dailyStore";
 import { guessModal } from "../../modules/dailies/geo/messages";
+import { refreshDailyPost } from "../../modules/dailies/post";
 
 export const namespace = DAILY_BUTTON;
 
 /**
- * The daily location game's buttons: `guess` and `retry` open the box a guess
- * is typed into; `lock` judges, saves and pays the guess on screen.
+ * The daily location game's buttons: `play` (on the daily post) shows today's
+ * round privately; `guess` and `retry` open the box a guess is typed into;
+ * `lock` judges, saves and pays the guess on screen.
  */
 export const execute: ButtonHandler["execute"] = async (
   interaction: ButtonInteraction,
@@ -31,6 +34,15 @@ export const execute: ButtonHandler["execute"] = async (
   }
 
   const round = await getRoundById(roundId);
+
+  // From the daily post: today's round, privately - or their result, if played.
+  if (action === "play") {
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    await interaction.editReply(
+      await todaysRoundFor(serverId, interaction.user.id),
+    );
+    return;
+  }
 
   if (action === "guess" || action === "retry") {
     // Played already: their result again, as Weave shows a finished board.
@@ -72,20 +84,16 @@ export const execute: ButtonHandler["execute"] = async (
       });
       return;
     }
-    const result = await lockDailyGuess(
-      interaction.client,
-      round,
-      {
-        serverId,
-        serverName: interaction.guild?.name ?? "unknown guild name",
-        userId: interaction.user.id,
-        username: interaction.user.username,
-        displayName:
-          (interaction.member as GuildMember | null)?.displayName ??
-          interaction.user.displayName,
-      },
-      interaction.channelId,
-    );
+    const result = await lockDailyGuess(round, {
+      serverId,
+      serverName: interaction.guild?.name ?? "unknown guild name",
+      userId: interaction.user.id,
+      username: interaction.user.username,
+      displayName:
+        (interaction.member as GuildMember | null)?.displayName ??
+        interaction.user.displayName,
+    });
+    if ("reveal" in result) refreshDailyPost(interaction.client, serverId);
     await interaction.editReply(
       "reveal" in result
         ? { ...result.reveal, components: [], attachments: [] }

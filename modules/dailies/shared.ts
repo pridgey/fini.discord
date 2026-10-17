@@ -5,6 +5,17 @@ import { Client, TextChannel, type Message } from "discord.js";
  * being played, and posting to a server's bot channel.
  */
 
+/**
+ * Where a game's round was posted in a server. `combined` marks the daily
+ * post (`post.ts`), which is kept up to date by editing; a game's own posts
+ * from before it are never edited.
+ */
+export type DailyPost = {
+  channelId: string;
+  messageId: string;
+  combined?: boolean;
+};
+
 /** When the day's rounds go up, in the bot's local time - Mountain, on friday. */
 export const POST_HOUR = 12;
 /** POST_HOUR, as the messages say it. */

@@ -1,25 +1,7 @@
-import {
-  ActionRowBuilder,
-  AttachmentBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  Client,
-} from "discord.js";
 import { addCoin } from "../../finicoin";
-import { getBotChannelForServer } from "../../../utilities/config/configUtils";
+import { currentDay, dayKey } from "../shared";
+import { buildBoard } from "./board";
 import {
-  POST_HOUR,
-  POST_TIME,
-  currentDay,
-  dayKey,
-  previousDay,
-  sendTo,
-} from "../shared";
-import { buildBoard, buttonId } from "./board";
-import { WEAVE_IMAGE, renderWeaveBoard } from "./render";
-import {
-  MAX_FC,
-  NO_PROGRESS,
   allFound,
   canGuessThread,
   checkWord,
@@ -39,24 +21,21 @@ import {
   openWeavePlay,
   progressOf,
   puzzleOf,
-  recordWeavePost,
   saveWeaveProgress,
-  weavePlaysFor,
   type WeavePlayRecord,
   type WeaveRoundRecord,
 } from "./store";
 
 /**
- * Weave, the daily word puzzle. At noon a puzzle goes up in every server's bot
- * channel, after yesterday's answers; each player opens a private board on it,
- * and is paid for every word the moment they find it. Finishing - every word
- * found, and the thread guessed - is announced in the channel.
+ * Weave, the daily word puzzle. At noon a puzzle goes up in the daily post
+ * (`../post.ts`); each player opens a private board on it, and is paid for
+ * every word the moment they find it. The post's live line shows who solved it.
  */
 
 /**
- * Off while Weave is being tried out: it isn't posted, only the bot admin can
- * play it (`/daily weave`), and boards pay nothing and announce nothing.
- * Turning it on is all it takes to go live.
+ * Off while Weave is being tried out: it isn't in the daily post, only the bot
+ * admin can play it (`/daily weave`), and boards pay nothing. Turning it on is
+ * all it takes to go live.
  */
 export const WEAVE_LIVE = true;
 
@@ -71,143 +50,6 @@ export const ensureTodaysWeave = async (): Promise<WeaveRoundRecord> => {
     if (raced) return raced;
     throw error;
   });
-};
-
-/** The public post: the grid, the prize, and a button that opens a board. */
-export const weavePost = async (round: WeaveRoundRecord) => ({
-  content: [
-    "🧵 **Today's Weave**",
-    "",
-    "Five hidden words use every letter once, each running up, down, left or right. Their first letters, in some order, spell a sixth word: the thread.",
-    "",
-    `🪙 Up to **${MAX_FC} fc**: 5 a word, 3 if you took its hint, and up to 50 for the thread - the fewer of its letters showing when you guess it, the more.`,
-    "",
-    `-# Press **My board** to play. Your board is your own and saves as you go, until the next Weave at ${POST_TIME}.`,
-  ].join("\n"),
-  files: [
-    new AttachmentBuilder(
-      await renderWeaveBoard({
-        puzzle: puzzleOf(round),
-        progress: NO_PROGRESS,
-      }),
-      {
-        name: WEAVE_IMAGE,
-      },
-    ),
-  ],
-  components: [
-    new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId(buttonId(round.id, "open"))
-        .setLabel("My board")
-        .setEmoji("🧵")
-        .setStyle(ButtonStyle.Primary),
-    ),
-  ],
-});
-
-const MEDALS = ["🥇", "🥈", "🥉"];
-
-/** Yesterday's answers, and who did what. */
-export const weaveResultsText = (
-  round: WeaveRoundRecord,
-  plays: WeavePlayRecord[],
-): string => {
-  const puzzle = puzzleOf(round);
-  const played = plays.filter(
-    (play) => (play.found ?? []).length > 0 || play.thread_guess,
-  );
-  const lines = played.slice(0, 10).map((play, i) => {
-    const progress = progressOf(play);
-    const thread =
-      progress.threadGuess === null
-        ? ""
-        : progress.threadGuess === puzzle.thread
-          ? " · thread ✅"
-          : " · thread ❌";
-    return `${MEDALS[i] ?? "▫️"} **${play.username}** · ${earned(puzzle, progress)} fc · ${progress.found.length}/${puzzle.words.length} words${thread}`;
-  });
-  return [
-    `🧵 **Yesterday's Weave** - the thread was **${puzzle.thread.toUpperCase()}**: ${puzzle.words
-      .map((word) => word.word.toUpperCase())
-      .join(", ")}.`,
-    "",
-    ...(lines.length > 0 ? lines : ["Nobody played it."]),
-    ...(played.length > lines.length
-      ? [`-# …and ${played.length - lines.length} more`]
-      : []),
-  ].join("\n");
-};
-
-/** The answers as a post: the text, and the grid with every word drawn in. */
-export const weaveResultsPost = async (
-  round: WeaveRoundRecord,
-  plays: WeavePlayRecord[],
-) => ({
-  content: weaveResultsText(round, plays),
-  files: [
-    new AttachmentBuilder(
-      await renderWeaveBoard({
-        puzzle: puzzleOf(round),
-        progress: NO_PROGRESS,
-        reveal: true,
-      }),
-      { name: WEAVE_IMAGE },
-    ),
-  ],
-});
-
-/**
- * Posts today's Weave in every server with a bot channel that hasn't had it,
- * yesterday's answers first. Safe to run every minute.
- */
-export const postWeave = async (cl: Client): Promise<number> => {
-  const round = await ensureTodaysWeave();
-  const yesterday = await getWeaveRound(previousDay(round.day)).catch(
-    () => null,
-  );
-  let posted = 0;
-
-  for (const guild of cl.guilds.cache.values()) {
-    if (round.posts?.[guild.id]) continue;
-    const channelId = await getBotChannelForServer(guild.id);
-    if (!channelId) continue;
-
-    if (yesterday?.posts?.[guild.id]) {
-      const plays = await weavePlaysFor(yesterday.id, guild.id).catch(() => []);
-      await sendTo(cl, channelId, await weaveResultsPost(yesterday, plays));
-    }
-
-    const message = await sendTo(cl, channelId, await weavePost(round));
-    if (message) {
-      await recordWeavePost(round.id, guild.id, {
-        channelId,
-        messageId: message.id,
-      });
-      round.posts = {
-        ...(round.posts ?? {}),
-        [guild.id]: { channelId, messageId: message.id },
-      };
-      posted++;
-    }
-  }
-  return posted;
-};
-
-let running = false;
-
-/** The polling loop's hook: from POST_HOUR on, make sure today's Weave is out. */
-export const runWeaveDaily = async (cl: Client) => {
-  if (!WEAVE_LIVE || running || new Date().getHours() < POST_HOUR) return;
-  running = true;
-  try {
-    const posted = await postWeave(cl);
-    if (posted) console.log(`🧵 Weave posted in ${posted} server(s)`);
-  } catch (error) {
-    console.error("Weave: posting failed", error);
-  } finally {
-    running = false;
-  }
 };
 
 /* ------------------------------------------------------------- playing */
@@ -242,18 +84,17 @@ export const playableWeave = async (
 const saving = new Set<string>();
 
 /**
- * Pays what a save added and, the first time a board is finished, says so in
- * the round's channel.
+ * Saves a board and pays what the save added. On trial nothing is paid, and the
+ * first time a board is solved the player is shown what the live post would
+ * have said; live, that's the daily post's job.
  */
 const settle = async (
-  cl: Client,
   round: WeaveRoundRecord,
   play: WeavePlayRecord,
   player: WeavePlayer,
   progress: ReturnType<typeof progressOf>,
   fc: number,
-  fallbackChannelId: string | null,
-) => {
+): Promise<string | null> => {
   const puzzle = puzzleOf(round);
   const done = finished(puzzle, progress);
   await saveWeaveProgress(
@@ -262,12 +103,11 @@ const settle = async (
     earned(puzzle, progress),
     done || play.finished,
   );
-  // The first time a board is solved, the channel hears about it.
-  const solved =
-    done && !play.finished ? solvedMessage(player, progress, puzzle) : null;
-  // On trial: nothing paid, nothing said in the channel - the player is shown
-  // what would have been said instead.
-  if (!WEAVE_LIVE) return solved;
+  if (!WEAVE_LIVE) {
+    return done && !play.finished
+      ? solvedMessage(player, progress, puzzle)
+      : null;
+  }
   if (fc > 0) {
     await addCoin(
       player.userId,
@@ -278,15 +118,10 @@ const settle = async (
       "Reserve",
     );
   }
-  if (solved) {
-    const channelId =
-      round.posts?.[player.serverId]?.channelId ?? fallbackChannelId;
-    if (channelId) await sendTo(cl, channelId, solved);
-  }
   return null;
 };
 
-/** "🧵 Aya solved today's Weave in 7 guesses and won 58 fc!" */
+/** "🧵 Aya solved today's Weave in 7 guesses and won 58 fc!" - shown to a player on trial. */
 export const solvedMessage = (
   player: Pick<WeavePlayer, "displayName">,
   progress: ReturnType<typeof progressOf>,
@@ -321,7 +156,6 @@ export const openWeave = async (round: WeaveRoundRecord, player: WeavePlayer) =>
 
 /** Lights the first letter of the next unfound word. */
 export const hintWeave = async (
-  cl: Client,
   round: WeaveRoundRecord,
   player: WeavePlayer,
 ) => {
@@ -333,7 +167,7 @@ export const hintWeave = async (
   saving.add(play.id);
   try {
     const progress = takeHint(puzzle, before);
-    await settle(cl, round, play, player, progress, 0, null);
+    await settle(round, play, player, progress, 0);
     return boardFor(
       round,
       progress,
@@ -356,11 +190,9 @@ export const parseWords = (typed: string): string[] => [
 
 /** Typed guesses at the words - one or several - saved and paid for the right ones. */
 export const guessWeaveWords = async (
-  cl: Client,
   round: WeaveRoundRecord,
   player: WeavePlayer,
   typed: string,
-  fallbackChannelId: string | null,
 ) => {
   const puzzle = puzzleOf(round);
   const play = await playOf(round, player);
@@ -392,7 +224,7 @@ export const guessWeaveWords = async (
     }
     const solved =
       progress !== before
-        ? await settle(cl, round, play, player, progress, fc, fallbackChannelId)
+        ? await settle(round, play, player, progress, fc)
         : null;
 
     if (allFound(puzzle, progress) && !allFound(puzzle, before)) {
@@ -418,11 +250,9 @@ export const guessWeaveWords = async (
 
 /** The one guess at the thread, saved and paid. Returns the board to show. */
 export const guessWeaveThread = async (
-  cl: Client,
   round: WeaveRoundRecord,
   player: WeavePlayer,
   guess: string,
-  fallbackChannelId: string | null,
 ) => {
   const puzzle = puzzleOf(round);
   const play = await playOf(round, player);
@@ -440,15 +270,7 @@ export const guessWeaveThread = async (
   saving.add(play.id);
   try {
     const result = guessThread(puzzle, before, guess);
-    await settle(
-      cl,
-      round,
-      play,
-      player,
-      result.progress,
-      result.fc,
-      fallbackChannelId,
-    );
+    await settle(round, play, player, result.progress, result.fc);
     return boardFor(
       round,
       result.progress,

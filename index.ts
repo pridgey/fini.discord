@@ -10,8 +10,7 @@ import { rollJackpot } from "./modules/finicoin/jackpot";
 import { rewardCoin } from "./modules/finicoin/reward";
 import { createLog } from "./modules/logger";
 import { runPollTasks } from "./modules/polling";
-import { runGeoDaily } from "./modules/dailies/geo/daily";
-import { runWeaveDaily } from "./modules/dailies/weave/daily";
+import { runDailies } from "./modules/dailies/post";
 import { getCommandFiles } from "./utilities/interactionFiles/getInteractionFiles";
 import { splitBigString } from "./utilities/splitBigString";
 import { readFile, writeFile } from "fs/promises";
@@ -123,7 +122,9 @@ client.once("clientReady", async (cl) => {
   }
 
   // A daily that is due goes out now rather than at the first poll a minute on.
-  runGeoDaily(cl).then(() => runWeaveDaily(cl));
+  runDailies(cl).catch((error) =>
+    console.error("Dailies: posting failed", error),
+  );
 
   // Read update.txt for update logs and announce them
   const fileName = "update.txt";

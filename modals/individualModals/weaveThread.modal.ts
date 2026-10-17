@@ -8,6 +8,7 @@ import {
   playableWeave,
 } from "../../modules/dailies/weave/daily";
 import { weavePlayerOf } from "../../modules/dailies/weave/player";
+import { refreshDailyPost } from "../../modules/dailies/post";
 
 export const namespace = WEAVE_THREAD_MODAL;
 
@@ -36,11 +37,11 @@ export const execute: ModalHandler["execute"] = async (
 
   await interaction.deferUpdate();
   const board = await guessWeaveThread(
-    interaction.client,
     playable.round,
     weavePlayerOf(interaction, interaction.member as GuildMember | null),
     interaction.fields.getTextInputValue("thread"),
-    interaction.channelId,
   );
+  if (interaction.guildId)
+    refreshDailyPost(interaction.client, interaction.guildId);
   await interaction.editReply({ ...board, attachments: [] });
 };

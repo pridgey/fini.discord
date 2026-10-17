@@ -5,8 +5,7 @@ import { syncAllSeasons } from "../finistocks/stockData";
 import { checkMonitoredServices } from "./monitoring";
 import { expireStaleV2Battles } from "../finicards/expireBattles";
 import { expireSharedFiles } from "../fileShare";
-import { runGeoDaily } from "../dailies/geo/daily";
-import { runWeaveDaily } from "../dailies/weave/daily";
+import { runDailies } from "../dailies/post";
 
 /**
  * Runs a poll task without letting it fail the poll. Every task is started
@@ -23,7 +22,7 @@ export const runPollTasks = (cl: Client) => {
   runSafely("service monitoring", () => checkMonitoredServices(cl));
   runSafely("battle expiry", () => expireStaleV2Battles(cl));
   runSafely("share expiry", reapExpiredShares);
-  runSafely("dailies", () => runGeoDaily(cl).then(() => runWeaveDaily(cl)));
+  runSafely("dailies", () => runDailies(cl));
 };
 
 /**

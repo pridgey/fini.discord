@@ -1,12 +1,28 @@
 # Dailies
 
-Games with one round a day for everyone, posted at noon Mountain time
-(`POST_HOUR` in `shared.ts`) in each server's bot channel (`/config
-bot_channel`). Servers without a bot channel are skipped. A round stays open
-until the next one goes up. Each new round is posted after the last one's
-answers and leaderboard. `/daily <game>` brings the current round back for
-anyone who missed the post, and `/geo-test post-daily` (bot admin) posts the
-day's rounds early.
+Games with one round a day for everyone, which go up at noon Mountain time
+(`POST_HOUR` in `shared.ts`). A round stays open until the next one goes up.
+
+## The daily post (`post.ts`)
+
+One message a day in each server's bot channel (`/config bot_channel`),
+however many games there are and however many people play. Servers without a
+bot channel are skipped.
+
+- **Yesterday:** each game's answer and its top three.
+- **Today:** each game, what it pays, and a button that opens it privately.
+- **A live line** under each game - "Played by 4 · best **Aya** 214 fc", or
+  "Solved by **Aya** (7 guesses), **Fen** (12) · 6 playing" - which the bot
+  keeps current by editing the post a few seconds after someone plays (plays
+  close together share one edit). This is instead of a message per player.
+
+The post is rebuilt from what's stored each time. It's recorded on every
+game's round as the server's post, marked `combined`; the live line only ever
+edits a post marked that way, never a game's own post from before. A new
+daily adds a recap line, a today line and a button.
+
+`/daily <game>` opens a game for anyone who'd rather type, and
+`/geo-test post-daily` (bot admin) sends the day's post early.
 
 Rounds and plays live in Pocketbase; their migrations are in `pb_migrations/`.
 
@@ -23,8 +39,8 @@ rules; `geo/daily.ts` the posting and paying.
 A word puzzle in the spirit of LinkedIn's Wend, with a twist of its own: the thread.
 
 Live since 2026-10-16. `WEAVE_LIVE` in `weave/daily.ts` puts it back on
-trial: not posted, only the bot admin can play it (`/daily weave` makes the
-day's puzzle on demand), and boards pay nothing and announce nothing.
+trial: left out of the daily post, only the bot admin can play it (`/daily weave` makes the
+day's puzzle on demand), and boards pay nothing.
 
 - **The grid.** 5x5 letters hold five hidden words of 4 to 6 letters that use
   every letter exactly once, each running up, down, left or right
@@ -47,9 +63,9 @@ day's puzzle on demand), and boards pay nothing and announce nothing.
   five, wherever it's spelled. Boards save as they go.
 - **Pay.** 5 fc a word (3 if its hint was taken), paid as each is found, and
   up to 50 for the thread: up to 75 fc. The board says what's still possible,
-  which hints and showing letters bring down. Solving every word is announced
-  in the channel: "Aya solved today's Weave in 7 guesses and won 58 fc!",
-  counting every word guessed, right or wrong.
+  which hints and showing letters bring down. Solving every word puts the
+  player in the daily post's live line, with how many words they guessed,
+  right or wrong.
 - **Words.** `words.ts` is everyday English: the 10,000 most common US words
   without swears, kept if the system dictionary has them and doesn't list them
   capitalised (dropping most names), less a short blocklist.

@@ -1,45 +1,36 @@
-import { AttachmentBuilder, ButtonStyle, Client } from "discord.js";
+import { ButtonStyle } from "discord.js";
 import { addCoin } from "../../finicoin";
-import { getBotChannelForServer } from "../../../utilities/config/configUtils";
 import {
   createRound,
   dayKey,
   factsOf,
   findGuess,
   getRound,
-  guessesFor,
-  previousDay,
-  recordPost,
   roundPhotos,
   saveGuess,
-  type DailyGuessRecord,
   type DailyRoundRecord,
 } from "./dailyStore";
 import { describePlace, type GeocodedGuess, type PlaceInfo } from "./geocode";
 import { findRound, type GeoRound } from "./imagery";
-import { renderMap, type Pin } from "./map";
 import {
   button,
-  creditLine,
   guessView,
   pastRevealView,
   photoFiles,
-  placeName,
   revealView,
   roundIntro,
   row,
   scoreGuess,
 } from "./messages";
 import { formatDistance } from "./score";
-import { POST_HOUR, POST_TIME, currentDay, sendTo } from "../shared";
+import { POST_TIME, currentDay } from "../shared";
 import { warnAndUse } from "../../../utilities/fallback";
 
 /**
- * The daily location game. Each day at noon a round is made and posted in every
- * server's bot channel (set with `/config bot_channel`), with yesterday's
- * answer and scores just before it. Anyone may guess once per round per
- * server; a guess is judged and paid the moment it's locked in, and the bot
- * says in the channel who won what.
+ * The daily location game. Each day at noon a round is made and goes up in the
+ * daily post (`../post.ts`). Anyone may guess once per round per server; a
+ * guess is judged and paid the moment it's locked in, and the post's live line
+ * shows how the server is doing.
  */
 
 export const DAILY_BUTTON = "geodaily";
@@ -87,126 +78,17 @@ export const ensureTodaysRound = async (): Promise<DailyRoundRecord | null> => {
   return createRound(day, made.round, made.place).catch(() => getRound(day));
 };
 
-/** The public post: the photos, the prize, and the button to guess. */
+/** A player's round: the photos, the prize, and the button to guess. */
 export const roundPost = (round: DailyRoundRecord, photos: Buffer[]) => ({
   content: [
     ...roundIntro(round.photos.length),
-    `-# One guess each until the next round, tomorrow at ${POST_TIME}. Missed this post? \`/daily geo\` brings it back.`,
+    `-# One guess each until the next round, tomorrow at ${POST_TIME}.`,
   ].join("\n"),
   files: photoFiles(photos),
   components: [
     row(button(ids(round.id).guess, "Make a guess", ButtonStyle.Primary, "📍")),
   ],
 });
-
-const MEDALS = ["🥇", "🥈", "🥉"];
-
-/** Yesterday's answer, on a map with everyone's pins, and who scored what. */
-export const resultsPost = async (
-  round: DailyRoundRecord,
-  guesses: DailyGuessRecord[],
-) => {
-  const answer = { lat: round.answer_lat, lon: round.answer_lon };
-  // The answer goes last, so it is drawn over any guess that landed on it.
-  const pins: Pin[] = [
-    ...guesses.slice(0, 8).map((guess) => ({
-      lat: guess.guess_lat,
-      lon: guess.guess_lon,
-      color: "#3b82f6",
-      label: guess.username,
-    })),
-    { ...answer, color: "#ef4444", label: "Here" },
-  ];
-  const lines = guesses
-    .slice(0, 10)
-    .map(
-      (guess, i) =>
-        `${MEDALS[i] ?? "▫️"} **${guess.username}** · ${guess.total} fc · ${formatDistance(guess.km)} away`,
-    );
-  return {
-    content: [
-      `📍 **Yesterday's daily** was taken in **${placeName(round.place)}**.`,
-      "",
-      ...(lines.length ? lines : ["Nobody played it."]),
-      guesses.length > lines.length
-        ? `-# …and ${guesses.length - lines.length} more`
-        : null,
-      creditLine(factsOf(round)),
-    ]
-      .filter((line) => line !== null)
-      .join("\n"),
-    // With no guesses there is only the answer's pin, shown at country scale.
-    files: [
-      new AttachmentBuilder(
-        await renderMap(pins, pins.length > 1 ? { line: false } : { zoom: 6 }),
-        {
-          name: "yesterday.png",
-        },
-      ),
-    ],
-  };
-};
-
-/**
- * Posts today's round in every server with a bot channel that hasn't had it,
- * yesterday's results first. Safe to run every minute: a server is posted to
- * once, and the round is made once.
- */
-export const postDaily = async (cl: Client): Promise<number> => {
-  const round = await ensureTodaysRound();
-  if (!round) {
-    console.error(
-      "Daily geo: couldn't find a round this time; trying again next minute",
-    );
-    return 0;
-  }
-
-  let photos: Buffer[] | null = null;
-  let posted = 0;
-  const yesterday = await getRound(previousDay(round.day)).catch(() => null);
-
-  for (const guild of cl.guilds.cache.values()) {
-    if (round.posts?.[guild.id]) continue;
-    const channelId = await getBotChannelForServer(guild.id);
-    if (!channelId) continue;
-
-    if (yesterday?.posts?.[guild.id]) {
-      const guesses = await guessesFor(yesterday.id, guild.id).catch(() => []);
-      await sendTo(cl, channelId, await resultsPost(yesterday, guesses));
-    }
-
-    photos ??= await roundPhotos(round);
-    const message = await sendTo(cl, channelId, roundPost(round, photos));
-    if (message) {
-      await recordPost(round.id, guild.id, {
-        channelId,
-        messageId: message.id,
-      });
-      round.posts = {
-        ...(round.posts ?? {}),
-        [guild.id]: { channelId, messageId: message.id },
-      };
-      posted++;
-    }
-  }
-  return posted;
-};
-
-let running = false;
-
-/** The polling loop's hook: from POST_HOUR on, make sure today's round is out. */
-export const runGeoDaily = async (cl: Client) => {
-  if (running || new Date().getHours() < POST_HOUR) return;
-  running = true;
-  try {
-    const posted = await postDaily(cl);
-    if (posted) console.log(`🌍 Daily geo posted in ${posted} server(s)`);
-  } catch (error) {
-    console.error("Daily geo: posting failed", error);
-  } finally {
-    running = false;
-  }
-};
 
 /* ------------------------------------------------------------- guessing */
 
@@ -285,14 +167,12 @@ export type Player = {
 };
 
 /**
- * Locks in a pending guess: judges it, saves it, pays it, and says so in the
- * round's channel. Returns the player's reveal, or why it couldn't be locked.
+ * Locks in a pending guess: judges it, saves it and pays it. Returns the
+ * player's reveal, or why it couldn't be locked.
  */
 export const lockDailyGuess = async (
-  cl: Client,
   round: DailyRoundRecord,
   player: Player,
-  fallbackChannelId: string | null,
 ): Promise<
   { reveal: Awaited<ReturnType<typeof revealView>> } | { refusal: string }
 > => {
@@ -336,22 +216,6 @@ export const lockDailyGuess = async (
         player.username,
         player.serverName,
         "Reserve",
-      );
-    }
-
-    // Missing the continent counts as wrong, whatever the hemispheres paid.
-    const right =
-      scored.verdict.checks.find((check) => check.kind === "continent")
-        ?.outcome === "earned";
-    const channelId =
-      round.posts?.[player.serverId]?.channelId ?? fallbackChannelId;
-    if (channelId) {
-      await sendTo(
-        cl,
-        channelId,
-        right
-          ? `🌍 **${player.displayName}** won **${scored.total} fc** on today's daily!`
-          : `🌍 **${player.displayName}** made an incorrect guess on today's daily.`,
       );
     }
 

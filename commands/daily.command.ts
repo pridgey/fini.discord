@@ -17,8 +17,8 @@ import { getWeaveRound } from "../modules/dailies/weave/store";
 import { POST_TIME, currentDay } from "../modules/dailies/shared";
 
 /**
- * The daily games. Each posts itself in the bot channel; this brings today's
- * round back for anyone who missed the post.
+ * The daily games. The daily post in the bot channel opens them with a button;
+ * this opens them for anyone who'd rather type.
  */
 export const data = new SlashCommandBuilder()
   .setName("daily")
