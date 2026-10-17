@@ -24,7 +24,6 @@
     "discord.js": "latest",
     "gif-encoder-2": "^1.0.5",
     "glob": "^10.3.10",
-    "openai": "^4.36.0",
     "pocketbase": "latest",
     "prettier": "^2.7.1",
     "rcon-client": "^4.2.5",

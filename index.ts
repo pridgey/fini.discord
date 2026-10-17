@@ -9,7 +9,6 @@ import {
 import { rollJackpot } from "./modules/finicoin/jackpot";
 import { rewardCoin } from "./modules/finicoin/reward";
 import { createLog } from "./modules/logger";
-import { chatWithUser_OpenAI } from "./modules/openai";
 import { runPollTasks } from "./modules/polling";
 import { runGeoDaily } from "./modules/dailies/geo/daily";
 import { runWeaveDaily } from "./modules/dailies/weave/daily";
