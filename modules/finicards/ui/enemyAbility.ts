@@ -291,7 +291,7 @@ export const enemyAbilityLines = (
         })()
       : (handOnReason(keyword.slug, leg) ??
         yourCardReason(keyword.slug, enemy));
-    if (explained) lines.push(`-# ↳ **Here:** ${explained}`);
+    if (explained) lines.push(`-# ↳ **In Dungeon:** ${explained}`);
   }
 
   return [...lines, ...carriedLines(leg)];

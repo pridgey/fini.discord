@@ -568,7 +568,7 @@ export const composeDungeonMessage = (
           ? "🌫️ The fog is too thick to see what's behind either door. Pick one and hope."
           : [
               ...(sight === "scouted" ? doors.map(scoutLine) : []),
-              "-# A door only tells you what kind of room is behind it. Every room you enter brings your resting cards one room closer.",
+              "-# A door only tells you what kind of room is behind it.\n-# Every room you enter brings your resting cards one room closer.",
             ].join("\n"),
       ),
     );

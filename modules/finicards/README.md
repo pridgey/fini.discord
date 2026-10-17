@@ -303,8 +303,8 @@ fight room says which slot it is. Keywords that read "your lineup" (`Trinity`,
 played - for the enemy, that is the enemies fought so far this leg, including
 itself again after a stalemate.
 
-None of that is visible from a keyword's description, so the fight room adds a
-**Here:** line under the enemy's (`ui/enemyAbility.ts`): whether its ability is
+None of that is visible from a keyword's description, so the fight room adds an
+**In Dungeon:** line under the enemy's (`ui/enemyAbility.ts`): whether its ability is
 live this fight and why, in dungeon terms. Where the bonus depends only on the
 enemy's side it runs the keyword's own hook against the leg, so the number shown
 is the one it will fight with; where it depends on the card you choose, it says
