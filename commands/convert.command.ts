@@ -123,13 +123,13 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const file = interaction.options.get("file")?.attachment;
-  const formatValue = interaction.options.get("format")?.value?.toString();
-  const chromaValue = interaction.options.get("chroma_key")?.value?.toString();
-  const similarity = interaction.options.get("similarity")?.value;
-  const blend = interaction.options.get("blend")?.value;
-  const startValue = interaction.options.get("start")?.value?.toString();
-  const endValue = interaction.options.get("end")?.value?.toString();
+  const file = interaction.options.getAttachment("file") ?? undefined;
+  const formatValue = interaction.options.getString("format") ?? undefined;
+  const chromaValue = interaction.options.getString("chroma_key");
+  const similarity = interaction.options.getNumber("similarity") ?? undefined;
+  const blend = interaction.options.getNumber("blend") ?? undefined;
+  const startValue = interaction.options.getString("start") ?? undefined;
+  const endValue = interaction.options.getString("end") ?? undefined;
 
   if (!file) {
     await interaction.reply("You have to actually attach a file.");

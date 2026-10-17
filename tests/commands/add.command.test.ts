@@ -1,6 +1,7 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { pb } from "../../utilities/pocketbase";
 import { execute } from "../../commands/add.command";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Mock Pocketbase
 const mockCreate = mock(() => Promise.resolve({}));
@@ -17,6 +18,7 @@ describe("add command", () => {
     mockCreate.mockClear();
     mockInteraction = {
       options: {
+        ...typedOptionGetters,
         get: mock((_name: string) => ({ value: "Test Item" })),
       },
       user: { username: "testuser" },

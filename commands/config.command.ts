@@ -72,16 +72,16 @@ export const execute = async (
    */
   const updates: Partial<ConfigRecord> = {};
 
-  const botChannelOption = interaction.options.get("bot_channel");
-  if (botChannelOption) {
-    updates.bot_channel = botChannelOption.value?.toString() || "";
+  const botChannel = interaction.options.getChannel("bot_channel");
+  if (botChannel) {
+    updates.bot_channel = botChannel.id;
   }
 
-  const finicardsChannelOption = interaction.options.get("finicards_channel");
+  const finicardsChannel = interaction.options.getChannel("finicards_channel");
   if (interaction.options.getBoolean("finicards_channel_reset")) {
     updates.finicards_channel = "";
-  } else if (finicardsChannelOption) {
-    updates.finicards_channel = finicardsChannelOption.value?.toString() || "";
+  } else if (finicardsChannel) {
+    updates.finicards_channel = finicardsChannel.id;
   }
 
   const horseyNamesOption = interaction.options.get("horsey_names");

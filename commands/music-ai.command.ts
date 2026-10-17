@@ -119,15 +119,15 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const description =
-    interaction.options.get("prompt")?.value?.toString().trim() ?? "";
-  const style = interaction.options.get("style")?.value?.toString();
-  const tempo = interaction.options.get("tempo")?.value?.toString();
-  const requested = Number(interaction.options.get("length")?.value);
+  const description = interaction.options.getString("prompt")?.trim() ?? "";
+  const style = interaction.options.getString("style") ?? undefined;
+  const tempo = interaction.options.getString("tempo") ?? undefined;
+  const requested = interaction.options.getInteger("length");
 
-  const seconds = Number.isFinite(requested)
-    ? Math.min(Math.max(requested, MIN_MUSIC_SECONDS), MAX_MUSIC_SECONDS)
-    : DEFAULT_MUSIC_SECONDS;
+  const seconds =
+    requested !== null
+      ? Math.min(Math.max(requested, MIN_MUSIC_SECONDS), MAX_MUSIC_SECONDS)
+      : DEFAULT_MUSIC_SECONDS;
 
   if (!description) {
     await interaction.reply("You have to tell me what to write.");

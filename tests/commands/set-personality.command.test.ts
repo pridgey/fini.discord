@@ -13,6 +13,7 @@ import {
   mockClearHistory,
 } from "../mocks/chatHistory.mock";
 import { mockConsole, restoreConsole } from "../mocks/console.mock";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Setup module mocks before importing the module under test
 setupPersonalityModuleMocks();
@@ -44,6 +45,7 @@ describe("set-personality command", () => {
         id: "guild123",
       } as any,
       options: {
+        ...typedOptionGetters,
         get: mock((name: string) => ({
           value: name === "name" ? "TestPersonality" : true,
         })),
@@ -106,6 +108,21 @@ describe("set-personality command", () => {
       "Active personality set to TestPersonality. (Chat history cleared)",
     );
     expect(mockLogCommand).toHaveBeenCalled();
+  });
+
+  // `clear: false` was read as the string "false", which is truthy, so it
+  // cleared the history anyway.
+  it("should keep chat history when clear is false", async () => {
+    mockInteraction.options.get = mock((name: string) => ({
+      value: name === "name" ? "TestPersonality" : false,
+    }));
+
+    await execute(
+      mockInteraction as ChatInputCommandInteraction,
+      mockLogCommand,
+    );
+
+    expect(mockClearHistory).not.toHaveBeenCalled();
   });
 
   it("should clear chat history if option set", async () => {

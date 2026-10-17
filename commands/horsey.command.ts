@@ -122,10 +122,8 @@ export const execute = async (
     const username = interaction.user.username;
     const guildName = interaction.guild?.name ?? "unknown guild name";
 
-    const bet = Math.abs(
-      parseFloat(interaction.options.get("bet")?.value?.toString() || "") || 0,
-    );
-    const pick = Number(interaction.options.get("horsey")?.value ?? 0);
+    const bet = Math.abs(interaction.options.getNumber("bet") ?? 0);
+    const pick = interaction.options.getInteger("horsey") ?? 0;
 
     if (bet < 0.1) {
       await interaction.editReply("You cannot bet less than 0.10 finicoin");

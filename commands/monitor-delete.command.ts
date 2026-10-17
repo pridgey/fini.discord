@@ -17,7 +17,7 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const monitorName = interaction.options.get("name")?.value?.toString() || "";
+  const monitorName = interaction.options.getString("name") || "";
 
   if (!monitorName.length) {
     // Input invalid

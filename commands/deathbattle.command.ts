@@ -23,10 +23,8 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const fighterA =
-    interaction.options.get("character-a")?.value?.toString() || "";
-  const fighterB =
-    interaction.options.get("character-b")?.value?.toString() || "";
+  const fighterA = interaction.options.getString("character-a") || "";
+  const fighterB = interaction.options.getString("character-b") || "";
 
   const prompt = `I've created a pocket dimension that cannot be escaped. I can put any two fictional characters into that plane and they will have the urge to fight one another to the death, even if it is against their character. The characters will always be at their prime strength and have every ability that has been given to them in their canon timelines. Your job is to weigh your own knowledge of the two characters, and using that inform me which of the two wins the death battle and why. Do not present any more information than that. You must decide a winner.
   Your response should match this template:

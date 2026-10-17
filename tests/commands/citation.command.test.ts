@@ -22,6 +22,7 @@ mock.module("@blockzilla101/citation", () => ({
 // Import after mocking
 const { execute } = await import("../../commands/citation.command");
 import { AttachmentBuilder } from "discord.js";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 describe("citation command", () => {
   let mockInteraction: any;
@@ -32,6 +33,7 @@ describe("citation command", () => {
 
     mockInteraction = {
       options: {
+        ...typedOptionGetters,
         get: mock((name: string) => {
           if (name === "title") return { value: "Test Title" };
           if (name === "citation") return { value: "Test citation text" };

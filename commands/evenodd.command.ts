@@ -67,7 +67,7 @@ export const execute = async (
   const bet = Math.abs(
     parseFloat(interaction?.options?.get("bet")?.value?.toString() || "") || 0,
   );
-  const option = interaction.options.get("option")?.value?.toString() || "Even";
+  const option = interaction.options.getString("option") || "Even";
 
   if (bet < 0.1) {
     await interaction.reply("You cannot bet less than 0.10 finicoin");

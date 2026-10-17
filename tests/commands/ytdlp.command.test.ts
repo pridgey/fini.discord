@@ -3,6 +3,7 @@ import {
   MAX_CONCURRENT_MEDIA_JOBS,
   tryAcquireMediaSlot,
 } from "../../modules/media/mediaJobs";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 const { data, execute } = await import("../../commands/ytdlp.command");
 
@@ -17,6 +18,7 @@ type Options = Record<string, unknown>;
 
 const interactionWith = (options: Options) => ({
   options: {
+    ...typedOptionGetters,
     get: mock((name: string) =>
       name in options ? { value: options[name] } : undefined,
     ),

@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Mock date-fns
 const mockAdd = mock((date: Date, duration: any) => {
@@ -40,6 +41,7 @@ describe("remind command", () => {
 
     mockInteraction = {
       options: {
+        ...typedOptionGetters,
         get: mock((name: string) => {
           if (name === "time") return { value: "5m" };
           if (name === "reminder") return { value: "Do something" };

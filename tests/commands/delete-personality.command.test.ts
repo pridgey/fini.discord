@@ -7,6 +7,7 @@ import {
   mockDeletePersonalityByName,
 } from "../mocks/personalities.mock";
 import { mockConsole, restoreConsole } from "../mocks/console.mock";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Setup module mocks before importing the module under test
 setupPersonalityModuleMocks();
@@ -36,6 +37,7 @@ describe("delete-personality command", () => {
         id: "guild123",
       } as any,
       options: {
+        ...typedOptionGetters,
         get: mock(() => ({ value: "TestPersonality" })),
       } as any,
       reply: mock(() => Promise.resolve({} as any)),

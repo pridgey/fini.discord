@@ -29,9 +29,7 @@ export const execute = async (
   logCommand: () => void,
 ) => {
   try {
-    const showHistory = Boolean(
-      interaction.options.get("history")?.value || false,
-    );
+    const showHistory = interaction.options.getBoolean("history") ?? false;
 
     if (showHistory) {
       await showJackpotHistory(interaction);

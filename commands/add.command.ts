@@ -17,7 +17,7 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const itemToAdd = interaction.options.get("item")?.value?.toString() || "";
+  const itemToAdd = interaction.options.getString("item") || "";
 
   if (itemToAdd?.length) {
     if (itemToAdd?.length < 100) {

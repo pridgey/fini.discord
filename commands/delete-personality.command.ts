@@ -17,8 +17,7 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const personalityName =
-    interaction.options.get("name")?.value?.toString() || "";
+  const personalityName = interaction.options.getString("name") || "";
 
   if (!personalityName.length) {
     // Input invalid

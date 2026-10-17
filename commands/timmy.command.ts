@@ -18,7 +18,7 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const poemPrompt = interaction.options.get("prompt")?.value?.toString() || "";
+  const poemPrompt = interaction.options.getString("prompt") || "";
 
   const prompt = `Please write an original poem, as written by u/poem_for_your_sprog, that tells a narrative about Little Timmy and is about ${poemPrompt}. The poem must end with the rhyme "Little Timmy fucking died". The poem should narratively explain the final line. Reply with only the poem and no other disclaimers or tangential information.`;
 

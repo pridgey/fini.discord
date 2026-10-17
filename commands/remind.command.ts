@@ -35,9 +35,8 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const amountOfTime = interaction.options.get("time")?.value?.toString() || "";
-  const reminderText =
-    interaction.options.get("reminder")?.value?.toString() || "";
+  const amountOfTime = interaction.options.getString("time") || "";
+  const reminderText = interaction.options.getString("reminder") || "";
 
   if (amountOfTime && reminderText) {
     try {

@@ -11,6 +11,7 @@ import {
   MAX_MUSIC_SECONDS,
   musicGenModelFiles,
 } from "../../modules/musicAi/musicGen";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 /**
  * As with the /tts and /convert tests, these cover the guards that run before
@@ -44,6 +45,7 @@ type Options = Record<string, unknown>;
 
 const interactionWith = (options: Options) => ({
   options: {
+    ...typedOptionGetters,
     get: mock((name: string) =>
       name in options ? { value: options[name] } : undefined,
     ),

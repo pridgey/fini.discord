@@ -39,13 +39,10 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const personalityName =
-    interaction.options.get("name")?.value?.toString() || "";
-  const personalityPrompt =
-    interaction.options.get("prompt")?.value?.toString() || "";
-  const setActiveNow: boolean =
-    interaction.options.get("activate")?.value === true;
-  const clearChat: boolean = interaction.options.get("clear")?.value === true;
+  const personalityName = interaction.options.getString("name") || "";
+  const personalityPrompt = interaction.options.getString("prompt") || "";
+  const setActiveNow = interaction.options.getBoolean("activate") ?? false;
+  const clearChat = interaction.options.getBoolean("clear") ?? false;
 
   // All good, add the personality
   try {

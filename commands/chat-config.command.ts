@@ -31,7 +31,7 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const selectedModel = interaction.options.get("model")?.value?.toString() as
+  const selectedModel = interaction.options.getString("model") as
     ChatModel | undefined;
 
   const userID = interaction.user.id;

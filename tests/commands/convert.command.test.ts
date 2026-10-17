@@ -3,6 +3,7 @@ import {
   MAX_CONCURRENT_MEDIA_JOBS,
   tryAcquireMediaSlot,
 } from "../../modules/media/mediaJobs";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 const { data, execute } = await import("../../commands/convert.command");
 
@@ -24,6 +25,7 @@ const attachment = (overrides: Record<string, unknown> = {}) => ({
 
 const interactionWith = (options: Options) => ({
   options: {
+    ...typedOptionGetters,
     get: mock((name: string) => {
       if (!(name in options)) return undefined;
       // Attachment options come back on a different property than value ones.

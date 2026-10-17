@@ -17,7 +17,7 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const hammerspaceItem = interaction.options.get("item")?.value?.toString();
+  const hammerspaceItem = interaction.options.getString("item");
 
   // Ensure prompt is a reasonable length
   if ((hammerspaceItem?.length ?? 0) > 100) {

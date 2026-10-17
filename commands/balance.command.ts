@@ -19,9 +19,8 @@ export const execute = async (
   logCommand: () => void,
 ) => {
   try {
-    const showDailyEarnings: boolean = Boolean(
-      interaction.options.get("daily-earnings")?.value || false,
-    );
+    const showDailyEarnings =
+      interaction.options.getBoolean("daily-earnings") ?? false;
 
     const userBalance = await getUserBalance(
       interaction.user.id,

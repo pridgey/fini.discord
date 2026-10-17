@@ -31,10 +31,10 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const title = interaction.options.get("title")?.value?.toString() || "";
-  const citation = interaction.options.get("citation")?.value?.toString() || "";
-  const penalty = interaction.options.get("penalty")?.value?.toString() || "";
-  const isGif: boolean = Boolean(interaction.options.get("gif")?.value ?? true);
+  const title = interaction.options.getString("title") || "";
+  const citation = interaction.options.getString("citation") || "";
+  const penalty = interaction.options.getString("penalty") || "";
+  const isGif = interaction.options.getBoolean("gif") ?? true;
 
   // Function to generate the citation image
   const generateCitation = async (

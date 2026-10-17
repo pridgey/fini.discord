@@ -20,7 +20,7 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const name = interaction.options.get("name")?.value?.toString();
+  const name = interaction.options.getString("name");
 
   try {
     await interaction.deferReply();

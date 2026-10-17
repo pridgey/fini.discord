@@ -279,11 +279,11 @@ const say = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const text = interaction.options.get("text")?.value?.toString().trim() ?? "";
-  const voiceValue = interaction.options.get("voice")?.value?.toString();
-  const clip = interaction.options.get("clip")?.attachment;
+  const text = interaction.options.getString("text")?.trim() ?? "";
+  const voiceValue = interaction.options.getString("voice");
+  const clip = interaction.options.getAttachment("clip") ?? undefined;
   const language =
-    interaction.options.get("language")?.value?.toString() ?? DEFAULT_LANGUAGE;
+    interaction.options.getString("language") ?? DEFAULT_LANGUAGE;
 
   if (!text) {
     await interaction.reply("You have to give me something to say.");
@@ -678,14 +678,9 @@ const save = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const name = normaliseVoiceName(
-    interaction.options.get("name")?.value?.toString() ?? "",
-  );
-  const clip = interaction.options.get("clip")?.attachment;
-  const givenTranscript = interaction.options
-    .get("transcript")
-    ?.value?.toString()
-    .trim();
+  const name = normaliseVoiceName(interaction.options.getString("name") ?? "");
+  const clip = interaction.options.getAttachment("clip") ?? undefined;
+  const givenTranscript = interaction.options.getString("transcript")?.trim();
 
   // The cheap refusals come before the slot and the defer, so a bad name or a
   // taken one is answered immediately rather than after a download.
@@ -792,7 +787,7 @@ const listVoices = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const search = interaction.options.get("search")?.value?.toString() ?? "";
+  const search = interaction.options.getString("search") ?? "";
 
   try {
     const [catalogue, usage] = await Promise.all([
@@ -863,7 +858,7 @@ const deleteVoice = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const name = interaction.options.get("voice")?.value?.toString() ?? "";
+  const name = interaction.options.getString("voice") ?? "";
 
   try {
     const outcome = await deleteSavedVoice(name, interaction.user.id);

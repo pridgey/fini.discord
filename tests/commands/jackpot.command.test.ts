@@ -1,5 +1,6 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import PocketBase from "pocketbase";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Mock pocketbase
 const mockGetFirstListItem = mock((_query?: string) =>
@@ -81,7 +82,7 @@ describe("jackpot command", () => {
       user: { id: "user123" },
       // The command reads the `history` option first; absent means the plain
       // balance reply, which is what most of these cases exercise.
-      options: { get: mock(() => undefined) },
+      options: { ...typedOptionGetters, get: mock(() => undefined) },
       reply: mock(() => Promise.resolve()),
       deferReply: mock(() => Promise.resolve()),
       editReply: mock(() => Promise.resolve()),

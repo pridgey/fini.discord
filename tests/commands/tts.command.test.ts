@@ -8,6 +8,7 @@ import {
 } from "../../modules/media/mediaJobs";
 import { resetVoiceCache } from "../../modules/tts/voices";
 import { resetSavedVoiceCache } from "../../modules/tts/savedVoices";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 /**
  * As with the /convert tests, these cover the guards that run before the
@@ -85,6 +86,7 @@ const attachment = (overrides: Record<string, unknown> = {}) => ({
 
 const interactionWith = (options: Options, subcommand = "say") => ({
   options: {
+    ...typedOptionGetters,
     getSubcommand: () => subcommand,
     get: mock((name: string) => {
       if (!(name in options)) return undefined;
@@ -212,6 +214,7 @@ describe("/tts voice autocomplete", () => {
 
     await autocomplete({
       options: {
+        ...typedOptionGetters,
         getFocused: () => focused,
         getSubcommand: () => subcommand,
       },

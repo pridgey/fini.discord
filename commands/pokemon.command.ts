@@ -22,7 +22,7 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const pokemonTag = interaction.options.get("tag")?.value?.toString() || "";
+  const pokemonTag = interaction.options.getString("tag") || "";
 
   await interaction.deferReply();
 

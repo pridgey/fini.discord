@@ -35,12 +35,12 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  // Amount of dice; At least 1
-  const amountOption = Number(interaction.options.get("amount")?.value ?? 1);
+  // 1 to 50 dice
+  const amountOption = interaction.options.getNumber("amount") ?? 1;
   const amountOfDice = Math.min(Math.max(amountOption, 1), 50);
 
-  // Number of sides per dice; At max 20 sides
-  const sidesOption = Number(interaction.options.get("sides")?.value ?? 20);
+  // At least 2 sides; a d20 unless asked
+  const sidesOption = interaction.options.getNumber("sides") ?? 20;
   const numberOfSides = Math.max(sidesOption, 2);
 
   // Array of dice rolls

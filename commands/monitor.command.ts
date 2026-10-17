@@ -33,9 +33,9 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const name = interaction.options.get("name")?.value?.toString() || "";
-  const ip = interaction.options.get("ip")?.value?.toString() || "";
-  const interval = interaction.options.get("interval")?.value as number;
+  const name = interaction.options.getString("name") || "";
+  const ip = interaction.options.getString("ip") || "";
+  const interval = interaction.options.getNumber("interval");
 
   if (!name || !ip || !interval) {
     interaction.reply(

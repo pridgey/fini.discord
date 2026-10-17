@@ -14,6 +14,7 @@ import {
   mockClearHistory,
 } from "../mocks/chatHistory.mock";
 import { mockConsole, restoreConsole } from "../mocks/console.mock";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Setup module mocks before importing the module under test
 setupPersonalityModuleMocks();
@@ -45,6 +46,7 @@ describe("create-personality command", () => {
         id: "test-guild-id",
       } as any,
       options: {
+        ...typedOptionGetters,
         get: mock((name: string) => {
           const optionsMap: Record<string, any> = {
             name: { value: "TestPersonality" },
@@ -505,6 +507,7 @@ describe("create-personality command", () => {
         },
         guild: undefined,
         options: {
+          ...typedOptionGetters,
           get: mock((name: string) => {
             const optionsMap: Record<string, any> = {
               name: { value: "TestPersonality" },

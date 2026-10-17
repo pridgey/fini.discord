@@ -28,9 +28,8 @@ export const execute = async (
 ) => {
   await interaction.deferReply();
   try {
-    const cardName = interaction.options.get("name")?.value?.toString() || "";
-    const cardDescription =
-      interaction.options.get("description")?.value?.toString() || "";
+    const cardName = interaction.options.getString("name") || "";
+    const cardDescription = interaction.options.getString("description") || "";
 
     if (cardName.length > CARD_NAME_MAX_LENGTH && cardName.length > 0) {
       await interaction.editReply(

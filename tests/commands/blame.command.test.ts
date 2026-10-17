@@ -1,5 +1,6 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 import PocketBase from "pocketbase";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Mock pocketbase - needs to be done before importing command
 let mockGetFirstListItem = mock(() => Promise.resolve(null as any));
@@ -28,6 +29,7 @@ describe("blame command", () => {
 
     mockInteraction = {
       options: {
+        ...typedOptionGetters,
         get: mock(() => ({ value: "test item" })),
       },
       guildId: "guild123",

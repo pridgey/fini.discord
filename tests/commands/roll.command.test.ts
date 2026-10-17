@@ -1,4 +1,5 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Mock randomNumber utility
 const mockRandomNumber = mock((min: number, max: number) => {
@@ -22,6 +23,7 @@ describe("roll command", () => {
 
     mockInteraction = {
       options: {
+        ...typedOptionGetters,
         get: mock((name: string) => {
           if (name === "amount") return { value: 1 };
           if (name === "sides") return { value: 20 };

@@ -22,8 +22,7 @@ export const execute = async (
 ) => {
   // Determine target from the args, or use the author if empty
   const slapTarget =
-    interaction.options.get("target")?.value?.toString() ||
-    interaction.user.username;
+    interaction.options.getString("target") || interaction.user.username;
 
   // This the template for the slap
   let slapMessage = "**Fini slaps {0}{1} with {2}**";

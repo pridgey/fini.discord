@@ -7,6 +7,7 @@ import {
   mockUpdatePersonality,
 } from "../mocks/personalities.mock";
 import { mockConsole, restoreConsole } from "../mocks/console.mock";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Setup module mocks before importing the module under test
 setupPersonalityModuleMocks();
@@ -36,6 +37,7 @@ describe("edit-personality command", () => {
         id: "guild123",
       } as any,
       options: {
+        ...typedOptionGetters,
         get: mock((name: string) => ({
           value: name === "name" ? "TestPersonality" : "NewPrompt",
         })),

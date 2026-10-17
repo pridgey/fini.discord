@@ -26,11 +26,8 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const personalityName =
-    interaction.options.get("name")?.value?.toString() || "";
-  const clearChat: boolean = Boolean(
-    interaction.options.get("clear")?.value?.toString() || false,
-  );
+  const personalityName = interaction.options.getString("name") || "";
+  const clearChat = interaction.options.getBoolean("clear") ?? false;
 
   if (!personalityName.length) {
     // Input invalid

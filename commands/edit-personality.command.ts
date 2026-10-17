@@ -23,10 +23,8 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const personalityName =
-    interaction.options.get("name")?.value?.toString() || "";
-  const personalityPrompt =
-    interaction.options.get("prompt")?.value?.toString() || "";
+  const personalityName = interaction.options.getString("name") || "";
+  const personalityPrompt = interaction.options.getString("prompt") || "";
 
   try {
     // Check to see if there's already a personality with this name

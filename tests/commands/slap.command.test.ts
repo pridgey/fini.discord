@@ -7,6 +7,7 @@ import {
   beforeEach,
   spyOn,
 } from "bun:test";
+import { typedOptionGetters } from "../mocks/typedOptionGetters";
 
 // Mock logHammerspaceUsage utility
 const mockLogHammerspaceUsage = mock(() => Promise.resolve());
@@ -50,6 +51,7 @@ describe("slap command", () => {
 
     mockInteraction = {
       options: {
+        ...typedOptionGetters,
         get: mock(() => ({ value: "target" })),
       },
       user: {

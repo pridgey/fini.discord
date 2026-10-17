@@ -57,9 +57,9 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const model = interaction.options.get("model")?.value?.toString() || "";
-  const prompt = interaction.options.get("prompt")?.value?.toString() || "";
-  const imageInput = interaction.options.get("image")?.attachment;
+  const model = interaction.options.getString("model") || "";
+  const prompt = interaction.options.getString("prompt") || "";
+  const imageInput = interaction.options.getAttachment("image");
 
   // Validate prompt
   const validationError = validatePrompt(prompt);

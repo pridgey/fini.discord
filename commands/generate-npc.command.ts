@@ -26,8 +26,8 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const knownInfo = interaction.options.get("prompt")?.value?.toString() || "";
-  const isEphemeral = interaction.options.get("ephemeral")?.value === true;
+  const knownInfo = interaction.options.getString("prompt") || "";
+  const isEphemeral = interaction.options.getBoolean("ephemeral") ?? false;
 
   await interaction.deferReply(
     isEphemeral ? { flags: [MessageFlags.Ephemeral] } : undefined,

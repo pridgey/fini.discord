@@ -109,11 +109,11 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  const rawUrl = interaction.options.get("url")?.value?.toString() || "";
-  const formatValue = interaction.options.get("format")?.value?.toString();
-  const qualityValue = interaction.options.get("quality")?.value?.toString();
-  const startValue = interaction.options.get("start")?.value?.toString();
-  const endValue = interaction.options.get("end")?.value?.toString();
+  const rawUrl = interaction.options.getString("url") || "";
+  const formatValue = interaction.options.getString("format");
+  const qualityValue = interaction.options.getString("quality") ?? undefined;
+  const startValue = interaction.options.getString("start") ?? undefined;
+  const endValue = interaction.options.getString("end") ?? undefined;
 
   const url = parseMediaUrl(rawUrl);
   if (!url) {
