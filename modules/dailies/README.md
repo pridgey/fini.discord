@@ -31,9 +31,8 @@ word - is also announced in a small card in the same channel, with a button
 linking back to the day's post (`announceFinish`). The game handlers report
 plays through `dailyPlayed`, which updates the live line and announces.
 
-`/daily <game>` opens a game for anyone who'd rather type. `/geo-test
-post-daily` (bot admin) sends the day's post early, and `/geo-test
-repost-daily` sends it again in the current layout, removing the old one.
+`/daily <game>` opens a game for anyone who'd rather type, and `/geo-test
+post-daily` (bot admin) sends the day's post early.
 
 Rounds and plays live in Pocketbase; their migrations are in `pb_migrations/`.
 
