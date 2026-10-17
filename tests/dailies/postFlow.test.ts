@@ -82,7 +82,8 @@ const fakeClient = () => {
     },
     messages: {
       fetch: async (id: string) => ({
-        attachments: { some: () => false },
+        components: [],
+        attachments: new Map(),
         edit: async (payload: { components?: unknown[] }) =>
           void edited.push({ id, content: textOf(payload) }),
       }),

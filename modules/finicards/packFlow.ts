@@ -1,11 +1,9 @@
 import {
   AttachmentBuilder,
   ComponentType,
-  type Attachment,
   type ButtonInteraction,
   type ChatInputCommandInteraction,
   type Message,
-  type MessageEditAttachmentData,
   MessageFlags,
 } from "discord.js";
 import {
@@ -24,6 +22,7 @@ import {
   type PackMessageInput,
 } from "./ui/cardMessage";
 import { warnAndUse } from "../../utilities/fallback";
+import { keptFiles, type KeptFile } from "../../utilities/discord/keptFiles";
 
 /**
  * Opening a pack, the way v1 did it: the sealed pack and a button, then the
@@ -91,21 +90,6 @@ export type PackAgain = {
   buy: (press: ButtonInteraction) => Promise<void>;
 };
 
-/**
- * Files already on a message, to keep on an edit that uploads more. Each goes
- * by id and file name: Discord matches a screen's `attachment://name` against
- * the name, and discord.js would send a kept Attachment with it under `name`,
- * which Discord doesn't read - so a screen that pointed at a kept file while
- * uploading another was refused.
- */
-export const keepAttachments = (
-  attachments: Iterable<Attachment>,
-): (MessageEditAttachmentData & { filename: string })[] =>
-  [...attachments].map((attachment) => ({
-    id: attachment.id,
-    filename: attachment.name,
-  }));
-
 export const presentPack = async (
   interaction: ChatInputCommandInteraction | ButtonInteraction,
   input: Omit<PackMessageInput, "reveal" | "again">,
@@ -147,11 +131,9 @@ export const presentPack = async (
    * and a screen whose files are all here is sent as a few bytes of layout,
    * with nothing to upload. That is what makes "Next card" quick.
    */
-  let held = new Map<string, Attachment>();
+  let held = new Map<string, KeptFile>();
   const hold = (sent: Message) => {
-    held = new Map(
-      sent.attachments.map((attachment) => [attachment.name, attachment]),
-    );
+    held = new Map(keptFiles(sent).map((file) => [file.filename, file]));
   };
   hold(message);
 
@@ -169,7 +151,7 @@ export const presentPack = async (
         await surface.editReply({
           ...layout,
           files: missing,
-          attachments: keepAttachments(held.values()),
+          attachments: [...held.values()],
         }),
       );
     } catch (error) {
@@ -210,7 +192,7 @@ export const presentPack = async (
               new AttachmentBuilder(media.buffer, { name: media.name }),
           ),
         ],
-        attachments: keepAttachments(held.values()),
+        attachments: [...held.values()],
       }),
     );
   })().catch((error) =>

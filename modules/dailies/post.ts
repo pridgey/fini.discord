@@ -40,6 +40,7 @@ import {
   type WeavePlayRecord,
   type WeaveRoundRecord,
 } from "./weave/store";
+import { keptFiles } from "../../utilities/discord/keptFiles";
 
 /**
  * The daily post: one message a day in each server's bot channel, however
@@ -456,10 +457,13 @@ export const updateDailyPost = async (cl: Client, serverId: string) => {
     weave:
       weave?.posts?.[serverId]?.messageId === post.messageId ? weave : null,
   };
-  const hasImage = message.attachments.some(
-    (attachment) => attachment.name === RECAP_IMAGE,
-  );
-  await message.edit(await buildPost(rounds, day, serverId, { hasImage }));
+  // Name the files to keep, or the edit drops yesterday's image.
+  const kept = keptFiles(message);
+  const hasImage = kept.some((file) => file.filename === RECAP_IMAGE);
+  await message.edit({
+    ...(await buildPost(rounds, day, serverId, { hasImage })),
+    attachments: kept,
+  });
 };
 
 /**
