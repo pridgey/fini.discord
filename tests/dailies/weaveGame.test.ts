@@ -17,7 +17,6 @@ import {
   nextHint,
   takeHint,
   threadLetters,
-  type WeaveProgress,
 } from "../../modules/dailies/weave/game";
 import type { WeavePuzzle } from "../../modules/dailies/weave/puzzle";
 

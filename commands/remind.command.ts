@@ -3,7 +3,6 @@ import { ChatInputCommandInteraction } from "discord.js";
 import type { ReminderRecord } from "../types/PocketbaseTables";
 import { pb } from "../utilities/pocketbase";
 import { add } from "date-fns";
-import { tryParseDate } from "../utilities/tryParseDate/tryParseDate";
 
 export const data = new SlashCommandBuilder()
   .setName("remind")
@@ -48,10 +47,6 @@ export const execute = async (
       // Resulting date object
       let timeToRemind: Date;
 
-      console.log("Test:", {
-        tryPase: tryParseDate(amountOfTime),
-      });
-
       // Try to parse date
       const parsedDate = new Date(amountOfTime);
       const isValidDate = !isNaN(parsedDate.getTime());
@@ -74,7 +69,9 @@ export const execute = async (
         };
 
         // For each top-level duration look for the potential time pattern
-        Object.keys(timeDictionary).forEach((unit) => {
+        (
+          Object.keys(timeDictionary) as (keyof typeof timeDictionary)[]
+        ).forEach((unit) => {
           const patterns = timeDictionary[unit].join("|");
           const regex = new RegExp(`(\\d+)\\s*(${patterns})(?:\\b|\\s)`, "gi");
           let match;

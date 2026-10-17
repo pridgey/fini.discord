@@ -1,6 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
-  AttachmentBuilder,
   ChatInputCommandInteraction,
   ContainerBuilder,
   MessageFlags,

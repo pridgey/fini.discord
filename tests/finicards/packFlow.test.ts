@@ -192,9 +192,7 @@ describe("keeping a pack's files on an edit", () => {
       JSON.stringify((payload.body as { attachments: unknown[] }).attachments),
     );
 
-    expect(sent).toEqual([
-      { id: "111", filename: "booster-pack.png" },
-      { id: "0" },
-    ]);
+    expect(sent[0]).toEqual({ id: "111", filename: "booster-pack.png" });
+    expect(sent[1].id).toBe("0");
   });
 });

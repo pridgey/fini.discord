@@ -3,7 +3,6 @@ import { TYPE_PRIORITY } from "../rules";
 import type { BattleCard } from "../types";
 import type {
   AbilitySpec,
-  Box,
   FlavourSpec,
   StatBarSpec,
   TagsSpec,

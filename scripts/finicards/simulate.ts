@@ -251,15 +251,6 @@ const pickFromHand = (
   return [...hand].sort((a, b) => score(b) - score(a)).slice(0, rounds);
 };
 
-/** Deals a hand from a deck and picks a lineup out of it. */
-const playFrom = (
-  deck: BattleCard[],
-  opposingHand: BattleCard[],
-  rounds: number,
-  random: () => number,
-): BattleCard[] =>
-  pickFromHand(dealHand(deck, HAND_SIZE, random), opposingHand, rounds);
-
 /* -------------------------------------------------------------------------- */
 /* Experiments                                                                */
 /* -------------------------------------------------------------------------- */

@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach } from "bun:test";
 // Import types as needed
 // import type { ChatInputCommandInteraction } from "discord.js";
 

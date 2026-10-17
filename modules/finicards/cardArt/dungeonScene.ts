@@ -1,5 +1,4 @@
 import sharp from "sharp";
-import type { CardType } from "../../../types/PocketbaseTablesV2";
 import {
   describeEffect,
   doorHint,

@@ -15,7 +15,7 @@ import {
 import { TYPE_PRIORITY } from "../../modules/finicards/rules";
 import type { StatBarSpec } from "../../modules/finicards/cardArt/layouts";
 import type { BattleCard } from "../../modules/finicards/types";
-import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
+import type { CardRarity } from "../../types/PocketbaseTablesV2";
 
 const card = (overrides: Partial<BattleCard> = {}): BattleCard => ({
   instanceId: "inst123456",

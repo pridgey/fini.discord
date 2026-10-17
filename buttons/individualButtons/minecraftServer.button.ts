@@ -17,7 +17,7 @@ import {
 
 export const namespace = "minecraft_server";
 
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export async function execute(interaction: ButtonInteraction, _args: string[]) {
   try {
     // A user has requested to start the server
     await interaction.update({

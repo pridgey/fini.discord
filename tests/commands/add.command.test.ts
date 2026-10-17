@@ -1,5 +1,4 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from "bun:test";
-import type { ChatInputCommandInteraction } from "discord.js";
+import { describe, it, expect, mock, beforeEach } from "bun:test";
 import { pb } from "../../utilities/pocketbase";
 import { execute } from "../../commands/add.command";
 
@@ -18,7 +17,7 @@ describe("add command", () => {
     mockCreate.mockClear();
     mockInteraction = {
       options: {
-        get: mock((name: string) => ({ value: "Test Item" })),
+        get: mock((_name: string) => ({ value: "Test Item" })),
       },
       user: { username: "testuser" },
       guild: { id: "guild123" },

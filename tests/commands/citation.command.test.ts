@@ -1,5 +1,4 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import type { ChatInputCommandInteraction } from "discord.js";
 
 // Mock Citation class
 class MockCitation {
@@ -7,7 +6,7 @@ class MockCitation {
   penalty: string = "";
   title: string = "";
 
-  async render(filename: string, gif: boolean) {
+  async render(_filename: string, gif: boolean) {
     return Buffer.from(
       `Mock citation: ${this.title} - ${this.reason} - ${this.penalty} - ${
         gif ? "gif" : "png"

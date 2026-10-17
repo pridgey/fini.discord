@@ -37,7 +37,7 @@ const hand = () => [
 const json = (view: ReturnType<typeof buildPickerView>) =>
   view.components[0].toJSON() as any;
 
-const buttonIds = (view: ReturnType<typeof buildPickerView>) =>
+const buttonIds = (view: ReturnType<typeof buildPickerView>): string[] =>
   json(view)
     .components.filter((component: any) => component.type === 1)
     .flatMap((row: any) =>

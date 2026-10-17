@@ -90,16 +90,6 @@ export class MinecraftMonitor {
     }
   }
 
-  private async sendMinecraftMessage(message: string): Promise<void> {
-    try {
-      const rcon = await Rcon.connect(this.rconConfig);
-      await rcon.send(`say ${message}`);
-      await rcon.end();
-    } catch (error) {
-      console.error("Failed to send message:", error);
-    }
-  }
-
   public async startMonitoring(): Promise<void> {
     console.log("Starting Minecraft server monitoring...");
     this.currentState = "MONITORING";

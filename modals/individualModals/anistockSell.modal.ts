@@ -1,6 +1,6 @@
 import { MessageFlags, ModalSubmitInteraction } from "discord.js";
-import { buyStock, sellStock } from "../../modules/finistocks/actionStock";
-import { addCoin, getUserBalance } from "../../modules/finicoin";
+import { sellStock } from "../../modules/finistocks/actionStock";
+import { addCoin } from "../../modules/finicoin";
 import { pb } from "../../utilities/pocketbase";
 import { AniStock_Holdings } from "../../types/PocketbaseTables";
 

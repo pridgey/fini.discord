@@ -53,7 +53,7 @@ describe("edit-personality command", () => {
     mockGetPersonalityByName.mockImplementation(() =>
       Promise.resolve([{ id: "pid" }]),
     );
-    mockUpdatePersonality.mockImplementation((params: any) =>
+    mockUpdatePersonality.mockImplementation((_params: unknown) =>
       Promise.resolve({ personality_name: "TestPersonality" }),
     );
 
@@ -134,7 +134,7 @@ describe("edit-personality command", () => {
     mockGetPersonalityByName.mockImplementation(() =>
       Promise.resolve([{ id: "pid" }]),
     );
-    mockUpdatePersonality.mockImplementation((params: any) =>
+    mockUpdatePersonality.mockImplementation((_params: unknown) =>
       Promise.resolve({ personality_name: "TestPersonality" }),
     );
 

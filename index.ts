@@ -14,7 +14,6 @@ import { runGeoDaily } from "./modules/dailies/geo/daily";
 import { runWeaveDaily } from "./modules/dailies/weave/daily";
 import { getCommandFiles } from "./utilities/interactionFiles/getInteractionFiles";
 import { splitBigString } from "./utilities/splitBigString";
-const { exec } = require("child_process");
 import { readFile, writeFile } from "fs/promises";
 import { initializeServerBank } from "./modules/finicoin/initialize";
 import {
@@ -40,6 +39,16 @@ import { startCardManager } from "./modules/finicards/cardManagerServer";
  */
 const NO_REPLY_OUTPUT = "<no reply - interaction expired>";
 
+/**
+ * Whether the bot is running from `main`. Anything else is a work in progress,
+ * and slash commands say so. Read once - the branch can't change under a
+ * running process.
+ */
+const onMainBranch =
+  (
+    await Bun.$`git rev-parse --abbrev-ref HEAD`.nothrow().quiet().text()
+  ).trim() === "main";
+
 /*
  * The last line of defence. An unhandled rejection otherwise ends the process,
  * and `bun start` stops Pocketbase and llama along with it - so one missed
@@ -64,7 +73,7 @@ const client = new Client({
   ],
 });
 
-let pollingInterval;
+let pollingInterval: ReturnType<typeof setInterval> | undefined;
 
 // WE READY
 client.once("clientReady", async (cl) => {
@@ -239,16 +248,15 @@ client.on("interactionCreate", async (interaction) => {
     const channel = interaction.channel;
 
     // Display warning if not on main branch
-    exec("git rev-parse --abbrev-ref HEAD", (err, stdout) => {
-      if (err) {
-        console.error("Error occurred while showing git warning:", err);
-      }
-      if (typeof stdout === "string" && stdout.trim() !== "main") {
-        channel?.send(
+    if (!onMainBranch) {
+      channel
+        .send(
           "*I'm currently operating in debug mode and my creator is bad at coding, use at your own risk*",
+        )
+        .catch((err) =>
+          console.error("Error showing the branch warning:", err),
         );
-      }
-    });
+    }
 
     try {
       // Get the commands name

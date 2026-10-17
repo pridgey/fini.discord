@@ -179,32 +179,15 @@ const typeEffectiveChart: EffectiveChart = {
   },
 };
 
+/** How much `attacking` hurts a Pokémon of the `defending` types: each type's multiplier, multiplied together. */
 export const calculateTypeEffectiveness = (
-  AttackingType: PokemonType,
-  DefendingTypes: PokemonType[],
-) => {
-  let totalEffectiveness = 1;
-
-  const attackType = AttackingType.toLowerCase().trim();
-
-  DefendingTypes.forEach((type) => {
-    const defendType = type.toLowerCase().trim();
-    let effectiveness = 1;
-
-    if (Object.hasOwn(typeEffectiveChart[attackType], defendType)) {
-      effectiveness = typeEffectiveChart[attackType][defendType] ?? 1;
-    }
-    console.log("Effective", {
-      AttackingType,
-      type,
-      effectiveness,
-      totalEffectiveness,
-    });
-    totalEffectiveness = totalEffectiveness * effectiveness;
-  });
-
-  return totalEffectiveness;
-};
+  attacking: PokemonType,
+  defending: PokemonType[],
+): number =>
+  defending.reduce(
+    (total, type) => total * (typeEffectiveChart[attacking][type] ?? 1),
+    1,
+  );
 
 export const calculatePokemonTypeEffectiveness = (Types: PokemonType[]) => {
   const effectiveSpread: { type: PokemonType; effective: number }[] = [];

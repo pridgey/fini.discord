@@ -20,8 +20,6 @@ export const splitBigString = (
 
   // The number of instances of "```" in the chunk
   const codeBlockCount = (stringChunk.match(/```/g) || []).length;
-  // If the chunk includes a newline break
-  const hasNewLine = stringChunk.match(/(\r\n|\r|\n)/);
 
   // Ensure string chunk is not in-between code block markdown
   if (

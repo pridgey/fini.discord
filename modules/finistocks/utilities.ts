@@ -1,6 +1,3 @@
-import { pb } from "../../utilities/pocketbase";
-import { AnimeRecord, AnimeStockRecord } from "./stockData";
-
 // Weight factors for initial pricing
 const POPULARITY_WEIGHT = 0.4;
 const MEMBERS_WEIGHT = 0.4;

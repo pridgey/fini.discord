@@ -38,11 +38,12 @@ const recording = {
 mock.module("../../utilities/pocketbase", () => ({ pb: recording }));
 
 /**
- * The text sits whole inside one quoted string: Pocketbase quotes it with '
- * and escapes any ' within, so nothing after it is read as part of the query.
+ * The text sits whole inside one quoted string: Pocketbase writes it as a JSON
+ * string - double quoted, with any " and \\ within escaped - so nothing after
+ * it is read as part of the query.
  */
 const contained = (filter: string, typed: string) => {
-  expect(filter).toContain(`'${typed.replace(/'/g, "\\'")}'`);
+  expect(filter).toContain(JSON.stringify(typed));
 };
 
 describe("typed text in database queries", () => {
@@ -66,7 +67,7 @@ describe("typed text in database queries", () => {
       const filter = real.filter("name = {:name}", { name: typed });
       contained(filter, typed);
       // One string, and no way out of it.
-      expect(filter.match(/(?<!\\)'/g)).toHaveLength(2);
+      expect(filter.match(/(?<!\\)"/g)).toHaveLength(2);
     }
   });
 });

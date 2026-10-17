@@ -1,10 +1,4 @@
-import {
-  ButtonStyle,
-  ContainerBuilder,
-  SectionBuilder,
-  TextDisplayBuilder,
-} from "discord.js";
-import { AnimeRecord } from "./stockData";
+import { ButtonStyle, ContainerBuilder, TextDisplayBuilder } from "discord.js";
 import { AniStock_Detail } from "../../types/PocketbaseTables";
 
 type BuildAniStockQueryResultCardsParams = {
@@ -36,7 +30,7 @@ export const buildAniStockQueryResultCards = ({
   );
   animeResultsComponents.push(titleText);
 
-  queryResults.slice(0, 5).forEach((anime, index) => {
+  queryResults.slice(0, 5).forEach((anime) => {
     const resultContainer = new ContainerBuilder();
 
     resultContainer

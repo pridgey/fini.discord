@@ -30,16 +30,9 @@ const buildAnimeDetailsResults = async ({
 };
 
 export const animeDetailsQuery: QueryFunction<AniStock_Detail> = {
-  query: async ({
-    queryString,
-    page,
-    perPage,
-    sortOption,
-    filterOption,
-  }: QueryParams) => {
+  query: async ({ queryString, page, perPage, sortOption }: QueryParams) => {
     const sortClause = determineSortOption(sortOption as AnimeSortOptions);
 
-    // TODO: Build out filtering logic to actually include filters? ============================================================
     const filterClause = (() => {
       if (!queryString) return undefined;
 

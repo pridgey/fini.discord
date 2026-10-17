@@ -1,23 +1,11 @@
-import seedrandom from "seedrandom";
-
-// Initialize the random number object
-const rng = seedrandom(Date.now());
-
 /**
- * Utility function to generate a random number
- * @param min The minimum number in the random range
- * @param max The maximum number in the random range
- * @param interger Whether or not to return an integer or a decimal
- * @returns A random number
+ * A random number from `min` to `max` (default 0 to 1).
+ *
+ * With `integer`, a whole number where every value from `min` to `max`
+ * inclusive is equally likely - a d20 is `randomNumber(1, 20, true)`.
+ * Without it, a decimal from `min` up to, but not including, `max`.
  */
-export const randomNumber = (min?: number, max?: number, integer?: boolean) => {
-  const maxNum = max ?? 1;
-  const minNum = min ?? 0;
-  let number = rng() * (maxNum - minNum) + minNum;
-
-  if (integer) {
-    number = Math.round(number);
-  }
-
-  return number;
-};
+export const randomNumber = (min = 0, max = 1, integer = false): number =>
+  integer
+    ? min + Math.floor(Math.random() * (max - min + 1))
+    : min + Math.random() * (max - min);

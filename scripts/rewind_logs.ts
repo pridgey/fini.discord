@@ -11,7 +11,7 @@ const SERVER_DICTIONARY = {
 const SERVER_CHOICE = "gekin";
 const SERVER = SERVER_DICTIONARY[SERVER_CHOICE];
 
-const userIdMap = {
+const userIdMap: Record<string, string> = {
   "255016605191241729": "Pridgey",
   "294686904258134026": "Graham",
   "176771274318544897": "ImSoHm02",

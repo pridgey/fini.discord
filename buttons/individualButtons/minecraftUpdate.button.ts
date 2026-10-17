@@ -5,7 +5,7 @@ import { checkForPackUpdate } from "../../modules/minecraft/packUpdate";
 
 export const namespace = "minecraft_update";
 
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export async function execute(interaction: ButtonInteraction, _args: string[]) {
   try {
     // Everyone can see this button so they know an update is waiting, but
     // only the admin can act on it

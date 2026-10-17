@@ -1,5 +1,4 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import type { ChatInputCommandInteraction } from "discord.js";
 
 // Mock finicoin module
 const mockAddCoin = mock(() => Promise.resolve());

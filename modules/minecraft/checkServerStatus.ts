@@ -5,7 +5,7 @@ export const MINECRAFT_PORT = 56552;
  */
 export const getServerStatus = async () => {
   try {
-    const socket = await Bun.connect({
+    await Bun.connect({
       hostname: "localhost",
       port: MINECRAFT_PORT,
       socket: {

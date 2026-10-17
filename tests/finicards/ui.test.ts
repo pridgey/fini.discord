@@ -44,7 +44,6 @@ const card = (
 /** Component type ids from the Discord components spec. */
 const TEXT = 10;
 const GALLERY = 12;
-const SEPARATOR = 14;
 const ACTION_ROW = 1;
 
 const textOf = (json: any): string =>

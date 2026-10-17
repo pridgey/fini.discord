@@ -84,16 +84,14 @@ export const execute = async (
     return;
   }
 
-  const listPlayers = interaction.options.getBoolean("list-players");
-
   let replyText = "The Fini Minecraft server is currently online!";
 
   const players = await getServerPlayers();
   const isolatedPlayersString = players?.trim().split(":").pop() || "";
   const playerList = isolatedPlayersString
-    ? isolatedPlayersString?.split(",").map((p) => p.trim()) ||
-      [].filter((p) => !!p)
-    : [];
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean);
 
   replyText += ` (\`${publicIP}:${MINECRAFT_PORT}\`)`;
 

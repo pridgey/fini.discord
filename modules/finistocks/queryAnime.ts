@@ -3,7 +3,6 @@ import {
   PaginationParams,
   PaginatedResult,
 } from "../../utilities/pagination/pagination";
-import { AnimeRecord } from "./stockData";
 import { AnimeSortOptions, determineSortOption } from "./determineSort";
 import { AniStock_Detail } from "../../types/PocketbaseTables";
 

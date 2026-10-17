@@ -1404,7 +1404,7 @@ describe("finicards v2 dungeons", () => {
         (faces[Math.min(next++, faces.length - 1)] - 1) / DUNGEON.event.die +
         0.01;
     };
-    const at = (room: EventRoom, random: () => number): RoomSource => ({
+    const at = (_room: EventRoom, random: () => number): RoomSource => ({
       pool: POOL,
       hand: HAND,
       random,

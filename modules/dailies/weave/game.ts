@@ -170,7 +170,7 @@ const wordPay = (progress: WeaveProgress, index: number) =>
   progress.hinted.includes(index) ? HINTED_WORD_FC : WORD_FC;
 
 /** What a player has earned, from their progress: it can be worked out again at any time. */
-export const earned = (puzzle: WeavePuzzle, progress: WeaveProgress): number =>
+export const earned = (_puzzle: WeavePuzzle, progress: WeaveProgress): number =>
   progress.found.reduce((sum, index) => sum + wordPay(progress, index), 0) +
   progress.threadFc;
 

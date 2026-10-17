@@ -13,12 +13,6 @@ mock.module("date-fns", () => ({
   add: mockAdd,
 }));
 
-// Mock tryParseDate utility
-const mockTryParseDate = mock(() => null);
-mock.module("../../utilities/tryParseDate/tryParseDate", () => ({
-  tryParseDate: mockTryParseDate,
-}));
-
 // Mock pocketbase
 const mockCreate = mock((_data?: any) => Promise.resolve({}));
 const mockCollection = mock(() => ({
@@ -43,7 +37,6 @@ describe("remind command", () => {
     mockCreate.mockClear();
     mockCollection.mockClear();
     mockAdd.mockClear();
-    mockTryParseDate.mockClear();
 
     mockInteraction = {
       options: {

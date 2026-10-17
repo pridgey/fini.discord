@@ -40,7 +40,7 @@ export const handleDeckSubcommand = async (
   interaction: ChatInputCommandInteraction,
   context: FinicardContext,
 ) => {
-  const { serverId, serverName, identifier } = context;
+  const { serverId, identifier } = context;
   const userId = interaction.user.id;
 
   const describeDeck = async (deck: V2DeckRecord) => {

@@ -1,9 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import {
-  ChatInputCommandInteraction,
-  MessageFlags,
-  PermissionFlagsBits,
-} from "discord.js";
+import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { buildAniStockQueryResultCards } from "../modules/finistocks/buildAniStockQueryResultCards";
 import { buildSingleAniStockCard } from "../modules/finistocks/buildSingleAniStockCard";
 import { AnimeSortOptions } from "../modules/finistocks/determineSort";

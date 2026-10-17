@@ -1,5 +1,4 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
-import type { ChatInputCommandInteraction } from "discord.js";
 
 // Mock randomNumber utility
 const mockRandomNumber = mock((min: number, max: number) => {

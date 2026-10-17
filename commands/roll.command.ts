@@ -2,17 +2,18 @@ import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import { randomNumber } from "../utilities/randomNumber";
 
-function formatNums(nums) {
-  const itemsPerRow = 10;
-  let formattedNums = nums.map((n) => n.toLocaleString());
-  let maxLen = Math.max(...formattedNums.map((s) => s.length));
-  let alignedNums = formattedNums.map((s) => " ".repeat(maxLen - s.length) + s);
-  let rows: string[] = [];
-  for (let i = 0; i < alignedNums.length; i += itemsPerRow) {
-    rows.push("| " + alignedNums.slice(i, i + itemsPerRow).join(" | ") + " |");
+/** Ten rolls to a row, right-aligned so the columns line up. */
+const formatRolls = (rolls: number[]): string => {
+  const ROLLS_PER_ROW = 10;
+  const labels = rolls.map((roll) => roll.toLocaleString());
+  const width = Math.max(...labels.map((label) => label.length));
+  const aligned = labels.map((label) => label.padStart(width));
+  const rows: string[] = [];
+  for (let i = 0; i < aligned.length; i += ROLLS_PER_ROW) {
+    rows.push(`| ${aligned.slice(i, i + ROLLS_PER_ROW).join(" | ")} |`);
   }
   return rows.join("\n");
-}
+};
 
 export const data = new SlashCommandBuilder()
   .setName("roll")
@@ -51,7 +52,7 @@ export const execute = async (
     results.push(randomRoll);
   }
 
-  const table = `\`\`\`${formatNums(results)}\`\`\``;
+  const table = `\`\`\`${formatRolls(results)}\`\`\``;
 
   let response = `Rolling ${amountOfDice}d${numberOfSides.toLocaleString()}: `;
 

@@ -5,7 +5,6 @@ import {
   normaliseHeading,
   type Vec3,
   type WanderAction,
-  type WanderSenses,
 } from "./botWander";
 
 /**

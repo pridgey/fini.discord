@@ -7,8 +7,6 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
-import { getUserBalance } from "../../modules/finicoin";
-import { queryAnime } from "../../modules/finistocks/queryAnime";
 import { pb } from "../../utilities/pocketbase";
 import { AniStock_Holdings } from "../../types/PocketbaseTables";
 

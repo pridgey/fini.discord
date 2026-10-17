@@ -26,7 +26,7 @@ describe("richlist command", () => {
     mockCollection.mockClear();
 
     mockFetch = mock((userId: string) => {
-      const userMap = {
+      const userMap: Record<string, { username: string }> = {
         user1: { username: "Alice" },
         user2: { username: "Bob" },
         user3: { username: "Charlie" },
