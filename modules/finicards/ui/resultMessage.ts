@@ -72,24 +72,24 @@ const SIDES: Side[] = ["challenger", "defender"];
 const offset = (amount: number): string =>
   amount === 0 ? "" : amount > 0 ? `+${amount}` : `${amount}`;
 
-/** `6+3=9`, `(6+3)x1.5=13`, or just `7` - an attack and what built it. */
+/** `6+3 = 9`, `(6+3)x1.5 = 13`, or just `7` - an attack and what built it. */
 const attackCell = (combat: SideCombat): string => {
   const change = offset(combat.attackStat - combat.baseAttackStat);
   const sum = `${combat.baseAttackStat}${change}`;
   if (combat.multiplier !== 1) {
-    return `${change ? `(${sum})` : sum}x${combat.multiplier}=${combat.attackValue}`;
+    return `${change ? `(${sum})` : sum}x${combat.multiplier} = ${combat.attackValue}`;
   }
-  return change ? `${sum}=${combat.attackStat}` : sum;
+  return change ? `${sum} = ${combat.attackStat}` : sum;
 };
 
-/** `7+2=9`, `5+2-3=4 Heart` - the defence an attack hit and what built it. */
+/** `7+2 = 9`, `5+2-3 = 4 Heart` - the defence an attack hit and what built it. */
 const defenseCell = (combat: SideCombat): string => {
   const { defense } = combat;
   // Rounds stored before the parts were tracked only have the total.
   if (!defense) return `${combat.defenseFaced}`;
   const parts = `${defense.base}${offset(defense.bonus)}${offset(-defense.pierce)}`;
   const value =
-    parts === `${defense.base}` ? parts : `${parts}=${combat.defenseFaced}`;
+    parts === `${defense.base}` ? parts : `${parts} = ${combat.defenseFaced}`;
   // Only worth naming the stat when `Feint` moved it off the matching one.
   return defense.stat === combat.printedType
     ? value

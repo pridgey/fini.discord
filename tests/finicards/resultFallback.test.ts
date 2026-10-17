@@ -69,7 +69,7 @@ describe("finicards v2 result without a battle board", () => {
   });
 
   it("shows the working as a table of attack, defence and damage", () => {
-    expect(text).toContain("7x1.5=10");
+    expect(text).toContain("7x1.5 = 10");
     expect(text).toMatch(/```\n +│ Attack +│ Defence +│ Dmg\n─+┼/);
   });
 

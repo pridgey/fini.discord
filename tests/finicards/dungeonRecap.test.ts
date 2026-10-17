@@ -67,10 +67,10 @@ describe("damage table", () => {
     expect(damageTable(clash(hinata, robin))).toBe(
       [
         "```",
-        "                  │ Attack │ Defence │ Dmg",
-        "──────────────────┼────────┼─────────┼────",
-        "Hinata Hyuga      │ 7      │ 6       │   1",
-        "Sudden Nico Robin │ 6+3=9  │ 7+2=9   │   0",
+        "                  │ Attack  │ Defence │ Dmg",
+        "──────────────────┼─────────┼─────────┼────",
+        "Hinata Hyuga      │ 7       │ 6       │   1",
+        "Sudden Nico Robin │ 6+3 = 9 │ 7+2 = 9 │   0",
         "```",
       ].join("\n"),
     );
@@ -82,8 +82,8 @@ describe("damage table", () => {
     const [, , , naruto, zoro] = damageTable(clash(piercer, feinter)).split(
       "\n",
     );
-    expect(naruto).toBe("Naruto │ 8       │ 7-3=4   │   4");
-    expect(zoro).toBe("Zoro   │ 6x1.5=9 │ 3 Wit   │   6");
+    expect(naruto).toBe("Naruto │ 8         │ 7-3 = 4 │   4");
+    expect(zoro).toBe("Zoro   │ 6x1.5 = 9 │ 3 Wit   │   6");
   });
 
   it("falls back to the total for rounds stored before the parts were", () => {
@@ -92,7 +92,7 @@ describe("damage table", () => {
     const [, , , , stored] = damageTable({ ...round, defender: old }).split(
       "\n",
     );
-    expect(stored).toBe("Sudden Nico Robin │ 6+3=9  │ 9       │   0");
+    expect(stored).toBe("Sudden Nico Robin │ 6+3 = 9 │ 9       │   0");
   });
 
   it("names each card's bonuses under the table, once", () => {
