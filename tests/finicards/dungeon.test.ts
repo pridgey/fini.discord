@@ -23,6 +23,7 @@ import {
   generateShop,
   leaveShop,
   modsOf,
+  nextLeg,
   nextSlot,
   payoutFor,
   playEvent,
@@ -544,6 +545,19 @@ describe("finicards v2 dungeons", () => {
       expect(round.challenger.bonuses).toEqual([]);
     });
 
+    it("counts legs, the next one starting once three fights are done", () => {
+      expect(nextLeg(winning(0))).toBe(1);
+      expect(nextLeg(winning(2))).toBe(1);
+      expect(nextLeg(winning(3))).toBe(2);
+      expect(nextLeg(winning(4))).toBe(2);
+      expect(nextLeg(winning(7))).toBe(3);
+    });
+
+    it("estimates the leg for runs from before legs were counted", () => {
+      const { legsDone: _new, ...old } = winning(4);
+      expect(nextLeg(old)).toBe(2);
+    });
+
     it("fires slot keywords on the leg's slots", () => {
       const first = playFight(winning(0), strong("v", "vanguard"), source());
       expect(first.round.challenger.bonuses).toHaveLength(1);
@@ -805,9 +819,9 @@ describe("finicards v2 dungeons", () => {
         ),
       );
 
-      // A blank line after the ability, another after the slot.
+      // A blank line after the ability, another after the slot and leg.
       expect(text).toMatch(
-        /Intimidate[^"]*\\n\\n-# For abilities this is \*\*slot 1 of \d\*\*\.\\n\\n-# Play a card to fight\. It then rests for \d rooms\.\\n-# /,
+        /Intimidate[^"]*\\n\\n-# For abilities this is \*\*slot 1 of \d\*\*\.\\n-# This is \*\*leg 1\*\*\.\\n\\n-# Play a card to fight\. It then rests for \d rooms\.\\n-# /,
       );
       expect(text).not.toContain("Lose and the run ends");
     });
@@ -1520,6 +1534,8 @@ describe("finicards v2 dungeons", () => {
         at(room, dice(6)),
       ).state;
       expect(nextSlot(echoed)).toBe(1);
+      // A leg cut short still counts, so the next fight starts leg 2.
+      expect(nextLeg(echoed)).toBe(2);
     });
 
     it("spends a loaded die on a miss, and only on a miss", () => {

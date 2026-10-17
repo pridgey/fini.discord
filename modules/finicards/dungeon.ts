@@ -383,6 +383,8 @@ export type DungeonState = {
   loot: CardRarity[];
   /** The current three-fight keyword match. */
   leg: { rounds: RoundResult[]; states: Record<Side, SideState> };
+  /** Legs finished or cut short. Absent on runs from before it was kept. */
+  legsDone?: number;
   recap: Recap | null;
   /** Loaded dice held. Each one rerolls a failed event, once. */
   rerolls?: number;
@@ -1159,6 +1161,7 @@ export const createRun = (
     stats: { geldEarned: 0, geldSpent: 0, eventsPassed: 0, cardWins: {} },
     loot: [],
     leg: freshLeg(),
+    legsDone: 0,
     recap: null,
   };
 };
@@ -1181,6 +1184,33 @@ export const nextSlot = (
   state: DungeonState,
   config: DungeonConfig = DUNGEON,
 ): number => (state.leg.rounds.length % config.legLength) + 1;
+
+/**
+ * Legs behind the current one. Runs from before the count was kept estimate it
+ * from the fights they won, which misses only stalemates and reset events.
+ */
+const legsDone = (
+  state: DungeonState,
+  config: DungeonConfig = DUNGEON,
+): number => {
+  if (state.legsDone !== undefined) return state.legsDone;
+  const won = state.path.filter(
+    ({ room, result }) =>
+      room.kind === "fight" && (result === "won" || result === "warded"),
+  ).length;
+  return Math.max(
+    0,
+    Math.floor((won - state.leg.rounds.length) / config.legLength),
+  );
+};
+
+/** The leg the next fight is in, counting from 1. */
+export const nextLeg = (
+  state: DungeonState,
+  config: DungeonConfig = DUNGEON,
+): number =>
+  legsDone(state, config) +
+  (state.leg.rounds.length >= config.legLength ? 2 : 1);
 
 /** Puts a ready card to sleep. Returns what happened, for the recap. */
 const putToSleep = (
@@ -1264,6 +1294,7 @@ const applyEffect = (
     case "many":
       return effect.effects.flatMap((each) => applyEffect(state, each, source));
     case "resetLeg":
+      if (state.leg.rounds.length > 0) state.legsDone = legsDone(state) + 1;
       state.leg = freshLeg();
       return ["🔁 The fight count starts over: your next fight is **slot 1**."];
     case "reroll":
@@ -1392,7 +1423,10 @@ export const playFight = (
   const next = begin(state, "fight");
   const mods = modsOf(next);
 
-  if (next.leg.rounds.length >= config.legLength) next.leg = freshLeg();
+  if (next.leg.rounds.length >= config.legLength) {
+    next.legsDone = legsDone(next, config) + 1;
+    next.leg = freshLeg();
+  }
   const { rounds, states } = next.leg;
 
   const player = buffedCard(card, mods);

@@ -29,6 +29,7 @@ import {
   doorSight,
   eventChance,
   modsOf,
+  nextLeg,
   nextSlot,
   weakenedEnemy,
   type DungeonReward,
@@ -611,6 +612,7 @@ export const composeDungeonMessage = (
             ],
             [
               `-# For abilities this is **slot ${nextSlot(progress)} of ${DUNGEON.legLength}**.`,
+              `-# This is **leg ${nextLeg(progress)}**.`,
             ],
             [restLine(DUNGEON.cooldownRooms + mods.cooldown), WHEEL_HINT],
           ]
