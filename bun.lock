@@ -14,7 +14,6 @@
         "gif-encoder-2": "^1.0.5",
         "glob": "^10.5.0",
         "pocketbase": "^0.28.1",
-        "prettier": "^2.8.8",
         "rcon-client": "^4.2.5",
         "replicate": "^0.32.1",
         "seedrandom": "^3.0.5",
@@ -23,6 +22,7 @@
       "devDependencies": {
         "@types/bun": "^1.4.3",
         "concurrently": "^8.2.2",
+        "prettier": "^3.6.2",
         "typescript": "^5.9.3",
       },
     },
@@ -295,7 +295,7 @@
 
     "pocketbase": ["pocketbase@0.28.1", "", {}, "sha512-/3ihkq+rvfcs0MQgrK4sEElOg6gfenHW9S/O+3BSO+V1yT+4B10+9aT22uTQUPqze9ItwNtwWyY5ZmdgVCTdVA=="],
 
-    "prettier": ["prettier@2.8.8", "", { "bin": { "prettier": "bin-prettier.js" } }, "sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q=="],
+    "prettier": ["prettier@3.9.10", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA=="],
 
     "process": ["process@0.11.10", "", {}, "sha512-cdGef/drWFoydD1JsMzuFf8100nZl+GT+yacc2bEced5f9Rjk4z+WtFUTBu9PhOi9j/jfmBPu0mMEY4wIdAF8A=="],
 

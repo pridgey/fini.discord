@@ -1,0 +1,11 @@
+# The website is its own project, with its own tooling.
+web/
+node_modules/
+pb_data/
+# Written by Pocketbase's admin UI as well as by hand.
+pb_migrations/
+scripts/test_images/
+# Prose is wrapped by hand.
+*.md
+*.html
+.claude/
