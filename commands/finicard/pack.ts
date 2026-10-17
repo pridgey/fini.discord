@@ -145,7 +145,7 @@ export const openPackFor = async (
     return;
   }
   if (set && definitions.length === 0) {
-    await interaction.editReply(`Set ${set} has no active cards to pull.`);
+    await interaction.editReply(`Set ${set} isn't out yet - soon!`);
     return;
   }
   if (definitions.length === 0) {

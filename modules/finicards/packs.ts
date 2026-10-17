@@ -64,8 +64,12 @@ export const SECRET_ART_CHANCE = 0.01;
 export const PACK_COST = 25;
 export const SET_PACK_COST = 40;
 
-/** The sets a pack can be bought from on their own. */
-export const BOOSTER_SETS = [1, 2, 3] as const;
+/**
+ * The sets a pack can be bought from on their own. A set listed before its
+ * cards are active answers "isn't out yet" - and it only shows in Discord once
+ * the commands are registered again, so that can wait for launch day.
+ */
+export const BOOSTER_SETS = [1, 2, 3, 4] as const;
 
 /** Order used when a rarity is exhausted and we fall back down the ladder. */
 const FALLBACK_ORDER: CardRarity[] = ["full_art", "uncommon", "common"];
