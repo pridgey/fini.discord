@@ -23,9 +23,7 @@ const registerAllCommands = async () => {
     const league_guildId = process.env.LEAGUE_SERVERID || "";
 
     const importedFiles = await Promise.all(
-      commandFiles
-        .filter((file) => !file.includes("archived"))
-        .map((file) => import(`./../${file}`)),
+      commandFiles.map((file) => import(`./../${file}`)),
     );
     const commandData = importedFiles.map((cmdData) => cmdData.data.toJSON());
 

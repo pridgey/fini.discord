@@ -235,14 +235,6 @@ const describeOptions = (
 
 // If we get a slash command, run the slash command.
 client.on("interactionCreate", async (interaction) => {
-  console.log("Interaction Used", {
-    commandName: (interaction as ChatInputCommandInteraction).commandName,
-    autocomplete: interaction.isAutocomplete(),
-    command: interaction.isCommand(),
-    isChatInput: interaction.isChatInputCommand(),
-    isButton: interaction.isButton(),
-  });
-
   // Handle slash commands
   if (interaction.isChatInputCommand()) {
     if (!interaction.channel?.isTextBased()) return;
@@ -269,8 +261,6 @@ client.on("interactionCreate", async (interaction) => {
       );
       // Exit early if we can't find the command to run
       if (!commandToRun) return;
-
-      console.log("Pre-Execute", commandToRun);
 
       /*
        * Execute the command. Logging is handed to the command as a callback so

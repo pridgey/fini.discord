@@ -25,21 +25,12 @@ export const getStateFromText = (text: string): BlackJackState => {
       line.includes("'s Hand:**") && !line.startsWith("**Dealer's Hand:**"),
   );
 
-  console.log("Debug - extracted lines", {
-    text,
-    lines,
-    wagerLine,
-    dealerLine,
-    playerLine,
-  });
-
   if (!wagerLine || !dealerLine || !playerLine) {
     throw new Error("Invalid message format");
   }
 
   const extractCards = (line: string): Card[] => {
     const cardMatches = line.match(/\[ (.*?) \]/g);
-    console.log("Debug - extracted card matches", { cardMatches });
     return cardMatches
       ? cardMatches.map((card) => card.replace(/\[|\]/g, "").trim() as Card)
       : [];

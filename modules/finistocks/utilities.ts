@@ -2,9 +2,13 @@
 const POPULARITY_WEIGHT = 0.4;
 const MEMBERS_WEIGHT = 0.4;
 const FAVORITES_WEIGHT = 0.2;
-// Weight factors for ongoing price adjustments
-const MAX_VOLATILITY = 0.8; // 10%
-const MIN_VOLATILITY = 0.1; // 2%
+/**
+ * How much of the gap between an anime's performance and its hype the price
+ * moves by: 80% for the least hyped, down to 10% for the most hyped, so
+ * little-known shows swing hardest.
+ */
+const MAX_VOLATILITY = 0.8;
+const MIN_VOLATILITY = 0.1;
 
 /**
  * Takes the MAL popularity, members, and favorites of an anime and returns a normalized hype score between 0 and 1

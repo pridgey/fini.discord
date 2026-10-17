@@ -156,7 +156,6 @@ export const converseWithClaude = async ({
         },
       ],
     });
-    console.log("Anthropic Response:", anthropicMessageResponse);
 
     const anthropicResponseText =
       anthropicMessageResponse.content

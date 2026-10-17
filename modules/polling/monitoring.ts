@@ -12,38 +12,20 @@ export const checkServiceStatus = async (
   const httpIncluded =
     service.ip.startsWith("http://") || service.ip.startsWith("https://");
 
-  console.log("Debug - checking service status for:", service);
+  const url = httpIncluded ? service.ip : `http://${service.ip}`;
 
-  // Check service status
   try {
-    // Construct timeout for fetch
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-    const url = httpIncluded ? service.ip : `http://${service.ip}`;
-
-    console.log("Debug - constructed URL:", url);
-
-    const serviceResponse = await fetch(url, {
-      method: "GET",
-      signal: controller.signal,
+    const response = await fetch(url, {
+      signal: AbortSignal.timeout(10_000),
       redirect: "follow",
       // Bun-specific: disable connection reuse
       keepalive: false,
     });
-
-    clearTimeout(timeoutId);
-
-    console.log("Debug - service response status:", serviceResponse.status);
-
-    if (serviceResponse.status >= 200 && serviceResponse.status < 400) {
-      return true;
-    } else {
-      return false;
-    }
+    return response.status >= 200 && response.status < 400;
   } catch (error) {
-    // Handle error if needed
-    console.log("Debug - error checking service status:", error);
+    console.warn(
+      `Monitored service ${url} is unreachable: ${(error as Error).message}`,
+    );
     return false;
   }
 };

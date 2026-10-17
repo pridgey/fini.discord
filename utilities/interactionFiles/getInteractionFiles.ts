@@ -1,7 +1,7 @@
 import { glob } from "glob";
 
 /**
- * Dynamicly finds all of the command files in the commands directory
+ * Finds all of the command files in the commands directory
  * @returns A list of command files and their imported modules
  */
 const loadCommandFiles = async () => {
@@ -10,9 +10,7 @@ const loadCommandFiles = async () => {
 
   // Map files to format the rest registration needs
   const importedFiles = await Promise.all(
-    commandFiles
-      .filter((file) => !file.includes("archived"))
-      .map((file) => import(`./../../${file}`)),
+    commandFiles.map((file) => import(`./../../${file}`)),
   );
 
   return { commandFiles, importedFiles };
@@ -34,7 +32,7 @@ export const getCommandFiles = () => {
 };
 
 /**
- * Dynamicly finds all of the button files in the buttons directory
+ * Finds all of the button files in the buttons directory
  * @returns A list of button files and their imported modules
  */
 export const getButtonFiles = async () => {
@@ -42,16 +40,14 @@ export const getButtonFiles = async () => {
 
   // Map files to format the rest registration needs
   const importedFiles = await Promise.all(
-    buttonFiles
-      .filter((file) => !file.includes("archived"))
-      .map((file) => import(`./../../${file}`)),
+    buttonFiles.map((file) => import(`./../../${file}`)),
   );
 
   return { buttonFiles, importedFiles };
 };
 
 /**
- * Dynamicly finds all of the modal files in the modals directory
+ * Finds all of the modal files in the modals directory
  * @returns A list of modal files and their imported modules
  */
 export const getModalFiles = async () => {
@@ -59,9 +55,7 @@ export const getModalFiles = async () => {
 
   // Map files to format the rest registration needs
   const importedFiles = await Promise.all(
-    modalFiles
-      .filter((file) => !file.includes("archived"))
-      .map((file) => import(`./../../${file}`)),
+    modalFiles.map((file) => import(`./../../${file}`)),
   );
 
   return { modalFiles, importedFiles };

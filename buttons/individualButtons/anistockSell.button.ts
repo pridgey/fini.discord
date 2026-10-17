@@ -16,12 +16,6 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
   try {
     const [holdingId, userId] = args;
 
-    console.log("Debug", {
-      holdingId,
-      userId,
-      interactionUserId: interaction.user.id,
-    });
-
     if (interaction.user.id !== userId) {
       await interaction.reply({
         content: "❌ This button is not for you!",
