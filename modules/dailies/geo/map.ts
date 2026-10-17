@@ -85,19 +85,142 @@ export const fitZoom = (
 const escapeXml = (text: string) =>
   text.replace(/[<>&"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+/** A pin's marker, its tip at (x, y). Its name is drawn separately (`labelSvg`). */
 const pinSvg = (x: number, y: number, pin: Pin) => `
   <g transform="translate(${x.toFixed(1)} ${y.toFixed(1)})">
     <path d="M0 0 C -5 -10 -13 -16 -13 -25 A 13 13 0 1 1 13 -25 C 13 -16 5 -10 0 0 Z"
       fill="${pin.color}" stroke="#ffffff" stroke-width="2.5"/>
     <circle cx="0" cy="-25" r="5" fill="#ffffff"/>
-    ${
-      pin.label
-        ? `<text x="0" y="-46" text-anchor="middle" font-family="sans-serif" font-size="17"
-            font-weight="700" fill="#1b1b1b" stroke="#ffffff" stroke-width="4"
-            paint-order="stroke">${escapeXml(pin.label)}</text>`
-        : ""
-    }
   </g>`;
+
+const LABEL_SIZE = 17;
+const LABEL_HEIGHT = 20;
+/** Roughly how wide a bold 17px name is: enough to keep names from touching. */
+const labelWidth = (text: string) => text.length * 10 + 8;
+
+type Box = { left: number; top: number; right: number; bottom: number };
+const overlaps = (a: Box, b: Box) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+/** Where a pin's name goes: its box, and where its text is anchored. */
+export type LabelSpot = {
+  box: Box;
+  x: number;
+  y: number;
+  anchor: "start" | "middle" | "end";
+  /** Set when the name sits away from its pin, so a line joins them. */
+  leader?: { x: number; y: number };
+};
+
+/** A pin's marker, as a box: from its tip up to the top of its head. */
+const pinBox = (p: { x: number; y: number }): Box => ({
+  left: p.x - 14,
+  top: p.y - 40,
+  right: p.x + 14,
+  bottom: p.y + 1,
+});
+
+/**
+ * Where each pin's name goes so no two names overlap, and no name covers a pin
+ * or runs off the map. Names are placed in order - so the first pins (the
+ * answer, put first) get the best spots - each taking the first free place of:
+ * above its pin, right, left, below, then further up or down with a line back.
+ */
+export const placeLabels = (
+  points: { x: number; y: number }[],
+  labels: (string | undefined)[],
+  width: number,
+  height: number,
+): (LabelSpot | null)[] => {
+  const taken: Box[] = points.map(pinBox);
+  const inside = (box: Box) =>
+    box.left >= 2 &&
+    box.top >= 2 &&
+    box.right <= width - 2 &&
+    box.bottom <= height - 22;
+
+  return points.map((p, i) => {
+    const text = labels[i];
+    if (!text) return null;
+    const w = labelWidth(text);
+    const at = (
+      cx: number,
+      top: number,
+      anchor: LabelSpot["anchor"],
+      leader = false,
+    ): LabelSpot => {
+      const left =
+        anchor === "middle" ? cx - w / 2 : anchor === "start" ? cx : cx - w;
+      return {
+        box: { left, top, right: left + w, bottom: top + LABEL_HEIGHT },
+        x: cx,
+        y: top + LABEL_HEIGHT - 4,
+        anchor,
+        // From the pin's head for a name above it, its tip for one below.
+        ...(leader
+          ? { leader: { x: p.x, y: top < p.y ? p.y - 40 : p.y } }
+          : {}),
+      };
+    };
+    const candidates = [
+      at(p.x, p.y - 62, "middle"),
+      at(p.x + 17, p.y - 36, "start"),
+      at(p.x - 17, p.y - 36, "end"),
+      at(p.x, p.y + 4, "middle"),
+      ...[1, 2, 3, 4].flatMap((step) => [
+        at(p.x, p.y - 62 - step * (LABEL_HEIGHT + 4), "middle", true),
+        at(p.x, p.y + 4 + step * (LABEL_HEIGHT + 4), "middle", true),
+      ]),
+    ];
+    const spot =
+      candidates.find(
+        (c) => inside(c.box) && !taken.some((box) => overlaps(c.box, box)),
+      ) ?? candidates[0];
+    taken.push(spot.box);
+    return spot;
+  });
+};
+
+/** The line from a pin to a name placed away from it. Drawn under the pins. */
+const leaderSvg = (spot: LabelSpot) =>
+  spot.leader
+    ? `<line x1="${spot.leader.x.toFixed(1)}" y1="${spot.leader.y.toFixed(1)}"
+        x2="${spot.x.toFixed(1)}" y2="${(spot.box.top > spot.leader.y ? spot.box.top : spot.box.bottom).toFixed(1)}"
+        stroke="#1b1b1b" stroke-width="1.5" opacity="0.6"/>`
+    : "";
+
+const labelSvg = (spot: LabelSpot, text: string) => `
+  <text x="${spot.x.toFixed(1)}" y="${spot.y.toFixed(1)}" text-anchor="${spot.anchor}"
+    font-family="sans-serif" font-size="${LABEL_SIZE}" font-weight="700" fill="#1b1b1b"
+    stroke="#ffffff" stroke-width="4" paint-order="stroke">${escapeXml(text)}</text>`;
+
+/**
+ * Every pin's name, placed clear of the others. The last pin is the one drawn
+ * on top - the answer, in a map of guesses - so it picks its spot first.
+ */
+const labelsSvg = (
+  pins: Pin[],
+  points: { x: number; y: number }[],
+  width: number,
+  height: number,
+) => {
+  const order = pins.map((_, i) => pins.length - 1 - i);
+  const spots = placeLabels(
+    order.map((i) => points[i]),
+    order.map((i) => pins[i].label),
+    width,
+    height,
+  );
+  const placed = order.flatMap((i, k) =>
+    spots[k] && pins[i].label
+      ? [{ spot: spots[k]!, text: pins[i].label! }]
+      : [],
+  );
+  return {
+    leaders: placed.map(({ spot }) => leaderSvg(spot)).join(""),
+    names: placed.map(({ spot, text }) => labelSvg(spot, text)).join(""),
+  };
+};
 
 /**
  * A PNG map showing every pin, later pins drawn over earlier ones. With one
@@ -183,9 +306,12 @@ export const renderMap = async (
           x2="${onView[1].x.toFixed(1)}" y2="${onView[1].y.toFixed(1)}"
           stroke="#1b1b1b" stroke-width="3" stroke-dasharray="10 7" opacity="0.75"/>`
       : "";
+  const labels = labelsSvg(placed, onView, width, height);
   const overlay = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
     ${line}
+    ${labels.leaders}
     ${placed.map((pin, i) => pinSvg(onView[i].x, onView[i].y, pin)).join("")}
+    ${labels.names}
     <rect x="${width - 200}" y="${height - 20}" width="200" height="20" fill="#ffffff" opacity="0.8"/>
     <text x="${width - 6}" y="${height - 6}" text-anchor="end" font-family="sans-serif"
       font-size="12" fill="#333333">© OpenStreetMap contributors</text>
