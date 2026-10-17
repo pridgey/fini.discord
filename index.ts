@@ -40,6 +40,16 @@ import { startCardManager } from "./modules/finicards/cardManagerServer";
  */
 const NO_REPLY_OUTPUT = "<no reply - interaction expired>";
 
+/*
+ * The last line of defence. An unhandled rejection otherwise ends the process,
+ * and `bun start` stops Pocketbase and llama along with it - so one missed
+ * `.catch` anywhere would take the whole stack down. Logged loudly instead:
+ * each one is still a bug to fix where it happened.
+ */
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection - this is a bug, the bot kept running:", reason);
+});
+
 // Initialize client and announce intents
 const client = new Client({
   intents: [
@@ -247,8 +257,9 @@ client.on("interactionCreate", async (interaction) => {
 
       /*
        * Execute the command. Logging is handed to the command as a callback so
-       * it can decide when the reply exists to be read back, and every command
-       * calls it un-awaited - several from a `finally`. So nothing here may
+       * it can decide when the reply exists to be read back; a command that
+       * never calls it is logged when it finishes, so a forgotten path can't
+       * lose the row. Commands call it un-awaited, so nothing here may
        * reject: an unhandled rejection takes the bun process down, and
        * `--kill-others-on-fail` takes pocketbase and llama with it. A /clear
        * that outran Discord's three second response window did exactly that -
@@ -260,7 +271,11 @@ client.on("interactionCreate", async (interaction) => {
        * row at all, which left the `log` table showing an unbroken run of
        * successes while users were watching the command fail.
        */
-      await commandToRun.execute(interaction, async () => {
+      // Written once: when the command asks, or when it finishes if it never did.
+      let logged = false;
+      const logCommand = async () => {
+        if (logged) return;
+        logged = true;
         try {
           let output = "";
 
@@ -284,7 +299,13 @@ client.on("interactionCreate", async (interaction) => {
         } catch (logErr) {
           console.error("Error logging command:", logErr);
         }
-      });
+      };
+
+      try {
+        await commandToRun.execute(interaction, logCommand);
+      } finally {
+        await logCommand();
+      }
     } catch (err) {
       const error: Error = err as Error;
       console.error("Error running interaction:", { error });
