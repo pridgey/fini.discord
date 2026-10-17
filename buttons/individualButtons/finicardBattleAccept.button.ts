@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -21,7 +22,10 @@ const BUTTONS_PER_ROW = 5;
  * a way of organising a collection, so most players will have more than one and
  * which one they bring is the first real decision of the battle.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [battleId, defenderId] = args;
 
   if (interaction.user.id !== defenderId) {
@@ -96,4 +100,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     components: rows,
     flags: [MessageFlags.Ephemeral],
   });
-}
+};

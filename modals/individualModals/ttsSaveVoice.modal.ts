@@ -1,3 +1,4 @@
+import type { ModalHandler } from "../../types/handlers";
 import { MessageFlags, ModalSubmitInteraction } from "discord.js";
 import {
   discardPendingVoice,
@@ -16,10 +17,10 @@ import { savedVoiceRow } from "../../buttons/individualButtons/ttsSaveVoice.butt
 
 export const namespace = "tts_save_voice_modal";
 
-export async function execute(
+export const execute: ModalHandler["execute"] = async (
   interaction: ModalSubmitInteraction,
   args: string[],
-) {
+) => {
   const [pendingId] = args;
   const pending = await readPendingVoice(pendingId);
 
@@ -69,4 +70,4 @@ export async function execute(
         }
       : { content: result.message, flags: [MessageFlags.Ephemeral] },
   );
-}
+};

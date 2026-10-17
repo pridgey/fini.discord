@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -22,7 +23,10 @@ export const namespace = "v2_card_view";
  * row you were using doesn't scroll away. The context id rides along in the
  * custom id so the Back button can put the exact page you left back.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   try {
     const [contextId, cardId, userId] = args;
 
@@ -110,4 +114,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       await interaction.followUp(failed).catch(() => undefined);
     else await interaction.reply(failed).catch(() => undefined);
   }
-}
+};

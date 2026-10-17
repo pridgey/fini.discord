@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
 import { Citation } from "@blockzilla101/citation";
@@ -27,7 +28,7 @@ export const data = new SlashCommandBuilder()
     option.setName("gif").setDescription("render as a gif").setRequired(false),
   );
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

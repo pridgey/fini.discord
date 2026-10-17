@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, GuildMember, MessageFlags } from "discord.js";
 import { requireAdmin } from "../../utilities/discord/isAdmin";
 import {
@@ -20,7 +21,10 @@ export const namespace = WEAVE_BUTTON;
  * privately; on the board, `words` and `thread` open the box a guess is typed
  * into, and `hint` lights the next word's first letter.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [roundId, action = ""] = args;
   if (
     !WEAVE_LIVE &&
@@ -73,4 +77,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       attachments: [],
     });
   }
-}
+};

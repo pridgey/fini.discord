@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import { getAllPersonalitiesForUser } from "../modules/personalities/getPersonality";
@@ -7,7 +8,7 @@ export const data = new SlashCommandBuilder()
   .setName("list-personalities")
   .setDescription("Gets all of your created personalities.");
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

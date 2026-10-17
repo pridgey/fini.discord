@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import { clearAllHistory } from "../modules/aiChat/clearAllHistory";
@@ -6,7 +7,7 @@ export const data = new SlashCommandBuilder()
   .setName("clear")
   .setDescription("Clear all of your hey fini history (for all AI chats)");
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

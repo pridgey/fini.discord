@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
 import {
@@ -105,7 +106,7 @@ const resolveMaxHeight = (value: string | undefined): number | undefined => {
   return Number(value) || DEFAULT_MAX_HEIGHT;
 };
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { requireAdmin } from "../../utilities/discord/isAdmin";
 import {
@@ -13,7 +14,10 @@ import {
 export const namespace = GEO_BUTTON;
 
 /** The `/geo-test` buttons: guess, try again, lock in, and a new round. */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   if (!(await requireAdmin(interaction, "use the location game prototype")))
     return;
   const [action] = args;
@@ -62,4 +66,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
         : "Couldn't find any street photos after a few tries. Try again in a moment.",
     );
   }
-}
+};

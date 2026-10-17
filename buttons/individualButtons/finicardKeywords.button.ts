@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { getBattle } from "../../modules/finicards/battleStore";
 import { loadLineupByIds } from "../../modules/finicards/cardStore";
@@ -14,7 +15,10 @@ export const namespace = "v2_keywords";
  * screen space. Both hands are already public by the time a picker exists, so
  * there is nothing here to hide from either player.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [battleId] = args;
 
   const battle = await getBattle(battleId);
@@ -41,4 +45,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     ),
     flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
   });
-}
+};

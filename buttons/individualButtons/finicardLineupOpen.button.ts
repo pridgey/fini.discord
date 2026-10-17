@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import {
   getBattle,
@@ -20,7 +21,10 @@ export const namespace = "v2_lineup_open";
  * ephemeral can only be created in response to an interaction - so the click is
  * what creates it.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [battleId] = args;
 
   const battle = await getBattle(battleId);
@@ -98,4 +102,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     components: view.components,
     flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
   });
-}
+};

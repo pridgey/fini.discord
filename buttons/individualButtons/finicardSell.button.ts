@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -24,7 +25,10 @@ export const namespace = "v2_card_sell";
  * collection page back. Selling to another player is not offered here - that
  * needs a price and a buyer, and is `/finicard sell`.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   try {
     const [contextId, cardId, userId, step] = args;
 
@@ -118,4 +122,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       await interaction.followUp(failed).catch(() => undefined);
     else await interaction.reply(failed).catch(() => undefined);
   }
-}
+};

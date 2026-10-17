@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, GuildMember, MessageFlags } from "discord.js";
 import {
   DAILY_BUTTON,
@@ -15,7 +16,10 @@ export const namespace = DAILY_BUTTON;
  * The daily location game's buttons: `guess` and `retry` open the box a guess
  * is typed into; `lock` judges, saves and pays the guess on screen.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [action, roundId] = args;
   const serverId = interaction.guildId;
   if (!serverId) {
@@ -93,4 +97,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
           },
     );
   }
-}
+};

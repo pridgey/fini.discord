@@ -1,3 +1,4 @@
+import type { ModalHandler } from "../../types/handlers";
 import { MessageFlags, ModalSubmitInteraction } from "discord.js";
 import { requireAdmin } from "../../utilities/discord/isAdmin";
 import { geocodeGuess } from "../../modules/dailies/geo/geocode";
@@ -14,10 +15,10 @@ export const namespace = GEO_MODAL;
  * A typed `/geo-test` guess. A first guess gets a message of its own, below the
  * photos; "Try again" replaces the guess on screen.
  */
-export async function execute(
+export const execute: ModalHandler["execute"] = async (
   interaction: ModalSubmitInteraction,
   args: string[],
-) {
+) => {
   if (!(await requireAdmin(interaction, "use the location game prototype")))
     return;
   const [mode] = args;
@@ -60,4 +61,4 @@ export async function execute(
     ...(await guessMessage(guess)),
     attachments: [],
   });
-}
+};

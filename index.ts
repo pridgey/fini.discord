@@ -30,6 +30,7 @@ import { resetShareDir, startShareServer } from "./modules/fileShare";
 import { startWebSync } from "./modules/finicards/webSync";
 import { makeCardPoster } from "./modules/finicards/webSync/showCard";
 import { startCardManager } from "./modules/finicards/cardManagerServer";
+import type { SlashCommand } from "./types/handlers";
 
 /**
  * Recorded as a command's output when its reply cannot be read back - the
@@ -208,26 +209,26 @@ client.on("messageCreate", async (message: Message) => {
  * The options a command was run with, for the command log.
  *
  * Every declared option is listed, set or not, so a log row shows what was
- * left at its default. A command with subcommands declares those rather than
- * options at the top level, so for one of those the options listed are the
- * ones under whichever subcommand was run, under its name.
+ * left at its default. For a command with subcommands - in a group or not -
+ * the options listed are those of the subcommand that was run.
  */
 const describeOptions = (
   interaction: ChatInputCommandInteraction,
-  declared: { name: string; toJSON: () => unknown }[],
+  command: SlashCommand,
 ): string[] => {
+  type Declared = { name: string; options?: Declared[] };
+  const group = interaction.options.getSubcommandGroup(false);
   const subcommand = interaction.options.getSubcommand(false);
-  const options = subcommand
-    ? ((
-        declared.find((o) => o.name === subcommand)?.toJSON() as {
-          options?: { name: string }[];
-        }
-      )?.options ?? [])
-    : declared;
 
+  let declared = (command.data.toJSON().options ?? []) as Declared[];
+  if (group) declared = declared.find((o) => o.name === group)?.options ?? [];
+  if (subcommand)
+    declared = declared.find((o) => o.name === subcommand)?.options ?? [];
+
+  const path = [group, subcommand].filter(Boolean).join(" ");
   return [
-    ...(subcommand ? [`subcommand: ${subcommand}`] : []),
-    ...options.map(
+    ...(path ? [`subcommand: ${path}`] : []),
+    ...declared.map(
       (o) => `${o.name}: ${interaction.options.get(o.name)?.value}`,
     ),
   ];
@@ -255,7 +256,7 @@ client.on("interactionCreate", async (interaction) => {
 
     try {
       // Get the commands name
-      const { importedFiles: commands } = await getCommandFiles();
+      const { handlers: commands } = await getCommandFiles();
       const commandToRun = commands.find(
         (c) => c.data.name === interaction.commandName,
       );
@@ -295,10 +296,7 @@ client.on("interactionCreate", async (interaction) => {
 
           await createLog({
             command: `/${commandToRun.data.name}`,
-            input: `Command options:\n${describeOptions(
-              interaction,
-              commandToRun.data.options,
-            ).join(",\n")}`,
+            input: `Command options:\n${describeOptions(interaction, commandToRun).join(",\n")}`,
             output,
             server_id: interaction.guild?.id || "unknown",
             user_id: interaction.user.id,
@@ -346,7 +344,7 @@ client.on("interactionCreate", async (interaction) => {
      * than throw and leave the picker hanging.
      */
     try {
-      const { importedFiles: commands } = await getCommandFiles();
+      const { handlers: commands } = await getCommandFiles();
       const commandToRun = commands.find(
         (c) => c.data.name === interaction.commandName,
       );

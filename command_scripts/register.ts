@@ -1,15 +1,15 @@
 import { REST, Routes } from "discord.js";
-import { glob } from "glob";
+import { getCommandFiles } from "../utilities/interactionFiles/getInteractionFiles";
 
 const registerAllCommands = async () => {
   try {
     console.log("====== REGISTER COMMANDS ======");
     console.group();
 
-    // Grab each command from the commands directory
-    const commandFiles = await glob("**/commands/*.command.ts");
+    // The same loader the bot uses, so what's registered is what it runs.
+    const { files, handlers } = await getCommandFiles();
 
-    console.log("Found Command Files:", { commandFiles });
+    console.log("Found Command Files:", { commandFiles: files });
     console.log("");
 
     // Utilize discord's REST module for registering commands
@@ -22,10 +22,7 @@ const registerAllCommands = async () => {
     // League of really good friends guild ID
     const league_guildId = process.env.LEAGUE_SERVERID || "";
 
-    const importedFiles = await Promise.all(
-      commandFiles.map((file) => import(`./../${file}`)),
-    );
-    const commandData = importedFiles.map((cmdData) => cmdData.data.toJSON());
+    const commandData = handlers.map((command) => command.data.toJSON());
 
     console.log("Command Data:", {
       commandData: commandData.map((cd) => cd.name).join(", "),

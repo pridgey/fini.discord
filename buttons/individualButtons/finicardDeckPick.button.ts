@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { acceptAndReveal } from "../../modules/finicards/battleFlow";
 import { getBattle } from "../../modules/finicards/battleStore";
@@ -6,7 +7,10 @@ import { getDeck } from "../../modules/finicards/decks";
 export const namespace = "v2_deck_pick";
 
 /** The defender chose which deck to bring; deal both hands and reveal. */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [battleId, deckId] = args;
 
   const battle = await getBattle(battleId);
@@ -48,4 +52,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     content: `Accepted with **${deck.name}**. Your hand is in the channel.`,
     components: [],
   });
-}
+};

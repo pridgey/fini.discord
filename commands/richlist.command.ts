@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import type { BankRecord } from "../types/PocketbaseTables";
@@ -7,7 +8,7 @@ export const data = new SlashCommandBuilder()
   .setName("richlist")
   .setDescription("Who has the most fini coin?");
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

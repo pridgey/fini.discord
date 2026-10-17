@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { exec } from "child_process";
 import { ButtonInteraction } from "discord.js";
 import { MINECRAFT_PORT } from "../../modules/minecraft/checkServerStatus";
@@ -17,7 +18,10 @@ import {
 
 export const namespace = "minecraft_server";
 
-export async function execute(interaction: ButtonInteraction, _args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  _args: string[],
+) => {
   try {
     // A user has requested to start the server
     await interaction.update({
@@ -128,4 +132,4 @@ export async function execute(interaction: ButtonInteraction, _args: string[]) {
       content: "❌ Failed to handle minecraft server action",
     });
   }
-}
+};

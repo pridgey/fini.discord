@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction } from "discord.js";
 import {
   decodeMoves,
@@ -15,7 +16,10 @@ export const namespace = TUTORIAL_NAMESPACE;
  * this one is added and the tutorial replayed from the start. The message is
  * ephemeral, so the only person who can click it is the one taking the tutorial.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [movesRaw = "", action = ""] = args;
 
   // Drawing the room and the hand can outlast Discord's three-second window.
@@ -28,4 +32,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       playerName: interaction.user.displayName,
     }),
   );
-}
+};

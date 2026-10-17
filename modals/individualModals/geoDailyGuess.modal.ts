@@ -1,3 +1,4 @@
+import type { ModalHandler } from "../../types/handlers";
 import { MessageFlags, ModalSubmitInteraction } from "discord.js";
 import {
   DAILY_MODAL,
@@ -14,10 +15,10 @@ export const namespace = DAILY_MODAL;
  * A typed guess at the daily. A first guess gets a private message of its own,
  * with a map to check before locking in; "Try again" replaces it.
  */
-export async function execute(
+export const execute: ModalHandler["execute"] = async (
   interaction: ModalSubmitInteraction,
   args: string[],
-) {
+) => {
   const [roundId, mode] = args;
   const serverId = interaction.guildId ?? "";
   const replacing = mode === "edit" && interaction.isFromMessage();
@@ -64,4 +65,4 @@ export async function execute(
     ...(await dailyGuessView(roundId, guess)),
     attachments: [],
   });
-}
+};

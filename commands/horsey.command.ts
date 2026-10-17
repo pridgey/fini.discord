@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
   AutocompleteInteraction,
@@ -110,7 +111,7 @@ export const autocomplete = async (interaction: AutocompleteInteraction) => {
   await interaction.respond(options);
 };
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 
@@ -5,7 +6,7 @@ export const data = new SlashCommandBuilder()
   .setName("feature-roadmap")
   .setDescription("The current feature roadmap for Fini.");
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { getBattle } from "../../modules/finicards/battleStore";
 import { buildBreakdown, notice } from "../../modules/finicards/ui";
@@ -17,7 +18,10 @@ export const namespace = "v2_breakdown";
  * The result is read back off the stored battle rather than recomputed, so the
  * breakdown always describes the match that actually happened.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [battleId] = args;
 
   const battle = await getBattle(battleId);
@@ -51,4 +55,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       flags: [MessageFlags.IsComponentsV2, MessageFlags.Ephemeral],
     });
   }
-}
+};

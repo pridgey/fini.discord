@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { declineBattle, getBattle } from "../../modules/finicards/battleStore";
 import { refundWager } from "../../modules/finicards/wagers";
@@ -5,7 +6,10 @@ import { refundWager } from "../../modules/finicards/wagers";
 export const namespace = "v2_battle_decline";
 
 /** Declines a v2 challenge and returns the challenger's staked Finicoin. */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [battleId, defenderId] = args;
 
   if (interaction.user.id !== defenderId) {
@@ -48,4 +52,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     }`,
     components: [],
   });
-}
+};

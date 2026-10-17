@@ -1,13 +1,14 @@
+import type { ModalHandler } from "../../types/handlers";
 import { MessageFlags, ModalSubmitInteraction } from "discord.js";
 import { buyStock } from "../../modules/finistocks/actionStock";
 import { addCoin, getUserBalance } from "../../modules/finicoin";
 
 export const namespace = "anistock_buy_modal";
 
-export async function execute(
+export const execute: ModalHandler["execute"] = async (
   interaction: ModalSubmitInteraction,
   args: string[],
-) {
+) => {
   try {
     const [animeId, price] = args;
 
@@ -68,4 +69,4 @@ export async function execute(
       flags: [MessageFlags.Ephemeral],
     });
   }
-}
+};

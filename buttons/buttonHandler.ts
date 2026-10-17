@@ -1,20 +1,15 @@
 import { ButtonInteraction, Collection, MessageFlags } from "discord.js";
 import { getButtonFiles } from "../utilities/interactionFiles/getInteractionFiles";
+import type { ButtonHandler } from "../types/handlers";
 
 // Store button handlers in a collection
-export const buttonHandlers = new Collection<string, any>();
+export const buttonHandlers = new Collection<string, ButtonHandler>();
 
 // Load all button handlers at startup
 export async function loadButtonHandlers() {
-  const { importedFiles } = await getButtonFiles();
-
-  for (const file of importedFiles) {
-    if ("namespace" in file && "execute" in file) {
-      buttonHandlers.set(file.namespace, file);
-      console.log(`✅ Loaded button handler: ${file.namespace}`);
-    } else {
-      console.warn("⚠️ Button file missing namespace or execute export");
-    }
+  const { handlers } = await getButtonFiles();
+  for (const handler of handlers) {
+    buttonHandlers.set(handler.namespace, handler);
   }
 
   console.log(`Loaded ${buttonHandlers.size} button handlers`);

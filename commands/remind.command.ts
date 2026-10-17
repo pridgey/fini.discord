@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import type { ReminderRecord } from "../types/PocketbaseTables";
@@ -31,7 +32,7 @@ const timeDictionary = {
   seconds: ["s", "sec", "secs", "seconds", "second", "scnd"],
 };
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

@@ -1,10 +1,14 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { buildSingleAniStockCard } from "../../modules/finistocks/buildSingleAniStockCard";
 import { queryAnime } from "../../modules/finistocks/queryAnime";
 
 export const namespace = "view_anistock_details";
 
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   try {
     const [animeId, userId] = args;
 
@@ -44,4 +48,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       flags: [MessageFlags.Ephemeral],
     });
   }
-}
+};

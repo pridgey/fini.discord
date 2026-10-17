@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
   ActionRowBuilder,
@@ -18,7 +19,7 @@ export const data = new SlashCommandBuilder()
   .setName("minecraft-server")
   .setDescription("Checks the state of the Fini minecraft server");
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

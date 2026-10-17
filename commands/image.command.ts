@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction, AttachmentBuilder } from "discord.js";
 import { addCoin, getUserBalance } from "../modules/finicoin";
@@ -53,7 +54,7 @@ export const data = new SlashCommandBuilder()
       .setRequired(false),
   );
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

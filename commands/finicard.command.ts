@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import {
   SlashCommandBuilder,
   SlashCommandStringOption,
@@ -470,7 +471,7 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

@@ -1,62 +1,73 @@
 import { glob } from "glob";
+import path from "path";
+import {
+  isButtonHandler,
+  isModalHandler,
+  isSlashCommand,
+  type ButtonHandler,
+  type ModalHandler,
+  type SlashCommand,
+} from "../../types/handlers";
+
+/** The repo root: the folders below are read from here, wherever the bot was started. */
+const ROOT = path.resolve(import.meta.dir, "..", "..");
 
 /**
- * Finds all of the command files in the commands directory
- * @returns A list of command files and their imported modules
+ * Imports every file matching `pattern` and keeps those with the right
+ * exports. A file without them is reported, not loaded - one broken file
+ * shouldn't take every other command down with it.
  */
-const loadCommandFiles = async () => {
-  // Grab each command from the commands directory
-  const commandFiles = await glob("**/commands/*.command.ts");
-
-  // Map files to format the rest registration needs
-  const importedFiles = await Promise.all(
-    commandFiles.map((file) => import(`./../../${file}`)),
-  );
-
-  return { commandFiles, importedFiles };
+const loadFiles = async <T>(
+  pattern: string,
+  isValid: (file: unknown) => file is T,
+  kind: string,
+): Promise<{ files: string[]; handlers: T[] }> => {
+  const files = (await glob(pattern, { cwd: ROOT })).sort();
+  const handlers: T[] = [];
+  for (const file of files) {
+    const loaded: unknown = await import(path.join(ROOT, file));
+    if (isValid(loaded)) handlers.push(loaded);
+    else
+      console.error(
+        `⚠️ ${file} isn't a valid ${kind}: its exports don't match. Skipped.`,
+      );
+  }
+  return { files, handlers };
 };
 
-let commandFilesPromise: ReturnType<typeof loadCommandFiles> | null = null;
+let commandsPromise: ReturnType<typeof loadCommands> | null = null;
 
-/* Loaded once and reused. This runs before every slash command is deferred,
-   and the glob walks the whole repo: about a second idle, and far longer while
-   image rendering has the thread pool busy - long enough for Discord to expire
-   the interaction (3s) before the command could answer it. The modules are
-   cached by the runtime anyway, so re-globbing never picked up anything new. */
+const loadCommands = () =>
+  loadFiles<SlashCommand>(
+    "commands/*.command.ts",
+    isSlashCommand,
+    "slash command",
+  );
+
+/**
+ * Every slash command. Loaded once and reused: this runs before each slash
+ * command is answered, and Discord expires an interaction after three seconds.
+ */
 export const getCommandFiles = () => {
-  commandFilesPromise ??= loadCommandFiles().catch((error) => {
-    commandFilesPromise = null;
+  commandsPromise ??= loadCommands().catch((error) => {
+    commandsPromise = null;
     throw error;
   });
-  return commandFilesPromise;
+  return commandsPromise;
 };
 
-/**
- * Finds all of the button files in the buttons directory
- * @returns A list of button files and their imported modules
- */
-export const getButtonFiles = async () => {
-  const buttonFiles = await glob("**/buttons/individualButtons/*.button.ts");
-
-  // Map files to format the rest registration needs
-  const importedFiles = await Promise.all(
-    buttonFiles.map((file) => import(`./../../${file}`)),
+/** Every button handler. */
+export const getButtonFiles = () =>
+  loadFiles<ButtonHandler>(
+    "buttons/individualButtons/*.button.ts",
+    isButtonHandler,
+    "button handler",
   );
 
-  return { buttonFiles, importedFiles };
-};
-
-/**
- * Finds all of the modal files in the modals directory
- * @returns A list of modal files and their imported modules
- */
-export const getModalFiles = async () => {
-  const modalFiles = await glob("**/modals/individualModals/*.modal.ts");
-
-  // Map files to format the rest registration needs
-  const importedFiles = await Promise.all(
-    modalFiles.map((file) => import(`./../../${file}`)),
+/** Every form (modal) handler. */
+export const getModalFiles = () =>
+  loadFiles<ModalHandler>(
+    "modals/individualModals/*.modal.ts",
+    isModalHandler,
+    "modal handler",
   );
-
-  return { modalFiles, importedFiles };
-};

@@ -205,15 +205,11 @@ export const resetCommandIndex = (): void => {
 export const getCommandIndex = async (): Promise<HelpCommand[]> => {
   if (cached) return cached;
 
-  const { importedFiles } = await getCommandFiles();
+  const { handlers } = await getCommandFiles();
 
   const commands: HelpCommand[] = [];
 
-  for (const file of importedFiles) {
-    // A file without `data` isn't a command; the loader is a glob, not a
-    // contract, so this must not throw on whatever turns up.
-    if (typeof file?.data?.toJSON !== "function") continue;
-
+  for (const file of handlers) {
     const json = file.data.toJSON() as {
       name: string;
       description?: string;

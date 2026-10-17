@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import {
   AutocompleteInteraction,
@@ -83,7 +84,7 @@ const buildCommandDetail = (command: HelpCommand): ContainerBuilder => {
   return container;
 };
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

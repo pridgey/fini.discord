@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags, TextChannel } from "discord.js";
 import {
   getBattle,
@@ -32,7 +33,10 @@ export const namespace = "v2_lineup_pick";
  * Whichever player locks in second triggers resolution, so neither has to be
  * online at the same time as the other.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [battleId, encoded, candidate] = args;
 
   const battle = await getBattle(battleId);
@@ -223,4 +227,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
   } catch (error) {
     console.error("Couldn't post v2 battle result to the channel:", error);
   }
-}
+};

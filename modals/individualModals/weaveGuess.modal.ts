@@ -1,3 +1,4 @@
+import type { ModalHandler } from "../../types/handlers";
 import { GuildMember, MessageFlags, ModalSubmitInteraction } from "discord.js";
 import { requireAdmin } from "../../utilities/discord/isAdmin";
 import { WEAVE_WORDS_MODAL } from "../../modules/dailies/weave/board";
@@ -11,10 +12,10 @@ import { weavePlayerOf } from "../../modules/dailies/weave/player";
 export const namespace = WEAVE_WORDS_MODAL;
 
 /** Words typed into a Weave board's "Guess words" box: judged, saved, paid, and the board redrawn. */
-export async function execute(
+export const execute: ModalHandler["execute"] = async (
   interaction: ModalSubmitInteraction,
   args: string[],
-) {
+) => {
   const [roundId] = args;
   if (
     !WEAVE_LIVE &&
@@ -43,4 +44,4 @@ export async function execute(
   );
   // A fresh image replaces the old one rather than piling up beside it.
   await interaction.editReply({ ...board, attachments: [] });
-}
+};

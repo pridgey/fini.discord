@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { buildAniStockQueryResultCards } from "../modules/finistocks/buildAniStockQueryResultCards";
@@ -50,7 +51,7 @@ export const data = new SlashCommandBuilder()
       .setDescription("View your anime stock portfolio"),
   );
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

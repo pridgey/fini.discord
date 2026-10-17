@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { buildDeckPages } from "../../modules/finicards/cardPages";
 import { getDeck } from "../../modules/finicards/decks";
@@ -8,7 +9,10 @@ export const namespace = "v2_deck_show";
  * Opens a deck from the deck list: the same pages `/finicard deck show`
  * gives, put in place of the list.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   try {
     const [deckId, userId] = args;
 
@@ -55,4 +59,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       await interaction.followUp(failed).catch(() => undefined);
     else await interaction.reply(failed).catch(() => undefined);
   }
-}
+};

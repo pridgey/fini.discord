@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import {
   ButtonInteraction,
   LabelBuilder,
@@ -12,7 +13,10 @@ import { AniStock_Holdings } from "../../types/PocketbaseTables";
 
 export const namespace = "anistock_sell";
 
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   try {
     const [holdingId, userId] = args;
 
@@ -71,4 +75,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       flags: [MessageFlags.Ephemeral],
     });
   }
-}
+};

@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import {
   getPaginationContext,
@@ -11,7 +12,10 @@ export const namespace = "next_page";
 /*
   Generic button handler for pagination
 */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   try {
     const { contextId, userId } = parsePaginationState(args);
 
@@ -58,4 +62,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       flags: [MessageFlags.Ephemeral],
     });
   }
-}
+};

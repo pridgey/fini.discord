@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import { requireAdmin } from "../../utilities/discord/isAdmin";
 import { MINECRAFT_SERVER_DIR } from "../../modules/minecraft/minecraft.config";
@@ -5,7 +6,10 @@ import { checkForPackUpdate } from "../../modules/minecraft/packUpdate";
 
 export const namespace = "minecraft_update";
 
-export async function execute(interaction: ButtonInteraction, _args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  _args: string[],
+) => {
   try {
     // Everyone can see this button so they know an update is waiting, but
     // only the admin can act on it
@@ -62,4 +66,4 @@ export async function execute(interaction: ButtonInteraction, _args: string[]) {
       });
     }
   }
-}
+};

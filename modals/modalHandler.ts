@@ -1,20 +1,15 @@
 import { Collection, ModalSubmitInteraction, MessageFlags } from "discord.js";
 import { getModalFiles } from "../utilities/interactionFiles/getInteractionFiles";
+import type { ModalHandler } from "../types/handlers";
 
 // Store modal handlers in a collection
-export const modalHandlers = new Collection<string, any>();
+export const modalHandlers = new Collection<string, ModalHandler>();
 
 // Load all modal handlers at startup
 export async function loadModalHandlers() {
-  const { importedFiles } = await getModalFiles();
-
-  for (const file of importedFiles) {
-    if ("namespace" in file && "execute" in file) {
-      modalHandlers.set(file.namespace, file);
-      console.log(`✅ Loaded modal handler: ${file.namespace}`);
-    } else {
-      console.warn("⚠️ Modal file missing namespace or execute export");
-    }
+  const { handlers } = await getModalFiles();
+  for (const handler of handlers) {
+    modalHandlers.set(handler.namespace, handler);
   }
 
   console.log(`Loaded ${modalHandlers.size} modal handlers`);

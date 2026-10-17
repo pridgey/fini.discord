@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction, EmbedBuilder } from "discord.js";
 import { runGame } from "../modules/finicoin";
@@ -65,7 +66,7 @@ export const data = new SlashCommandBuilder()
 const pickOne = (gifs: string[]) =>
   gifs[randomNumber(0, gifs.length - 1, true)];
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

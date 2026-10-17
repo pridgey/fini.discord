@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { AttachmentBuilder, ChatInputCommandInteraction } from "discord.js";
 import { join } from "path";
@@ -119,7 +120,7 @@ export const data = new SlashCommandBuilder()
 const baseNameOf = (name: string | undefined): string =>
   safeFileBase((name ?? "").replace(/\.[^.]+$/, ""), "converted");
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

@@ -1,3 +1,4 @@
+import type { SlashCommand } from "../types/handlers";
 import { SlashCommandBuilder } from "@discordjs/builders";
 import { ChatInputCommandInteraction } from "discord.js";
 import { deletePersonalityByName } from "../modules/personalities/deletePersonality";
@@ -13,7 +14,7 @@ export const data = new SlashCommandBuilder()
       .setRequired(true),
   );
 
-export const execute = async (
+export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {

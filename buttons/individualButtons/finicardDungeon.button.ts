@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import {
   buildRunMessage,
@@ -47,7 +48,10 @@ const parseAction = (raw: string): DungeonAction | null => {
  * The run's message is public and edited in place, so anyone can see the
  * buttons - only the run's owner can press them.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [runId, stepRaw, actionRaw] = args;
 
   const refuse = (content: string) =>
@@ -110,4 +114,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
   } finally {
     inFlight.delete(runId);
   }
-}
+};

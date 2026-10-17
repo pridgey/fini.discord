@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import {
   getPaginationContext,
@@ -13,7 +14,10 @@ export const namespace = "v2_card_back";
  * already keeps current on every turn - so "back" is just "render the page we
  * are already on" and there is no extra state to carry in the custom id.
  */
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   try {
     const [contextId, userId] = args;
 
@@ -65,4 +69,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       await interaction.followUp(failed).catch(() => undefined);
     else await interaction.reply(failed).catch(() => undefined);
   }
-}
+};

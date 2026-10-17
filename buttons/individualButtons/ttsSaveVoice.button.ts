@@ -1,3 +1,4 @@
+import type { ButtonHandler } from "../../types/handlers";
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -50,7 +51,10 @@ export const savedVoiceRow = (name: string) =>
       .setDisabled(true),
   );
 
-export async function execute(interaction: ButtonInteraction, args: string[]) {
+export const execute: ButtonHandler["execute"] = async (
+  interaction: ButtonInteraction,
+  args: string[],
+) => {
   const [pendingId] = args;
 
   if (!(await readPendingVoice(pendingId))) {
@@ -79,4 +83,4 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     );
 
   await interaction.showModal(modal);
-}
+};
