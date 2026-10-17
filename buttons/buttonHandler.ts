@@ -1,6 +1,7 @@
 import { ButtonInteraction, Collection, MessageFlags } from "discord.js";
 import { getButtonFiles } from "../utilities/interactionFiles/getInteractionFiles";
 import type { ButtonHandler } from "../types/handlers";
+import { replyWithError } from "../utilities/discord/replyWithError";
 
 // Store button handlers in a collection
 export const buttonHandlers = new Collection<string, ButtonHandler>();
@@ -55,11 +56,9 @@ export async function handleButtonInteraction(interaction: ButtonInteraction) {
   } catch (error) {
     console.error(`Error executing button handler ${namespace}:`, error);
 
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: "❌ An error occurred while processing this button",
-        flags: [MessageFlags.Ephemeral],
-      });
-    }
+    await replyWithError(
+      interaction,
+      "❌ An error occurred while processing this button",
+    );
   }
 }

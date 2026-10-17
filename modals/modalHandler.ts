@@ -1,6 +1,7 @@
 import { Collection, ModalSubmitInteraction, MessageFlags } from "discord.js";
 import { getModalFiles } from "../utilities/interactionFiles/getInteractionFiles";
 import type { ModalHandler } from "../types/handlers";
+import { replyWithError } from "../utilities/discord/replyWithError";
 
 // Store modal handlers in a collection
 export const modalHandlers = new Collection<string, ModalHandler>();
@@ -38,11 +39,9 @@ export async function handleModalInteraction(
   } catch (error) {
     console.error(`Error executing modal handler ${namespace}:`, error);
 
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({
-        content: "❌ An error occurred while processing this modal",
-        flags: [MessageFlags.Ephemeral],
-      });
-    }
+    await replyWithError(
+      interaction,
+      "❌ An error occurred while processing this modal",
+    );
   }
 }

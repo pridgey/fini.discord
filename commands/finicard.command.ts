@@ -537,7 +537,7 @@ export const execute: SlashCommand["execute"] = async (
     }
   } catch (error) {
     console.error("Error during /finicard", error);
-    const message = "Something went wrong running that v2 command.";
+    const message = "Something went wrong running that Finicards command.";
     if (interaction.deferred || interaction.replied) {
       await interaction.editReply(message);
     } else {
