@@ -481,8 +481,10 @@ export const KEYWORDS: KeywordDefinition[] = [
       const taken = Math.min(2, ctx.opponent.attackStat);
       if (taken <= 0) return;
       ctx.opponent.attackStat -= taken;
-      ctx.opponent.bonuses.push(`Intimidated ${signedAmount(-taken)}`);
-      ctx.self.bonuses.push(`Intimidate (${ctx.opponent.card.name})`);
+      // Said once, on the card that did it; the cut shows in the other's attack.
+      ctx.self.bonuses.push(
+        `Intimidate (${ctx.opponent.card.name} ${signedAmount(-taken)})`,
+      );
     },
   },
   {

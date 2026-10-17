@@ -203,6 +203,19 @@ const multiplierNote = (
   );
 };
 
+/** `💖 Heart beats 💪 Power — ×1.5 to Miku Nakano`, or nothing with no multiplier. */
+const typeNote = (round: RoundResult): string => {
+  const side = SIDES.find((s) => round[s].multiplier > 1);
+  if (!side) return "";
+  const other = side === "challenger" ? "defender" : "challenger";
+  return explainMultiplier(
+    round[side].printedType,
+    round[other].printedType,
+    round[side].multiplier,
+    round[side].card.name,
+  );
+};
+
 /** Engine notes name the side; players know each other by name. */
 const namedNote = (note: string, names: Record<Side, string>): string =>
   note.replace(/\b(challenger|defender)\b/g, (side) => names[side as Side]);
@@ -345,7 +358,11 @@ export const roundBlock = (
   return [
     `\`R${round.slot}\` ${TYPE_EMOJI[challenger.printedType]} ${challenger.card.name} · ${score(challenger, "challenger")} vs ${score(defender, "defender")} · ${defender.card.name} ${TYPE_EMOJI[defender.printedType]}`,
     damageTable(round),
-    `-# ${[multiplierNote(round, names), bonusNote(round)].filter(Boolean).join(" · ")}`,
+    // Type advantage and abilities on their own lines; a round with neither
+    // needs no footnote, the table already says it all.
+    ...[typeNote(round), bonusNote(round)]
+      .filter(Boolean)
+      .map((note) => `-# ${note}`),
     ...round.notes.map((note) => `-# ↳ ${namedNote(note, names)}`),
   ].join("\n");
 };

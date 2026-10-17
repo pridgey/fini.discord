@@ -102,6 +102,22 @@ describe("damage table", () => {
     );
     expect(block).not.toContain("+Bulwark");
   });
+
+  it("puts the type advantage and the abilities on lines of their own", () => {
+    const naruto = card("Naruto", "power", [8, 3, 4], "pierce");
+    const zoro = card("Zoro", "heart", [7, 2, 6], "intimidate");
+    const notes = roundBlock(clash(naruto, zoro), names)
+      .split("\n")
+      .filter((line) => line.startsWith("-# "));
+    expect(notes).toEqual([
+      expect.stringMatching(/Heart beats .+×1\.5\*\* to Zoro$/),
+      "-# Naruto: Pierce 3 · Zoro: Intimidate (Naruto −2)",
+    ]);
+  });
+
+  it("leaves out the type line when no multiplier applied", () => {
+    expect(roundBlock(clash(hinata, robin), names)).not.toContain("no bonus");
+  });
 });
 
 /** A run partway through a leg: `played` are the fights already resolved in it. */

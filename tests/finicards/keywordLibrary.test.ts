@@ -116,8 +116,8 @@ describe("finicards v2 keyword library", () => {
     it("Intimidate takes 2 off the opposing card and says so on both", () => {
       const round = play([plain(5, "intimidate")], [plain(7)]).rounds[0];
       expect(round.defender.attackStat).toBe(5);
-      expect(round.defender.bonuses).toEqual(["Intimidated −2"]);
-      expect(round.challenger.bonuses[0]).toStartWith("Intimidate (");
+      expect(round.defender.bonuses).toEqual([]);
+      expect(round.challenger.bonuses[0]).toMatch(/^Intimidate \(.+ −2\)$/);
     });
 
     it("Purist pays against a card with no keyword in play", () => {
