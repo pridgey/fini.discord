@@ -29,10 +29,7 @@ export const SERVICE_PROCESSES: Record<
 };
 
 export type EnsureOutcome =
-  | "already-running"
-  | "started-via-systemd"
-  | "started-detached"
-  | "failed";
+  "already-running" | "started-via-systemd" | "started-detached" | "failed";
 
 /**
  * Picks what to do from what we found.

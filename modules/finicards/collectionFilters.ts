@@ -12,9 +12,11 @@ import { RARITY_LABEL } from "./rules";
  * with it.
  */
 
-export type CollectionSort = "newest" | "set" | "name" | "rarest" | "power" | "wit" | "heart";
+export type CollectionSort =
+  "newest" | "set" | "name" | "rarest" | "power" | "wit" | "heart";
 
-export type CollectionTier = "common" | "uncommon" | "full_art" | "secret_art" | "legendary";
+export type CollectionTier =
+  "common" | "uncommon" | "full_art" | "secret_art" | "legendary";
 
 export type CollectionOptions = {
   sort?: CollectionSort | null;
@@ -58,14 +60,20 @@ export const TIER_LABEL: Record<CollectionTier, string> = {
 const TIERS: Record<CollectionTier, string> = {
   common: 'card.rarity = "common"',
   uncommon: 'card.rarity = "uncommon"',
-  full_art: 'card.rarity = "full_art" && card.secret_art != true && legendary = ""',
+  full_art:
+    'card.rarity = "full_art" && card.secret_art != true && legendary = ""',
   secret_art: 'card.secret_art = true && legendary = ""',
   legendary: 'legendary != ""',
 };
 
-const TYPE_LABEL: Record<CardType, string> = { power: "Power", wit: "Wit", heart: "Heart" };
+const TYPE_LABEL: Record<CardType, string> = {
+  power: "Power",
+  wit: "Wit",
+  heart: "Heart",
+};
 
-const quoted = (value: string): string => `"${value.replace(/["\\]/g, "\\$&")}"`;
+const quoted = (value: string): string =>
+  `"${value.replace(/["\\]/g, "\\$&")}"`;
 
 export type CollectionQuery = {
   /** Added to the owner's filter with `&&`; "" when nothing narrows it. */
@@ -77,7 +85,9 @@ export type CollectionQuery = {
   order: string;
 };
 
-export const buildCollectionQuery = (options: CollectionOptions = {}): CollectionQuery => {
+export const buildCollectionQuery = (
+  options: CollectionOptions = {},
+): CollectionQuery => {
   const parts: string[] = [];
   const said: string[] = [];
 
@@ -103,7 +113,9 @@ export const buildCollectionQuery = (options: CollectionOptions = {}): Collectio
   }
   const search = (options.search ?? "").trim().slice(0, 60);
   if (search) {
-    parts.push(`(card.card_name ~ ${quoted(search)} || card.series ~ ${quoted(search)})`);
+    parts.push(
+      `(card.card_name ~ ${quoted(search)} || card.series ~ ${quoted(search)})`,
+    );
     said.push(`matching "${search}"`);
   }
 

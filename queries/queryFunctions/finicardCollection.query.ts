@@ -7,7 +7,10 @@ import {
   cardLine,
   rarityLabel,
 } from "../../modules/finicards/ui/theme";
-import type { V2DeckRecord, V2UserCardRecord } from "../../types/PocketbaseTablesV2";
+import type {
+  V2DeckRecord,
+  V2UserCardRecord,
+} from "../../types/PocketbaseTablesV2";
 import {
   QueryFunction,
   QueryParams,
@@ -57,7 +60,9 @@ const queryV2CardCollection = async ({
  * The names of the decks each card is in, by card id. A copy can sit in more
  * than one deck, so each card gets a list.
  */
-export const deckNamesByCard = (decks: V2DeckRecord[]): Map<string, string[]> => {
+export const deckNamesByCard = (
+  decks: V2DeckRecord[],
+): Map<string, string[]> => {
   const names = new Map<string, string[]>();
   for (const deck of decks) {
     for (const cardId of new Set(deck.cards ?? [])) {
@@ -71,11 +76,17 @@ export const deckNamesByCard = (decks: V2DeckRecord[]): Map<string, string[]> =>
  * The decks of every owner on the page. A page is one player's cards on one
  * server, so this is one read; a failed read just leaves the deck names off.
  */
-const decksForPage = async (items: V2UserCardRecord[]): Promise<V2DeckRecord[]> => {
-  const owners = new Map(items.map((item) => [`${item.user_id}:${item.server_id}`, item]));
+const decksForPage = async (
+  items: V2UserCardRecord[],
+): Promise<V2DeckRecord[]> => {
+  const owners = new Map(
+    items.map((item) => [`${item.user_id}:${item.server_id}`, item]),
+  );
   try {
     const lists = await Promise.all(
-      [...owners.values()].map((item) => getDecks(item.user_id, item.server_id)),
+      [...owners.values()].map((item) =>
+        getDecks(item.user_id, item.server_id),
+      ),
     );
     return lists.flat();
   } catch {
@@ -125,9 +136,7 @@ const buildV2CardCollectionResult = async ({
     container.addSectionComponents((section) =>
       section
         .addTextDisplayComponents((text) =>
-          text.setContent(
-            `${cardLine(card)}\n-# ${details.join(" · ")}`,
-          ),
+          text.setContent(`${cardLine(card)}\n-# ${details.join(" · ")}`),
         )
         .setButtonAccessory((button) =>
           button

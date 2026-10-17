@@ -9,7 +9,14 @@ import {
   TextInputStyle,
 } from "discord.js";
 import type { GeocodedGuess, PlaceInfo } from "./geocode";
-import { judgeGuess, MAX_PAY, PAY, photoMultiplier, type Check, type Verdict } from "./judge";
+import {
+  judgeGuess,
+  MAX_PAY,
+  PAY,
+  photoMultiplier,
+  type Check,
+  type Verdict,
+} from "./judge";
 import { renderMap } from "./map";
 import { formatDistance, type LatLon } from "./score";
 
@@ -28,8 +35,16 @@ export type RoundFacts = {
   license: string;
 };
 
-export const button = (customId: string, label: string, style: ButtonStyle, emoji?: string) => {
-  const built = new ButtonBuilder().setCustomId(customId).setLabel(label).setStyle(style);
+export const button = (
+  customId: string,
+  label: string,
+  style: ButtonStyle,
+  emoji?: string,
+) => {
+  const built = new ButtonBuilder()
+    .setCustomId(customId)
+    .setLabel(label)
+    .setStyle(style);
   return emoji ? built.setEmoji(emoji) : built;
 };
 
@@ -44,7 +59,9 @@ export const guessModal = (customId: string) =>
     .addLabelComponents(
       new LabelBuilder()
         .setLabel("A place, or coordinates")
-        .setDescription("A country, a city, a street, a landmark - or paste lat, lon from a map.")
+        .setDescription(
+          "A country, a city, a street, a landmark - or paste lat, lon from a map.",
+        )
         .setTextInputComponent(
           new TextInputBuilder()
             .setCustomId("place")
@@ -56,7 +73,9 @@ export const guessModal = (customId: string) =>
     );
 
 export const photoFiles = (photos: Buffer[]) =>
-  photos.map((photo, i) => new AttachmentBuilder(photo, { name: `view-${i + 1}.jpg` }));
+  photos.map(
+    (photo, i) => new AttachmentBuilder(photo, { name: `view-${i + 1}.jpg` }),
+  );
 
 /** "📸 Only 2 photos ×1.5", when a round pays extra for having fewer. */
 const photoLine = (photoCount: number): string | null => {
@@ -66,25 +85,34 @@ const photoLine = (photoCount: number): string | null => {
 };
 
 /** The most a round with this many photos pays. */
-export const maxPayFor = (photoCount: number) => Math.round(MAX_PAY * photoMultiplier(photoCount));
+export const maxPayFor = (photoCount: number) =>
+  Math.round(MAX_PAY * photoMultiplier(photoCount));
 
 /** The lines that open a round: the question, the prize, and how it's paid. */
 export const roundIntro = (photoCount: number): string[] => {
   const multiplier = photoMultiplier(photoCount);
   return [
     "🌍 **Where in the world is this?**",
-    [`🪙 **${maxPayFor(photoCount)} fc** up for grabs`, photoLine(photoCount)].filter(Boolean).join(" · "),
+    [`🪙 **${maxPayFor(photoCount)} fc** up for grabs`, photoLine(photoCount)]
+      .filter(Boolean)
+      .join(" · "),
     `-# ${PAY.northSouth} per hemisphere · ${PAY.continent} continent · ${PAY.country} country · ${PAY.province} province · ${PAY.city} town · up to ${PAY.closeness} for landing close${multiplier > 1 ? `, all ×${multiplier}` : ""}`,
   ];
 };
 
 /** Where the bot understood the guess to be, to lock in or redo. */
-export const guessView = async (guess: GeocodedGuess, ids: { lock: string; retry: string }) => ({
+export const guessView = async (
+  guess: GeocodedGuess,
+  ids: { lock: string; retry: string },
+) => ({
   content: `📍 **${guess.label}**\nIs this where you meant? Locking in is final.`,
   files: [
-    new AttachmentBuilder(await renderMap([{ lat: guess.lat, lon: guess.lon, color: "#3b82f6" }]), {
-      name: "guess.png",
-    }),
+    new AttachmentBuilder(
+      await renderMap([{ lat: guess.lat, lon: guess.lon, color: "#3b82f6" }]),
+      {
+        name: "guess.png",
+      },
+    ),
   ],
   components: [
     row(
@@ -97,13 +125,21 @@ export const guessView = async (guess: GeocodedGuess, ids: { lock: string; retry
 export type Scored = { verdict: Verdict; multiplier: number; total: number };
 
 /** What a guess earns: the checks, the bonus, and the photo multiplier. */
-export const scoreGuess = (facts: RoundFacts, place: PlaceInfo, guess: GeocodedGuess): Scored => {
+export const scoreGuess = (
+  facts: RoundFacts,
+  place: PlaceInfo,
+  guess: GeocodedGuess,
+): Scored => {
   const verdict = judgeGuess(guess, { ...facts.answer, place });
   const multiplier = photoMultiplier(facts.photoCount);
   return { verdict, multiplier, total: Math.round(verdict.total * multiplier) };
 };
 
-const MARK: Record<Check["outcome"], string> = { earned: "✅", missed: "❌", locked: "🔒" };
+const MARK: Record<Check["outcome"], string> = {
+  earned: "✅",
+  missed: "❌",
+  locked: "🔒",
+};
 
 export const checkLine = (check: Check) =>
   check.outcome === "earned"
@@ -133,9 +169,16 @@ export type SavedGuess = {
  * did when they locked in. The closeness bonus isn't saved apart, so it's what
  * the total holds beyond the checks.
  */
-export const pastRevealView = async (facts: RoundFacts, place: PlaceInfo, guess: SavedGuess) => {
+export const pastRevealView = async (
+  facts: RoundFacts,
+  place: PlaceInfo,
+  guess: SavedGuess,
+) => {
   const multiplier = photoMultiplier(facts.photoCount);
-  const fromChecks = guess.checks.reduce((sum, check) => sum + (check.outcome === "earned" ? check.fc : 0), 0);
+  const fromChecks = guess.checks.reduce(
+    (sum, check) => sum + (check.outcome === "earned" ? check.fc : 0),
+    0,
+  );
   const bonus = Math.max(0, Math.round(guess.total / multiplier) - fromChecks);
   const map = await renderMap([
     { lat: guess.lat, lon: guess.lon, color: "#3b82f6", label: "You" },

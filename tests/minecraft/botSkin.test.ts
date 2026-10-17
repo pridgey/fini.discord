@@ -80,7 +80,9 @@ describe("buildTexturesValue", () => {
       model: "slim",
       ...identity,
     });
-    expect(readTexturesValue(value).textures.SKIN?.metadata?.model).toBe("slim");
+    expect(readTexturesValue(value).textures.SKIN?.metadata?.model).toBe(
+      "slim",
+    );
   });
 
   // Real payloads carry the id undashed

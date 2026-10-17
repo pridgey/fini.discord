@@ -26,7 +26,10 @@ export const MAX_HAND_SIZE = 8;
 /** Clamps a requested draw size into the legal range. */
 export const clampHandSize = (requested: number | null | undefined): number => {
   if (!Number.isFinite(requested ?? NaN)) return HAND_SIZE;
-  return Math.min(MAX_HAND_SIZE, Math.max(MIN_HAND_SIZE, Math.round(requested!)));
+  return Math.min(
+    MAX_HAND_SIZE,
+    Math.max(MIN_HAND_SIZE, Math.round(requested!)),
+  );
 };
 
 type Random = () => number;
@@ -41,7 +44,7 @@ type Random = () => number;
  * Partial Fisher-Yates over a copy of the pool, so it is O(size) and never
  * mutates the caller's array.
  */
-export const dealHand = <T,>(
+export const dealHand = <T>(
   pool: T[],
   size: number,
   random: Random = Math.random,

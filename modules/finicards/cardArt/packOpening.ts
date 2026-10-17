@@ -29,7 +29,11 @@ let cover: Promise<Buffer> | null = null;
 let opening: Promise<Buffer> | null = null;
 
 /** Reads a file once and keeps it; a failed read is tried again next time. */
-const kept = (held: Promise<Buffer> | null, file: string, forget: () => void): Promise<Buffer> => {
+const kept = (
+  held: Promise<Buffer> | null,
+  file: string,
+  forget: () => void,
+): Promise<Buffer> => {
   if (held) return held;
   const reading = readFile(file);
   reading.catch(forget);

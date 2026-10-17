@@ -1,4 +1,7 @@
-import type { V2FreePackRecord, FreePackSpecial } from "../../types/PocketbaseTablesV2";
+import type {
+  V2FreePackRecord,
+  FreePackSpecial,
+} from "../../types/PocketbaseTablesV2";
 import { pb } from "../../utilities/pocketbase";
 
 /**
@@ -76,12 +79,16 @@ export const planFreePacks = (
       );
 
     for (const special of SPECIALS) {
-      const open = batch.filter((pack) => pack.special === "" && pack.userId !== options.exclude);
+      const open = batch.filter(
+        (pack) => pack.special === "" && pack.userId !== options.exclude,
+      );
       if (open.length === 0) {
         unplaced.push(`${serverId}:${special}`);
         continue;
       }
-      open[Math.min(Math.floor(random() * open.length), open.length - 1)].special = special;
+      open[
+        Math.min(Math.floor(random() * open.length), open.length - 1)
+      ].special = special;
     }
 
     packs.push(...batch);
@@ -90,7 +97,8 @@ export const planFreePacks = (
   return { packs, unplaced };
 };
 
-const filterSafe = (value: string): string => (value ?? "").replace(/["\\]/g, "\\$&");
+const filterSafe = (value: string): string =>
+  (value ?? "").replace(/["\\]/g, "\\$&");
 
 /** A player's free packs still to open on a server, oldest first. */
 export const getUnopenedFreePacks = async (
@@ -104,7 +112,9 @@ export const getUnopenedFreePacks = async (
   });
 
 export const markFreePackOpened = async (id: string): Promise<void> => {
-  await pb.collection<V2FreePackRecord>(V2_FREE_PACK).update(id, { opened: true });
+  await pb
+    .collection<V2FreePackRecord>(V2_FREE_PACK)
+    .update(id, { opened: true });
 };
 
 /**
@@ -127,6 +137,8 @@ export const passOnSpecial = async (
   if (open.length === 0) return false;
 
   const chosen = open[Math.floor(random() * open.length)];
-  await pb.collection<V2FreePackRecord>(V2_FREE_PACK).update(chosen.id!, { special });
+  await pb
+    .collection<V2FreePackRecord>(V2_FREE_PACK)
+    .update(chosen.id!, { special });
   return true;
 };

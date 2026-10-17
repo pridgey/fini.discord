@@ -68,13 +68,11 @@ export type CardArtSource = {
  * artwork can be pulled straight out of Pocketbase - which means the whole
  * converted pool has art on day one without anyone uploading anything.
  */
-export const resolveArtSource = async (
-  definition: {
-    art_url?: string;
-    legacy_card?: string;
-    art_adjust?: ArtAdjust | null;
-  },
-): Promise<CardArtSource | null> => {
+export const resolveArtSource = async (definition: {
+  art_url?: string;
+  legacy_card?: string;
+  art_adjust?: ArtAdjust | null;
+}): Promise<CardArtSource | null> => {
   const adjust = definition.art_adjust ?? null;
   if (definition.art_url) return { url: definition.art_url, adjust };
 
@@ -121,7 +119,12 @@ export const trimPadding = async (input: Buffer): Promise<Buffer> => {
  */
 export const paddingBox = async (
   input: Buffer,
-): Promise<{ left: number; top: number; width: number; height: number } | null> => {
+): Promise<{
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+} | null> => {
   const meta = await sharp(input).metadata();
   if (!meta.hasAlpha || !meta.width || !meta.height) return null;
 
@@ -183,7 +186,10 @@ export const coverCrop = async (
   input: Buffer,
   width: number,
   height: number,
-  options: { focus?: ArtAdjust["focus"]; anchor?: TemplateLayout["artAnchor"] } = {},
+  options: {
+    focus?: ArtAdjust["focus"];
+    anchor?: TemplateLayout["artAnchor"];
+  } = {},
 ): Promise<Buffer> => {
   const meta = await sharp(input).metadata();
   const full = { w: meta.width ?? 1, h: meta.height ?? 1 };
@@ -299,13 +305,18 @@ export const fitName = (
     for (let cut = 1; cut < words.length; cut++) {
       const first = words.slice(0, cut).join(" ");
       const second = words.slice(cut).join(" ");
-      const widest = Math.max(measure(first, wrapSize), measure(second, wrapSize));
+      const widest = Math.max(
+        measure(first, wrapSize),
+        measure(second, wrapSize),
+      );
       if (!best || widest < best.widest) best = { first, second, widest };
     }
 
     if (best) {
       const fit = (text: string) =>
-        escapeXml(truncateToWidth(text, width, { fontSize: wrapSize, bold: spec.bold }));
+        escapeXml(
+          truncateToWidth(text, width, { fontSize: wrapSize, bold: spec.bold }),
+        );
       const lineHeight = Math.round(wrapSize * 1.06);
       return {
         size: wrapSize,
@@ -322,7 +333,9 @@ export const fitName = (
   return {
     size,
     lift: 0,
-    markup: escapeXml(truncateToWidth(name, width, { fontSize: size, bold: spec.bold })),
+    markup: escapeXml(
+      truncateToWidth(name, width, { fontSize: size, bold: spec.bold }),
+    ),
   };
 };
 
@@ -392,7 +405,8 @@ export const LIMITED_BELOW = 5;
 export const limitedLabel = (card: BattleCard): string => {
   const population = card.population ?? 0;
   if (population < 1 || population >= LIMITED_BELOW) return "";
-  const serial = card.serial && card.serial > 0 ? Math.min(card.serial, population) : 1;
+  const serial =
+    card.serial && card.serial > 0 ? Math.min(card.serial, population) : 1;
   return `${serial} OF ${population}`;
 };
 
@@ -427,7 +441,12 @@ export const buildCardSvg = async (
       })));
 
   const artDataUri = source
-    ? await prepareArt(source, layout.art, width / layout.width, layout.artAnchor)
+    ? await prepareArt(
+        source,
+        layout.art,
+        width / layout.width,
+        layout.artAnchor,
+      )
     : null;
 
   const keyword = findKeyword(card.keyword);
@@ -435,7 +454,8 @@ export const buildCardSvg = async (
 
   const credit = (options.artist ?? card.artist ?? "ART / —").trim();
   const rarityCode =
-    legendaryCode(card.legendary) ?? (card.secretArt ? SECRET_ART_CODE : layout.rarityCode);
+    legendaryCode(card.legendary) ??
+    (card.secretArt ? SECRET_ART_CODE : layout.rarityCode);
   const factionFont = layout.factionFont ?? { size: 10.5, letterSpacing: 1.9 };
 
   const substitutions: Record<string, string> = {
@@ -480,7 +500,10 @@ export const buildCardSvg = async (
       keyword: keyword?.name ?? "",
       description: keyword?.description ?? "",
     }),
-    flavour: flavourBlock(layout.flavour, options.flavour ?? card.flavour ?? ""),
+    flavour: flavourBlock(
+      layout.flavour,
+      options.flavour ?? card.flavour ?? "",
+    ),
     stat_bar: statBarBlock(layout.statBar, card),
   };
 

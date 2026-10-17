@@ -9,7 +9,10 @@ import type { BattleCard } from "../../modules/finicards/types";
 
 /* The collection as a binder: six pockets to a page, filled or not. */
 
-const card = (name: string, rarity: BattleCard["rarity"] = "common"): BattleCard => ({
+const card = (
+  name: string,
+  rarity: BattleCard["rarity"] = "common",
+): BattleCard => ({
   instanceId: `inst-${name}`,
   definitionId: "def",
   name,
@@ -30,7 +33,11 @@ describe("binder page", () => {
 
   it("is the same size however many pockets are filled", async () => {
     const size = binderPageSize();
-    for (const cards of [[], [card("One")], [card("One"), card("Two", "uncommon"), card("Three", "full_art")]]) {
+    for (const cards of [
+      [],
+      [card("One")],
+      [card("One"), card("Two", "uncommon"), card("Three", "full_art")],
+    ]) {
       const meta = await sharp(await renderBinderPage(cards)).metadata();
       expect(meta.format).toBe("jpeg");
       expect({ width: meta.width, height: meta.height }).toEqual(size);
@@ -44,8 +51,12 @@ describe("binder page", () => {
   });
 
   it("draws a card into its pocket", async () => {
-    const empty = await sharp(await renderBinderPage([])).raw().toBuffer();
-    const filled = await sharp(await renderBinderPage([card("One")])).raw().toBuffer();
+    const empty = await sharp(await renderBinderPage([]))
+      .raw()
+      .toBuffer();
+    const filled = await sharp(await renderBinderPage([card("One")]))
+      .raw()
+      .toBuffer();
     expect(filled.equals(empty)).toBe(false);
   });
 });

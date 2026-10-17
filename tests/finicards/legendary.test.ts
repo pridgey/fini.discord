@@ -1,6 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import sharp from "sharp";
-import { buildCardSvg, cardImageName } from "../../modules/finicards/cardArt/generateCardImage";
+import {
+  buildCardSvg,
+  cardImageName,
+} from "../../modules/finicards/cardArt/generateCardImage";
 import {
   LEGENDARY_GIF_EFFECTS,
   renderLegendaryGif,
@@ -15,7 +18,10 @@ import {
   rollLegendaryEffect,
   rollLegendaryTier,
 } from "../../modules/finicards/legendary";
-import { availableLegendaries, pickLegendary } from "../../modules/finicards/packs";
+import {
+  availableLegendaries,
+  pickLegendary,
+} from "../../modules/finicards/packs";
 import { legendaryKey } from "../../modules/finicards/cardStore";
 import { rarityLabel } from "../../modules/finicards/ui/theme";
 import type { BattleCard, OwnedCard } from "../../modules/finicards/types";
@@ -24,7 +30,9 @@ import type { V2CardDefinitionRecord } from "../../types/PocketbaseTablesV2";
 /* A Legendary is a copy of a full-art that carries an animated effect. The
    effect is the copy's; the card under it is an ordinary full-art. */
 
-const definition = (overrides: Partial<V2CardDefinitionRecord> = {}): V2CardDefinitionRecord => ({
+const definition = (
+  overrides: Partial<V2CardDefinitionRecord> = {},
+): V2CardDefinitionRecord => ({
   id: "def1",
   card_name: "Ren Kasugai",
   series: "Beacon",
@@ -61,7 +69,9 @@ const card = (overrides: Partial<BattleCard> = {}): BattleCard => ({
 
 describe("legendary rules", () => {
   it("has a drawing for every effect, in the tier the rules give it", () => {
-    expect(Object.keys(LEGENDARY_GIF_EFFECTS).sort()).toEqual(Object.keys(LEGENDARY_EFFECTS).sort());
+    expect(Object.keys(LEGENDARY_GIF_EFFECTS).sort()).toEqual(
+      Object.keys(LEGENDARY_EFFECTS).sort(),
+    );
     for (const [effect, tier] of Object.entries(LEGENDARY_EFFECTS)) {
       expect(LEGENDARY_GIF_EFFECTS[effect].tier).toBe(tier);
     }
@@ -76,7 +86,10 @@ describe("legendary rules", () => {
   });
 
   it("gives a pack a Legendary just under one time in fifty", () => {
-    const total = Object.values(LEGENDARY_ODDS).reduce((sum, odds) => sum + odds, 0);
+    const total = Object.values(LEGENDARY_ODDS).reduce(
+      (sum, odds) => sum + odds,
+      0,
+    );
     expect(total).toBeCloseTo(0.0196, 4);
     expect(rollLegendaryTier(total + 0.0001)).toBeNull();
     expect(rollLegendaryTier(0.5)).toBeNull();
@@ -125,15 +138,27 @@ describe("legendary cards", () => {
     const pool = [definition({ id: "a" }), definition({ id: "b" })];
     // Tier 1 is Breathe and Drift. With Breathe taken on "a", a Breathe goes to "b".
     const always = (value: number) => () => value;
-    expect(pickLegendary(pool, new Set([legendaryKey("a", "breathe")]), 1, always(0))).toMatchObject({
+    expect(
+      pickLegendary(
+        pool,
+        new Set([legendaryKey("a", "breathe")]),
+        1,
+        always(0),
+      ),
+    ).toMatchObject({
       definition: { id: "b" },
       effect: "breathe",
     });
     // With every card's Breathe taken, the tier's other animation is used.
-    const breathes = new Set(["a", "b"].map((id) => legendaryKey(id, "breathe")));
+    const breathes = new Set(
+      ["a", "b"].map((id) => legendaryKey(id, "breathe")),
+    );
     expect(pickLegendary(pool, breathes, 1, always(0))?.effect).toBe("drift");
     // With the whole tier taken, there is no Legendary to give.
-    const tierTaken = new Set([...breathes, ...["a", "b"].map((id) => legendaryKey(id, "drift"))]);
+    const tierTaken = new Set([
+      ...breathes,
+      ...["a", "b"].map((id) => legendaryKey(id, "drift")),
+    ]);
     expect(pickLegendary(pool, tierTaken, 1, always(0))).toBeNull();
   });
 
@@ -150,7 +175,11 @@ describe("legendary cards", () => {
       acquired_from: "pack",
       definition: definition({ population: 3 }),
     };
-    expect(toBattleCard(owned)).toMatchObject({ legendary: "storm", population: 1, serial: 1 });
+    expect(toBattleCard(owned)).toMatchObject({
+      legendary: "storm",
+      population: 1,
+      serial: 1,
+    });
   });
 
   it("prints its tier where a full-art prints FA, and is named for it", async () => {
@@ -165,11 +194,15 @@ describe("legendary cards", () => {
   it("is attached as a GIF, and everything else as a PNG", () => {
     expect(cardImageName(card({ legendary: "storm" }))).toEndWith(".gif");
     expect(cardImageName(card())).toEndWith(".png");
-    expect(cardImageName(card({ legendary: "not-an-effect" }))).toEndWith(".png");
+    expect(cardImageName(card({ legendary: "not-an-effect" }))).toEndWith(
+      ".png",
+    );
   });
 
   it("draws as an animated GIF of the card", async () => {
-    const gif = await renderLegendaryGif(card(), null, "shimmer", { frames: 3 });
+    const gif = await renderLegendaryGif(card(), null, "shimmer", {
+      frames: 3,
+    });
     const meta = await sharp(gif, { animated: true }).metadata();
     expect(meta.format).toBe("gif");
     expect(meta.pages).toBe(3);
@@ -177,6 +210,8 @@ describe("legendary cards", () => {
   });
 
   it("refuses an effect that does not exist", async () => {
-    await expect(renderLegendaryGif(card(), null, "sparkly")).rejects.toThrow("No Legendary effect");
+    await expect(renderLegendaryGif(card(), null, "sparkly")).rejects.toThrow(
+      "No Legendary effect",
+    );
   });
 });

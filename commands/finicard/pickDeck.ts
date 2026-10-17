@@ -3,7 +3,8 @@ import { findDeckByName, getDecks } from "../../modules/finicards/decks";
 import type { V2DeckRecord } from "../../types/PocketbaseTablesV2";
 
 /** "**Main**, **Aggro**" - a player's decks, to say which they could have meant. */
-export const deckNames = (decks: V2DeckRecord[]) => decks.map((d) => `**${d.name}**`).join(", ");
+export const deckNames = (decks: V2DeckRecord[]) =>
+  decks.map((d) => `**${d.name}**`).join(", ");
 
 /**
  * The deck a battle, practice or dungeon run is played with: the one named, or

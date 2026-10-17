@@ -35,7 +35,8 @@ const card = (
 };
 
 /** A plain Power card: mirrors another Power card, so no multiplier either way. */
-const plain = (power = 5, keyword = "") => card("power", [power, 5, 5], keyword);
+const plain = (power = 5, keyword = "") =>
+  card("power", [power, 5, 5], keyword);
 
 const play = (challenger: BattleCard[], defender: BattleCard[]) =>
   resolveMatch({
@@ -56,11 +57,15 @@ describe("finicards v2 keyword library", () => {
 
   describe("slot placement", () => {
     it("Anchor pays only in a middle slot", () => {
-      const lineup = [plain(5, "anchor"), plain(5, "anchor"), plain(5, "anchor")];
+      const lineup = [
+        plain(5, "anchor"),
+        plain(5, "anchor"),
+        plain(5, "anchor"),
+      ];
       const result = play(lineup, [plain(), plain(), plain()]);
-      expect(result.rounds.map((round) => round.challenger.attackStat)).toEqual([
-        5, 8, 5,
-      ]);
+      expect(result.rounds.map((round) => round.challenger.attackStat)).toEqual(
+        [5, 8, 5],
+      );
     });
 
     it("Gambit is +5 in slot 1 and a penalty anywhere else", () => {
@@ -148,11 +153,14 @@ describe("finicards v2 keyword library", () => {
     it("Mimic has nothing to copy from another Mimic, or from no keyword", () => {
       const mirror = play([plain(5, "mimic")], [plain(5, "mimic")]).rounds[0];
       expect(mirror.challenger.bonuses).toEqual([]);
-      expect(play([plain(5, "mimic")], [plain()]).rounds[0].challenger.bonuses).toEqual([]);
+      expect(
+        play([plain(5, "mimic")], [plain()]).rounds[0].challenger.bonuses,
+      ).toEqual([]);
     });
 
     it("Silence switches the opposing keyword off for the round", () => {
-      const round = play([plain(5, "silence")], [plain(5, "vanguard")]).rounds[0];
+      const round = play([plain(5, "silence")], [plain(5, "vanguard")])
+        .rounds[0];
       expect(round.defender.attackStat).toBe(5);
       expect(round.defender.activeKeyword).toBe("");
       expect(round.challenger.bonuses).toEqual(["Silence (no Vanguard)"]);
@@ -160,7 +168,8 @@ describe("finicards v2 keyword library", () => {
 
     it("two Silences, or a Mimic copying one, cancel each other out", () => {
       for (const keyword of ["silence", "mimic"]) {
-        const round = play([plain(5, keyword)], [plain(5, "silence")]).rounds[0];
+        const round = play([plain(5, keyword)], [plain(5, "silence")])
+          .rounds[0];
         expect(round.challenger.activeKeyword).toBe("");
         expect(round.defender.activeKeyword).toBe("");
       }
@@ -179,7 +188,9 @@ describe("finicards v2 keyword library", () => {
         [plain(), plain(), plain()],
       );
       expect(result.rounds[0].challenger.attackStat).toBe(9);
-      expect(play([plain(5, "kinship")], [plain()]).rounds[0].challenger.bonuses).toEqual([]);
+      expect(
+        play([plain(5, "kinship")], [plain()]).rounds[0].challenger.bonuses,
+      ).toEqual([]);
     });
 
     it("Trinity needs all three types in the lineup", () => {
@@ -229,13 +240,21 @@ describe("finicards v2 keyword library", () => {
 
     it("Thrifty pays for a cheap lineup", () => {
       const cheap = play(
-        [plain(5, "thrifty"), plain(), card("power", [5, 5, 5], "", { cost: 3 })],
+        [
+          plain(5, "thrifty"),
+          plain(),
+          card("power", [5, 5, 5], "", { cost: 3 }),
+        ],
         [plain(), plain(), plain()],
       );
       expect(cheap.rounds[0].challenger.attackStat).toBe(8);
 
       const dear = play(
-        [plain(5, "thrifty"), plain(), card("power", [5, 5, 5], "", { cost: 5 })],
+        [
+          plain(5, "thrifty"),
+          plain(),
+          card("power", [5, 5, 5], "", { cost: 5 }),
+        ],
         [plain(), plain(), plain()],
       );
       expect(dear.rounds[0].challenger.attackStat).toBe(5);
@@ -263,7 +282,10 @@ describe("finicards v2 keyword library", () => {
     });
 
     it("Second Wind pays after a drawn round", () => {
-      const result = play([plain(), plain(5, "second_wind")], [plain(), plain()]);
+      const result = play(
+        [plain(), plain(5, "second_wind")],
+        [plain(), plain()],
+      );
       expect(result.rounds[0].winner).toBe("draw");
       expect(result.rounds[1].challenger.attackStat).toBe(8);
     });
@@ -293,7 +315,9 @@ describe("finicards v2 keyword library", () => {
       );
       expect(result.rounds[1].defender.attackStat).toBe(5);
       expect(result.rounds[1].defender.activeKeyword).toBe("");
-      expect(result.rounds[1].notes.join(" ")).toContain("Last Stand is switched off");
+      expect(result.rounds[1].notes.join(" ")).toContain(
+        "Last Stand is switched off",
+      );
     });
 
     it("the on-loss handoffs do nothing from the last slot", () => {
@@ -323,20 +347,16 @@ describe("finicards v2 keyword library", () => {
     });
 
     it("Feint goes for the opposing card's lowest stat", () => {
-      const round = play(
-        [plain(7, "feint")],
-        [card("power", [9, 1, 5])],
-      ).rounds[0];
+      const round = play([plain(7, "feint")], [card("power", [9, 1, 5])])
+        .rounds[0];
       expect(round.challenger.defenseFaced).toBe(1);
       expect(round.challenger.damage).toBe(6);
     });
 
     it("Fortress trades the type multiplier for defence", () => {
       // Heart beats Power, so this Fortress would otherwise attack at x1.5.
-      const round = play(
-        [card("heart", [5, 5, 7], "fortress")],
-        [plain(6)],
-      ).rounds[0];
+      const round = play([card("heart", [5, 5, 7], "fortress")], [plain(6)])
+        .rounds[0];
       expect(round.challenger.multiplier).toBe(1);
       expect(round.defender.defenseFaced).toBe(8);
     });

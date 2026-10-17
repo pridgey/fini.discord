@@ -64,7 +64,10 @@ export const renumberSets = async (): Promise<{
     }
     await pb
       .collection<V2CardDefinitionRecord>(V2_CARD_DEFINITION)
-      .update(definition.id ?? "", { number: place.number, set_size: place.setSize });
+      .update(definition.id ?? "", {
+        number: place.number,
+        set_size: place.setSize,
+      });
     changed += 1;
   }
 
@@ -101,12 +104,17 @@ export const getPopulationCounts = async (
 };
 
 /** The cards a player holds at least one copy of on a server, by definition id. */
-export const ownedDefinitionIds = async (userId: string, serverId: string): Promise<Set<string>> => {
-  const owned = await pb.collection<V2UserCardRecord>(V2_USER_CARD).getFullList({
-    filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}"`,
-    fields: "card",
-    requestKey: null,
-  });
+export const ownedDefinitionIds = async (
+  userId: string,
+  serverId: string,
+): Promise<Set<string>> => {
+  const owned = await pb
+    .collection<V2UserCardRecord>(V2_USER_CARD)
+    .getFullList({
+      filter: `user_id = "${filterSafe(userId)}" && server_id = "${filterSafe(serverId)}"`,
+      fields: "card",
+      requestKey: null,
+    });
   return new Set(owned.map((copy) => copy.card));
 };
 
@@ -114,16 +122,23 @@ export const ownedDefinitionIds = async (userId: string, serverId: string): Prom
  * The Legendaries already pulled on a server, as "<definition id>:<effect>":
  * each card has one Legendary per animation there.
  */
-export const getLegendaryHolders = async (serverId: string): Promise<Set<string>> => {
-  const owned = await pb.collection<V2UserCardRecord>(V2_USER_CARD).getFullList({
-    filter: `server_id = "${filterSafe(serverId)}" && legendary != ""`,
-    fields: "card,legendary",
-    requestKey: null,
-  });
-  return new Set(owned.map((card) => legendaryKey(card.card, card.legendary ?? "")));
+export const getLegendaryHolders = async (
+  serverId: string,
+): Promise<Set<string>> => {
+  const owned = await pb
+    .collection<V2UserCardRecord>(V2_USER_CARD)
+    .getFullList({
+      filter: `server_id = "${filterSafe(serverId)}" && legendary != ""`,
+      fields: "card,legendary",
+      requestKey: null,
+    });
+  return new Set(
+    owned.map((card) => legendaryKey(card.card, card.legendary ?? "")),
+  );
 };
 
-export const legendaryKey = (definitionId: string, effect: string) => `${definitionId}:${effect}`;
+export const legendaryKey = (definitionId: string, effect: string) =>
+  `${definitionId}:${effect}`;
 
 /** A user's v2 cards, each already joined to its definition. */
 export const getUserCollection = async (
@@ -155,9 +170,7 @@ export const getUserCollection = async (
  * @param id A `v2_user_card` id
  * @returns The card, or null if it no longer exists or lost its definition
  */
-export const getOwnedCard = async (
-  id: string,
-): Promise<OwnedCard | null> => {
+export const getOwnedCard = async (id: string): Promise<OwnedCard | null> => {
   try {
     const record = await pb
       .collection<V2UserCardRecord>(V2_USER_CARD)
@@ -274,9 +287,7 @@ export const resolveLineup = async (
 };
 
 /** Re-hydrates a stored lineup (an array of user-card ids) for replay. */
-export const loadLineupByIds = async (
-  ids: string[],
-): Promise<BattleCard[]> => {
+export const loadLineupByIds = async (ids: string[]): Promise<BattleCard[]> => {
   const cards: BattleCard[] = [];
 
   for (const id of ids) {
@@ -316,7 +327,8 @@ export type GrantCardInput = {
 export const rollCopyKeyword = (
   rarity: CardRarity,
   random: () => number = Math.random,
-): string => (RULES.keywordsEnabled ? rollKeyword(rarity, random(), random()) : "");
+): string =>
+  RULES.keywordsEnabled ? rollKeyword(rarity, random(), random()) : "";
 
 /**
  * The number a new copy of a card takes on a server: the lowest not in use.
@@ -333,11 +345,13 @@ export const nextSerial = (taken: Iterable<number | undefined>): number => {
 export const grantCard = async (
   input: GrantCardInput,
 ): Promise<V2UserCardRecord> => {
-  const siblings = await pb.collection<V2UserCardRecord>(V2_USER_CARD).getFullList({
-    filter: `server_id = "${filterSafe(input.serverId)}" && card = "${filterSafe(input.definitionId)}"`,
-    fields: "serial,legendary",
-    requestKey: null,
-  });
+  const siblings = await pb
+    .collection<V2UserCardRecord>(V2_USER_CARD)
+    .getFullList({
+      filter: `server_id = "${filterSafe(input.serverId)}" && card = "${filterSafe(input.definitionId)}"`,
+      fields: "serial,legendary",
+      requestKey: null,
+    });
 
   return pb.collection<V2UserCardRecord>(V2_USER_CARD).create({
     user_id: input.userId,
@@ -350,7 +364,9 @@ export const grantCard = async (
     // Legendaries are numbered apart from their card's ordinary copies.
     serial: input.legendary
       ? 1
-      : nextSerial(siblings.filter((copy) => !copy.legendary).map((copy) => copy.serial)),
+      : nextSerial(
+          siblings.filter((copy) => !copy.legendary).map((copy) => copy.serial),
+        ),
     acquired_from: input.acquiredFrom ?? "grant",
   });
 };
@@ -384,7 +400,9 @@ export const importCardDefinitions = async (
   const dryRun = options?.dryRun ?? false;
   const existing = await getCardDefinitions({ includeInactive: true });
   const byLegacyId = new Map(
-    existing.filter((row) => row.legacy_card).map((row) => [row.legacy_card, row]),
+    existing
+      .filter((row) => row.legacy_card)
+      .map((row) => [row.legacy_card, row]),
   );
 
   const summary: ImportSummary = {

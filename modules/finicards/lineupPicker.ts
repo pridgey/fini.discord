@@ -116,13 +116,17 @@ export const buildPickerView = (
   for (let index = 0; index < remaining.length; index += 5) {
     rows.push(
       new ActionRowBuilder<ButtonBuilder>().addComponents(
-        remaining.slice(index, index + 5).map((entry) =>
-          new ButtonBuilder()
-            .setCustomId(`v2_lineup_pick:${battleId}:${encoded}:${entry.index}`)
-            .setLabel(cardLabel(entry.card))
-            .setEmoji(TYPE_EMOJI[entry.card.type])
-            .setStyle(ButtonStyle.Secondary),
-        ),
+        remaining
+          .slice(index, index + 5)
+          .map((entry) =>
+            new ButtonBuilder()
+              .setCustomId(
+                `v2_lineup_pick:${battleId}:${encoded}:${entry.index}`,
+              )
+              .setLabel(cardLabel(entry.card))
+              .setEmoji(TYPE_EMOJI[entry.card.type])
+              .setStyle(ButtonStyle.Secondary),
+          ),
       ),
     );
   }
@@ -166,7 +170,9 @@ export const buildPickerView = (
   }
 
   const done = picked.length === RULES.rounds;
-  const owner = context.playingAs ? `${context.playingAs}'s lineup` : "Your lineup";
+  const owner = context.playingAs
+    ? `${context.playingAs}'s lineup`
+    : "Your lineup";
 
   const container = new ContainerBuilder().setAccentColor(
     picked.length > 0 ? TYPE_ACCENT[hand[picked[0]].type] : NEUTRAL_ACCENT,

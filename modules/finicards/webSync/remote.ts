@@ -48,7 +48,8 @@ export const paced = async <T>(write: () => Promise<T>): Promise<T> => {
       gap = Math.max(GAP.least, gap * 0.97);
       return result;
     } catch (error) {
-      if ((error as { status?: number })?.status !== 429 || attempt >= TRIES) throw error;
+      if ((error as { status?: number })?.status !== 429 || attempt >= TRIES)
+        throw error;
       gap = Math.min(GAP.most, gap * 2);
       // Everyone waits, not just this write.
       nextWrite = Math.max(nextWrite, Date.now() + gap);

@@ -34,7 +34,7 @@ export const TUTORIAL_ART = {
   /** A brick. Also a bricklayer. He has made peace with this. */
   brick: svg(
     backdrop("#ff9d4d", "#7a2e0e", "#ffe0a0"),
-      `<rect x="120" y="300" width="360" height="230" rx="18" fill="#b5462c" stroke="#5a1f10" stroke-width="10"/>` +
+    `<rect x="120" y="300" width="360" height="230" rx="18" fill="#b5462c" stroke="#5a1f10" stroke-width="10"/>` +
       `<path d="M120 377 H480 M120 454 H480 M240 300 V377 M360 377 V454 M240 454 V530" stroke="#e8b48a" stroke-width="8"/>` +
       `${eye(240, 400, 34, 0.6, 0.2)}${eye(360, 400, 34, -0.4, 0.3)}` +
       `<path d="M255 475 Q300 505 345 475" fill="none" stroke="#1b1b1b" stroke-width="8" stroke-linecap="round"/>` +
@@ -49,9 +49,15 @@ export const TUTORIAL_ART = {
   crouton: svg(
     backdrop("#4d7bff", "#0d1b4a", "#a8d4ff") +
       `<path d="M0 470 Q100 440 200 470 T400 470 T600 470 T800 470 V600 H0 Z" fill="#1d3f9a"/>`,
-      `<rect x="150" y="300" width="300" height="290" rx="46" fill="#e2a24b" stroke="#7b4a12" stroke-width="10" transform="rotate(-4 300 445)"/>` +
+    `<rect x="150" y="300" width="300" height="290" rx="46" fill="#e2a24b" stroke="#7b4a12" stroke-width="10" transform="rotate(-4 300 445)"/>` +
       `<g fill="#a8661f">${[
-        [190, 340], [400, 330], [215, 560], [420, 540], [300, 330], [180, 470], [430, 440],
+        [190, 340],
+        [400, 330],
+        [215, 560],
+        [420, 540],
+        [300, 330],
+        [180, 470],
+        [430, 440],
       ]
         .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9"/>`)
         .join("")}</g>` +
@@ -66,7 +72,7 @@ export const TUTORIAL_ART = {
   /** An owl with tenure. */
   owlbert: svg(
     backdrop("#5aa9ff", "#10205a", "#d4ecff"),
-      `<rect x="80" y="610" width="440" height="40" rx="10" fill="#6b4422"/>` +
+    `<rect x="80" y="610" width="440" height="40" rx="10" fill="#6b4422"/>` +
       `<ellipse cx="300" cy="460" rx="165" ry="185" fill="#8a5a33" stroke="#4a2c14" stroke-width="10"/>` +
       `<ellipse cx="300" cy="510" rx="100" ry="115" fill="#d9b48a"/>` +
       `${eye(235, 400, 58, 0, 0.1)}${eye(365, 400, 58, 0, 0.1)}` +
@@ -80,14 +86,17 @@ export const TUTORIAL_ART = {
   /** A calculator in a tie. Does your taxes whether you asked or not. */
   accountant: svg(
     backdrop("#7fd3ff", "#183a63", "#ffffff"),
-      `<rect x="160" y="170" width="280" height="430" rx="34" fill="#4a5561" stroke="#20262c" stroke-width="10"/>` +
+    `<rect x="160" y="170" width="280" height="430" rx="34" fill="#4a5561" stroke="#20262c" stroke-width="10"/>` +
       `<rect x="190" y="205" width="220" height="80" rx="10" fill="#b8e0a0" stroke="#20262c" stroke-width="6"/>` +
       `<text x="398" y="262" text-anchor="end" font-family="DejaVu Sans Mono, monospace" font-size="44" font-weight="700" fill="#24401a">2+2=5</text>` +
-      `<g fill="#cfd6dd" stroke="#20262c" stroke-width="4">${Array.from({ length: 12 }, (_, i) => {
-        const col = i % 3;
-        const row = Math.floor(i / 3);
-        return `<rect x="${195 + col * 72}" y="${400 + row * 46}" width="60" height="36" rx="8"/>`;
-      }).join("")}</g>` +
+      `<g fill="#cfd6dd" stroke="#20262c" stroke-width="4">${Array.from(
+        { length: 12 },
+        (_, i) => {
+          const col = i % 3;
+          const row = Math.floor(i / 3);
+          return `<rect x="${195 + col * 72}" y="${400 + row * 46}" width="60" height="36" rx="8"/>`;
+        },
+      ).join("")}</g>` +
       `${eye(250, 335, 26, -0.5, 0)}${eye(350, 335, 26, -0.5, 0)}` +
       `<rect x="214" y="305" width="72" height="56" rx="10" fill="none" stroke="#1b1b1b" stroke-width="6"/><rect x="314" y="305" width="72" height="56" rx="10" fill="none" stroke="#1b1b1b" stroke-width="6"/><path d="M286 330 H314" stroke="#1b1b1b" stroke-width="6"/>` +
       `<path d="M300 600 L270 640 L300 760 L330 640 Z" fill="#c0262d" stroke="#5a0f13" stroke-width="6"/><path d="M280 598 H320 L300 625 Z" fill="#8a1a20"/>`,
@@ -96,7 +105,7 @@ export const TUTORIAL_ART = {
   /** A tidal wave who knits. Hugs are mandatory and slightly damp. */
   grandma: svg(
     backdrop("#ff7aa8", "#5a1033", "#ffd6e6"),
-      `<path d="M70 660 Q60 330 300 300 Q520 290 530 470 Q530 560 440 560 Q370 560 380 480 Q390 430 440 440 Q400 380 320 400 Q200 440 220 660 Z" fill="#39b4d6" stroke="#0f5a70" stroke-width="10"/>` +
+    `<path d="M70 660 Q60 330 300 300 Q520 290 530 470 Q530 560 440 560 Q370 560 380 480 Q390 430 440 440 Q400 380 320 400 Q200 440 220 660 Z" fill="#39b4d6" stroke="#0f5a70" stroke-width="10"/>` +
       `<path d="M110 660 Q120 470 260 430" stroke="#ffffff" stroke-opacity="0.6" stroke-width="12" fill="none" stroke-linecap="round"/>` +
       `<circle cx="330" cy="270" r="48" fill="#d8d8e0" stroke="#7a7a88" stroke-width="7"/><path d="M300 250 Q330 230 360 255" stroke="#7a7a88" stroke-width="5" fill="none"/>` +
       `${eye(275, 360, 24, 0.3, 0)}${eye(355, 360, 24, 0.3, 0)}` +
@@ -109,9 +118,18 @@ export const TUTORIAL_ART = {
   /** A very good boy. The best boy, some say. */
   gerald: svg(
     backdrop("#ff6b5e", "#5a1410", "#ffe0b0"),
-      `<g fill="#ffd23f">${[[90, 140], [500, 180], [130, 640], [470, 660], [520, 420]]
-        .map(([x, y]) => `<rect x="${x}" y="${y}" width="22" height="12" rx="3" transform="rotate(${x % 60} ${x} ${y})"/>`)
-        .join("")}</g>` +
+    `<g fill="#ffd23f">${[
+      [90, 140],
+      [500, 180],
+      [130, 640],
+      [470, 660],
+      [520, 420],
+    ]
+      .map(
+        ([x, y]) =>
+          `<rect x="${x}" y="${y}" width="22" height="12" rx="3" transform="rotate(${x % 60} ${x} ${y})"/>`,
+      )
+      .join("")}</g>` +
       `<path d="M165 330 Q90 360 110 520 Q130 560 175 520 Z" fill="#b8742a" stroke="#6a3c10" stroke-width="8"/><path d="M435 330 Q510 360 490 520 Q470 560 425 520 Z" fill="#b8742a" stroke="#6a3c10" stroke-width="8"/>` +
       `<ellipse cx="300" cy="420" rx="150" ry="160" fill="#e6a548" stroke="#6a3c10" stroke-width="10"/>` +
       `<ellipse cx="300" cy="500" rx="80" ry="62" fill="#f5d39a"/>` +
@@ -125,7 +143,7 @@ export const TUTORIAL_ART = {
   /** A squirrel who has seen one heist movie and now thinks he is in one. */
   squirrel: svg(
     backdrop("#59d68a", "#0f3d22", "#e4ffd0"),
-      `<path d="M400 600 Q560 560 520 380 Q490 230 380 260 Q470 330 440 430 Q420 500 360 520 Z" fill="#8a6142" stroke="#4a2e18" stroke-width="10"/>` +
+    `<path d="M400 600 Q560 560 520 380 Q490 230 380 260 Q470 330 440 430 Q420 500 360 520 Z" fill="#8a6142" stroke="#4a2e18" stroke-width="10"/>` +
       `<ellipse cx="290" cy="520" rx="110" ry="130" fill="#a07452" stroke="#4a2e18" stroke-width="10"/>` +
       `<ellipse cx="290" cy="560" rx="60" ry="70" fill="#e0c3a0"/>` +
       `<circle cx="270" cy="350" r="95" fill="#a07452" stroke="#4a2e18" stroke-width="10"/>` +
@@ -139,7 +157,7 @@ export const TUTORIAL_ART = {
   /** Definitely one tall gentleman. */
   raccoons: svg(
     backdrop("#3a3a52", "#0b0b14", "#9a9ad0"),
-      `<path d="M190 300 L410 300 L470 760 L130 760 Z" fill="#b89a6a" stroke="#5a4426" stroke-width="10"/>` +
+    `<path d="M190 300 L410 300 L470 760 L130 760 Z" fill="#b89a6a" stroke="#5a4426" stroke-width="10"/>` +
       `<path d="M300 300 L300 760" stroke="#5a4426" stroke-width="8"/><path d="M190 300 L300 420 L410 300" fill="#9a7e52" stroke="#5a4426" stroke-width="8"/>` +
       `<g fill="#5a4426">${[460, 540, 620, 700].map((y) => `<circle cx="275" cy="${y}" r="9"/>`).join("")}</g>` +
       `<rect x="160" y="560" width="290" height="22" fill="#5a4426"/>` +
@@ -157,17 +175,28 @@ export const TUTORIAL_ART = {
   /** Has a form for that. Has a form for the form. */
   paperwork: svg(
     backdrop("#9a5cff", "#1e0a4a", "#e6d0ff"),
-      `<g stroke="#8a8aa0" stroke-width="4">${Array.from({ length: 9 }, (_, i) => {
+    `<g stroke="#8a8aa0" stroke-width="4">${Array.from(
+      { length: 9 },
+      (_, i) => {
         const y = 690 - i * 42;
         const x = 175 + (i % 2 === 0 ? 0 : 14) - (i % 3) * 6;
         return `<rect x="${x}" y="${y}" width="250" height="40" fill="#f6f4ee"/>`;
-      }).join("")}</g>` +
+      },
+    ).join("")}</g>` +
       `${eye(255, 450, 30, 0.1, 0.3)}${eye(345, 450, 30, -0.1, 0.3)}` +
       `<path d="M215 405 L285 430 M385 405 L315 430" stroke="#1b1b1b" stroke-width="10" stroke-linecap="round"/>` +
       `<path d="M255 520 Q300 495 345 520" stroke="#1b1b1b" stroke-width="8" fill="none" stroke-linecap="round"/>` +
       `<path d="M300 40 L440 360 L160 360 Z" fill="#3b1a7a" stroke="#1a0a3a" stroke-width="10"/>` +
-      `<g fill="#ffd23f">${[[300, 150], [255, 260], [350, 300], [320, 220]]
-        .map(([x, y]) => `<path d="M${x} ${y - 16} L${x + 5} ${y - 5} L${x + 16} ${y} L${x + 5} ${y + 5} L${x} ${y + 16} L${x - 5} ${y + 5} L${x - 16} ${y} L${x - 5} ${y - 5} Z"/>`)
+      `<g fill="#ffd23f">${[
+        [300, 150],
+        [255, 260],
+        [350, 300],
+        [320, 220],
+      ]
+        .map(
+          ([x, y]) =>
+            `<path d="M${x} ${y - 16} L${x + 5} ${y - 5} L${x + 16} ${y} L${x + 5} ${y + 5} L${x} ${y + 16} L${x - 5} ${y + 5} L${x - 16} ${y} L${x - 5} ${y - 5} Z"/>`,
+        )
         .join("")}</g>` +
       `<rect x="130" y="350" width="340" height="26" rx="12" fill="#3b1a7a" stroke="#1a0a3a" stroke-width="8"/>` +
       `<g transform="rotate(-18 480 560)"><rect x="458" y="470" width="44" height="90" rx="12" fill="#8a1a20"/><rect x="430" y="555" width="100" height="36" rx="6" fill="#c0262d" stroke="#5a0f13" stroke-width="5"/></g>` +

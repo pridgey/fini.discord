@@ -93,7 +93,7 @@ const makeRandom = (seed: number) => {
   };
 };
 
-const pick = <T,>(items: T[], random: () => number): T =>
+const pick = <T>(items: T[], random: () => number): T =>
   items[Math.floor(random() * items.length)];
 
 /* -------------------------------------------------------------------------- */
@@ -242,7 +242,7 @@ const pickFromHand = (
   const threat: Record<CardType, number> = { power: 0, wit: 0, heart: 0 };
   for (const card of opposingHand) threat[card.type] += 1;
 
-    // A card is worth more when the opponent is holding what it *beats*.
+  // A card is worth more when the opponent is holding what it *beats*.
   // `counterOf[t]` is what beats t, so using it here would have rewarded a card
   // for facing its own predator - exactly backwards.
   const score = (card: BattleCard) =>
@@ -445,7 +445,9 @@ const gradeKeywords = () => {
   console.log(
     `vs bare: opponent has no keywords · vs field: opponent's are rolled at the real odds (a rolled lineup scores ${mirror(null, rolled).toFixed(1)}% there)\n`,
   );
-  console.log(`${"keyword".padEnd(14)}${"vs bare".padStart(8)}${"vs field".padStart(10)}  grade`);
+  console.log(
+    `${"keyword".padEnd(14)}${"vs bare".padStart(8)}${"vs field".padStart(10)}  grade`,
+  );
   for (const { keyword, bare: bareRate, field } of rows) {
     console.log(
       `${keyword.name.padEnd(14)}${`${bareRate.toFixed(1)}%`.padStart(8)}${`${field.toFixed(1)}%`.padStart(10)}  ${GRADE_LABEL[keyword.grade]}`,
@@ -477,10 +479,19 @@ const gradeDungeon = () => {
   type Policy = "careful" | "gut";
 
   /** What a run could do at the first shop it walked into. */
-  type FirstShop = { depth: number; geld: number; cheapest: number; buyable: number };
+  type FirstShop = {
+    depth: number;
+    geld: number;
+    cheapest: number;
+    buyable: number;
+  };
 
   /** How many wares, cheapest first, `geld` buys off a shelf of `prices`. */
-  const shopVisit = (depth: number, geld: number, prices: number[]): FirstShop => {
+  const shopVisit = (
+    depth: number,
+    geld: number,
+    prices: number[],
+  ): FirstShop => {
     const sorted = [...prices].sort((a, b) => a - b);
     let left = geld;
     let buyable = 0;
@@ -512,7 +523,13 @@ const gradeDungeon = () => {
     deck: BattleCard[],
     policy: Policy,
     random: () => number,
-  ): { depth: number; coin: number; cards: number; fullArts: number; firstShop?: FirstShop } => {
+  ): {
+    depth: number;
+    coin: number;
+    cards: number;
+    fullArts: number;
+    firstShop?: FirstShop;
+  } => {
     let firstShop: FirstShop | undefined;
     let hand = dealHand(deck, DUNGEON.handSize, random);
     const base: RoomSource = { pool: POOL, random };
@@ -520,7 +537,11 @@ const gradeDungeon = () => {
     let fell = false;
     const byId = new Map(deck.map((card) => [card.instanceId, card]));
 
-    for (let guard = 0; guard < MAX_ROOMS * 4 && state.depth < MAX_ROOMS; guard++) {
+    for (
+      let guard = 0;
+      guard < MAX_ROOMS * 4 && state.depth < MAX_ROOMS;
+      guard++
+    ) {
       // Deal for whatever the last move sent back to the deck, as the store does.
       if (state.redraw?.length) {
         const dealt = redealHand(
@@ -555,7 +576,11 @@ const gradeDungeon = () => {
       const cards = ready(state, hand);
 
       if (room.kind === "shop") {
-        firstShop ??= shopVisit(state.depth, state.geld, room.offers.map((offer) => offer.price));
+        firstShop ??= shopVisit(
+          state.depth,
+          state.geld,
+          room.offers.map((offer) => offer.price),
+        );
         const affordable = room.offers
           .map((offer, index) => ({ offer, index }))
           .filter(({ offer }) => !offer.sold && offer.price <= state.geld)
@@ -600,7 +625,10 @@ const gradeDungeon = () => {
       if (policy === "careful") {
         // The cheapest card that wins, so the strong ones are still in hand.
         const wins = cards
-          .map((card) => ({ card, outcome: playFight(state, card, source, rules) }))
+          .map((card) => ({
+            card,
+            outcome: playFight(state, card, source, rules),
+          }))
           .filter(({ outcome }) => outcome.result === "won")
           .sort((a, b) => typeStat(a.card) - typeStat(b.card));
         if (wins.length === 0) break;
@@ -665,28 +693,55 @@ const gradeDungeon = () => {
       const runs = Array.from({ length: MATCHES }, () =>
         run(build(random), policy, random),
       );
-      const shops = runs.flatMap((result) => (result.firstShop ? [result.firstShop] : []));
+      const shops = runs.flatMap((result) =>
+        result.firstShop ? [result.firstShop] : [],
+      );
       const average = (values: number[]) =>
-        values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+        values.length
+          ? values.reduce((sum, value) => sum + value, 0) / values.length
+          : 0;
       const share = (test: (shop: FirstShop) => boolean) =>
         `${((shops.filter(test).length / Math.max(1, shops.length)) * 100).toFixed(0)}%`;
       shopRows.push(
-        `${label.padEnd(24)}${policy.padEnd(9)}${`${((shops.length / MATCHES) * 100).toFixed(0)}%`.padStart(8)}${average(shops.map((shop) => shop.depth)).toFixed(1).padStart(7)}${average(shops.map((shop) => shop.geld)).toFixed(1).padStart(7)}${average(shops.map((shop) => shop.cheapest)).toFixed(1).padStart(10)}${share((shop) => shop.buyable === 0).padStart(7)}${share((shop) => shop.buyable === 1).padStart(7)}${share((shop) => shop.buyable >= 2).padStart(7)}`,
+        `${label.padEnd(24)}${policy.padEnd(9)}${`${((shops.length / MATCHES) * 100).toFixed(0)}%`.padStart(8)}${average(
+          shops.map((shop) => shop.depth),
+        )
+          .toFixed(1)
+          .padStart(7)}${average(shops.map((shop) => shop.geld))
+          .toFixed(1)
+          .padStart(7)}${average(shops.map((shop) => shop.cheapest))
+          .toFixed(1)
+          .padStart(
+            10,
+          )}${share((shop) => shop.buyable === 0).padStart(7)}${share((shop) => shop.buyable === 1).padStart(7)}${share((shop) => shop.buyable >= 2).padStart(7)}`,
       );
       const depths = runs.map((result) => result.depth).sort((a, b) => a - b);
       const at = (share: number) => depths[Math.floor((MATCHES - 1) * share)];
       const mean = (values: number[]) =>
         values.reduce((sum, value) => sum + value, 0) / values.length;
       const profit =
-        runs.filter((result) => result.coin > DUNGEON.entryFee).length / MATCHES;
+        runs.filter((result) => result.coin > DUNGEON.entryFee).length /
+        MATCHES;
 
       console.log(
-        `${label.padEnd(24)}${policy.padEnd(9)}${mean(depths).toFixed(1).padStart(9)}${String(at(0.1)).padStart(5)}${String(at(0.5)).padStart(5)}${String(at(0.9)).padStart(5)}${mean(runs.map((result) => result.coin)).toFixed(1).padStart(8)}${`${(profit * 100).toFixed(0)}%`.padStart(8)}${mean(runs.map((result) => result.cards)).toFixed(2).padStart(7)}${mean(runs.map((result) => result.fullArts)).toFixed(3).padStart(10)}`,
+        `${label.padEnd(24)}${policy.padEnd(9)}${mean(depths).toFixed(1).padStart(9)}${String(at(0.1)).padStart(5)}${String(at(0.5)).padStart(5)}${String(at(0.9)).padStart(5)}${mean(
+          runs.map((result) => result.coin),
+        )
+          .toFixed(1)
+          .padStart(8)}${`${(profit * 100).toFixed(0)}%`.padStart(8)}${mean(
+          runs.map((result) => result.cards),
+        )
+          .toFixed(2)
+          .padStart(7)}${mean(runs.map((result) => result.fullArts))
+          .toFixed(3)
+          .padStart(10)}`,
       );
     }
   }
 
-  console.log("\nFirst shop a run walks into: the room, the geld in hand, and how much of the shelf it buys");
+  console.log(
+    "\nFirst shop a run walks into: the room, the geld in hand, and how much of the shelf it buys",
+  );
   console.log(
     `${"deck".padEnd(24)}${"player".padEnd(9)}${"reached".padStart(8)}${"room".padStart(7)}${"geld".padStart(7)}${"cheapest".padStart(10)}${"0 buys".padStart(7)}${"1 buy".padStart(7)}${"2+".padStart(7)}`,
   );

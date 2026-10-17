@@ -1,7 +1,4 @@
-import {
-  ChatConfigRecord,
-  ChatModel,
-} from "../../types/PocketbaseTables";
+import { ChatConfigRecord, ChatModel } from "../../types/PocketbaseTables";
 import { pb } from "../../utilities/pocketbase";
 
 /** Every model a user is allowed to pick, in the order /chat-config lists them. */

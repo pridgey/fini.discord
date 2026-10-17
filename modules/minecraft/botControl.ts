@@ -100,9 +100,7 @@ export class BotControl {
   }
 
   async getPosition(): Promise<Vec3 | null> {
-    const response = await this.send(
-      `data get entity ${this.botName} Pos`,
-    );
+    const response = await this.send(`data get entity ${this.botName} Pos`);
     return parseVec3(response);
   }
 
@@ -162,9 +160,7 @@ export class BotControl {
     const delta = normaliseHeading(targetHeading - currentHeading);
     // Sub-degree turns aren't worth a command
     if (Math.abs(delta) < 1) return;
-    await this.send(
-      `player ${this.botName} turn ${delta.toFixed(1)} 0`,
-    );
+    await this.send(`player ${this.botName} turn ${delta.toFixed(1)} 0`);
   }
 
   /**

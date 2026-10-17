@@ -37,8 +37,12 @@ export const execute = async (
 
     if (found.kind !== "pokemon") {
       const { data } = found;
-      const label = { ability: "Ability", move: "Move", item: "Item" }[found.kind];
-      const moveType = data.type ? `Type: ${toCapitalize(data.type.name)}\r\n` : "";
+      const label = { ability: "Ability", move: "Move", item: "Item" }[
+        found.kind
+      ];
+      const moveType = data.type
+        ? `Type: ${toCapitalize(data.type.name)}\r\n`
+        : "";
       await interaction.editReply(
         `**${toCapitalize(data.name)}** (${label})\r\n${moveType}${englishEffect(data)}`,
       );

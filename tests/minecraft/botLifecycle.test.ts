@@ -3,7 +3,9 @@ import { decideLifecycle } from "../../modules/minecraft/botLifecycle";
 
 describe("decideLifecycle", () => {
   it("spawns the bot once somebody is playing", () => {
-    expect(decideLifecycle({ humansOnline: 1, botOnline: false })).toBe("spawn");
+    expect(decideLifecycle({ humansOnline: 1, botOnline: false })).toBe(
+      "spawn",
+    );
   });
 
   it("leaves it alone when it is already there", () => {

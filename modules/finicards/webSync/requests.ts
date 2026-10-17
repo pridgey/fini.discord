@@ -42,7 +42,13 @@ export const REQUEST_STALE_MS = 10 * 60 * 1000;
 export type DeckDecision =
   | { ok: false; reason: string }
   | { ok: true; action: "create"; name: string; cards: string[] }
-  | { ok: true; action: "update"; deckId: string; name: string; cards: string[] }
+  | {
+      ok: true;
+      action: "update";
+      deckId: string;
+      name: string;
+      cards: string[];
+    }
   | { ok: true; action: "delete"; deckId: string; name: string };
 
 const refuse = (reason: string): DeckDecision => ({ ok: false, reason });
@@ -75,9 +81,15 @@ export const decideDeckRequest = (
 
   if (kind === "deck_delete") {
     if (!target) return refuse("No deck was named.");
-    return { ok: true, action: "delete", deckId: target.id ?? "", name: target.name };
+    return {
+      ok: true,
+      action: "delete",
+      deckId: target.id ?? "",
+      name: target.name,
+    };
   }
-  if (kind !== "deck_save") return refuse("Fini does not know that kind of request.");
+  if (kind !== "deck_save")
+    return refuse("Fini does not know that kind of request.");
 
   if (typeof name !== "string") return refuse("A deck needs a name.");
   const nameError = validateDeckName(name);
@@ -99,10 +111,14 @@ export const decideDeckRequest = (
     );
   }
   if (chosen.length !== DECK_SIZE) {
-    return refuse(`A deck is exactly ${DECK_SIZE} cards; that has ${chosen.length}.`);
+    return refuse(
+      `A deck is exactly ${DECK_SIZE} cards; that has ${chosen.length}.`,
+    );
   }
 
-  const clash = decks.find((deck) => deck.id !== target?.id && sameName(deck.name, name));
+  const clash = decks.find(
+    (deck) => deck.id !== target?.id && sameName(deck.name, name),
+  );
   if (clash) return refuse(`You already have a deck called ${clash.name}.`);
 
   if (target) {
@@ -115,7 +131,9 @@ export const decideDeckRequest = (
     };
   }
   if (decks.length >= MAX_DECKS_PER_USER) {
-    return refuse(`You already have ${MAX_DECKS_PER_USER} decks. Delete one first.`);
+    return refuse(
+      `You already have ${MAX_DECKS_PER_USER} decks. Delete one first.`,
+    );
   }
   return { ok: true, action: "create", name: name.trim(), cards: chosen };
 };
@@ -125,7 +143,11 @@ export const decideDeckRequest = (
  * button shows it. Returns false when the server has no channel to post in. Given by
  * the bot, which holds the Discord client; without it, cards can't be shown.
  */
-export type CardPoster = (serverId: string, discordId: string, copyId: string) => Promise<boolean>;
+export type CardPoster = (
+  serverId: string,
+  discordId: string,
+  copyId: string,
+) => Promise<boolean>;
 
 /** One card shown a minute, per player: the button is not a way to flood a channel. */
 export const SHOW_COOLDOWN_MS = 60 * 1000;
@@ -140,8 +162,10 @@ export const decideCardShow = (
     return { ok: false, reason: "That request could not be read." };
   }
   const { card } = payload as Record<string, unknown>;
-  if (typeof card !== "string" || !card) return { ok: false, reason: "That request could not be read." };
-  if (!owned.has(card)) return { ok: false, reason: "That card is no longer in your collection." };
+  if (typeof card !== "string" || !card)
+    return { ok: false, reason: "That request could not be read." };
+  if (!owned.has(card))
+    return { ok: false, reason: "That card is no longer in your collection." };
   return { ok: true, cardId: card };
 };
 
@@ -151,7 +175,9 @@ export const decideCardShow = (
  */
 const discordIdOf = async (userId: string): Promise<string | null> => {
   const links = await remote.collection("_externalAuths").getFullList({
-    filter: remote.filter("recordRef = {:user} && provider = 'discord'", { user: userId }),
+    filter: remote.filter("recordRef = {:user} && provider = 'discord'", {
+      user: userId,
+    }),
   });
   return (links[0]?.providerId as string) || null;
 };
@@ -168,30 +194,47 @@ export const resolveRequest = async (
   now: number = Date.now(),
   { showCard }: { showCard?: CardPoster } = {},
 ): Promise<RequestOutcome> => {
-  const reject = (message: string): RequestOutcome => ({ status: "rejected", message });
+  const reject = (message: string): RequestOutcome => ({
+    status: "rejected",
+    message,
+  });
 
   const age = now - new Date(request.created.replace(" ", "T")).getTime();
   if (!(age < REQUEST_STALE_MS)) {
-    return reject("Fini was away when you asked. Nothing was changed - try again.");
+    return reject(
+      "Fini was away when you asked. Nothing was changed - try again.",
+    );
   }
 
   const discordId = await discordIdOf(request.user);
   if (!discordId) return reject("Sign in with Discord to change decks.");
 
   const collection = await getUserCollection(discordId, request.server_id);
-  if (collection.length === 0) return reject("You have no cards on that server.");
+  if (collection.length === 0)
+    return reject("You have no cards on that server.");
 
   if (request.kind === "card_show") {
     if (!showCard) return reject("Fini can't post cards right now.");
-    const decision = decideCardShow(request.payload, new Set(collection.map((card) => card.id ?? "")));
+    const decision = decideCardShow(
+      request.payload,
+      new Set(collection.map((card) => card.id ?? "")),
+    );
     if (!decision.ok) return reject(decision.reason);
     const wait = (lastShown.get(discordId) ?? 0) + SHOW_COOLDOWN_MS - now;
-    if (wait > 0) return reject(`You can show another card in ${Math.ceil(wait / 1000)} seconds.`);
+    if (wait > 0)
+      return reject(
+        `You can show another card in ${Math.ceil(wait / 1000)} seconds.`,
+      );
     if (!(await showCard(request.server_id, discordId, decision.cardId))) {
-      return reject("That server has no channel for Finicards. An admin can set one with /config finicards_channel.");
+      return reject(
+        "That server has no channel for Finicards. An admin can set one with /config finicards_channel.",
+      );
     }
     lastShown.set(discordId, now);
-    return { status: "applied", message: "Posted in the server's Finicards channel." };
+    return {
+      status: "applied",
+      message: "Posted in the server's Finicards channel.",
+    };
   }
 
   const decks = await getDecks(discordId, request.server_id);
@@ -205,13 +248,21 @@ export const resolveRequest = async (
 
   if (decision.action === "delete") {
     await deleteDeck(decision.deckId);
-    return { status: "applied", message: `Deleted ${decision.name}.`, deck: decision.deckId };
+    return {
+      status: "applied",
+      message: `Deleted ${decision.name}.`,
+      deck: decision.deckId,
+    };
   }
   if (decision.action === "update") {
     await pb
       .collection<V2DeckRecord>(V2_DECK)
       .update(decision.deckId, { name: decision.name, cards: decision.cards });
-    return { status: "applied", message: `Saved ${decision.name}.`, deck: decision.deckId };
+    return {
+      status: "applied",
+      message: `Saved ${decision.name}.`,
+      deck: decision.deckId,
+    };
   }
   const created = await pb.collection<V2DeckRecord>(V2_DECK).create({
     user_id: discordId,
@@ -220,7 +271,11 @@ export const resolveRequest = async (
     name: decision.name,
     cards: decision.cards,
   });
-  return { status: "applied", message: `Saved ${decision.name}.`, deck: created.id };
+  return {
+    status: "applied",
+    message: `Saved ${decision.name}.`,
+    deck: created.id,
+  };
 };
 
 export const pendingRequests = async (): Promise<WebRequestRecord[]> =>

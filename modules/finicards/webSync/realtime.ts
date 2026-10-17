@@ -30,7 +30,8 @@ export const watchRequests = async (
         headers: { Accept: "text/event-stream" },
         signal,
       });
-      if (!response.ok || !response.body) throw new Error(`stream refused: ${response.status}`);
+      if (!response.ok || !response.body)
+        throw new Error(`stream refused: ${response.status}`);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -63,7 +64,8 @@ export const watchRequests = async (
               body: JSON.stringify({ clientId, subscriptions: [TOPIC] }),
               signal,
             });
-            if (!subscribed.ok) throw new Error(`subscribe refused: ${subscribed.status}`);
+            if (!subscribed.ok)
+              throw new Error(`subscribe refused: ${subscribed.status}`);
             wait = RETRY_MS;
             // Anything left while the stream was down.
             onRequest();
@@ -77,7 +79,8 @@ export const watchRequests = async (
       // A quiet stream is closed after a few minutes and simply opened again;
       // only a drop for some other reason is worth a line in the log.
       const reason = (error as Error)?.message ?? String(error);
-      if (!/timed out/i.test(reason)) console.error("Web sync: request stream dropped:", reason);
+      if (!/timed out/i.test(reason))
+        console.error("Web sync: request stream dropped:", reason);
     }
     await new Promise((resolve) => setTimeout(resolve, wait));
     wait = Math.min(wait * 2, MAX_RETRY_MS);

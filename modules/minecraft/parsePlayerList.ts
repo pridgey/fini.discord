@@ -22,9 +22,7 @@ export type ParsedPlayerList = {
  * The number appears to come from a mod rather than vanilla, so the prefix is
  * stripped rather than interpreted.
  */
-export const parsePlayerList = (
-  response: string,
-): ParsedPlayerList | null => {
+export const parsePlayerList = (response: string): ParsedPlayerList | null => {
   const totalMatch = response.match(/There are (\d+)/);
   if (!totalMatch) return null;
 

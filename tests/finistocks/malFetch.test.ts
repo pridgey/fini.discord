@@ -3,9 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test";
 // stockData imports the PocketBase client; malFetch never touches it
 mock.module("../../utilities/pocketbase", () => ({ pb: {} }));
 
-const { malFetch, malTiming, snapshotOf } = await import(
-  "../../modules/finistocks/stockData"
-);
+const { malFetch, malTiming, snapshotOf } =
+  await import("../../modules/finistocks/stockData");
 
 const realFetch = globalThis.fetch;
 /**
@@ -20,15 +19,17 @@ const realClientId = process.env.MAL_CLIENT_ID;
 // Answers each request with the next status in the list; 200s carry a body
 const answer = (statuses: number[], headers: Record<string, string> = {}) => {
   const calls: string[] = [];
-  globalThis.fetch = mock(async (url: string | URL | Request, init?: RequestInit) => {
-    calls.push(String(url));
-    sentHeaders.push(new Headers(init?.headers).get("x-mal-client-id"));
-    const status = statuses[calls.length - 1] ?? 200;
-    return new Response(JSON.stringify({ data: { mal_id: 1 } }), {
-      status,
-      headers,
-    });
-  }) as unknown as typeof fetch;
+  globalThis.fetch = mock(
+    async (url: string | URL | Request, init?: RequestInit) => {
+      calls.push(String(url));
+      sentHeaders.push(new Headers(init?.headers).get("x-mal-client-id"));
+      const status = statuses[calls.length - 1] ?? 200;
+      return new Response(JSON.stringify({ data: { mal_id: 1 } }), {
+        status,
+        headers,
+      });
+    },
+  ) as unknown as typeof fetch;
   return calls;
 };
 
@@ -48,14 +49,17 @@ describe("malFetch", () => {
 
   it("returns the body on success", async () => {
     const calls = answer([200]);
-    expect(await malFetch<unknown>("/anime/1")).toEqual({ data: { mal_id: 1 } });
+    expect(await malFetch<unknown>("/anime/1")).toEqual({
+      data: { mal_id: 1 },
+    });
     expect(calls).toEqual(["https://api.myanimelist.net/v2/anime/1"]);
     expect(sentHeaders).toEqual(["test-client"]);
   });
 
   it("follows a paging link as given", async () => {
     const calls = answer([200]);
-    const next = "https://api.myanimelist.net/v2/anime/season/2026/fall?offset=500&limit=500";
+    const next =
+      "https://api.myanimelist.net/v2/anime/season/2026/fall?offset=500&limit=500";
     await malFetch(next);
     expect(calls).toEqual([next]);
   });
@@ -73,7 +77,9 @@ describe("malFetch", () => {
     globalThis.fetch = mock(
       (_url: string, init?: RequestInit) =>
         new Promise<Response>((_, reject) =>
-          init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))),
+          init?.signal?.addEventListener("abort", () =>
+            reject(new Error("aborted")),
+          ),
         ),
     ) as unknown as typeof fetch;
     expect(await malFetch("/anime/1")).toBeNull();
@@ -81,7 +87,9 @@ describe("malFetch", () => {
 
   it("retries a 429 and then succeeds", async () => {
     const calls = answer([429, 429, 200]);
-    expect(await malFetch<unknown>("/anime/1")).toEqual({ data: { mal_id: 1 } });
+    expect(await malFetch<unknown>("/anime/1")).toEqual({
+      data: { mal_id: 1 },
+    });
     expect(calls.length).toBe(3);
   });
 
@@ -182,10 +190,19 @@ describe("snapshotOf", () => {
   });
 
   it("maps every MAL status, and copes with an unscored, undated anime", () => {
-    expect(snapshotOf({ id: 1, title: "A", status: "not_yet_aired" }).status).toBe("upcoming");
-    expect(snapshotOf({ id: 1, title: "A", status: "finished_airing" }).status).toBe("finished");
+    expect(
+      snapshotOf({ id: 1, title: "A", status: "not_yet_aired" }).status,
+    ).toBe("upcoming");
+    expect(
+      snapshotOf({ id: 1, title: "A", status: "finished_airing" }).status,
+    ).toBe("finished");
     const bare = snapshotOf({ id: 1, title: "Untitled" });
     expect(bare.title).toBe("Untitled");
-    expect([bare.score, bare.rank, bare.season, bare.year]).toEqual([0, 0, null, null]);
+    expect([bare.score, bare.rank, bare.season, bare.year]).toEqual([
+      0,
+      0,
+      null,
+      null,
+    ]);
   });
 });

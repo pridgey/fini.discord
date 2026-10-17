@@ -89,7 +89,10 @@ const findCards = async (
  * Why a trade can't go ahead right now, or null if it can: a card is no
  * longer its owner's, or a side can't cover the Finicoin it put up.
  */
-const stillGood = async (sides: TradeSide[], serverId: string): Promise<string | null> => {
+const stillGood = async (
+  sides: TradeSide[],
+  serverId: string,
+): Promise<string | null> => {
   for (const side of sides) {
     for (const copy of side.cards) {
       if (!(await stillOwns(side.user.id, copy.id ?? ""))) {
@@ -119,10 +122,28 @@ export const completeTrade = async (
   const problem = await stillGood([from, to], serverId);
   if (problem) return problem;
 
-  if (from.fc > 0) await addCoin(to.user.id, serverId, from.fc, to.user.username, serverName, from.user.id);
-  if (to.fc > 0) await addCoin(from.user.id, serverId, to.fc, from.user.username, serverName, to.user.id);
-  for (const copy of from.cards) await handOver(copy, to.user.id, `${to.user.username}-${serverName}`);
-  for (const copy of to.cards) await handOver(copy, from.user.id, `${from.user.username}-${serverName}`);
+  if (from.fc > 0)
+    await addCoin(
+      to.user.id,
+      serverId,
+      from.fc,
+      to.user.username,
+      serverName,
+      from.user.id,
+    );
+  if (to.fc > 0)
+    await addCoin(
+      from.user.id,
+      serverId,
+      to.fc,
+      from.user.username,
+      serverName,
+      to.user.id,
+    );
+  for (const copy of from.cards)
+    await handOver(copy, to.user.id, `${to.user.username}-${serverName}`);
+  for (const copy of to.cards)
+    await handOver(copy, from.user.id, `${from.user.username}-${serverName}`);
   return null;
 };
 
@@ -144,14 +165,24 @@ export const runTrade = async (
   const giveFc = Math.max(0, interaction.options.getInteger("give_fc") ?? 0);
   const wantFc = Math.max(0, interaction.options.getInteger("want_fc") ?? 0);
 
-  if (giveIds.length === 0 && wantIds.length === 0 && giveFc === 0 && wantFc === 0) {
+  if (
+    giveIds.length === 0 &&
+    wantIds.length === 0 &&
+    giveFc === 0 &&
+    wantFc === 0
+  ) {
     await interaction.editReply(
       "Put something in the trade: card ids in `give` or `want`, or Finicoin in `give_fc` or `want_fc`. Card ids are listed in `/finicard collection`.",
     );
     return;
   }
-  if (giveIds.length > MAX_CARDS_PER_SIDE || wantIds.length > MAX_CARDS_PER_SIDE) {
-    await interaction.editReply(`A trade can hold up to ${MAX_CARDS_PER_SIDE} cards from each player.`);
+  if (
+    giveIds.length > MAX_CARDS_PER_SIDE ||
+    wantIds.length > MAX_CARDS_PER_SIDE
+  ) {
+    await interaction.editReply(
+      `A trade can hold up to ${MAX_CARDS_PER_SIDE} cards from each player.`,
+    );
     return;
   }
 
@@ -165,7 +196,9 @@ export const runTrade = async (
   ];
   if (problems.length > 0) {
     await interaction.editReply(
-      [...problems, "-# Card ids are listed in `/finicard collection`."].join("\n"),
+      [...problems, "-# Card ids are listed in `/finicard collection`."].join(
+        "\n",
+      ),
     );
     return;
   }
@@ -176,22 +209,35 @@ export const runTrade = async (
   if (giveFc > 0) {
     const balance = (await getUserBalance(proposer.id, serverId)) || 0;
     if (balance < giveFc) {
-      await interaction.editReply(`You're putting up ${giveFc} fc and you have ${balance}.`);
+      await interaction.editReply(
+        `You're putting up ${giveFc} fc and you have ${balance}.`,
+      );
       return;
     }
   }
 
   const media = await Promise.all(
-    [...from.cards, ...to.cards].map((copy) => renderCardMedia(toBattleCard(copy)).catch(() => null)),
+    [...from.cards, ...to.cards].map((copy) =>
+      renderCardMedia(toBattleCard(copy)).catch(() => null),
+    ),
   );
   const files = media.flatMap((item) =>
     item ? [new AttachmentBuilder(item.buffer, { name: item.name })] : [],
   );
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("v2trade-accept").setLabel(`(${partner.username}) Accept`).setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("v2trade-decline").setLabel("Decline").setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId("v2trade-cancel").setLabel("Cancel").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("v2trade-accept")
+      .setLabel(`(${partner.username}) Accept`)
+      .setStyle(ButtonStyle.Success),
+    new ButtonBuilder()
+      .setCustomId("v2trade-decline")
+      .setLabel("Decline")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("v2trade-cancel")
+      .setLabel("Cancel")
+      .setStyle(ButtonStyle.Secondary),
   );
 
   const message = await interaction.editReply({
@@ -211,7 +257,10 @@ export const runTrade = async (
   collector.on("end", async () => {
     if (closed) return;
     await interaction
-      .editReply({ content: `⌛ The trade ${summary} expired without an answer.`, components: [] })
+      .editReply({
+        content: `⌛ The trade ${summary} expired without an answer.`,
+        components: [],
+      })
       .catch(() => undefined);
   });
 
@@ -227,20 +276,29 @@ export const runTrade = async (
 
       if (press.customId === "v2trade-cancel") {
         if (!isProposer) {
-          return void (await press.reply({ content: "Only the player who offered this trade can cancel it.", ephemeral: true }));
+          return void (await press.reply({
+            content: "Only the player who offered this trade can cancel it.",
+            ephemeral: true,
+          }));
         }
-        return void (await close(`🚫 ${proposer} cancelled the trade with ${partner}.`));
+        return void (await close(
+          `🚫 ${proposer} cancelled the trade with ${partner}.`,
+        ));
       }
 
       if (!isPartner) {
         return void (await press.reply({
-          content: isProposer ? `It's up to ${partner} to accept or decline.` : "This trade isn't yours to answer.",
+          content: isProposer
+            ? `It's up to ${partner} to accept or decline.`
+            : "This trade isn't yours to answer.",
           ephemeral: true,
         }));
       }
 
       if (press.customId === "v2trade-decline") {
-        return void (await close(`❌ ${partner} declined ${proposer}'s trade.`));
+        return void (await close(
+          `❌ ${partner} declined ${proposer}'s trade.`,
+        ));
       }
 
       // Accept. Claimed before anything moves, so two quick presses can't both trade.
@@ -269,7 +327,12 @@ export const runTrade = async (
       collector.stop();
     } catch (error) {
       console.error("Error during a v2 card trade", error);
-      await press.reply({ content: "Something went wrong with that trade.", ephemeral: true }).catch(() => undefined);
+      await press
+        .reply({
+          content: "Something went wrong with that trade.",
+          ephemeral: true,
+        })
+        .catch(() => undefined);
     }
   });
 };

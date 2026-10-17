@@ -49,13 +49,19 @@ const REVEAL_REST_MS = 2500;
 
 /** Rarest last, so the pack builds to its best card. */
 const SHOW_ORDER = (card: BattleCard): number =>
-  card.legendary ? 4 : card.secretArt ? 3 : { common: 0, uncommon: 1, full_art: 2 }[card.rarity];
+  card.legendary
+    ? 4
+    : card.secretArt
+      ? 3
+      : { common: 0, uncommon: 1, full_art: 2 }[card.rarity];
 
 /** The order a pack's cards are turned over in. */
 export const packShowOrder = (cards: BattleCard[]): BattleCard[] =>
   cards
     .map((card, index) => ({ card, index }))
-    .sort((a, b) => SHOW_ORDER(a.card) - SHOW_ORDER(b.card) || a.index - b.index)
+    .sort(
+      (a, b) => SHOW_ORDER(a.card) - SHOW_ORDER(b.card) || a.index - b.index,
+    )
     .map(({ card }) => card);
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -95,7 +101,10 @@ export type PackAgain = {
 export const keepAttachments = (
   attachments: Iterable<Attachment>,
 ): (MessageEditAttachmentData & { filename: string })[] =>
-  [...attachments].map((attachment) => ({ id: attachment.id, filename: attachment.name }));
+  [...attachments].map((attachment) => ({
+    id: attachment.id,
+    filename: attachment.name,
+  }));
 
 export const presentPack = async (
   interaction: ChatInputCommandInteraction | ButtonInteraction,
@@ -115,9 +124,12 @@ export const presentPack = async (
   const stills = cards.map((card) => renderCardMedia(card));
   // The pulls worth an entrance: a Legendary, and a Secret Art.
   const reveals = cards.map((card) =>
-    card.legendary || card.secretArt ? renderCardMedia(card, { reveal: true }) : null,
+    card.legendary || card.secretArt
+      ? renderCardMedia(card, { reveal: true })
+      : null,
   );
-  for (const pending of [...stills, ...reveals]) pending?.catch(() => undefined);
+  for (const pending of [...stills, ...reveals])
+    pending?.catch(() => undefined);
 
   const cover = await buildPackCoverMessage({
     size: cards.length,
@@ -135,7 +147,9 @@ export const presentPack = async (
    */
   let held = new Map<string, Attachment>();
   const hold = (sent: Message) => {
-    held = new Map(sent.attachments.map((attachment) => [attachment.name, attachment]));
+    held = new Map(
+      sent.attachments.map((attachment) => [attachment.name, attachment]),
+    );
   };
   hold(message);
 
@@ -149,10 +163,19 @@ export const presentPack = async (
         return void (await surface.editReply(layout));
       }
       await surface.acknowledge?.();
-      hold(await surface.editReply({ ...layout, files: missing, attachments: keepAttachments(held.values()) }));
+      hold(
+        await surface.editReply({
+          ...layout,
+          files: missing,
+          attachments: keepAttachments(held.values()),
+        }),
+      );
     } catch (error) {
       // The message was not carrying what we thought. Send the screen whole.
-      console.error("Pack screen sent in full after a failed quick edit", error);
+      console.error(
+        "Pack screen sent in full after a failed quick edit",
+        error,
+      );
       await surface.acknowledge?.().catch(() => undefined);
       hold(await surface.editReply({ ...built, attachments: [] }));
     }
@@ -169,7 +192,9 @@ export const presentPack = async (
     // here, and go up when its turn comes.
     const drawn = (
       await Promise.all(
-        stills.map((still, index) => (cards[index].legendary ? null : still.catch(() => null))),
+        stills.map((still, index) =>
+          cards[index].legendary ? null : still.catch(() => null),
+        ),
       )
     ).filter((media): media is CardMedia => !!media);
     hold(
@@ -178,12 +203,17 @@ export const presentPack = async (
         flags: cover.flags,
         files: [
           ...opening.files,
-          ...drawn.map((media) => new AttachmentBuilder(media.buffer, { name: media.name })),
+          ...drawn.map(
+            (media) =>
+              new AttachmentBuilder(media.buffer, { name: media.name }),
+          ),
         ],
         attachments: keepAttachments(held.values()),
       }),
     );
-  })().catch((error) => console.error("Couldn't preload a v2 pack's images", error));
+  })().catch((error) =>
+    console.error("Couldn't preload a v2 pack's images", error),
+  );
 
   /** Which screen is up. A timed swap only lands if this has not moved on. */
   let screen = 0;
@@ -196,7 +226,10 @@ export const presentPack = async (
   const showAll = async (surface: Surface) => {
     finished = true;
     screen += 1;
-    await put(surface, await buildPackMessage({ ...pack, again: again?.label }));
+    await put(
+      surface,
+      await buildPackMessage({ ...pack, again: again?.label }),
+    );
     // The collector is kept, when there is another pack to offer, to hear it asked for.
     if (again) offering = true;
     else collector.stop();
@@ -235,7 +268,9 @@ export const presentPack = async (
     if (reveal && still) {
       await wait(LEGENDARY_REVEAL_MS + REVEAL_REST_MS);
       if (screen === here) {
-        await put({ editReply: surface.editReply }, view(still)).catch(() => undefined);
+        await put({ editReply: surface.editReply }, view(still)).catch(
+          () => undefined,
+        );
       }
     }
   };
@@ -265,7 +300,8 @@ export const presentPack = async (
     }
     if (press.customId === PACK_BUTTON.again) {
       // One press, one pack: the button is spent before anything is awaited.
-      if (!again || !offering || busy) return void (await press.deferUpdate().catch(() => undefined));
+      if (!again || !offering || busy)
+        return void (await press.deferUpdate().catch(() => undefined));
       busy = true;
       try {
         await press.deferReply();
@@ -273,13 +309,16 @@ export const presentPack = async (
         await again.buy(press);
       } catch (error) {
         console.error("Error while buying another v2 pack", error);
-        await press.editReply("Something went wrong opening another pack.").catch(() => undefined);
+        await press
+          .editReply("Something went wrong opening another pack.")
+          .catch(() => undefined);
       }
       return;
     }
     // One step at a time: a second press while the first is still being
     // answered is acknowledged and dropped.
-    if (busy || finished) return void (await press.deferUpdate().catch(() => undefined));
+    if (busy || finished)
+      return void (await press.deferUpdate().catch(() => undefined));
     busy = true;
 
     // A press has three seconds to be answered. It is answered with the new
@@ -305,7 +344,10 @@ export const presentPack = async (
 
     try {
       // Rarely still in flight by the time anyone presses; see `preload`.
-      const landed = await Promise.race([preload.then(() => true), wait(1500).then(() => false)]);
+      const landed = await Promise.race([
+        preload.then(() => true),
+        wait(1500).then(() => false),
+      ]);
       if (!landed) {
         await acknowledge();
         await preload;
@@ -322,7 +364,10 @@ export const presentPack = async (
         }
         busy = false;
         await showCard(0, surface());
-      } else if (press.customId === PACK_BUTTON.next && shown < cards.length - 1) {
+      } else if (
+        press.customId === PACK_BUTTON.next &&
+        shown < cards.length - 1
+      ) {
         busy = false;
         await showCard(shown + 1, surface());
       } else {

@@ -90,7 +90,9 @@ export const panoramaxNear = async (spot: LatLon): Promise<Candidate[]> => {
     const imageUrl = feature.assets.hd?.href ?? feature.assets.sd?.href;
     if (!imageUrl) return [];
     const [lon, lat] = feature.geometry.coordinates;
-    const producer = feature.providers?.find((provider) => provider.roles.includes("producer"));
+    const producer = feature.providers?.find((provider) =>
+      provider.roles.includes("producer"),
+    );
     return [
       {
         lat,
@@ -104,11 +106,17 @@ export const panoramaxNear = async (spot: LatLon): Promise<Candidate[]> => {
 };
 
 /** Mapillary's photos near a spot. */
-export const mapillaryNear = async (spot: LatLon, token: string): Promise<Candidate[]> => {
+export const mapillaryNear = async (
+  spot: LatLon,
+  token: string,
+): Promise<Candidate[]> => {
   for (const radius of MAPILLARY_RADII) {
     const url = new URL("https://graph.mapillary.com/images");
     url.searchParams.set("access_token", token);
-    url.searchParams.set("fields", "id,thumb_2048_url,geometry,creator,is_pano");
+    url.searchParams.set(
+      "fields",
+      "id,thumb_2048_url,geometry,creator,is_pano",
+    );
     url.searchParams.set("bbox", bboxAround(spot, radius));
     url.searchParams.set("limit", "20");
 
@@ -149,13 +157,18 @@ const mapillaryCandidates = (json: MapillaryImages): Candidate[] =>
   });
 
 /** Everything Mapillary detected in these photos, as detection values. */
-export const mapillaryDetections = async (ids: string[], token: string): Promise<string[]> => {
+export const mapillaryDetections = async (
+  ids: string[],
+  token: string,
+): Promise<string[]> => {
   const lists = await Promise.all(
     ids.map(async (id) => {
       const url = new URL(`https://graph.mapillary.com/${id}/detections`);
       url.searchParams.set("access_token", token);
       url.searchParams.set("fields", "value");
-      const json = await fetchJson<{ data?: { value: string }[] }>(url.toString());
+      const json = await fetchJson<{ data?: { value: string }[] }>(
+        url.toString(),
+      );
       return (json?.data ?? []).map((detection) => detection.value);
     }),
   );
@@ -172,14 +185,19 @@ const MIN_SPACING_KM = 0.04;
  * The photos nearest the chosen one that are each at least MIN_SPACING_KM
  * from every photo already picked, to fill out a round of flat photos.
  */
-export const neighboursOf = (chosen: Candidate, others: Candidate[], count = 2): Candidate[] => {
+export const neighboursOf = (
+  chosen: Candidate,
+  others: Candidate[],
+  count = 2,
+): Candidate[] => {
   const picked: Candidate[] = [chosen];
   const byDistance = others
     .filter((candidate) => candidate.imageUrl !== chosen.imageUrl)
     .sort((a, b) => distanceKm(a, chosen) - distanceKm(b, chosen));
   for (const candidate of byDistance) {
     if (picked.length > count) break;
-    if (picked.every((other) => distanceKm(candidate, other) >= MIN_SPACING_KM)) picked.push(candidate);
+    if (picked.every((other) => distanceKm(candidate, other) >= MIN_SPACING_KM))
+      picked.push(candidate);
   }
   return picked.slice(1);
 };
@@ -197,7 +215,10 @@ const download = async (url: string): Promise<Buffer | null> => {
 };
 
 const reencode = (image: Sharp) =>
-  image.resize({ width: PHOTO_WIDTH, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
+  image
+    .resize({ width: PHOTO_WIDTH, withoutEnlargement: true })
+    .jpeg({ quality: 82 })
+    .toBuffer();
 
 /**
  * Dashcams print a strip along the bottom of every frame, and sometimes the
@@ -218,7 +239,11 @@ export const viewsOf = async (original: Buffer): Promise<Buffer[]> => {
   if (width / height < 1.9) {
     const top = Math.round(height * TRIM_TOP);
     const kept = height - top - Math.round(height * TRIM_BOTTOM);
-    return [await reencode(sharp(original).extract({ left: 0, top, width, height: kept }))];
+    return [
+      await reencode(
+        sharp(original).extract({ left: 0, top, width, height: kept }),
+      ),
+    ];
   }
 
   const viewWidth = Math.round(width / 4);
@@ -239,7 +264,10 @@ export const viewsOf = async (original: Buffer): Promise<Buffer[]> => {
 };
 
 /** Three photos for the round: the chosen one's views, or its nearest neighbours. */
-const photosFor = async (chosen: Candidate, others: Candidate[]): Promise<Buffer[]> => {
+const photosFor = async (
+  chosen: Candidate,
+  others: Candidate[],
+): Promise<Buffer[]> => {
   const first = await download(chosen.imageUrl);
   if (!first) return [];
   const views = await viewsOf(first);
@@ -264,7 +292,9 @@ type Pick = {
  * Mapillary, a spot is used only if its photos clear MIN_CLUES; if none does
  * in time, the best seen is used rather than nothing.
  */
-export const findRound = async (random = Math.random): Promise<GeoRound | null> => {
+export const findRound = async (
+  random = Math.random,
+): Promise<GeoRound | null> => {
   const token = process.env.MAPILLARY_TOKEN;
   const source = token ? "Mapillary" : "Panoramax";
   let best: Pick | null = null;
@@ -289,7 +319,9 @@ export const findRound = async (random = Math.random): Promise<GeoRound | null> 
       lat: place.lat + (random() * 2 - 1) * SCATTER,
       lon: place.lon + (random() * 2 - 1) * SCATTER,
     };
-    const candidates = token ? await mapillaryNear(spot, token) : await panoramaxNear(spot);
+    const candidates = token
+      ? await mapillaryNear(spot, token)
+      : await panoramaxNear(spot);
     if (candidates.length === 0) continue;
 
     if (!token) {
@@ -299,9 +331,13 @@ export const findRound = async (random = Math.random): Promise<GeoRound | null> 
       continue;
     }
 
-    const tries = [...candidates].sort(() => random() - 0.5).slice(0, TRIES_PER_SPOT);
+    const tries = [...candidates]
+      .sort(() => random() - 0.5)
+      .slice(0, TRIES_PER_SPOT);
     for (const chosen of tries) {
-      const shown = shownWith(chosen, candidates).flatMap((candidate) => candidate.id ?? []);
+      const shown = shownWith(chosen, candidates).flatMap(
+        (candidate) => candidate.id ?? [],
+      );
       const found = await mapillaryDetections(shown, token);
       const score = clueScore(found);
       const pick: Pick = {

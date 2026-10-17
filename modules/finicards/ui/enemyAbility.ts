@@ -52,7 +52,8 @@ const signed = (amount: number): string =>
 
 /** "Ancient Koro-sensei, Hulking Vegeta (itself, from the stalemate)". */
 const lineupNames = (leg: Leg, enemy: BattleCard): string => {
-  if (leg.rounds.length === 0) return "no enemies yet - this is the first fight of the leg";
+  if (leg.rounds.length === 0)
+    return "no enemies yet - this is the first fight of the leg";
   return leg.rounds
     .map(({ defender }) =>
       defender.card.instanceId === enemy.instanceId
@@ -66,8 +67,15 @@ const lineupNames = (leg: Leg, enemy: BattleCard): string => {
  * Runs `keyword` for the enemy as the coming fight will, for the keywords that
  * read nothing of the player's card, and returns what it adds to its type stat.
  */
-const bonusFor = (keyword: KeywordDefinition, enemy: BattleCard, leg: Leg): number => {
-  const workspace = (card: BattleCard, side: CombatWorkspace["side"]): CombatWorkspace => ({
+const bonusFor = (
+  keyword: KeywordDefinition,
+  enemy: BattleCard,
+  leg: Leg,
+): number => {
+  const workspace = (
+    card: BattleCard,
+    side: CombatWorkspace["side"],
+  ): CombatWorkspace => ({
     side,
     card,
     attackStat: card.stats[card.type],
@@ -143,8 +151,10 @@ const ownSideReason = (
     case "trinity":
       return lineup;
     case "thrifty": {
-      const cost = [...leg.rounds.map(({ defender }) => defender.card), enemy]
-        .reduce((sum, card) => sum + card.cost, 0);
+      const cost = [
+        ...leg.rounds.map(({ defender }) => defender.card),
+        enemy,
+      ].reduce((sum, card) => sum + card.cost, 0);
       return `${lineup}, costing ${cost} in all`;
     }
     default:
@@ -155,7 +165,8 @@ const ownSideReason = (
 /** Keywords that hand something on, which in a dungeon means along the leg. */
 const handOnReason = (slug: string, leg: Leg): string | null => {
   const last = leg.slot === leg.length;
-  const lastNote = "but this is the last fight of the leg, so there's nothing to hand on";
+  const lastNote =
+    "but this is the last fight of the leg, so there's nothing to hand on";
   switch (slug) {
     case "rally":
       return last
@@ -230,16 +241,30 @@ const yourCardReason = (slug: string, enemy: BattleCard): string | null => {
 const carriedLines = (leg: Leg): string[] => {
   const lines: string[] = [];
   const forEnemy = [
-    ...(leg.dungeon.pendingRally ? [`Rally ${signed(leg.dungeon.pendingRally)}`] : []),
-    ...leg.dungeon.incoming.map(({ label, amount }) => `${label} ${signed(amount)}`),
+    ...(leg.dungeon.pendingRally
+      ? [`Rally ${signed(leg.dungeon.pendingRally)}`]
+      : []),
+    ...leg.dungeon.incoming.map(
+      ({ label, amount }) => `${label} ${signed(amount)}`,
+    ),
   ];
   const forYou = [
-    ...(leg.player.pendingRally ? [`Rally ${signed(leg.player.pendingRally)}`] : []),
-    ...leg.player.incoming.map(({ label, amount }) => `${label} ${signed(amount)}`),
+    ...(leg.player.pendingRally
+      ? [`Rally ${signed(leg.player.pendingRally)}`]
+      : []),
+    ...leg.player.incoming.map(
+      ({ label, amount }) => `${label} ${signed(amount)}`,
+    ),
     ...(leg.player.silenceNext ? ["Spoiler: its ability is switched off"] : []),
   ];
-  if (forEnemy.length) lines.push(`-# ↳ Carried in from earlier this leg, for the enemy: ${forEnemy.join(", ")}.`);
-  if (forYou.length) lines.push(`-# ↳ Carried in from earlier this leg, for your card: ${forYou.join(", ")}.`);
+  if (forEnemy.length)
+    lines.push(
+      `-# ↳ Carried in from earlier this leg, for the enemy: ${forEnemy.join(", ")}.`,
+    );
+  if (forYou.length)
+    lines.push(
+      `-# ↳ Carried in from earlier this leg, for your card: ${forYou.join(", ")}.`,
+    );
   return lines;
 };
 
@@ -264,7 +289,8 @@ export const enemyAbilityLines = (
           const bonus = bonusFor(keyword, enemy, leg);
           return `${bonus === 0 ? "No bonus this fight" : `**${signed(bonus)}** this fight`}: ${own}.`;
         })()
-      : (handOnReason(keyword.slug, leg) ?? yourCardReason(keyword.slug, enemy));
+      : (handOnReason(keyword.slug, leg) ??
+        yourCardReason(keyword.slug, enemy));
     if (explained) lines.push(`-# ↳ **Here:** ${explained}`);
   }
 

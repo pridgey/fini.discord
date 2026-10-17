@@ -57,8 +57,12 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     await interaction.editReply(page);
   } catch (error) {
     console.error("Error returning to v2 collection:", error, { args });
-    const failed = { content: "❌ Failed to reopen the collection", flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral] };
-    if (interaction.replied || interaction.deferred) await interaction.followUp(failed).catch(() => undefined);
+    const failed = {
+      content: "❌ Failed to reopen the collection",
+      flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral],
+    };
+    if (interaction.replied || interaction.deferred)
+      await interaction.followUp(failed).catch(() => undefined);
     else await interaction.reply(failed).catch(() => undefined);
   }
 }

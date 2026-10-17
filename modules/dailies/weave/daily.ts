@@ -1,7 +1,20 @@
-import { ActionRowBuilder, AttachmentBuilder, ButtonBuilder, ButtonStyle, Client } from "discord.js";
+import {
+  ActionRowBuilder,
+  AttachmentBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  Client,
+} from "discord.js";
 import { addCoin } from "../../finicoin";
 import { getBotChannelForServer } from "../../../utilities/config/configUtils";
-import { POST_HOUR, POST_TIME, currentDay, dayKey, previousDay, sendTo } from "../shared";
+import {
+  POST_HOUR,
+  POST_TIME,
+  currentDay,
+  dayKey,
+  previousDay,
+  sendTo,
+} from "../shared";
 import { buildBoard, buttonId } from "./board";
 import { WEAVE_IMAGE, renderWeaveBoard } from "./render";
 import {
@@ -72,9 +85,15 @@ export const weavePost = async (round: WeaveRoundRecord) => ({
     `-# Press **My board** to play. Your board is your own and saves as you go, until the next Weave at ${POST_TIME}.`,
   ].join("\n"),
   files: [
-    new AttachmentBuilder(await renderWeaveBoard({ puzzle: puzzleOf(round), progress: NO_PROGRESS }), {
-      name: WEAVE_IMAGE,
-    }),
+    new AttachmentBuilder(
+      await renderWeaveBoard({
+        puzzle: puzzleOf(round),
+        progress: NO_PROGRESS,
+      }),
+      {
+        name: WEAVE_IMAGE,
+      },
+    ),
   ],
   components: [
     new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -90,12 +109,22 @@ export const weavePost = async (round: WeaveRoundRecord) => ({
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 /** Yesterday's answers, and who did what. */
-export const weaveResultsText = (round: WeaveRoundRecord, plays: WeavePlayRecord[]): string => {
+export const weaveResultsText = (
+  round: WeaveRoundRecord,
+  plays: WeavePlayRecord[],
+): string => {
   const puzzle = puzzleOf(round);
-  const played = plays.filter((play) => (play.found ?? []).length > 0 || play.thread_guess);
+  const played = plays.filter(
+    (play) => (play.found ?? []).length > 0 || play.thread_guess,
+  );
   const lines = played.slice(0, 10).map((play, i) => {
     const progress = progressOf(play);
-    const thread = progress.threadGuess === null ? "" : progress.threadGuess === puzzle.thread ? " · thread ✅" : " · thread ❌";
+    const thread =
+      progress.threadGuess === null
+        ? ""
+        : progress.threadGuess === puzzle.thread
+          ? " · thread ✅"
+          : " · thread ❌";
     return `${MEDALS[i] ?? "▫️"} **${play.username}** · ${earned(puzzle, progress)} fc · ${progress.found.length}/${puzzle.words.length} words${thread}`;
   });
   return [
@@ -104,16 +133,25 @@ export const weaveResultsText = (round: WeaveRoundRecord, plays: WeavePlayRecord
       .join(", ")}.`,
     "",
     ...(lines.length > 0 ? lines : ["Nobody played it."]),
-    ...(played.length > lines.length ? [`-# …and ${played.length - lines.length} more`] : []),
+    ...(played.length > lines.length
+      ? [`-# …and ${played.length - lines.length} more`]
+      : []),
   ].join("\n");
 };
 
 /** The answers as a post: the text, and the grid with every word drawn in. */
-export const weaveResultsPost = async (round: WeaveRoundRecord, plays: WeavePlayRecord[]) => ({
+export const weaveResultsPost = async (
+  round: WeaveRoundRecord,
+  plays: WeavePlayRecord[],
+) => ({
   content: weaveResultsText(round, plays),
   files: [
     new AttachmentBuilder(
-      await renderWeaveBoard({ puzzle: puzzleOf(round), progress: NO_PROGRESS, reveal: true }),
+      await renderWeaveBoard({
+        puzzle: puzzleOf(round),
+        progress: NO_PROGRESS,
+        reveal: true,
+      }),
       { name: WEAVE_IMAGE },
     ),
   ],
@@ -125,7 +163,9 @@ export const weaveResultsPost = async (round: WeaveRoundRecord, plays: WeavePlay
  */
 export const postWeave = async (cl: Client): Promise<number> => {
   const round = await ensureTodaysWeave();
-  const yesterday = await getWeaveRound(previousDay(round.day)).catch(() => null);
+  const yesterday = await getWeaveRound(previousDay(round.day)).catch(
+    () => null,
+  );
   let posted = 0;
 
   for (const guild of cl.guilds.cache.values()) {
@@ -140,8 +180,14 @@ export const postWeave = async (cl: Client): Promise<number> => {
 
     const message = await sendTo(cl, channelId, await weavePost(round));
     if (message) {
-      await recordWeavePost(round.id, guild.id, { channelId, messageId: message.id });
-      round.posts = { ...(round.posts ?? {}), [guild.id]: { channelId, messageId: message.id } };
+      await recordWeavePost(round.id, guild.id, {
+        channelId,
+        messageId: message.id,
+      });
+      round.posts = {
+        ...(round.posts ?? {}),
+        [guild.id]: { channelId, messageId: message.id },
+      };
       posted++;
     }
   }
@@ -181,8 +227,14 @@ export const playableWeave = async (
   roundId: string,
 ): Promise<{ round: WeaveRoundRecord } | { refusal: string }> => {
   const round = await getWeaveRoundById(roundId);
-  if (!round) return { refusal: "That Weave is gone. Today's is up with `/daily weave`." };
-  if (round.day !== currentDay()) return { refusal: "That Weave is over. Today's is up with `/daily weave`." };
+  if (!round)
+    return {
+      refusal: "That Weave is gone. Today's is up with `/daily weave`.",
+    };
+  if (round.day !== currentDay())
+    return {
+      refusal: "That Weave is over. Today's is up with `/daily weave`.",
+    };
   return { round };
 };
 
@@ -204,17 +256,31 @@ const settle = async (
 ) => {
   const puzzle = puzzleOf(round);
   const done = finished(puzzle, progress);
-  await saveWeaveProgress(play.id, progress, earned(puzzle, progress), done || play.finished);
+  await saveWeaveProgress(
+    play.id,
+    progress,
+    earned(puzzle, progress),
+    done || play.finished,
+  );
   // The first time a board is solved, the channel hears about it.
-  const solved = done && !play.finished ? solvedMessage(player, progress, puzzle) : null;
+  const solved =
+    done && !play.finished ? solvedMessage(player, progress, puzzle) : null;
   // On trial: nothing paid, nothing said in the channel - the player is shown
   // what would have been said instead.
   if (!WEAVE_LIVE) return solved;
   if (fc > 0) {
-    await addCoin(player.userId, player.serverId, fc, player.username, player.serverName, "Reserve");
+    await addCoin(
+      player.userId,
+      player.serverId,
+      fc,
+      player.username,
+      player.serverName,
+      "Reserve",
+    );
   }
   if (solved) {
-    const channelId = round.posts?.[player.serverId]?.channelId ?? fallbackChannelId;
+    const channelId =
+      round.posts?.[player.serverId]?.channelId ?? fallbackChannelId;
     if (channelId) await sendTo(cl, channelId, solved);
   }
   return null;
@@ -227,13 +293,24 @@ export const solvedMessage = (
   puzzle: ReturnType<typeof puzzleOf>,
 ): string => {
   const guesses = `${progress.guesses} ${progress.guesses === 1 ? "guess" : "guesses"}`;
-  const thread = progress.threadGuess === puzzle.thread ? ", thread and all," : "";
+  const thread =
+    progress.threadGuess === puzzle.thread ? ", thread and all," : "";
   return `🧵 **${player.displayName}** solved today's Weave${thread} in ${guesses} and won **${earned(puzzle, progress)} fc**!`;
 };
 
 /** A board, as the player will see it. */
-const boardFor = (round: WeaveRoundRecord, progress: ReturnType<typeof progressOf>, note?: string) =>
-  buildBoard({ roundId: round.id, puzzle: puzzleOf(round), progress, note, trial: !WEAVE_LIVE });
+const boardFor = (
+  round: WeaveRoundRecord,
+  progress: ReturnType<typeof progressOf>,
+  note?: string,
+) =>
+  buildBoard({
+    roundId: round.id,
+    puzzle: puzzleOf(round),
+    progress,
+    note,
+    trial: !WEAVE_LIVE,
+  });
 
 const playOf = (round: WeaveRoundRecord, player: WeavePlayer) =>
   openWeavePlay(round.id, player.serverId, player.userId, player.displayName);
@@ -243,11 +320,16 @@ export const openWeave = async (round: WeaveRoundRecord, player: WeavePlayer) =>
   boardFor(round, progressOf(await playOf(round, player)));
 
 /** Lights the first letter of the next unfound word. */
-export const hintWeave = async (cl: Client, round: WeaveRoundRecord, player: WeavePlayer) => {
+export const hintWeave = async (
+  cl: Client,
+  round: WeaveRoundRecord,
+  player: WeavePlayer,
+) => {
   const puzzle = puzzleOf(round);
   const play = await playOf(round, player);
   const before = progressOf(play);
-  if (nextHint(puzzle, before) === null || saving.has(play.id)) return boardFor(round, before);
+  if (nextHint(puzzle, before) === null || saving.has(play.id))
+    return boardFor(round, before);
   saving.add(play.id);
   try {
     const progress = takeHint(puzzle, before);
@@ -283,7 +365,8 @@ export const guessWeaveWords = async (
   const puzzle = puzzleOf(round);
   const play = await playOf(round, player);
   const before = progressOf(play);
-  if (allFound(puzzle, before)) return boardFor(round, before, "You've found every word today.");
+  if (allFound(puzzle, before))
+    return boardFor(round, before, "You've found every word today.");
   if (saving.has(play.id)) return boardFor(round, before);
 
   saving.add(play.id);
@@ -296,8 +379,10 @@ export const guessWeaveWords = async (
       const result = checkWord(puzzle, progress, guess);
       // A repeat of a word already found isn't a new guess.
       if (result.kind !== "already") progress = countGuesses(progress, 1);
-      if (result.kind === "wrong") lines.push(`❌ **${word}** isn't one of the words.`);
-      else if (result.kind === "already") lines.push(`☑️ **${word}** is already found.`);
+      if (result.kind === "wrong")
+        lines.push(`❌ **${word}** isn't one of the words.`);
+      else if (result.kind === "already")
+        lines.push(`☑️ **${word}** is already found.`);
       else {
         const found = findWord(progress, result.index);
         progress = found.progress;
@@ -306,11 +391,18 @@ export const guessWeaveWords = async (
       }
     }
     const solved =
-      progress !== before ? await settle(cl, round, play, player, progress, fc, fallbackChannelId) : null;
+      progress !== before
+        ? await settle(cl, round, play, player, progress, fc, fallbackChannelId)
+        : null;
 
     if (allFound(puzzle, progress) && !allFound(puzzle, before)) {
-      lines.push(`🎉 That's every word: **${earned(puzzle, progress)} fc** in all.`);
-      if (solved) lines.push(`-# 🧪 On trial, so this wasn't posted. It would say: ${solved}`);
+      lines.push(
+        `🎉 That's every word: **${earned(puzzle, progress)} fc** in all.`,
+      );
+      if (solved)
+        lines.push(
+          `-# 🧪 On trial, so this wasn't posted. It would say: ${solved}`,
+        );
     } else if (
       progress.found.length === puzzle.words.length - 1 &&
       before.found.length < puzzle.words.length - 1 &&
@@ -348,7 +440,15 @@ export const guessWeaveThread = async (
   saving.add(play.id);
   try {
     const result = guessThread(puzzle, before, guess);
-    await settle(cl, round, play, player, result.progress, result.fc, fallbackChannelId);
+    await settle(
+      cl,
+      round,
+      play,
+      player,
+      result.progress,
+      result.fc,
+      fallbackChannelId,
+    );
     return boardFor(
       round,
       result.progress,

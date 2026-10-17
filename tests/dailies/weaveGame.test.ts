@@ -37,15 +37,25 @@ const WORDS = [
   { word: "milked", cells: [17, 16, 15, 20, 21, 22] },
 ];
 const grid = Array<string>(25).fill("x");
-for (const { word, cells } of WORDS) cells.forEach((cell, i) => (grid[cell] = word[i]));
+for (const { word, cells } of WORDS)
+  cells.forEach((cell, i) => (grid[cell] = word[i]));
 const P: WeavePuzzle = { grid: grid.join(""), words: WORDS, thread: "pksfm" };
 
 describe("Weave's rules", () => {
   it("knows a typed word is one of the five, whatever its case and spacing", () => {
-    expect(checkWord(P, NO_PROGRESS, "  Purse ")).toEqual({ kind: "found", index: 0 });
-    expect(checkWord(P, NO_PROGRESS, "MILKED")).toEqual({ kind: "found", index: 4 });
+    expect(checkWord(P, NO_PROGRESS, "  Purse ")).toEqual({
+      kind: "found",
+      index: 0,
+    });
+    expect(checkWord(P, NO_PROGRESS, "MILKED")).toEqual({
+      kind: "found",
+      index: 4,
+    });
     expect(checkWord(P, NO_PROGRESS, "pursed")).toEqual({ kind: "wrong" });
-    expect(checkWord(P, findWord(NO_PROGRESS, 0).progress, "purse")).toEqual({ kind: "already", index: 0 });
+    expect(checkWord(P, findWord(NO_PROGRESS, 0).progress, "purse")).toEqual({
+      kind: "already",
+      index: 0,
+    });
   });
 
   it("pays for each word, less for one found after its hint", () => {
@@ -63,7 +73,10 @@ describe("Weave's rules", () => {
 
   it("pays more for the thread the fewer of its letters are showing", () => {
     expect(THREAD_PRIZES).toEqual([50, 25, 20, 15, 10]);
-    expect(guessThread(P, NO_PROGRESS, " PKSFM ")).toMatchObject({ right: true, fc: 50 });
+    expect(guessThread(P, NO_PROGRESS, " PKSFM ")).toMatchObject({
+      right: true,
+      fc: 50,
+    });
     let progress = NO_PROGRESS;
     for (const [i, prize] of [25, 20, 15, 10].entries()) {
       progress = findWord(progress, i).progress;
@@ -74,7 +87,10 @@ describe("Weave's rules", () => {
     // The pay is fixed when guessed, and one guess is all there is.
     expect(earned(P, guess.progress)).toBe(4 * WORD_FC + 10);
     expect(guessThread(P, guess.progress, "pksfm").fc).toBe(0);
-    expect(guessThread(P, NO_PROGRESS, "wrong")).toMatchObject({ right: false, fc: 0 });
+    expect(guessThread(P, NO_PROGRESS, "wrong")).toMatchObject({
+      right: false,
+      fc: 0,
+    });
   });
 
   it("counts a hinted letter as showing, so hints can't buy the thread cheaply", () => {
@@ -109,8 +125,10 @@ describe("Weave's rules", () => {
     progress = findWord(progress, 4).progress;
     expect(finished(P, progress)).toBe(true);
     expect(canGuessThread(P, progress)).toBe(false);
-    expect(guessThread(P, progress, "pksfm")).toMatchObject({ right: false, fc: 0 });
+    expect(guessThread(P, progress, "pksfm")).toMatchObject({
+      right: false,
+      fc: 0,
+    });
     expect(earned(P, progress)).toBe(5 * WORD_FC);
   });
-
 });

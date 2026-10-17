@@ -41,9 +41,7 @@ export const startBattle = async (
     return;
   }
   if (opponent.bot) {
-    await interaction.editReply(
-      "Bots don't have decks. Challenge a person.",
-    );
+    await interaction.editReply("Bots don't have decks. Challenge a person.");
     return;
   }
 
@@ -197,10 +195,7 @@ export const showPending = async (
   interaction: ChatInputCommandInteraction,
   { serverId }: FinicardContext,
 ): Promise<void> => {
-  const pending = await getPendingBattlesForUser(
-    interaction.user.id,
-    serverId,
-  );
+  const pending = await getPendingBattlesForUser(interaction.user.id, serverId);
 
   if (pending.length === 0) {
     await interaction.editReply("Nothing is waiting on you.");
@@ -218,9 +213,7 @@ export const showPending = async (
 
     const action = awaitingCards
       ? new ButtonBuilder()
-          .setCustomId(
-            `v2_battle_accept:${battle.id}:${interaction.user.id}`,
-          )
+          .setCustomId(`v2_battle_accept:${battle.id}:${interaction.user.id}`)
           .setLabel(`Accept ${opponentName}`.slice(0, 80))
           .setStyle(ButtonStyle.Primary)
       : new ButtonBuilder()
@@ -234,9 +227,7 @@ export const showPending = async (
     if (awaitingCards) {
       buttons.push(
         new ButtonBuilder()
-          .setCustomId(
-            `v2_battle_decline:${battle.id}:${interaction.user.id}`,
-          )
+          .setCustomId(`v2_battle_decline:${battle.id}:${interaction.user.id}`)
           .setLabel("Decline")
           .setStyle(ButtonStyle.Secondary),
       );

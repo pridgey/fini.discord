@@ -15,7 +15,9 @@ describe("the daily's days", () => {
   });
 
   it("keeps a round open until the next one posts", () => {
-    expect(currentDay(new Date(2026, 9, 16, POST_HOUR - 1, 59))).toBe("2026-10-15");
+    expect(currentDay(new Date(2026, 9, 16, POST_HOUR - 1, 59))).toBe(
+      "2026-10-15",
+    );
     expect(currentDay(new Date(2026, 9, 16, 0, 5))).toBe("2026-10-15");
     expect(currentDay(new Date(2026, 9, 16, POST_HOUR, 0))).toBe("2026-10-16");
     expect(currentDay(new Date(2026, 9, 16, 23, 59))).toBe("2026-10-16");

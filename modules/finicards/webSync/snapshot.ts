@@ -14,11 +14,7 @@ import type {
  */
 
 export type WebCollection =
-  | "web_meta"
-  | "web_definition"
-  | "web_card"
-  | "web_deck"
-  | "web_player";
+  "web_meta" | "web_definition" | "web_card" | "web_deck" | "web_player";
 
 export type WebRow = { id: string } & Record<string, unknown>;
 
@@ -66,19 +62,29 @@ const stable = (value: unknown): string => {
   if (value && typeof value === "object") {
     return `{${Object.keys(value)
       .sort()
-      .map((key) => `${JSON.stringify(key)}:${stable((value as Record<string, unknown>)[key])}`)
+      .map(
+        (key) =>
+          `${JSON.stringify(key)}:${stable((value as Record<string, unknown>)[key])}`,
+      )
       .join(",")}}`;
   }
   return JSON.stringify(value ?? null);
 };
 
 /** A row boiled down to one string: two rows that match need no sending. */
-export const fingerprint = (collection: WebCollection, row: Record<string, unknown>): string =>
-  stable(WEB_FIELDS[collection].map((field) => row[field]));
+export const fingerprint = (
+  collection: WebCollection,
+  row: Record<string, unknown>,
+): string => stable(WEB_FIELDS[collection].map((field) => row[field]));
 
 /** Only the fields Fini owns, ready to send. */
-export const payloadOf = (collection: WebCollection, row: WebRow): Record<string, unknown> =>
-  Object.fromEntries(WEB_FIELDS[collection].map((field) => [field, row[field]]));
+export const payloadOf = (
+  collection: WebCollection,
+  row: WebRow,
+): Record<string, unknown> =>
+  Object.fromEntries(
+    WEB_FIELDS[collection].map((field) => [field, row[field]]),
+  );
 
 export const META_ID = "finicardsmeta00";
 
@@ -92,8 +98,12 @@ export const playerRowId = (owner: string, serverId: string): string =>
  */
 export const artKeyOf = (definition: V2CardDefinitionRecord): string => {
   const source =
-    definition.art || definition.art_url || (definition.legacy_card ? `legacy:${definition.legacy_card}` : "");
-  return source ? `v1|${source}|${stable(definition.art_adjust?.trim ?? null)}` : "";
+    definition.art ||
+    definition.art_url ||
+    (definition.legacy_card ? `legacy:${definition.legacy_card}` : "");
+  return source
+    ? `v1|${source}|${stable(definition.art_adjust?.trim ?? null)}`
+    : "";
 };
 
 /** Bump to have every card face made again, after the card design changes. */
@@ -104,7 +114,10 @@ export const FACE_VERSION = 1;
  * any of it changes - a card renamed, its art replaced, a new set number -
  * the face is made and sent again.
  */
-export const faceKeyOf = (card: V2UserCardRecord, definition: V2CardDefinitionRecord): string =>
+export const faceKeyOf = (
+  card: V2UserCardRecord,
+  definition: V2CardDefinitionRecord,
+): string =>
   createHash("sha1")
     .update(
       stable([
@@ -134,7 +147,9 @@ export const faceKeyOf = (card: V2UserCardRecord, definition: V2CardDefinitionRe
     .digest("hex")
     .slice(0, 20);
 
-export const toWebDefinition = (definition: V2CardDefinitionRecord): WebRow => ({
+export const toWebDefinition = (
+  definition: V2CardDefinitionRecord,
+): WebRow => ({
   id: definition.id ?? "",
   card_name: definition.card_name,
   series: definition.series ?? "",
@@ -200,7 +215,9 @@ const byId = (rows: WebRow[]): Map<string, WebRow> =>
  * later release - never leaves Fini.
  */
 export const buildSnapshot = (local: LocalState): Snapshot => {
-  const known = new Map(local.definitions.map((definition) => [definition.id ?? "", definition]));
+  const known = new Map(
+    local.definitions.map((definition) => [definition.id ?? "", definition]),
+  );
   // A copy whose card is gone cannot be shown, and would not be accepted.
   const cards = local.cards.filter((card) => known.has(card.card));
   const owned = new Set(cards.map((card) => card.card));
@@ -226,7 +243,9 @@ export const buildSnapshot = (local: LocalState): Snapshot => {
   return {
     web_meta: byId([{ id: META_ID, data: local.meta }]),
     web_definition: byId(
-      local.definitions.filter((definition) => owned.has(definition.id ?? "")).map(toWebDefinition),
+      local.definitions
+        .filter((definition) => owned.has(definition.id ?? ""))
+        .map(toWebDefinition),
     ),
     web_card: byId(cards.map(toWebCard)),
     web_deck: byId(local.decks.map(toWebDeck)),

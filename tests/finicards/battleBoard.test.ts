@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 import { resolveMatch } from "../../modules/finicards/battleEngine";
-import {
-  keywordTag,
-  renderBattleBoard,
-} from "../../modules/finicards/cardArt";
+import { keywordTag, renderBattleBoard } from "../../modules/finicards/cardArt";
 import { RULES } from "../../modules/finicards/rules";
 import type { BattleCard } from "../../modules/finicards/types";
 import type { CardType } from "../../types/PocketbaseTablesV2";

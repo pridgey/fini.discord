@@ -100,7 +100,8 @@ const mixHex = (base: string, tint: string, amount: number): string => {
   return `#${[0, 1, 2]
     .map((index) =>
       Math.round(
-        channel(base, index) + (channel(tint, index) - channel(base, index)) * amount,
+        channel(base, index) +
+          (channel(tint, index) - channel(base, index)) * amount,
       )
         .toString(16)
         .padStart(2, "0"),
@@ -109,9 +110,7 @@ const mixHex = (base: string, tint: string, amount: number): string => {
 };
 
 /** Substitution map for one type, keyed by the `{t_*}` tokens in a template. */
-export const paletteTokens = (
-  type: CardType,
-): Record<string, string> => {
+export const paletteTokens = (type: CardType): Record<string, string> => {
   const palette = TYPE_PALETTES[type];
   return {
     t_bright: palette.bright,

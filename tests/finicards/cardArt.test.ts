@@ -15,10 +15,7 @@ import {
 import { TYPE_PRIORITY } from "../../modules/finicards/rules";
 import type { StatBarSpec } from "../../modules/finicards/cardArt/layouts";
 import type { BattleCard } from "../../modules/finicards/types";
-import type {
-  CardRarity,
-  CardType,
-} from "../../types/PocketbaseTablesV2";
+import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
 
 const card = (overrides: Partial<BattleCard> = {}): BattleCard => ({
   instanceId: "inst123456",
@@ -111,9 +108,9 @@ describe("finicards v2 card art", () => {
       if (spec.style !== "boxed") throw new Error("expected a boxed bar");
 
       const svg = statBarBlock(spec, card());
-      const xs = [...svg.matchAll(/<rect x="([\d.]+)"[^>]*width="([\d.]+)"/g)].map(
-        (match) => ({ x: Number(match[1]), w: Number(match[2]) }),
-      );
+      const xs = [
+        ...svg.matchAll(/<rect x="([\d.]+)"[^>]*width="([\d.]+)"/g),
+      ].map((match) => ({ x: Number(match[1]), w: Number(match[2]) }));
 
       expect(xs).toHaveLength(3);
       expect(xs[0].x).toBeCloseTo(spec.x0, 1);
@@ -129,8 +126,14 @@ describe("finicards v2 card art", () => {
     });
 
     it("omits the divider when the lead stat is already first", () => {
-      const leading = statBarBlock(LAYOUTS.special.statBar, card({ type: "power" }));
-      const trailing = statBarBlock(LAYOUTS.special.statBar, card({ type: "heart" }));
+      const leading = statBarBlock(
+        LAYOUTS.special.statBar,
+        card({ type: "power" }),
+      );
+      const trailing = statBarBlock(
+        LAYOUTS.special.statBar,
+        card({ type: "heart" }),
+      );
 
       expect(leading).not.toContain("<rect");
       expect(trailing).toContain("<rect");
@@ -191,14 +194,27 @@ describe("finicards v2 card art", () => {
   });
 
   describe("art padding", () => {
-    const padded = (inner: { w: number; h: number }, canvas: { w: number; h: number }) =>
+    const padded = (
+      inner: { w: number; h: number },
+      canvas: { w: number; h: number },
+    ) =>
       sharp({
-        create: { width: canvas.w, height: canvas.h, channels: 4, background: "#00000000" },
+        create: {
+          width: canvas.w,
+          height: canvas.h,
+          channels: 4,
+          background: "#00000000",
+        },
       })
         .composite([
           {
             input: {
-              create: { width: inner.w, height: inner.h, channels: 4, background: "#ff0000" },
+              create: {
+                width: inner.w,
+                height: inner.h,
+                channels: 4,
+                background: "#ff0000",
+              },
             },
             left: 30,
             top: 20,
@@ -208,7 +224,9 @@ describe("finicards v2 card art", () => {
         .toBuffer();
 
     it("cuts a transparent canvas down to the picture inside it", async () => {
-      const trimmed = await trimPadding(await padded({ w: 100, h: 60 }, { w: 200, h: 150 }));
+      const trimmed = await trimPadding(
+        await padded({ w: 100, h: 60 }, { w: 200, h: 150 }),
+      );
       const meta = await sharp(trimmed).metadata();
       expect([meta.width, meta.height]).toEqual([100, 60]);
     });
@@ -304,9 +322,11 @@ describe("finicards v2 card art", () => {
     });
 
     it("keeps a name that fits on its one line", async () => {
-      const svg = await buildCardSvg(card({ name: "Krillin" }), { withoutArt: true });
+      const svg = await buildCardSvg(card({ name: "Krillin" }), {
+        withoutArt: true,
+      });
       expect(svg).toContain(">Krillin</text>");
-      expect(svg).not.toContain("<tspan x=\"32\" dy=\"-");
+      expect(svg).not.toContain('<tspan x="32" dy="-');
     });
 
     it("grows a long name upward onto a second line instead of cutting it", async () => {
@@ -316,16 +336,24 @@ describe("finicards v2 card art", () => {
       );
       // The first line sits above the baseline, the second comes back to it,
       // so whatever is under the name stays where it was.
-      const lines = [...svg.matchAll(/<tspan x="32" dy="(-?\d+)">([^<]*)<\/tspan>/g)];
+      const lines = [
+        ...svg.matchAll(/<tspan x="32" dy="(-?\d+)">([^<]*)<\/tspan>/g),
+      ];
       expect(lines).toHaveLength(2);
       expect(Number(lines[0][1])).toBe(-Number(lines[1][1]));
-      expect(`${lines[0][2]} ${lines[1][2]}`).toBe("Mistress of the Winter Constellations");
+      expect(`${lines[0][2]} ${lines[1][2]}`).toBe(
+        "Mistress of the Winter Constellations",
+      );
     });
 
     it("grows the uncommon's text panel upward under a two-line name", async () => {
       const panelOf = async (name: string) => {
-        const svg = await buildCardSvg(card({ name, rarity: "uncommon" }), { withoutArt: true });
-        const match = svg.match(/<clipPath id="panel"><rect x="28" y="([\d.]+)" width="550" height="([\d.]+)"/);
+        const svg = await buildCardSvg(card({ name, rarity: "uncommon" }), {
+          withoutArt: true,
+        });
+        const match = svg.match(
+          /<clipPath id="panel"><rect x="28" y="([\d.]+)" width="550" height="([\d.]+)"/,
+        );
         return { y: Number(match?.[1]), h: Number(match?.[2]) };
       };
       const short = await panelOf("Krillin");
@@ -338,27 +366,52 @@ describe("finicards v2 card art", () => {
 
     it("ends the common's art window higher under a two-line name", async () => {
       const windowOf = async (name: string, foil = false) => {
-        const svg = await buildCardSvg(card({ name, rarity: "common", foil }), { withoutArt: true });
+        const svg = await buildCardSvg(card({ name, rarity: "common", foil }), {
+          withoutArt: true,
+        });
         expect(svg).not.toContain("{art_");
-        return Number(svg.match(/<clipPath id="art"><rect x="32" y="32" width="542" height="([\d.]+)"/)?.[1]);
+        return Number(
+          svg.match(
+            /<clipPath id="art"><rect x="32" y="32" width="542" height="([\d.]+)"/,
+          )?.[1],
+        );
       };
       expect(await windowOf("Krillin")).toBe(430);
-      expect(await windowOf("Mistress of the Winter Constellations")).toBeLessThan(430);
-      expect(await windowOf("Mistress of the Winter Constellations", true)).toBeLessThan(430);
+      expect(
+        await windowOf("Mistress of the Winter Constellations"),
+      ).toBeLessThan(430);
+      expect(
+        await windowOf("Mistress of the Winter Constellations", true),
+      ).toBeLessThan(430);
     });
 
     it("credits the artist in the footer of every frame", async () => {
-      for (const [rarity, foil] of [["common", false], ["common", true], ["uncommon", false], ["uncommon", true], ["full_art", false]] as const) {
-        const svg = await buildCardSvg(card({ rarity, foil, artist: "Hokyoung Kim" }), { withoutArt: true });
+      for (const [rarity, foil] of [
+        ["common", false],
+        ["common", true],
+        ["uncommon", false],
+        ["uncommon", true],
+        ["full_art", false],
+      ] as const) {
+        const svg = await buildCardSvg(
+          card({ rarity, foil, artist: "Hokyoung Kim" }),
+          { withoutArt: true },
+        );
         expect(svg).toContain('text-anchor="end">Hokyoung Kim</text>');
       }
-      const long = await buildCardSvg(card({ rarity: "common", artist: "A Very Long Studio Name Indeed" }), { withoutArt: true });
+      const long = await buildCardSvg(
+        card({ rarity: "common", artist: "A Very Long Studio Name Indeed" }),
+        { withoutArt: true },
+      );
       expect(long).toContain('text-anchor="end">A Very Long Studi…</text>');
     });
 
     it("does not print the series or the legacy marker as a tag", async () => {
       const svg = await buildCardSvg(
-        card({ series: "My Hero Academia", tags: ["anime_hero", "my_hero_academia", "legacy"] }),
+        card({
+          series: "My Hero Academia",
+          tags: ["anime_hero", "my_hero_academia", "legacy"],
+        }),
         { withoutArt: true },
       );
       expect(svg).toContain("ANIME HERO");
@@ -369,20 +422,37 @@ describe("finicards v2 card art", () => {
 
     it("prints origin, set, set number and the copy's id in the footer", async () => {
       const converted = await buildCardSvg(
-        card({ instanceId: "copy123", legacyCard: "old1", set: 3, number: 12, setSize: 217, rarity: "uncommon" }),
+        card({
+          instanceId: "copy123",
+          legacyCard: "old1",
+          set: 3,
+          number: 12,
+          setSize: 217,
+          rarity: "uncommon",
+        }),
         { withoutArt: true },
       );
       expect(converted).toContain("FINICARD V1 · S3 12/217 · copy123");
 
       // A Secret Art is not counted in its set, so its number runs past it.
       const secret = await buildCardSvg(
-        card({ instanceId: "copy789", set: 3, number: 218, setSize: 217, rarity: "full_art", secretArt: true }),
+        card({
+          instanceId: "copy789",
+          set: 3,
+          number: 218,
+          setSize: 217,
+          rarity: "full_art",
+          secretArt: true,
+        }),
         { withoutArt: true },
       );
       expect(secret).toContain("FINICARD V2 · S3 218/217 · copy789");
 
       // Not numbered yet: the set stands alone.
-      const unnumbered = await buildCardSvg(card({ instanceId: "copy000", set: 3 }), { withoutArt: true });
+      const unnumbered = await buildCardSvg(
+        card({ instanceId: "copy000", set: 3 }),
+        { withoutArt: true },
+      );
       expect(unnumbered).toContain("FINICARD V2 · S3 · copy000");
 
       // Made for v2, and with no set recorded: the set is left out, not S0.

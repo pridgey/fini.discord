@@ -9,7 +9,10 @@ export const isPrivateAddress = (address: string): boolean => {
   if (ip === "::1") return true;
   if (ip.includes(":")) return /^(fc|fd|fe[89ab])/.test(ip);
   const parts = ip.split(".").map(Number);
-  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+  if (
+    parts.length !== 4 ||
+    parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)
+  ) {
     return false;
   }
   const [a, b] = parts;

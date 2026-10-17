@@ -49,7 +49,7 @@ export const neighbours = (cell: number): number[] => {
 
 export const adjacent = (a: number, b: number) => neighbours(a).includes(b);
 
-const shuffled = <T,>(items: T[], random: Random): T[] => {
+const shuffled = <T>(items: T[], random: Random): T[] => {
   const out = [...items];
   for (let i = out.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));
@@ -79,7 +79,8 @@ export const randomTour = (random: Random): number[] => {
       if (path.length === CELLS) return true;
       if (budget-- <= 0) return false;
       const here = path[path.length - 1];
-      const onward = (cell: number) => neighbours(cell).filter((next) => !seen.has(next)).length;
+      const onward = (cell: number) =>
+        neighbours(cell).filter((next) => !seen.has(next)).length;
       const options = shuffled(
         neighbours(here).filter((next) => !seen.has(next)),
         random,
@@ -105,7 +106,8 @@ export const randomLengths = (random: Random): number[] => {
       { length: WORD_COUNT },
       () => MIN_LENGTH + Math.floor(random() * (MAX_LENGTH - MIN_LENGTH + 1)),
     );
-    if (lengths.reduce((sum, length) => sum + length, 0) === CELLS) return lengths;
+    if (lengths.reduce((sum, length) => sum + length, 0) === CELLS)
+      return lengths;
   }
 };
 
@@ -131,7 +133,9 @@ const fitWords = (
     const words: string[] = [];
     const letters = shuffled([...thread], random);
     for (const [i, length] of lengths.entries()) {
-      const options = (BY_START.get(`${length}:${letters[i]}`) ?? []).filter((word) => !used.has(word));
+      const options = (BY_START.get(`${length}:${letters[i]}`) ?? []).filter(
+        (word) => !used.has(word),
+      );
       if (options.length === 0) break;
       const word = options[Math.floor(random() * options.length)];
       used.add(word);
@@ -164,11 +168,13 @@ export const generatePuzzle = (random: Random = Math.random): WeavePuzzle => {
 
     const words = pieces.map((cells, i) => ({ word: fitted.words[i], cells }));
     const grid = Array<string>(CELLS).fill("");
-    for (const { word, cells } of words) cells.forEach((cell, i) => (grid[cell] = word[i]));
+    for (const { word, cells } of words)
+      cells.forEach((cell, i) => (grid[cell] = word[i]));
 
     return { grid: grid.join(""), words, thread: fitted.thread };
   }
 };
 
 /** The letters along `cells`, as spelled. */
-export const spell = (grid: string, cells: number[]) => cells.map((cell) => grid[cell]).join("");
+export const spell = (grid: string, cells: number[]) =>
+  cells.map((cell) => grid[cell]).join("");

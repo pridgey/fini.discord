@@ -49,9 +49,7 @@ export const getDecks = async (
     sort: "name",
   });
 
-export const getDeck = async (
-  deckId: string,
-): Promise<V2DeckRecord | null> => {
+export const getDeck = async (deckId: string): Promise<V2DeckRecord | null> => {
   try {
     return await pb.collection<V2DeckRecord>(V2_DECK).getOne(deckId);
   } catch {
@@ -75,8 +73,7 @@ export const findDeckByName = async (
 };
 
 export type DeckResult =
-  | { ok: true; deck: V2DeckRecord }
-  | { ok: false; reason: string };
+  { ok: true; deck: V2DeckRecord } | { ok: false; reason: string };
 
 export const validateDeckName = (name: string): string | null => {
   const clean = (name ?? "").trim();
@@ -101,9 +98,7 @@ export type SaveDeckInput = {
  * Cards are deduplicated: a deck holds specific copies, and the same copy twice
  * would let a player field one card in two slots of the same lineup.
  */
-export const saveDeck = async (
-  input: SaveDeckInput,
-): Promise<DeckResult> => {
+export const saveDeck = async (input: SaveDeckInput): Promise<DeckResult> => {
   const nameError = validateDeckName(input.name);
   if (nameError) return { ok: false, reason: nameError };
 
@@ -116,7 +111,11 @@ export const saveDeck = async (
     };
   }
 
-  const existing = await findDeckByName(input.userId, input.serverId, input.name);
+  const existing = await findDeckByName(
+    input.userId,
+    input.serverId,
+    input.name,
+  );
 
   if (existing) {
     const updated = await pb

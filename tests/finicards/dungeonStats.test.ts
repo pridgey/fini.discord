@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { summariseRun, summariseYears } from "../../modules/finicards/dungeonStats";
+import {
+  summariseRun,
+  summariseYears,
+} from "../../modules/finicards/dungeonStats";
 
 const run = (overrides: Record<string, unknown> = {}): any => ({
   id: "run1",
@@ -46,8 +49,23 @@ describe("finicards dungeon stats", () => {
   it("rolls runs up by year, most recent first", () => {
     const years = summariseYears([
       run(),
-      run({ id: "run2", state: "failed", progress: { depth: 12, fightsWon: 9, bossesWon: 2, stats: { geldEarned: 150, cardWins: { Deku: 1 } } }, reward: { kind: "coin", coin: 6 } }),
-      run({ id: "run3", user_id: "u2", player_name: "Storm", created: "2027-01-05 10:00:00.000Z" }),
+      run({
+        id: "run2",
+        state: "failed",
+        progress: {
+          depth: 12,
+          fightsWon: 9,
+          bossesWon: 2,
+          stats: { geldEarned: 150, cardWins: { Deku: 1 } },
+        },
+        reward: { kind: "coin", coin: 6 },
+      }),
+      run({
+        id: "run3",
+        user_id: "u2",
+        player_name: "Storm",
+        created: "2027-01-05 10:00:00.000Z",
+      }),
     ]);
 
     expect(years.map((year) => year.year)).toEqual([2027, 2026]);
@@ -64,13 +82,28 @@ describe("finicards dungeon stats", () => {
     expect(first.cardsWon).toBe(2);
     expect(first.cardWins).toEqual({ Deku: 5, Pabu: 2 });
     expect(first.players).toHaveLength(1);
-    expect(first.players[0]).toMatchObject({ name: "Fen", runs: 2, deepest: 12, coinPaid: 28, feesPaid: 30 });
+    expect(first.players[0]).toMatchObject({
+      name: "Fen",
+      runs: 2,
+      deepest: 12,
+      coinPaid: 28,
+      feesPaid: 30,
+    });
   });
 
   it("trusts a run's stored summary over its working state", () => {
     // The state's shape may have moved on since; the columns are the record.
     const [year] = summariseYears([
-      run({ ended: "2026-11-02 10:20:00.000Z", depth: 30, fights_won: 25, bosses_won: 5, geld_earned: 400, coin_paid: 80, cards_won: 3, progress: {} }),
+      run({
+        ended: "2026-11-02 10:20:00.000Z",
+        depth: 30,
+        fights_won: 25,
+        bosses_won: 5,
+        geld_earned: 400,
+        coin_paid: 80,
+        cards_won: 3,
+        progress: {},
+      }),
     ]);
 
     expect(year.deepest?.depth).toBe(30);

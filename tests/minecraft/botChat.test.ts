@@ -69,7 +69,9 @@ describe("parseChatRequests", () => {
   });
 
   it("finds nothing in a log with no chat", () => {
-    expect(parseChatRequests(line("Done (2.3s)! For help"), TRIGGER)).toEqual([]);
+    expect(parseChatRequests(line("Done (2.3s)! For help"), TRIGGER)).toEqual(
+      [],
+    );
   });
 });
 

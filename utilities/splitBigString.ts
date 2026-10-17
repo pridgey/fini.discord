@@ -7,7 +7,7 @@
  */
 export const splitBigString = (
   str: string,
-  maxLength: number = 1990
+  maxLength: number = 1990,
 ): string[] => {
   // If less than max amount, simply return
   if (str.length <= maxLength) {
@@ -55,7 +55,7 @@ export const splitBigString = (
   // Recursively goes through the rest
   const remainingStringChunks: string[] = splitBigString(
     str.slice(nextStartIndex),
-    maxLength
+    maxLength,
   );
 
   // Returns the chunk and the rest for this iteration of the recursion

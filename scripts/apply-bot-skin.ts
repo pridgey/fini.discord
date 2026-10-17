@@ -20,7 +20,10 @@ import {
   resolveSkinSpec,
   SkinSpecError,
 } from "../modules/minecraft/botSkin";
-import { MINECRAFT_BOT_NAMES, MINECRAFT_SERVER_DIR } from "../modules/minecraft/minecraft.config";
+import {
+  MINECRAFT_BOT_NAMES,
+  MINECRAFT_SERVER_DIR,
+} from "../modules/minecraft/minecraft.config";
 import { rconConfig } from "../modules/minecraft/rcon.config";
 
 const SCRIPT_PATH = join(
@@ -34,7 +37,7 @@ const rawSpec = process.argv[2];
 if (!rawSpec) {
   console.error(
     "Usage: apply-bot-skin.ts <account:NAME | url:HTTPS_URL[#slim]>\n" +
-      '  account:Dinnerbone                    copy a real account\'s skin (signed)\n' +
+      "  account:Dinnerbone                    copy a real account's skin (signed)\n" +
       "  url:https://host/fini.png#slim        any PNG (unsigned)",
   );
   process.exit(1);
@@ -79,7 +82,9 @@ const main = async () => {
         "client rejected it and only Mojang-signed textures will render.",
     );
   }
-  console.log("\nReconnect to see the change - already-connected clients keep the old skin.");
+  console.log(
+    "\nReconnect to see the change - already-connected clients keep the old skin.",
+  );
 };
 
 main().catch((error) => {

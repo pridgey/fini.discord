@@ -1,12 +1,22 @@
 import { describe, expect, it } from "bun:test";
 import type { User } from "discord.js";
-import { MAX_CARDS_PER_SIDE, offerText, parseCardIds, sideLines } from "../../modules/finicards/tradeFlow";
+import {
+  MAX_CARDS_PER_SIDE,
+  offerText,
+  parseCardIds,
+  sideLines,
+} from "../../modules/finicards/tradeFlow";
 import type { OwnedCard } from "../../modules/finicards/types";
 import type { V2CardDefinitionRecord } from "../../types/PocketbaseTablesV2";
 
-const user = (id: string) => ({ id, toString: () => `<@${id}>` }) as unknown as User;
+const user = (id: string) =>
+  ({ id, toString: () => `<@${id}>` }) as unknown as User;
 
-const copy = (id: string, name: string, overrides: Partial<OwnedCard> = {}): OwnedCard => ({
+const copy = (
+  id: string,
+  name: string,
+  overrides: Partial<OwnedCard> = {},
+): OwnedCard => ({
   id,
   user_id: "u",
   server_id: "s",
@@ -41,7 +51,10 @@ const copy = (id: string, name: string, overrides: Partial<OwnedCard> = {}): Own
 describe("trades", () => {
   it("read card ids however they're typed, each once", () => {
     expect(parseCardIds("abc123 def456")).toEqual(["abc123", "def456"]);
-    expect(parseCardIds(" ABC123,def456 ,abc123 ")).toEqual(["abc123", "def456"]);
+    expect(parseCardIds(" ABC123,def456 ,abc123 ")).toEqual([
+      "abc123",
+      "def456",
+    ]);
     expect(parseCardIds("")).toEqual([]);
     expect(parseCardIds(null)).toEqual([]);
     expect(MAX_CARDS_PER_SIDE * 2).toBeLessThanOrEqual(10);
@@ -53,7 +66,9 @@ describe("trades", () => {
       "• **Goku** (Full Art, foil) `abc123`",
       "• 🪙 **50 fc**",
     ]);
-    expect(sideLines({ user: user("b"), cards: [], fc: 0 })).toEqual(["• _nothing_"]);
+    expect(sideLines({ user: user("b"), cards: [], fc: 0 })).toEqual([
+      "• _nothing_",
+    ]);
   });
 
   it("show both sides, and who may answer", () => {
@@ -63,7 +78,9 @@ describe("trades", () => {
     );
     expect(text).toContain("<@a> ⇄ <@b>");
     expect(text).toContain("**<@a> gives:**\n• **Goku** (Full Art) `abc123`");
-    expect(text).toContain("**<@b> gives:**\n• **Vegeta** (Full Art) `def456`\n• 🪙 **25 fc**");
+    expect(text).toContain(
+      "**<@b> gives:**\n• **Vegeta** (Full Art) `def456`\n• 🪙 **25 fc**",
+    );
     expect(text).toContain("<@b> can accept or decline");
   });
 

@@ -222,9 +222,9 @@ describe("keyword registration guardrails", () => {
   });
 
   it("refuses a duplicate slug instead of shadowing the original", () => {
-    expect(() =>
-      registerKeyword({ ...stub, slug: "vanguard" }),
-    ).toThrow(/already registered/);
+    expect(() => registerKeyword({ ...stub, slug: "vanguard" })).toThrow(
+      /already registered/,
+    );
   });
 
   it("refuses an unknown stage, which would silently never fire", () => {

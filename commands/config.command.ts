@@ -1,5 +1,9 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { ChannelType, ChatInputCommandInteraction, PermissionFlagsBits } from "discord.js";
+import {
+  ChannelType,
+  ChatInputCommandInteraction,
+  PermissionFlagsBits,
+} from "discord.js";
 import { ConfigRecord } from "../types/PocketbaseTables";
 import {
   DEFAULT_HORSEY_NAMES,

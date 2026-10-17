@@ -1,4 +1,7 @@
-import type { V2DeckRecord, V2UserCardRecord } from "../../types/PocketbaseTablesV2";
+import type {
+  V2DeckRecord,
+  V2UserCardRecord,
+} from "../../types/PocketbaseTablesV2";
 import { pb } from "../../utilities/pocketbase";
 import { getOwnedCard, V2_USER_CARD } from "./cardStore";
 import { V2_DECK } from "./decks";
@@ -29,7 +32,9 @@ export const FOIL_BUYBACK_BONUS = 1.5;
 
 /** What Fini pays for this copy. */
 export const buybackPrice = (
-  card: Pick<BattleCard, "rarity" | "secretArt" | "legendary"> & { foil?: boolean },
+  card: Pick<BattleCard, "rarity" | "secretArt" | "legendary"> & {
+    foil?: boolean;
+  },
 ): number => {
   const base = card.legendary
     ? FINI_BUYBACK.legendary
@@ -51,17 +56,24 @@ export const findSellable = async (
   const needle = (typed ?? "").trim().toLowerCase();
   if (!/^[a-z0-9]{4,15}$/.test(needle)) return null;
 
-  const owned = await pb.collection<V2UserCardRecord>(V2_USER_CARD).getFullList({
-    filter: `user_id = "${userId.replace(/["\\]/g, "")}" && server_id = "${serverId.replace(/["\\]/g, "")}" && id ~ "${needle}"`,
-    requestKey: null,
-  });
+  const owned = await pb
+    .collection<V2UserCardRecord>(V2_USER_CARD)
+    .getFullList({
+      filter: `user_id = "${userId.replace(/["\\]/g, "")}" && server_id = "${serverId.replace(/["\\]/g, "")}" && id ~ "${needle}"`,
+      requestKey: null,
+    });
   const matches = owned.filter((copy) => (copy.id ?? "").startsWith(needle));
-  const match = matches.find((copy) => copy.id === needle) ?? (matches.length === 1 ? matches[0] : null);
+  const match =
+    matches.find((copy) => copy.id === needle) ??
+    (matches.length === 1 ? matches[0] : null);
   return match?.id ? getOwnedCard(match.id) : null;
 };
 
 /** Whether `userId` still holds this copy - it may have been sold while a listing sat open. */
-export const stillOwns = async (userId: string, copyId: string): Promise<boolean> => {
+export const stillOwns = async (
+  userId: string,
+  copyId: string,
+): Promise<boolean> => {
   const copy = await getOwnedCard(copyId);
   return !!copy && copy.user_id === userId;
 };

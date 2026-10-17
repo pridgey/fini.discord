@@ -544,8 +544,8 @@ export const tooLargeMessage = (
       format.kind === "audio"
         ? "mp3, m4a or ogg"
         : format.supportsAlpha
-        ? "webm, which also holds transparency but compresses far harder"
-        : "mp4";
+          ? "webm, which also holds transparency but compresses far harder"
+          : "mp4";
 
     return `${preamble} ${format.value} is lossless, so there's a limit to how far I can shrink it - try ${alternatives}, or a shorter clip.`;
   }

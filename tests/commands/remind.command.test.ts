@@ -322,9 +322,7 @@ describe("remind command", () => {
       mockCreate.mockRejectedValueOnce(new Error("Database error"));
 
       // Should not throw
-      expect(
-        execute(mockInteraction, mockLogCommand),
-      ).resolves.toBeUndefined();
+      expect(execute(mockInteraction, mockLogCommand)).resolves.toBeUndefined();
     });
 
     it("should handle null guildId", async () => {

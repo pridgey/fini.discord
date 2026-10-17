@@ -41,7 +41,10 @@ const FAILURE_PATTERNS: {
     pattern: /Missing or unsupported mandatory dependencies/,
     describe: () => "Missing mod dependencies",
   },
-  { pattern: /Registry loading errors:/, describe: () => "World registry errors" },
+  {
+    pattern: /Registry loading errors:/,
+    describe: () => "World registry errors",
+  },
   { pattern: /Crashing!/, describe: () => "Mod loading error" },
   {
     pattern: /---- Minecraft Crash Report ----/,

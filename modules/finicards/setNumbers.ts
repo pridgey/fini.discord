@@ -54,7 +54,10 @@ export const numberSets = (definitions: Numbered[]): Map<string, SetNumber> => {
     const secret = cards.filter((card) => card.secret_art).sort(inSetOrder);
 
     [...counted, ...secret].forEach((card, index) =>
-      numbers.set(card.id ?? "", { number: index + 1, setSize: counted.length }),
+      numbers.set(card.id ?? "", {
+        number: index + 1,
+        setSize: counted.length,
+      }),
     );
   }
 

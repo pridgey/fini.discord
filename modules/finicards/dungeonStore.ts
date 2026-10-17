@@ -151,7 +151,10 @@ const applyRedraw = async (
   );
 
   const names = new Map(
-    [...deckCards, ...(await loadLineupByIds(progress.redraw))].map((card) => [card.instanceId, card.name]),
+    [...deckCards, ...(await loadLineupByIds(progress.redraw))].map((card) => [
+      card.instanceId,
+      card.name,
+    ]),
   );
   const readyAt = { ...progress.readyAt };
   // New cards come in ready, even one that was played and swapped out before.
@@ -187,8 +190,7 @@ export type StartRunInput = {
 };
 
 export type StartRunOutcome =
-  | { ok: true; run: V2DungeonRunRecord }
-  | { ok: false; reason: string };
+  { ok: true; run: V2DungeonRunRecord } | { ok: false; reason: string };
 
 export const startRun = async (
   input: StartRunInput,
@@ -219,20 +221,18 @@ export const startRun = async (
     };
   }
 
-  const run = await pb
-    .collection<V2DungeonRunRecord>(V2_DUNGEON_RUN)
-    .create({
-      user_id: input.userId,
-      server_id: input.serverId,
-      channel_id: input.channelId,
-      player_name: input.playerName,
-      deck: input.deck.id ?? "",
-      hand: dealHandFromDeck(contents.cards, DUNGEON.handSize),
-      progress,
-      state: "active",
-      entry_fee: DUNGEON.entryFee,
-      reward: null,
-    });
+  const run = await pb.collection<V2DungeonRunRecord>(V2_DUNGEON_RUN).create({
+    user_id: input.userId,
+    server_id: input.serverId,
+    channel_id: input.channelId,
+    player_name: input.playerName,
+    deck: input.deck.id ?? "",
+    hand: dealHandFromDeck(contents.cards, DUNGEON.handSize),
+    progress,
+    state: "active",
+    entry_fee: DUNGEON.entryFee,
+    reward: null,
+  });
 
   return { ok: true, run };
 };
@@ -251,8 +251,7 @@ export type DungeonAction =
   | { kind: "wake"; handIndex: number };
 
 export type ActionOutcome =
-  | { ok: false; reason: string }
-  | { ok: true; run: V2DungeonRunRecord };
+  { ok: false; reason: string } | { ok: true; run: V2DungeonRunRecord };
 
 /**
  * Applies one click to a run.
@@ -314,7 +313,10 @@ export const act = async (
         const cardId = (run.hand ?? [])[action.handIndex];
         const [card] = cardId ? await loadLineupByIds([cardId]) : [];
         if (!card) {
-          return { ok: false, reason: "That card is no longer in your collection." };
+          return {
+            ok: false,
+            reason: "That card is no longer in your collection.",
+          };
         }
         return await save(drinkCoffee(state, card));
       }

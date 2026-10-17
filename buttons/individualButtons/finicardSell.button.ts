@@ -61,7 +61,12 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
           .setStyle(ButtonStyle.Secondary),
         new ButtonBuilder()
           .setCustomId(`v2_card_sell:${contextId}:${cardId}:${userId}:confirm`)
-          .setLabel(`Sell ${card.name} to Fini for ${price} fc - gone for good`.slice(0, 80))
+          .setLabel(
+            `Sell ${card.name} to Fini for ${price} fc - gone for good`.slice(
+              0,
+              80,
+            ),
+          )
           .setStyle(ButtonStyle.Danger),
       ]);
       const shown = interaction.message.components.slice(0, -1);
@@ -88,17 +93,29 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       : null;
 
     if (!page) {
-      await interaction.editReply({ components: [], files: [], attachments: [] }).catch(() => undefined);
-      await interaction.followUp({ content: `${sold} Run \`/finicard collection\` to see what's left.`, flags: [MessageFlags.Ephemeral] });
+      await interaction
+        .editReply({ components: [], files: [], attachments: [] })
+        .catch(() => undefined);
+      await interaction.followUp({
+        content: `${sold} Run \`/finicard collection\` to see what's left.`,
+        flags: [MessageFlags.Ephemeral],
+      });
       return;
     }
 
     await interaction.editReply(page);
-    await interaction.followUp({ content: sold, flags: [MessageFlags.Ephemeral] });
+    await interaction.followUp({
+      content: sold,
+      flags: [MessageFlags.Ephemeral],
+    });
   } catch (error) {
     console.error("Error selling a v2 card to Fini:", error, { args });
-    const failed = { content: "❌ Failed to sell that card", flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral] };
-    if (interaction.replied || interaction.deferred) await interaction.followUp(failed).catch(() => undefined);
+    const failed = {
+      content: "❌ Failed to sell that card",
+      flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral],
+    };
+    if (interaction.replied || interaction.deferred)
+      await interaction.followUp(failed).catch(() => undefined);
     else await interaction.reply(failed).catch(() => undefined);
   }
 }

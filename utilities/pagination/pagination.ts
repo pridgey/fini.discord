@@ -192,7 +192,9 @@ export function parsePaginationState(args: string[]): {
 
 /** A message payload ready to hand to `interaction.update()`. */
 export type PaginationPage = {
-  components: (ContainerBuilder | TextDisplayBuilder | ActionRowBuilder<ButtonBuilder>)[];
+  components: (
+    ContainerBuilder | TextDisplayBuilder | ActionRowBuilder<ButtonBuilder>
+  )[];
   files: AttachmentBuilder[];
   /** Always empty: see the note in {@link renderPaginationPage}. */
   attachments: never[];

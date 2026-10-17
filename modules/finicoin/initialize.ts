@@ -8,7 +8,7 @@ import { pb } from "../../utilities/pocketbase";
  */
 export const initializeServerBank = async (
   serverId: string,
-  servername: string
+  servername: string,
 ) => {
   // Grab the record
   // Not using getUserBalance because we need to know if the record doesn't exist

@@ -15,9 +15,8 @@ mock.module("../../utilities/pocketbase", () => ({
   pb: { collection: mockCollection },
 }));
 
-const { jackpotHistoryQuery } = await import(
-  "../../queries/queryFunctions/JackpotHistory.query"
-);
+const { jackpotHistoryQuery } =
+  await import("../../queries/queryFunctions/JackpotHistory.query");
 
 /** Builds `count` winner rows starting at `start` for the getList mock. */
 const rows = (count: number, start = 0) =>

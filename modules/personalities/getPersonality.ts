@@ -20,11 +20,14 @@ export const getPersonalityByName = async ({
   const retrievedPersonalities = await pb
     .collection<PersonalitiesRecord>("personalities")
     .getFullList({
-      filter: pb.filter("user_id = {:userId} && personality_name = {:personalityName} && server_id = {:serverId}", {
-        userId,
-        personalityName,
-        serverId,
-      }),
+      filter: pb.filter(
+        "user_id = {:userId} && personality_name = {:personalityName} && server_id = {:serverId}",
+        {
+          userId,
+          personalityName,
+          serverId,
+        },
+      ),
     });
 
   return retrievedPersonalities;

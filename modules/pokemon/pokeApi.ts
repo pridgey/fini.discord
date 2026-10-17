@@ -34,14 +34,18 @@ export type PokeApiResult =
   | { kind: Exclude<PokeApiKind, "pokemon">; data: EffectData };
 
 /** "Mr Mime" -> "mr-mime", the slug PokeAPI names things by. */
-export const pokeApiSlug = (text: string) => text.trim().toLowerCase().replaceAll(" ", "-");
+export const pokeApiSlug = (text: string) =>
+  text.trim().toLowerCase().replaceAll(" ", "-");
 
 /** The first kind of thing the name matches, or null when it matches none. */
-export const findOnPokeApi = async (name: string): Promise<PokeApiResult | null> => {
+export const findOnPokeApi = async (
+  name: string,
+): Promise<PokeApiResult | null> => {
   const slug = encodeURIComponent(pokeApiSlug(name));
   for (const kind of KINDS) {
     const response = await fetch(`${POKEAPI_URL}/${kind}/${slug}`);
-    if (response.ok) return { kind, data: await response.json() } as PokeApiResult;
+    if (response.ok)
+      return { kind, data: await response.json() } as PokeApiResult;
   }
   return null;
 };

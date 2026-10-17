@@ -5,7 +5,11 @@ import type {
   V2UserCardRecord,
 } from "../../../types/PocketbaseTablesV2";
 import { pb } from "../../../utilities/pocketbase";
-import { loadArt, renderCardImage, resolveArtSource } from "../cardArt/generateCardImage";
+import {
+  loadArt,
+  renderCardImage,
+  resolveArtSource,
+} from "../cardArt/generateCardImage";
 import { LEGENDARY_GIF_EFFECTS, legendaryGif } from "../cardArt/legendaryGif";
 import { toBattleCard, V2_CARD_DEFINITION, V2_USER_CARD } from "../cardStore";
 import {
@@ -73,16 +77,24 @@ export const forgetMailbox = (): void => {
   heldFace.clear();
 };
 
-const readMailbox = async (): Promise<Record<WebCollection, Map<string, string>>> => {
+const readMailbox = async (): Promise<
+  Record<WebCollection, Map<string, string>>
+> => {
   const state = {} as Record<WebCollection, Map<string, string>>;
   for (const collection of WRITE_ORDER) {
-    const rows = await remote.collection(collection).getFullList({ batch: 500 });
-    state[collection] = new Map(rows.map((row) => [row.id, fingerprint(collection, row)]));
+    const rows = await remote
+      .collection(collection)
+      .getFullList({ batch: 500 });
+    state[collection] = new Map(
+      rows.map((row) => [row.id, fingerprint(collection, row)]),
+    );
     if (collection === "web_definition") {
-      for (const row of rows) heldArt.set(row.id, (row.art_key as string) ?? "");
+      for (const row of rows)
+        heldArt.set(row.id, (row.art_key as string) ?? "");
     }
     if (collection === "web_card") {
-      for (const row of rows) heldFace.set(row.id, (row.face_key as string) ?? "");
+      for (const row of rows)
+        heldFace.set(row.id, (row.face_key as string) ?? "");
     }
   }
   return state;
@@ -109,13 +121,19 @@ export const buildMeta = (): Record<string, unknown> => ({
   legendary: LEGENDARY_GIF_EFFECTS,
 });
 
-const readLocal = async (serverNames: Record<string, string>): Promise<LocalState> => {
+const readLocal = async (
+  serverNames: Record<string, string>,
+): Promise<LocalState> => {
   const [definitions, cards, decks] = await Promise.all([
     pb
       .collection<V2CardDefinitionRecord>(V2_CARD_DEFINITION)
       .getFullList({ batch: 500, requestKey: null }),
-    pb.collection<V2UserCardRecord>(V2_USER_CARD).getFullList({ batch: 500, requestKey: null }),
-    pb.collection<V2DeckRecord>(V2_DECK).getFullList({ batch: 500, requestKey: null }),
+    pb
+      .collection<V2UserCardRecord>(V2_USER_CARD)
+      .getFullList({ batch: 500, requestKey: null }),
+    pb
+      .collection<V2DeckRecord>(V2_DECK)
+      .getFullList({ batch: 500, requestKey: null }),
   ]);
   return { definitions, cards, decks, serverNames, meta: buildMeta() };
 };
@@ -136,13 +154,20 @@ const inParallel = async <T>(
       } catch (error) {
         failed += 1;
         if (failed <= 3) {
-          const { status, message } = error as { status?: number; message?: string };
-          console.error(`Web sync: a row was not sent: ${status ?? ""} ${message ?? error}`.trim());
+          const { status, message } = error as {
+            status?: number;
+            message?: string;
+          };
+          console.error(
+            `Web sync: a row was not sent: ${status ?? ""} ${message ?? error}`.trim(),
+          );
         }
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(lanes, items.length) }, lane));
+  await Promise.all(
+    Array.from({ length: Math.min(lanes, items.length) }, lane),
+  );
   return failed;
 };
 
@@ -150,14 +175,24 @@ const inParallel = async <T>(
  * A card's artwork for the site: the whole picture, bars trimmed, small
  * enough to load quickly. The site does its own cropping around the focus.
  */
-const webArt = async (definition: V2CardDefinitionRecord): Promise<Buffer | null> => {
+const webArt = async (
+  definition: V2CardDefinitionRecord,
+): Promise<Buffer | null> => {
   const source = definition.art
-    ? { url: pb.files.getURL(definition, definition.art), adjust: definition.art_adjust ?? null }
+    ? {
+        url: pb.files.getURL(definition, definition.art),
+        adjust: definition.art_adjust ?? null,
+      }
     : await resolveArtSource(definition);
   const picture = await loadArt(source);
   if (!picture) return null;
   return sharp(picture)
-    .resize({ width: ART_SIZE, height: ART_SIZE, fit: "inside", withoutEnlargement: true })
+    .resize({
+      width: ART_SIZE,
+      height: ART_SIZE,
+      fit: "inside",
+      withoutEnlargement: true,
+    })
     .webp({ quality: 80 })
     .toBuffer();
 };
@@ -182,8 +217,10 @@ let batches: boolean | null = null;
 
 const sendOne = (write: Write): Promise<unknown> => {
   const records = remote.collection(write.collection);
-  if (write.kind === "create") return records.create({ id: write.id, ...write.body });
-  if (write.kind === "update") return records.update(write.id, write.body ?? {});
+  if (write.kind === "create")
+    return records.create({ id: write.id, ...write.body });
+  if (write.kind === "update")
+    return records.update(write.id, write.body ?? {});
   return records.delete(write.id);
 };
 
@@ -199,7 +236,11 @@ const sendWrites = async (writes: Write[]): Promise<number> => {
   let weight = 0;
   for (const write of writes) {
     const last = groups[groups.length - 1];
-    if (!last || last.length >= BATCH_SIZE || weight + (write.bytes ?? 0) > BATCH_BYTES) {
+    if (
+      !last ||
+      last.length >= BATCH_SIZE ||
+      weight + (write.bytes ?? 0) > BATCH_BYTES
+    ) {
       groups.push([write]);
       weight = write.bytes ?? 0;
     } else {
@@ -215,8 +256,10 @@ const sendWrites = async (writes: Write[]): Promise<number> => {
           const batch = remote.createBatch();
           for (const write of group) {
             const records = batch.collection(write.collection);
-            if (write.kind === "create") records.create({ id: write.id, ...write.body });
-            else if (write.kind === "update") records.update(write.id, write.body ?? {});
+            if (write.kind === "create")
+              records.create({ id: write.id, ...write.body });
+            else if (write.kind === "update")
+              records.update(write.id, write.body ?? {});
             else records.delete(write.id);
           }
           return batch.send();
@@ -234,7 +277,10 @@ const sendWrites = async (writes: Write[]): Promise<number> => {
         await paced(() => sendOne(write));
         write.done();
       } catch (error) {
-        const { status, message } = error as { status?: number; message?: string };
+        const { status, message } = error as {
+          status?: number;
+          message?: string;
+        };
         // Already gone - removed along with the card it pointed at.
         if (write.kind === "delete" && status === 404) {
           write.done();
@@ -242,7 +288,9 @@ const sendWrites = async (writes: Write[]): Promise<number> => {
         }
         failed += 1;
         if (failed <= 3) {
-          console.error(`Web sync: a row was not sent: ${status ?? ""} ${message ?? error}`.trim());
+          console.error(
+            `Web sync: a row was not sent: ${status ?? ""} ${message ?? error}`.trim(),
+          );
         }
       }
     }
@@ -267,7 +315,9 @@ export const summaryLine = (summary: SyncSummary): string =>
   (summary.failed ? `, ${summary.failed} failed` : "");
 
 /** One pass: read Fini's database, send what the mailbox lacks. */
-export const syncOnce = async (serverNames: Record<string, string>): Promise<SyncSummary> => {
+export const syncOnce = async (
+  serverNames: Record<string, string>,
+): Promise<SyncSummary> => {
   await signIn();
   if (!held) held = await readMailbox();
   const mailbox = held;
@@ -293,7 +343,8 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
 
   const writes: Write[] = [];
   for (const collection of WRITE_ORDER) {
-    const remember = (row: WebRow) => mailbox[collection].set(row.id, fingerprint(collection, row));
+    const remember = (row: WebRow) =>
+      mailbox[collection].set(row.id, fingerprint(collection, row));
     for (const row of plans[collection].create) {
       writes.push({
         collection,
@@ -345,7 +396,11 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
         id,
         body: {
           art_key: key,
-          art: art ? new File([new Uint8Array(art)], `${id}.webp`, { type: "image/webp" }) : null,
+          art: art
+            ? new File([new Uint8Array(art)], `${id}.webp`, {
+                type: "image/webp",
+              })
+            : null,
         },
         bytes: art?.length ?? 0,
         done: () => {
@@ -362,12 +417,16 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
    * Card faces: the picture Discord shows, rendered here and sent up. A
    * Legendary goes with its animation too, for the site to play.
    */
-  const definitions = new Map(local.definitions.map((definition) => [definition.id ?? "", definition]));
+  const definitions = new Map(
+    local.definitions.map((definition) => [definition.id ?? "", definition]),
+  );
   const faceless = local.cards.flatMap((card) => {
     const definition = definitions.get(card.card);
     if (!definition || !mailbox.web_card.has(card.id ?? "")) return [];
     const key = faceKeyOf(card, definition);
-    return heldFace.get(card.id ?? "") === key ? [] : [{ card, definition, key }];
+    return heldFace.get(card.id ?? "") === key
+      ? []
+      : [{ card, definition, key }];
   });
   summary.facesLeft = Math.max(faceless.length - FACES_PER_PASS, 0);
   const faceWrites: Write[] = [];
@@ -391,7 +450,11 @@ export const syncOnce = async (serverNames: Record<string, string>): Promise<Syn
         body: {
           face_key: key,
           face: new File([face], `${id}.webp`, { type: "image/webp" }),
-          animation: animation ? new File([new Uint8Array(animation)], `${id}.gif`, { type: "image/gif" }) : null,
+          animation: animation
+            ? new File([new Uint8Array(animation)], `${id}.gif`, {
+                type: "image/gif",
+              })
+            : null,
         },
         bytes: face.length + (animation?.length ?? 0),
         done: () => {

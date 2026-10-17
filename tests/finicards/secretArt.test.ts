@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { buildCardSvg, limitedLabel } from "../../modules/finicards/cardArt/generateCardImage";
+import {
+  buildCardSvg,
+  limitedLabel,
+} from "../../modules/finicards/cardArt/generateCardImage";
 import { nextSerial, toBattleCard } from "../../modules/finicards/cardStore";
 import { availableSecretArts, selectCard } from "../../modules/finicards/packs";
 import type { BattleCard, OwnedCard } from "../../modules/finicards/types";
@@ -8,7 +11,9 @@ import type { V2CardDefinitionRecord } from "../../types/PocketbaseTablesV2";
 /* A Secret Art is a full-art by every rule, found only by its own roll. Cards
    held to a handful of copies say which copy they are. */
 
-const definition = (overrides: Partial<V2CardDefinitionRecord> = {}): V2CardDefinitionRecord => ({
+const definition = (
+  overrides: Partial<V2CardDefinitionRecord> = {},
+): V2CardDefinitionRecord => ({
   id: "def1",
   card_name: "Ren Kasugai",
   series: "Beacon",
@@ -49,21 +54,34 @@ describe("secret art", () => {
 
   it("never comes out of the full-art slot", () => {
     for (let roll = 0; roll < 1; roll += 0.05) {
-      expect(selectCard([plain, secret], new Map(), "full_art", () => roll)?.id).toBe("plain");
+      expect(
+        selectCard([plain, secret], new Map(), "full_art", () => roll)?.id,
+      ).toBe("plain");
     }
     // With the only full-art claimed, the slot falls down the ladder rather
     // than reaching for the Secret Art.
-    expect(selectCard([plain, secret], new Map([["plain", 1]]), "full_art")).toBeNull();
+    expect(
+      selectCard([plain, secret], new Map([["plain", 1]]), "full_art"),
+    ).toBeNull();
   });
 
   it("is on offer to its own roll until its copies are claimed", () => {
-    expect(availableSecretArts([plain, secret], new Map()).map((row) => row.id)).toEqual(["secret"]);
-    expect(availableSecretArts([plain, secret], new Map([["secret", 2]]))).toHaveLength(1);
-    expect(availableSecretArts([plain, secret], new Map([["secret", 3]]))).toHaveLength(0);
+    expect(
+      availableSecretArts([plain, secret], new Map()).map((row) => row.id),
+    ).toEqual(["secret"]);
+    expect(
+      availableSecretArts([plain, secret], new Map([["secret", 2]])),
+    ).toHaveLength(1);
+    expect(
+      availableSecretArts([plain, secret], new Map([["secret", 3]])),
+    ).toHaveLength(0);
   });
 
   it("prints SA where a full-art prints FA", async () => {
-    const svg = await buildCardSvg(card({ secretArt: true, population: 3, serial: 2 }), { withoutArt: true });
+    const svg = await buildCardSvg(
+      card({ secretArt: true, population: 3, serial: 2 }),
+      { withoutArt: true },
+    );
     expect(svg).toContain(">SA</text>");
     expect(svg).not.toContain(">FA</text>");
   });
@@ -80,7 +98,11 @@ describe("secret art", () => {
       acquired_from: "pack",
       definition: secret,
     };
-    expect(toBattleCard(owned)).toMatchObject({ secretArt: true, population: 3, serial: 2 });
+    expect(toBattleCard(owned)).toMatchObject({
+      secretArt: true,
+      population: 3,
+      serial: 2,
+    });
   });
 });
 
@@ -103,10 +125,21 @@ describe("numbered copies", () => {
   });
 
   it("prints on every frame, and leaves no token behind when it does not apply", async () => {
-    for (const [rarity, foil] of [["common", false], ["common", true], ["uncommon", false], ["uncommon", true], ["full_art", false]] as const) {
-      const limited = await buildCardSvg(card({ rarity, foil, population: 3, serial: 3 }), { withoutArt: true });
+    for (const [rarity, foil] of [
+      ["common", false],
+      ["common", true],
+      ["uncommon", false],
+      ["uncommon", true],
+      ["full_art", false],
+    ] as const) {
+      const limited = await buildCardSvg(
+        card({ rarity, foil, population: 3, serial: 3 }),
+        { withoutArt: true },
+      );
       expect(limited).toContain(">3 OF 3</text>");
-      const open = await buildCardSvg(card({ rarity, foil, population: 20 }), { withoutArt: true });
+      const open = await buildCardSvg(card({ rarity, foil, population: 20 }), {
+        withoutArt: true,
+      });
       expect(open).not.toContain("{limited}");
       expect(open).not.toContain(" OF ");
     }

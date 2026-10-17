@@ -12,13 +12,21 @@ describe("selling to Fini", () => {
     expect(buybackPrice({ rarity: "common", foil: true })).toBe(3);
     expect(buybackPrice({ rarity: "uncommon", foil: true })).toBe(8);
     expect(buybackPrice({ rarity: "full_art", foil: true })).toBe(15);
-    expect(buybackPrice({ rarity: "full_art", secretArt: true, foil: true })).toBe(38);
-    expect(buybackPrice({ rarity: "full_art", legendary: "storm", foil: true })).toBe(75);
+    expect(
+      buybackPrice({ rarity: "full_art", secretArt: true, foil: true }),
+    ).toBe(38);
+    expect(
+      buybackPrice({ rarity: "full_art", legendary: "storm", foil: true }),
+    ).toBe(75);
   });
 
   it("pays more for a Secret Art, and most for a Legendary", () => {
-    expect(buybackPrice({ rarity: "full_art", secretArt: true })).toBe(FINI_BUYBACK.secret_art);
-    expect(buybackPrice({ rarity: "full_art", legendary: "storm" })).toBe(FINI_BUYBACK.legendary);
+    expect(buybackPrice({ rarity: "full_art", secretArt: true })).toBe(
+      FINI_BUYBACK.secret_art,
+    );
+    expect(buybackPrice({ rarity: "full_art", legendary: "storm" })).toBe(
+      FINI_BUYBACK.legendary,
+    );
     expect(FINI_BUYBACK.legendary).toBeGreaterThan(FINI_BUYBACK.secret_art);
     expect(FINI_BUYBACK.secret_art).toBeGreaterThan(FINI_BUYBACK.full_art);
   });

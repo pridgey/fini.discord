@@ -135,7 +135,8 @@ export const summariseYears = (
       total.deepest = { depth: summary.depth, name: run.player_name };
     }
 
-    const wins = ((run.progress ?? {}) as Record<string, any>).stats?.cardWins ?? {};
+    const wins =
+      ((run.progress ?? {}) as Record<string, any>).stats?.cardWins ?? {};
     for (const [card, won] of Object.entries(wins)) {
       total.cardWins[card] = (total.cardWins[card] ?? 0) + count(won);
     }
@@ -167,7 +168,9 @@ export const summariseYears = (
 
   for (const total of years.values()) {
     total.averageDepth = total.runs > 0 ? total.averageDepth / total.runs : 0;
-    total.players.sort((a, b) => b.deepest - a.deepest || b.fightsWon - a.fightsWon);
+    total.players.sort(
+      (a, b) => b.deepest - a.deepest || b.fightsWon - a.fightsWon,
+    );
   }
 
   return [...years.values()].sort((a, b) => b.year - a.year);

@@ -100,7 +100,7 @@ export const rewardCoin = async (message: Message) => {
     // Run reward calculations
     const messageScore = calculateMessageScore(messageContent);
     const messageReward = Number(
-      Math.max(BASE_REWARD_AMOUNT, MAX_REWARD_AMOUNT * messageScore).toFixed(2)
+      Math.max(BASE_REWARD_AMOUNT, MAX_REWARD_AMOUNT * messageScore).toFixed(2),
     );
 
     // Award user for chatting
@@ -110,7 +110,7 @@ export const rewardCoin = async (message: Message) => {
       messageReward,
       username,
       servername,
-      "Reserve"
+      "Reserve",
     );
 
     // Roll jackpot

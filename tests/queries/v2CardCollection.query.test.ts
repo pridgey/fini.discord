@@ -31,14 +31,15 @@ const owned = (id: string, definition = card()) => ({
   expand: { card: definition },
 });
 
-const mockGetList = mock((_page?: unknown, _perPage?: unknown, _opts?: unknown) =>
-  Promise.resolve({
-    items: [owned("inst001")],
-    totalItems: 1,
-    totalPages: 1,
-    page: 1,
-    perPage: 10,
-  }),
+const mockGetList = mock(
+  (_page?: unknown, _perPage?: unknown, _opts?: unknown) =>
+    Promise.resolve({
+      items: [owned("inst001")],
+      totalItems: 1,
+      totalPages: 1,
+      page: 1,
+      perPage: 10,
+    }),
 );
 
 const mockCollection = mock((_name: string) => ({ getList: mockGetList }));
@@ -47,9 +48,8 @@ mock.module("../../utilities/pocketbase", () => ({
   pb: { collection: mockCollection },
 }));
 
-const { v2CardCollectionQuery } = await import(
-  "../../queries/queryFunctions/finicardCollection.query"
-);
+const { v2CardCollectionQuery } =
+  await import("../../queries/queryFunctions/finicardCollection.query");
 
 const render = (components: any[]): string =>
   JSON.stringify(components[0].toJSON());

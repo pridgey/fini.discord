@@ -56,7 +56,8 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
   if (lineupFor(battle, side).length === RULES.rounds) {
     await interaction.reply({
-      content: "You've already locked in your lineup. Waiting on your opponent.",
+      content:
+        "You've already locked in your lineup. Waiting on your opponent.",
       flags: [MessageFlags.Ephemeral],
     });
     return;
@@ -70,7 +71,8 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
   if (hand.length === 0) {
     await interaction.reply({
-      content: "❌ Your hand couldn't be loaded - none of those cards are yours any more.",
+      content:
+        "❌ Your hand couldn't be loaded - none of those cards are yours any more.",
       flags: [MessageFlags.Ephemeral],
     });
     return;

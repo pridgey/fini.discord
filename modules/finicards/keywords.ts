@@ -398,7 +398,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Overwhelm",
     slug: "overwhelm",
     grade: "minor",
-    description: "Damage dealt above 10 counts double toward the match tiebreaker",
+    description:
+      "Damage dealt above 10 counts double toward the match tiebreaker",
     stage: "tiebreak",
     order: 1,
     adjustTiebreakDamage: (damage, rules) =>
@@ -544,7 +545,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Kinship",
     slug: "kinship",
     grade: "standard",
-    description: "+2 to type stat per other card in your lineup from the same series",
+    description:
+      "+2 to type stat per other card in your lineup from the same series",
     stage: "conditional",
     order: 1,
     apply: (ctx) => {
@@ -572,7 +574,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Chorus",
     slug: "chorus",
     grade: "standard",
-    description: "+2 to type stat per other card of the same type in your lineup",
+    description:
+      "+2 to type stat per other card of the same type in your lineup",
     stage: "conditional",
     order: 1,
     apply: (ctx) => {
@@ -640,7 +643,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Echo",
     slug: "echo",
     grade: "standard",
-    description: "Attacks with your previous card's final type stat if that was higher",
+    description:
+      "Attacks with your previous card's final type stat if that was higher",
     stage: "conditional",
     order: 9,
     apply: (ctx) => {
@@ -679,7 +683,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Parting Shot",
     slug: "parting_shot",
     grade: "standard",
-    description: "If this card loses its round, the opponent's next card gets \u22122 to its type stat",
+    description:
+      "If this card loses its round, the opponent's next card gets \u22122 to its type stat",
     stage: "postLoss",
     order: 1,
     apply: (ctx) => {
@@ -694,7 +699,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Spoiler",
     slug: "spoiler",
     grade: "minor",
-    description: "If this card loses its round, the opponent's next card has its ability switched off",
+    description:
+      "If this card loses its round, the opponent's next card has its ability switched off",
     stage: "postLoss",
     order: 1,
     apply: (ctx) => {
@@ -714,7 +720,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Versatile",
     slug: "versatile",
     grade: "minor",
-    description: "+1 to type stat for each of its other two stats that is 5 or higher",
+    description:
+      "+1 to type stat for each of its other two stats that is 5 or higher",
     stage: "conditional",
     order: 1,
     apply: (ctx) => {
@@ -729,7 +736,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Glass Cannon",
     slug: "glass_cannon",
     grade: "standard",
-    description: "+4 to type stat, but \u22123 to whatever defensive stat is used",
+    description:
+      "+4 to type stat, but \u22123 to whatever defensive stat is used",
     stage: "conditional",
     order: 1,
     apply: (ctx) => {
@@ -741,12 +749,14 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Feint",
     slug: "feint",
     grade: "strong",
-    description: "Attacks the opposing card's lowest stat instead of the matching one",
+    description:
+      "Attacks the opposing card's lowest stat instead of the matching one",
     stage: "defense",
     order: 1,
     apply: (ctx) => {
       const { stats } = ctx.opponent.card;
-      if (Math.min(...Object.values(stats)) >= stats[ctx.self.card.type]) return;
+      if (Math.min(...Object.values(stats)) >= stats[ctx.self.card.type])
+        return;
       ctx.self.targetLowest = true;
       ctx.self.bonuses.push("Feint (lowest stat)");
     },
@@ -804,7 +814,8 @@ export const KEYWORDS: KeywordDefinition[] = [
     name: "Mercy",
     slug: "mercy",
     grade: "minor",
-    description: "If this card wins its round by 5 or more, the opposing card's damage counts for nothing toward the tiebreaker",
+    description:
+      "If this card wins its round by 5 or more, the opposing card's damage counts for nothing toward the tiebreaker",
     stage: "tiebreak",
     order: 1,
     adjustOpposingTiebreakDamage: (damage, _rules, ctx) =>
@@ -870,7 +881,10 @@ export const unregisterKeyword = (slug: string): void => {
 
 /** Normalises "Last Stand", "last-stand", "LAST_STAND" to "last_stand". */
 export const normalizeKeywordSlug = (raw: string): string =>
-  (raw ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  (raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
 
 /** Looks a keyword up by name or slug. Unknown keywords resolve to null. */
 export const findKeyword = (raw: string): KeywordDefinition | null => {

@@ -15,7 +15,7 @@ export const runGame = async (
   guildID: string,
   wager: number,
   username: string,
-  servername: string
+  servername: string,
 ) => {
   let userHasFunds = false;
   let userBalance = (await getUserBalance(userID, guildID)) || 0;
@@ -32,7 +32,7 @@ export const runGame = async (
       win ? multiplier * betAmount : betAmount,
       username,
       servername,
-      win ? "Reserve" : userID
+      win ? "Reserve" : userID,
     );
   };
 
@@ -56,7 +56,7 @@ export const addCoin = async (
   amount: number,
   username: string,
   servername: string,
-  fromUserID: string
+  fromUserID: string,
 ) => {
   try {
     // Check if record exists
@@ -95,13 +95,13 @@ export const addCoin = async (
 
     if (sourceRecord.balance < parsedAmount) {
       throw new Error(
-        `Source Record ID ${fromUserID} does not have enough finicoin to transfer ${parsedAmount} to ${userID}`
+        `Source Record ID ${fromUserID} does not have enough finicoin to transfer ${parsedAmount} to ${userID}`,
       );
     }
 
     // Remove from source account
     const sourceBalance = parseFloat(
-      (sourceRecord.balance - parsedAmount).toFixed(2)
+      (sourceRecord.balance - parsedAmount).toFixed(2),
     );
     await pb
       .collection<BankRecord>("bank")
@@ -111,7 +111,7 @@ export const addCoin = async (
 
     // Add coin to recipient
     const recipientBalance = parseFloat(
-      (bankRecord.balance + parsedAmount).toFixed(2)
+      (bankRecord.balance + parsedAmount).toFixed(2),
     );
     await pb
       .collection<BankRecord>("bank")

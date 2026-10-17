@@ -46,7 +46,8 @@ export type BoardInput = {
   trial?: boolean;
 };
 
-export const buttonId = (roundId: string, action: string) => `${WEAVE_BUTTON}:${roundId}:${action}`;
+export const buttonId = (roundId: string, action: string) =>
+  `${WEAVE_BUTTON}:${roundId}:${action}`;
 
 /**
  * The words, shortest first - not in the grid's order, which the thread's
@@ -64,11 +65,19 @@ const wordLines = (puzzle: WeavePuzzle, progress: WeaveProgress): string[] =>
       return `${hinted ? "💡" : "▫️"} \`${blanks}\` (${word.length})`;
     });
 
-const threadLines = (puzzle: WeavePuzzle, progress: WeaveProgress): string[] => {
+const threadLines = (
+  puzzle: WeavePuzzle,
+  progress: WeaveProgress,
+): string[] => {
   const letters = threadLetters(puzzle, progress).toUpperCase().split("");
-  const showing = letters.length > 0 ? letters.map((letter) => `**${letter}**`).join(" · ") : "none yet";
+  const showing =
+    letters.length > 0
+      ? letters.map((letter) => `**${letter}**`).join(" · ")
+      : "none yet";
   if (progress.threadGuess === puzzle.thread) {
-    return [`✅ **${puzzle.thread.toUpperCase()}** · **+${progress.threadFc} fc**`];
+    return [
+      `✅ **${puzzle.thread.toUpperCase()}** · **+${progress.threadFc} fc**`,
+    ];
   }
   if (progress.threadGuess !== null) {
     return [
@@ -77,10 +86,14 @@ const threadLines = (puzzle: WeavePuzzle, progress: WeaveProgress): string[] => 
     ];
   }
   if (allFound(puzzle, progress)) {
-    return [`It was **${puzzle.thread.toUpperCase()}**, spelled out before it was guessed.`];
+    return [
+      `It was **${puzzle.thread.toUpperCase()}**, spelled out before it was guessed.`,
+    ];
   }
   if (!canGuessThread(puzzle, progress)) {
-    return [`It was **${puzzle.thread.toUpperCase()}**. Every letter showed before it was guessed.`];
+    return [
+      `It was **${puzzle.thread.toUpperCase()}**. Every letter showed before it was guessed.`,
+    ];
   }
   return [
     `Letters showing: ${showing}`,
@@ -105,7 +118,9 @@ export const boardText = (input: BoardInput): string => {
     done
       ? `🪙 **${earned(puzzle, progress)} fc** won`
       : `🪙 **${earned(puzzle, progress)} fc** so far · up to **${stillPossible(puzzle, progress)} fc**`,
-    ...(input.trial ? ["", "-# 🧪 On trial: only you can play it, and nothing is paid."] : []),
+    ...(input.trial
+      ? ["", "-# 🧪 On trial: only you can play it, and nothing is paid."]
+      : []),
   ].join("\n");
 };
 
@@ -119,7 +134,13 @@ const WRONG_ACCENT = 0xd9534f;
  */
 export const noteCard = (note: string) =>
   new ContainerBuilder()
-    .setAccentColor(note.includes("✅") ? RIGHT_ACCENT : note.includes("❌") ? WRONG_ACCENT : ACCENT)
+    .setAccentColor(
+      note.includes("✅")
+        ? RIGHT_ACCENT
+        : note.includes("❌")
+          ? WRONG_ACCENT
+          : ACCENT,
+    )
     .addTextDisplayComponents((text) => text.setContent(note));
 
 /** The board: the image, the words and thread, and its buttons while there's anything left to do. */
@@ -130,7 +151,11 @@ export const buildBoard = async (input: BoardInput) => {
   const container = new ContainerBuilder()
     .setAccentColor(ACCENT)
     .addMediaGalleryComponents((gallery) =>
-      gallery.addItems((item) => item.setURL(`attachment://${WEAVE_IMAGE}`).setDescription("Your Weave board")),
+      gallery.addItems((item) =>
+        item
+          .setURL(`attachment://${WEAVE_IMAGE}`)
+          .setDescription("Your Weave board"),
+      ),
     )
     .addSeparatorComponents((separator) => separator)
     .addTextDisplayComponents((text) => text.setContent(boardText(input)));
@@ -191,7 +216,9 @@ export const threadModal = (roundId: string) =>
     .addLabelComponents(
       new LabelBuilder()
         .setLabel("The thread word")
-        .setDescription("You get one guess. The fewer of its letters are showing, the more it pays.")
+        .setDescription(
+          "You get one guess. The fewer of its letters are showing, the more it pays.",
+        )
         .setTextInputComponent(
           new TextInputBuilder()
             .setCustomId("thread")

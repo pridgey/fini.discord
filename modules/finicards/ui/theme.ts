@@ -56,9 +56,7 @@ const TALLY_DRAWN_UP_TO = 8;
  * `🟠 12 · 🔵 9 · 🔴 4`, because a row of two hundred emoji says nothing and
  * is longer than a message may be.
  */
-export const compositionString = (
-  counts: Record<CardType, number>,
-): string => {
+export const compositionString = (counts: Record<CardType, number>): string => {
   const total = counts.power + counts.wit + counts.heart;
   if (total === 0) return "—";
   if (total <= TALLY_DRAWN_UP_TO) {
@@ -133,7 +131,10 @@ export const keywordGlossary = (cards: BattleCard[]): string[] => {
  * so this is where a player reads what it does without leaving the message.
  */
 export const keywordLegend = (cards: BattleCard[]): string[] => {
-  const carriers = new Map<string, { keyword: KeywordDefinition; names: string[] }>();
+  const carriers = new Map<
+    string,
+    { keyword: KeywordDefinition; names: string[] }
+  >();
   for (const card of cards) {
     const keyword = activeKeyword(card);
     if (!keyword) continue;

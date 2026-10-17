@@ -34,7 +34,10 @@ const FOIL_GRADIENT = `<linearGradient id="foilTag" x1="0" y1="0" x2="1" y2="1">
 const pocket = { w: CARD.w + POCKET_PAD * 2, h: CARD.h + POCKET_PAD * 2 };
 
 /** The page's size in pixels for a grid of `columns` by `rows`. */
-export const binderPageSize = (columns = BINDER_COLUMNS, rows = BINDER_ROWS) => ({
+export const binderPageSize = (
+  columns = BINDER_COLUMNS,
+  rows = BINDER_ROWS,
+) => ({
   width: MARGIN * 2 + columns * pocket.w + (columns - 1) * GAP,
   height: MARGIN * 2 + rows * pocket.h + (rows - 1) * GAP,
 });
@@ -99,7 +102,9 @@ ${pockets}
       if (!image) return null;
       const at = pocketAt(index, columns);
       return {
-        input: await sharp(image).resize({ width: CARD.w, height: CARD.h, fit: "fill" }).toBuffer(),
+        input: await sharp(image)
+          .resize({ width: CARD.w, height: CARD.h, fit: "fill" })
+          .toBuffer(),
         left: at.x + POCKET_PAD,
         top: at.y + POCKET_PAD,
       };
@@ -114,7 +119,13 @@ ${pockets}
       const at = pocketAt(index, columns);
       const centre = at.x + pocket.w / 2;
       const tag = card.legendary
-        ? { ...TAG, fill: LEGENDARY_GOLD, text: card.foil ? "LEGENDARY FOIL · VIEW TO PLAY" : "LEGENDARY · VIEW TO PLAY" }
+        ? {
+            ...TAG,
+            fill: LEGENDARY_GOLD,
+            text: card.foil
+              ? "LEGENDARY FOIL · VIEW TO PLAY"
+              : "LEGENDARY · VIEW TO PLAY",
+          }
         : { ...FOIL_TAG, fill: "url(#foilTag)", text: "✦ FOIL ✦" };
       return [
         `<rect x="${centre - tag.w / 2}" y="${at.y - tag.h / 2}" width="${tag.w}" height="${tag.h}" rx="${tag.h / 2}" fill="${tag.fill}" stroke="#0d0e13" stroke-opacity="0.5"/>`,
@@ -123,12 +134,22 @@ ${pockets}
     })
     .join("");
   const overlay = tags
-    ? [{ input: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>${FOIL_GRADIENT}</defs>${tags}</svg>`), left: 0, top: 0 }]
+    ? [
+        {
+          input: Buffer.from(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><defs>${FOIL_GRADIENT}</defs>${tags}</svg>`,
+          ),
+          left: 0,
+          top: 0,
+        },
+      ]
     : [];
 
   return sharp(Buffer.from(page))
     .composite([
-      ...rendered.filter((layer): layer is NonNullable<typeof layer> => layer !== null),
+      ...rendered.filter(
+        (layer): layer is NonNullable<typeof layer> => layer !== null,
+      ),
       ...overlay,
     ])
     .jpeg({ quality: 90 })

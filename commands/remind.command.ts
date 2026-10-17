@@ -45,61 +45,61 @@ export const execute = async (
       // Defer reply
       await interaction.deferReply();
 
-    // Resulting date object
-    let timeToRemind: Date;
+      // Resulting date object
+      let timeToRemind: Date;
 
-    console.log("Test:", {
-      tryPase: tryParseDate(amountOfTime),
-    });
-
-    // Try to parse date
-    const parsedDate = new Date(amountOfTime);
-    const isValidDate = !isNaN(parsedDate.getTime());
-
-    if (isValidDate) {
-      // They entered an actual date, go ahead and use it
-      timeToRemind = parsedDate;
-    } else {
-      // The current time to add to
-      const now = new Date();
-
-      const timeObject = {
-        years: 0,
-        months: 0,
-        weeks: 0,
-        days: 0,
-        hours: 0,
-        minutes: 0,
-        seconds: 0,
-      };
-
-      // For each top-level duration look for the potential time pattern
-      Object.keys(timeDictionary).forEach((unit) => {
-        const patterns = timeDictionary[unit].join("|");
-        const regex = new RegExp(`(\\d+)\\s*(${patterns})(?:\\b|\\s)`, "gi");
-        let match;
-
-        while ((match = regex.exec(amountOfTime))) {
-          timeObject[unit] += parseInt(match[1], 10);
-        }
+      console.log("Test:", {
+        tryPase: tryParseDate(amountOfTime),
       });
 
-      // Add time to get reminder timestamp
-      timeToRemind = add(now, timeObject);
-    }
+      // Try to parse date
+      const parsedDate = new Date(amountOfTime);
+      const isValidDate = !isNaN(parsedDate.getTime());
 
-    // Message link
-    const originalMessageLink = `https://discord.com/channels/${interaction.guildId}/${interaction.channelId}/${interaction.id}`;
+      if (isValidDate) {
+        // They entered an actual date, go ahead and use it
+        timeToRemind = parsedDate;
+      } else {
+        // The current time to add to
+        const now = new Date();
 
-    // Add reminder to database
-    await pb.collection<ReminderRecord>("reminder").create({
-      channel_id: interaction.channelId,
-      reminder_text: reminderText,
-      server_id: interaction.guildId || "",
-      time: timeToRemind.toISOString(),
-      user_id: interaction.user.id,
-      original_message: originalMessageLink,
-    } as ReminderRecord);
+        const timeObject = {
+          years: 0,
+          months: 0,
+          weeks: 0,
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+        };
+
+        // For each top-level duration look for the potential time pattern
+        Object.keys(timeDictionary).forEach((unit) => {
+          const patterns = timeDictionary[unit].join("|");
+          const regex = new RegExp(`(\\d+)\\s*(${patterns})(?:\\b|\\s)`, "gi");
+          let match;
+
+          while ((match = regex.exec(amountOfTime))) {
+            timeObject[unit] += parseInt(match[1], 10);
+          }
+        });
+
+        // Add time to get reminder timestamp
+        timeToRemind = add(now, timeObject);
+      }
+
+      // Message link
+      const originalMessageLink = `https://discord.com/channels/${interaction.guildId}/${interaction.channelId}/${interaction.id}`;
+
+      // Add reminder to database
+      await pb.collection<ReminderRecord>("reminder").create({
+        channel_id: interaction.channelId,
+        reminder_text: reminderText,
+        server_id: interaction.guildId || "",
+        time: timeToRemind.toISOString(),
+        user_id: interaction.user.id,
+        original_message: originalMessageLink,
+      } as ReminderRecord);
 
       // Reply to user
       await interaction.editReply(
@@ -116,6 +116,8 @@ export const execute = async (
       console.error("Error running /remind command", { error });
     }
   } else {
-    await interaction.reply(`I can't seem to parse your input. Please try again.`);
+    await interaction.reply(
+      `I can't seem to parse your input. Please try again.`,
+    );
   }
 };

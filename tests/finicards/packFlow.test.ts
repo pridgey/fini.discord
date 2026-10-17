@@ -22,9 +22,12 @@ const card = (overrides: Partial<BattleCard> = {}): BattleCard => ({
   ...overrides,
 });
 
-const buttonsOf = (message: Pick<ReturnType<typeof buildPackCardMessage>, "components">): string[] =>
-  JSON.stringify(message.components.map((component) => component.toJSON()))
-    .match(/v2pack-[a-z]+/g) ?? [];
+const buttonsOf = (
+  message: Pick<ReturnType<typeof buildPackCardMessage>, "components">,
+): string[] =>
+  JSON.stringify(
+    message.components.map((component) => component.toJSON()),
+  ).match(/v2pack-[a-z]+/g) ?? [];
 
 describe("finicards pack flow", () => {
   it("turns a pack over rarest last, keeping pull order within a rarity", () => {
@@ -37,42 +40,98 @@ describe("finicards pack flow", () => {
       card({ name: "Common B" }),
     ]).map((entry) => entry.name);
 
-    expect(order).toEqual(["Common A", "Common B", "Uncommon", "Full", "Secret", "Legend"]);
+    expect(order).toEqual([
+      "Common A",
+      "Common B",
+      "Uncommon",
+      "Full",
+      "Secret",
+      "Legend",
+    ]);
   });
 
   it("offers the next card until the last, then the whole pack - and another pack, when there is one", () => {
     const media = { name: "card.png", buffer: Buffer.from("") };
 
-    const first = buildPackCardMessage({ card: card(), media, index: 0, total: 5, opener: "Aya" });
+    const first = buildPackCardMessage({
+      card: card(),
+      media,
+      index: 0,
+      total: 5,
+      opener: "Aya",
+    });
     expect(buttonsOf(first)).toEqual([PACK_BUTTON.next, PACK_BUTTON.all]);
-    expect(JSON.stringify(first.components[0].toJSON())).toContain("**Aya**'s pack · card 1 of 5");
+    expect(JSON.stringify(first.components[0].toJSON())).toContain(
+      "**Aya**'s pack · card 1 of 5",
+    );
 
-    const last = buildPackCardMessage({ card: card(), media, index: 4, total: 5 });
+    const last = buildPackCardMessage({
+      card: card(),
+      media,
+      index: 4,
+      total: 5,
+    });
     expect(buttonsOf(last)).toEqual([PACK_BUTTON.all]);
 
     // The last card offers the next pack without a trip to the summary; earlier cards don't.
     const again = "Buy another pack · 25 fc";
-    expect(buttonsOf(buildPackCardMessage({ card: card(), media, index: 4, total: 5, again }))).toEqual([
-      PACK_BUTTON.all,
-      PACK_BUTTON.again,
-    ]);
-    expect(buttonsOf(buildPackCardMessage({ card: card(), media, index: 2, total: 5, again }))).toEqual([
-      PACK_BUTTON.next,
-      PACK_BUTTON.all,
-    ]);
+    expect(
+      buttonsOf(
+        buildPackCardMessage({
+          card: card(),
+          media,
+          index: 4,
+          total: 5,
+          again,
+        }),
+      ),
+    ).toEqual([PACK_BUTTON.all, PACK_BUTTON.again]);
+    expect(
+      buttonsOf(
+        buildPackCardMessage({
+          card: card(),
+          media,
+          index: 2,
+          total: 5,
+          again,
+        }),
+      ),
+    ).toEqual([PACK_BUTTON.next, PACK_BUTTON.all]);
   });
 
   it("marks a card new to the collection, on its own screen and in the whole pack", async () => {
     const media = { name: "card.png", buffer: Buffer.from("") };
     const fresh = { ...card(), isNew: true };
-    expect(JSON.stringify(buildPackCardMessage({ card: fresh, media, index: 0, total: 1 }).components[0].toJSON())).toContain(
-      "New to your collection!",
+    expect(
+      JSON.stringify(
+        buildPackCardMessage({
+          card: fresh,
+          media,
+          index: 0,
+          total: 1,
+        }).components[0].toJSON(),
+      ),
+    ).toContain("New to your collection!");
+    expect(
+      JSON.stringify(
+        buildPackCardMessage({
+          card: card(),
+          media,
+          index: 0,
+          total: 1,
+        }).components[0].toJSON(),
+      ),
+    ).not.toContain("New to your collection");
+    const pack = await buildPackMessage({
+      cards: [],
+      cost: 25,
+      shortfall: 0,
+      reimbursement: 0,
+      opener: "Aya",
+    });
+    expect(JSON.stringify(pack.components[0].toJSON())).toContain(
+      "## 🎴 Aya's pack",
     );
-    expect(JSON.stringify(buildPackCardMessage({ card: card(), media, index: 0, total: 1 }).components[0].toJSON())).not.toContain(
-      "New to your collection",
-    );
-    const pack = await buildPackMessage({ cards: [], cost: 25, shortfall: 0, reimbursement: 0, opener: "Aya" });
-    expect(JSON.stringify(pack.components[0].toJSON())).toContain("## 🎴 Aya's pack");
   });
 
   it("offers another pack under the whole pack only when there is one to offer", async () => {
@@ -80,9 +139,14 @@ describe("finicards pack flow", () => {
 
     expect(buttonsOf(await buildPackMessage(pack))).toEqual([]);
 
-    const again = await buildPackMessage({ ...pack, again: "Buy another pack · 50 fc" });
+    const again = await buildPackMessage({
+      ...pack,
+      again: "Buy another pack · 50 fc",
+    });
     expect(buttonsOf(again)).toEqual([PACK_BUTTON.again]);
-    expect(JSON.stringify(again.components[0].toJSON())).toContain("Buy another pack · 50 fc");
+    expect(JSON.stringify(again.components[0].toJSON())).toContain(
+      "Buy another pack · 50 fc",
+    );
   });
 });
 
@@ -90,7 +154,8 @@ describe("collector buttons and the button router", () => {
   it("leaves the pack and sell buttons to the flows that posted them", async () => {
     const { isCollectorButton } = await import("../../buttons/buttonHandler");
 
-    for (const id of Object.values(PACK_BUTTON)) expect(isCollectorButton(id)).toBe(true);
+    for (const id of Object.values(PACK_BUTTON))
+      expect(isCollectorButton(id)).toBe(true);
     expect(isCollectorButton("v2sell-buy")).toBe(true);
     expect(isCollectorButton("v2sell-cancel")).toBe(true);
     // Routed buttons carry a namespace before a colon and are not touched.
@@ -101,10 +166,16 @@ describe("collector buttons and the button router", () => {
 
 describe("keeping a pack's files on an edit", () => {
   it("sends each kept file with its file name, so attachment:// can find it", async () => {
-    const { Attachment, AttachmentBuilder, MessagePayload } = await import("discord.js");
-    const { keepAttachments } = await import("../../modules/finicards/packFlow");
+    const { Attachment, AttachmentBuilder, MessagePayload } =
+      await import("discord.js");
+    const { keepAttachments } =
+      await import("../../modules/finicards/packFlow");
     // The constructor is private in the typings, not at runtime: it is how discord.js builds one from Discord's JSON.
-    const onMessage = new (Attachment as unknown as new (data: object) => import("discord.js").Attachment)({
+    const onMessage = new (
+      Attachment as unknown as new (
+        data: object,
+      ) => import("discord.js").Attachment
+    )({
       id: "111",
       filename: "booster-pack.png",
       size: 1,
@@ -117,8 +188,13 @@ describe("keeping a pack's files on an edit", () => {
       files: [new AttachmentBuilder(Buffer.from(""), { name: "card-1.png" })],
       attachments: keepAttachments([onMessage]),
     }).resolveBody();
-    const sent = JSON.parse(JSON.stringify((payload.body as { attachments: unknown[] }).attachments));
+    const sent = JSON.parse(
+      JSON.stringify((payload.body as { attachments: unknown[] }).attachments),
+    );
 
-    expect(sent).toEqual([{ id: "111", filename: "booster-pack.png" }, { id: "0" }]);
+    expect(sent).toEqual([
+      { id: "111", filename: "booster-pack.png" },
+      { id: "0" },
+    ]);
   });
 });

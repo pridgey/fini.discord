@@ -68,8 +68,7 @@ const buildJackpotHistoryResult = async ({
   });
 
   const resultContainer = new ContainerBuilder().addTextDisplayComponents(
-    (text) =>
-      text.setContent(`## 🎰 Jackpot Winners\n${lines.join("\n")}`),
+    (text) => text.setContent(`## 🎰 Jackpot Winners\n${lines.join("\n")}`),
   );
 
   return {

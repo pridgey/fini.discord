@@ -53,15 +53,20 @@ mock.module("../../utilities/pocketbase", () => ({
         return storedContext;
       },
       update: mockUpdate,
-      getList: async () => ({ items: [], totalItems: 0, totalPages: 0, page: 1, perPage: 100 }),
+      getList: async () => ({
+        items: [],
+        totalItems: 0,
+        totalPages: 0,
+        page: 1,
+        perPage: 100,
+      }),
       delete: async () => ({}),
     }),
   },
 }));
 
-const { renderPaginationPage } = await import(
-  "../../utilities/pagination/pagination"
-);
+const { renderPaginationPage } =
+  await import("../../utilities/pagination/pagination");
 
 describe("renderPaginationPage", () => {
   beforeEach(() => {
@@ -81,7 +86,11 @@ describe("renderPaginationPage", () => {
   });
 
   it("renders the requested page with a pagination row appended", async () => {
-    const page = await renderPaginationPage({ contextId: "ctx1", page: 2, buildRow });
+    const page = await renderPaginationPage({
+      contextId: "ctx1",
+      page: 2,
+      buildRow,
+    });
 
     expect(page).not.toBeNull();
     // The query's own container, then the prev/indicator/next row.
@@ -102,14 +111,22 @@ describe("renderPaginationPage", () => {
   it("always clears attachments so a stale image can't linger", async () => {
     // A page with an image followed by one without would otherwise keep the
     // old file pinned under the new content.
-    const page = await renderPaginationPage({ contextId: "ctx1", page: 1, buildRow });
+    const page = await renderPaginationPage({
+      contextId: "ctx1",
+      page: 1,
+      buildRow,
+    });
 
     expect(page!.attachments).toEqual([]);
     expect(page!.files).toEqual([]);
   });
 
   it("flags Components V2 when the query asks for it", async () => {
-    const page = await renderPaginationPage({ contextId: "ctx1", page: 1, buildRow });
+    const page = await renderPaginationPage({
+      contextId: "ctx1",
+      page: 1,
+      buildRow,
+    });
 
     expect(page!.flags).toBeDefined();
   });

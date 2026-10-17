@@ -51,7 +51,9 @@ export const execute = async (
     console.error("Error during /generate-npc", err);
     await interaction
       .editReply("Error during /generate-npc")
-      .catch((replyErr) => console.error("Error reporting /generate-npc failure:", replyErr));
+      .catch((replyErr) =>
+        console.error("Error reporting /generate-npc failure:", replyErr),
+      );
   } finally {
     logCommand();
   }

@@ -47,7 +47,9 @@ export const startCardManager = (): boolean => {
         if (password && !passwordGiven(request)) {
           return new Response("password needed", {
             status: 401,
-            headers: { "WWW-Authenticate": 'Basic realm="Finicards card manager"' },
+            headers: {
+              "WWW-Authenticate": 'Basic realm="Finicards card manager"',
+            },
           });
         }
 
@@ -61,10 +63,15 @@ export const startCardManager = (): boolean => {
     });
   } catch (error) {
     // Most likely the port is taken - a card manager started by hand, say.
-    console.error(`Card manager could not start on ${host}:${port}:`, (error as Error)?.message ?? error);
+    console.error(
+      `Card manager could not start on ${host}:${port}:`,
+      (error as Error)?.message ?? error,
+    );
     return false;
   }
 
-  console.log(`Card manager on http://${host}:${port}/cards/${password ? " (password needed)" : ""}`);
+  console.log(
+    `Card manager on http://${host}:${port}/cards/${password ? " (password needed)" : ""}`,
+  );
   return true;
 };

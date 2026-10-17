@@ -108,7 +108,9 @@ const packOf = (opener?: string) => (opener ? `**${opener}**'s pack` : "Pack");
 export const buildPackMessage = async (
   input: PackMessageInput,
 ): Promise<BuiltCardMessage> => {
-  const images = await renderCardMediaList(input.cards, { reveal: input.reveal });
+  const images = await renderCardMediaList(input.cards, {
+    reveal: input.reveal,
+  });
 
   const container = new ContainerBuilder()
     .setAccentColor(NEUTRAL_ACCENT)
@@ -204,11 +206,15 @@ export const buildPackCoverMessage = async (input: {
     .setAccentColor(NEUTRAL_ACCENT)
     .addMediaGalleryComponents((gallery) =>
       gallery.addItems((item) =>
-        item.setURL(`attachment://${PACK_COVER_NAME}`).setDescription("A sealed booster pack"),
+        item
+          .setURL(`attachment://${PACK_COVER_NAME}`)
+          .setDescription("A sealed booster pack"),
       ),
     )
     .addTextDisplayComponents((text) =>
-      text.setContent(`-# ${packOf(input.opener)} · ${input.note ?? `${input.cost} fc`} · ${input.size} cards inside`),
+      text.setContent(
+        `-# ${packOf(input.opener)} · ${input.note ?? `${input.cost} fc`} · ${input.size} cards inside`,
+      ),
     )
     .addActionRowComponents(() =>
       new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -221,7 +227,9 @@ export const buildPackCoverMessage = async (input: {
 
   return {
     components: [container],
-    files: [new AttachmentBuilder(await packCover(), { name: PACK_COVER_NAME })],
+    files: [
+      new AttachmentBuilder(await packCover(), { name: PACK_COVER_NAME }),
+    ],
     flags: [MessageFlags.IsComponentsV2],
   };
 };
@@ -233,11 +241,15 @@ export const buildPackOpeningMessage = async (): Promise<BuiltCardMessage> => ({
       .setAccentColor(NEUTRAL_ACCENT)
       .addMediaGalleryComponents((gallery) =>
         gallery.addItems((item) =>
-          item.setURL(`attachment://${PACK_OPENING_NAME}`).setDescription("The pack opening"),
+          item
+            .setURL(`attachment://${PACK_OPENING_NAME}`)
+            .setDescription("The pack opening"),
         ),
       ),
   ],
-  files: [new AttachmentBuilder(await packOpeningGif(), { name: PACK_OPENING_NAME })],
+  files: [
+    new AttachmentBuilder(await packOpeningGif(), { name: PACK_OPENING_NAME }),
+  ],
   flags: [MessageFlags.IsComponentsV2],
 });
 
@@ -278,14 +290,19 @@ export const buildPackCardMessage = (input: {
   );
   if (last && input.again) {
     row.addComponents(
-      new ButtonBuilder().setCustomId(PACK_BUTTON.again).setLabel(input.again).setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(PACK_BUTTON.again)
+        .setLabel(input.again)
+        .setStyle(ButtonStyle.Success),
     );
   }
 
   const container = new ContainerBuilder()
     .setAccentColor(TYPE_ACCENT[card.type])
     .addTextDisplayComponents((text) =>
-      text.setContent(`-# ${packOf(input.opener)} · card ${input.index + 1} of ${input.total}`),
+      text.setContent(
+        `-# ${packOf(input.opener)} · card ${input.index + 1} of ${input.total}`,
+      ),
     )
     .addMediaGalleryComponents((gallery) =>
       gallery.addItems((item) =>
@@ -329,9 +346,7 @@ export const buildLockedInMessage = (
       text.setContent(
         [
           "### ✅ Lineup locked in",
-          ...chosen.map(
-            (card, index) => `**${index + 1}.** ${cardLine(card)}`,
-          ),
+          ...chosen.map((card, index) => `**${index + 1}.** ${cardLine(card)}`),
           "",
           `-# Waiting on **${opponentName}**. The match resolves the moment they lock in.`,
         ].join("\n"),

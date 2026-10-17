@@ -164,8 +164,20 @@ describe("finicards v2 legacy conversion", () => {
        Power vs Power and the type wheel barely turned. */
     it("measures the mean of each channel across a pool", () => {
       const means = channelMeans([
-        legacy({ strength: 10, endurance: 10, intellect: 4, agility: 4, luck: 2 }),
-        legacy({ strength: 20, endurance: 20, intellect: 8, agility: 8, luck: 4 }),
+        legacy({
+          strength: 10,
+          endurance: 10,
+          intellect: 4,
+          agility: 4,
+          luck: 2,
+        }),
+        legacy({
+          strength: 20,
+          endurance: 20,
+          intellect: 8,
+          agility: 8,
+          luck: 4,
+        }),
       ]);
 
       expect(means.power).toBe(30); // (20 + 40) / 2
@@ -175,7 +187,13 @@ describe("finicards v2 legacy conversion", () => {
 
     it("never divides by zero when a channel is empty", () => {
       const means = channelMeans([
-        legacy({ strength: 0, endurance: 0, intellect: 0, agility: 0, luck: 0 }),
+        legacy({
+          strength: 0,
+          endurance: 0,
+          intellect: 0,
+          agility: 0,
+          luck: 0,
+        }),
       ]);
       expect(means).toEqual({ power: 1, wit: 1, heart: 1 });
     });
@@ -184,8 +202,22 @@ describe("finicards v2 legacy conversion", () => {
       /* This card is Power-heavy in raw numbers but *below average* on Power for
          its pool, and well above average on Heart - so it should read as Heart. */
       const pool = [
-        legacy({ id: "a", strength: 24, endurance: 24, intellect: 2, agility: 2, luck: 1 }),
-        legacy({ id: "b", strength: 24, endurance: 24, intellect: 2, agility: 2, luck: 1 }),
+        legacy({
+          id: "a",
+          strength: 24,
+          endurance: 24,
+          intellect: 2,
+          agility: 2,
+          luck: 1,
+        }),
+        legacy({
+          id: "b",
+          strength: 24,
+          endurance: 24,
+          intellect: 2,
+          agility: 2,
+          luck: 1,
+        }),
         legacy({
           id: "c",
           rarity: "u",

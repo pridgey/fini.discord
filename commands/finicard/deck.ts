@@ -18,7 +18,11 @@ import {
 import { HAND_SIZE } from "../../modules/finicards/draw";
 import { resolveLineup } from "../../modules/finicards/cardStore";
 import { RARITY_LABEL, TYPE_EMOJI } from "../../modules/finicards/rules";
-import type { CardRarity, CardType, V2DeckRecord } from "../../types/PocketbaseTablesV2";
+import type {
+  CardRarity,
+  CardType,
+  V2DeckRecord,
+} from "../../types/PocketbaseTablesV2";
 import type { FinicardContext } from "./context";
 
 /* -------------------------------------------------------------------------- */
@@ -84,7 +88,9 @@ export const handleDeckSubcommand = async (
             .addTextDisplayComponents((text) =>
               text.setContent(
                 `**${deck.name}** — ${size} cards${
-                  size < DECK_SIZE ? `\n-# ⚠️ too small to play (needs ${DECK_SIZE})` : ""
+                  size < DECK_SIZE
+                    ? `\n-# ⚠️ too small to play (needs ${DECK_SIZE})`
+                    : ""
                 }`,
               ),
             )
@@ -110,12 +116,10 @@ export const handleDeckSubcommand = async (
 
     case "build": {
       const name = interaction.options.getString("name", true);
-      const type = interaction.options.getString("type") as
-        | CardType
-        | null;
-      const rarity = interaction.options.getString("rarity") as
-        | CardRarity
-        | null;
+      const type = interaction.options.getString("type") as CardType | null;
+      const rarity = interaction.options.getString(
+        "rarity",
+      ) as CardRarity | null;
       const tag = interaction.options.getString("tag") ?? undefined;
 
       const result = await autoBuildDeck({
@@ -179,7 +183,12 @@ export const handleDeckSubcommand = async (
       }
 
       const rawCard = interaction.options.getString("card", true);
-      const { cards, errors } = await resolveLineup(userId, serverId, [rawCard], 1);
+      const { cards, errors } = await resolveLineup(
+        userId,
+        serverId,
+        [rawCard],
+        1,
+      );
 
       if (cards.length === 0) {
         await interaction.editReply(
@@ -191,9 +200,7 @@ export const handleDeckSubcommand = async (
       const card = cards[0];
       const updated = await updateDeckCards(
         deck,
-        isAdd
-          ? { add: [card.instanceId] }
-          : { remove: [card.instanceId] },
+        isAdd ? { add: [card.instanceId] } : { remove: [card.instanceId] },
       );
 
       if (!updated.ok) {
@@ -203,7 +210,9 @@ export const handleDeckSubcommand = async (
 
       await interaction.editReply(
         `${isAdd ? "Added" : "Removed"} **${card.name}** ${isAdd ? "to" : "from"} **${deck.name}** (${(updated.deck.cards ?? []).length} of ${DECK_SIZE} cards${
-          (updated.deck.cards ?? []).length < DECK_SIZE ? " - add another before you play it" : ""
+          (updated.deck.cards ?? []).length < DECK_SIZE
+            ? " - add another before you play it"
+            : ""
         }).`,
       );
       return;

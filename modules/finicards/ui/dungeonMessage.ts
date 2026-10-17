@@ -147,7 +147,9 @@ export const buildDungeonMessage = async (
       hand: null,
       summary,
       cards: await Promise.all(
-        (input.reward?.cards ?? []).slice(0, shown).map((card) => renderCardImage(card)),
+        (input.reward?.cards ?? [])
+          .slice(0, shown)
+          .map((card) => renderCardImage(card)),
       ),
     });
   }
@@ -171,7 +173,9 @@ export const buildDungeonMessage = async (
 
 const lootLine = (progress: DungeonState): string | null => {
   if (progress.loot.length === 0) return null;
-  const fullArts = progress.loot.filter((rarity) => rarity === "full_art").length;
+  const fullArts = progress.loot.filter(
+    (rarity) => rarity === "full_art",
+  ).length;
   const uncommons = progress.loot.length - fullArts;
   return `🎴 ${[
     ...(uncommons > 0 ? [`${uncommons} uncommon`] : []),
@@ -255,14 +259,18 @@ const roomsLeft = (buff: Buff): string =>
  */
 export const buffLines = (buffs: Buff[]): string[] =>
   BUFF_GROUPS.flatMap(({ icon, label, keys }) => {
-    const touches = (buff: Buff) => keys.some((key) => (buff.mods[key] ?? 0) !== 0);
-    const lasting = buffs.filter((buff) => buff.rooms === null && touches(buff));
+    const touches = (buff: Buff) =>
+      keys.some((key) => (buff.mods[key] ?? 0) !== 0);
+    const lasting = buffs.filter(
+      (buff) => buff.rooms === null && touches(buff),
+    );
     const timed = buffs.filter((buff) => buff.rooms !== null && touches(buff));
     if (lasting.length === 0 && timed.length === 0) return [];
 
     const total: Partial<Mods> = {};
     for (const buff of lasting) {
-      for (const key of keys) total[key] = (total[key] ?? 0) + (buff.mods[key] ?? 0);
+      for (const key of keys)
+        total[key] = (total[key] ?? 0) + (buff.mods[key] ?? 0);
     }
 
     const merged = new Map<string, { buff: Buff; count: number }>();
@@ -278,7 +286,9 @@ export const buffLines = (buffs: Buff[]): string[] =>
       ...[...merged.values()].map(
         ({ buff, count }) =>
           `${buff.name}${count > 1 ? ` ×${count}` : ""}: ${groupText(
-            Object.fromEntries(keys.map((key) => [key, (buff.mods[key] ?? 0) * count])),
+            Object.fromEntries(
+              keys.map((key) => [key, (buff.mods[key] ?? 0) * count]),
+            ),
             keys,
           )} _(${roomsLeft(buff)})_`,
       ),
@@ -293,7 +303,9 @@ const chargeLine = (progress: DungeonState): string | null => {
     ...((progress.rerolls ?? 0) > 0
       ? [`🎲 ${plural(progress.rerolls ?? 0, "loaded die", "loaded dice")}`]
       : []),
-    ...((progress.coffee ?? 0) > 0 ? [`☕ ${plural(progress.coffee ?? 0, "coffee")}`] : []),
+    ...((progress.coffee ?? 0) > 0
+      ? [`☕ ${plural(progress.coffee ?? 0, "coffee")}`]
+      : []),
   ];
   return charges.length > 0 ? charges.join(" · ") : null;
 };
@@ -306,7 +318,11 @@ const roomTitle = (room: Room, depth: number): string => {
       return `### ❓ Room ${depth} — ${room.title}`;
     case "fight":
       return `### ${room.tier === "boss" ? "👑" : "⚔️"} Room ${depth} — ${
-        room.tier === "boss" ? "Boss · " : room.tier === "elite" ? "Elite · " : ""
+        room.tier === "boss"
+          ? "Boss · "
+          : room.tier === "elite"
+            ? "Elite · "
+            : ""
       }${room.enemy.name}`;
   }
 };
@@ -416,7 +432,8 @@ export const composeDungeonMessage = (
           [
             rewardLine(input.reward, state),
             ...(input.reward?.cards ?? []).map(
-              (card) => `🎴 **Boss drop:** ${cardLine(card)} · \`${card.instanceId}\``,
+              (card) =>
+                `🎴 **Boss drop:** ${cardLine(card)} · \`${card.instanceId}\``,
             ),
           ].join("\n"),
         ),
@@ -451,7 +468,9 @@ export const composeDungeonMessage = (
         gallery.addItems(
           ...drops.map(
             (drop) => (item: any) =>
-              item.setURL(`attachment://${drop.name}`).setDescription(drop.description),
+              item
+                .setURL(`attachment://${drop.name}`)
+                .setDescription(drop.description),
           ),
         ),
       );
@@ -467,8 +486,10 @@ export const composeDungeonMessage = (
   /* ------------------------------------------------------------ active ---- */
   const files: AttachmentBuilder[] = [];
   const id = (action: string) =>
-    input.controls?.id(action) ?? `v2_dungeon:${runId}:${progress.step}:${action}`;
-  const off = (action: string) => !!input.controls && !input.controls.enabled(action);
+    input.controls?.id(action) ??
+    `v2_dungeon:${runId}:${progress.step}:${action}`;
+  const off = (action: string) =>
+    !!input.controls && !input.controls.enabled(action);
   const mods = modsOf(progress);
   const hand = handView(input);
   const ready = hand.filter((entry) => entry.cooldown === 0);
@@ -496,7 +517,10 @@ export const composeDungeonMessage = (
 
   /* Every button carries the step it was drawn for, so a click on an older
      copy of this message is refused instead of being played twice. */
-  const buttonRows = (container: ContainerBuilder, buttons: ButtonBuilder[]) => {
+  const buttonRows = (
+    container: ContainerBuilder,
+    buttons: ButtonBuilder[],
+  ) => {
     for (let index = 0; index < buttons.length; index += 5) {
       container.addActionRowComponents(() =>
         new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -526,7 +550,10 @@ export const composeDungeonMessage = (
       images.scene,
       DUNGEON_SCENE_FILE,
       doors.map((door) => doorText(door, sight)).join(" or "),
-      doors.map((door, index) => `**${index + 1}** · ${doorIcon(door, sight)} ${doorText(door, sight)}`),
+      doors.map(
+        (door, index) =>
+          `**${index + 1}** · ${doorIcon(door, sight)} ${doorText(door, sight)}`,
+      ),
     );
     scene.addTextDisplayComponents((text) =>
       text.setContent(
@@ -552,7 +579,9 @@ export const composeDungeonMessage = (
   } else {
     scene
       .setAccentColor(roomAccent(room))
-      .addTextDisplayComponents((text) => text.setContent(roomTitle(room, depth)));
+      .addTextDisplayComponents((text) =>
+        text.setContent(roomTitle(room, depth)),
+      );
 
     if (room.kind === "fight") {
       gallery(scene, images.scene, DUNGEON_SCENE_FILE, room.enemy.name, [
@@ -563,7 +592,9 @@ export const composeDungeonMessage = (
         text.setContent(
           [
             ...(room.preview
-              ? [`👀 **A sneak peek** — ${room.enemy.name.replace(/^Sudden /, "")} is from ${room.enemy.set ? `Set ${room.enemy.set}` : "a set"}, which isn't out yet.`]
+              ? [
+                  `👀 **A sneak peek** — ${room.enemy.name.replace(/^Sudden /, "")} is from ${room.enemy.set ? `Set ${room.enemy.set}` : "a set"}, which isn't out yet.`,
+                ]
               : []),
             ...keywordLegend([room.enemy]),
             ...enemyAbilityLines(progress, weakenedEnemy(room.enemy, mods)),
@@ -612,7 +643,9 @@ export const composeDungeonMessage = (
                 : `${offer.name} — ${offer.price} geld`,
             )
             .setStyle(ButtonStyle.Success)
-            .setDisabled(offer.sold || offer.price > progress.geld || off(`b${index}`)),
+            .setDisabled(
+              offer.sold || offer.price > progress.geld || off(`b${index}`),
+            ),
         ),
         new ButtonBuilder()
           .setCustomId(id("leave"))
@@ -706,7 +739,9 @@ export const composeDungeonMessage = (
     new ButtonBuilder()
       .setCustomId(id("retreat"))
       .setLabel(
-        leaveWith > 0 ? `Walk out with ${leaveWith} fc` : "Walk out with nothing",
+        leaveWith > 0
+          ? `Walk out with ${leaveWith} fc`
+          : "Walk out with nothing",
       )
       .setStyle(ButtonStyle.Danger)
       .setDisabled(off("retreat")),

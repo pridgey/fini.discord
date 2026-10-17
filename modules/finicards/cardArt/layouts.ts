@@ -262,7 +262,15 @@ const COMMON: TemplateLayout = {
   artCaption: { x: 303, y: 252, fill: "#5d6072", size: 13 },
   // Bold italic DejaVu measured against the estimator over every name in the
   // pool: 5% wider on average, 16% at worst.
-  name: { size: 48, maxWidth: 542, bold: true, x: 32, wrapSize: 40, minSize: 34, widen: 1.16 },
+  name: {
+    size: 48,
+    maxWidth: 542,
+    bold: true,
+    x: 32,
+    wrapSize: 40,
+    minSize: 34,
+    widen: 1.16,
+  },
   factionMaxWidth: 430,
   factionFont: { size: 15, letterSpacing: 3.3 },
   tags: {
@@ -313,7 +321,15 @@ const UNCOMMON: TemplateLayout = {
   artAnchor: "top",
   // Centred on the part of the art the panel leaves showing, not on the window.
   artCaption: { x: 303, y: 270, fill: "#5d6072", size: 13 },
-  name: { size: 44, maxWidth: 494, bold: true, x: 56, wrapSize: 38, minSize: 30, widen: 1.16 },
+  name: {
+    size: 44,
+    maxWidth: 494,
+    bold: true,
+    x: 56,
+    wrapSize: 38,
+    minSize: 30,
+    widen: 1.16,
+  },
   panel: { y: 520, h: 271 },
   artistChars: 16,
   factionMaxWidth: 440,
@@ -382,7 +398,14 @@ const SPECIAL: TemplateLayout = {
   art: { x: 4, y: 4, w: 312, h: 440 },
   artCaption: { x: 160, y: 227, fill: "#7b83b5" },
   // The art runs the full height of this frame, so a second line has room.
-  name: { size: 31, maxWidth: 280, bold: true, x: 20, wrapSize: 29, minSize: 24 },
+  name: {
+    size: 31,
+    maxWidth: 280,
+    bold: true,
+    x: 20,
+    wrapSize: 29,
+    minSize: 24,
+  },
   factionMaxWidth: 215,
   tags: {
     style: "inline",
@@ -459,6 +482,7 @@ export const layoutFor = (
   foil: boolean,
 ): TemplateLayout => {
   if (rarity === "full_art") return LAYOUTS.special;
-  if (rarity === "uncommon") return foil ? LAYOUTS.double_rare : LAYOUTS.uncommon;
+  if (rarity === "uncommon")
+    return foil ? LAYOUTS.double_rare : LAYOUTS.uncommon;
   return foil ? LAYOUTS.rare : LAYOUTS.common;
 };

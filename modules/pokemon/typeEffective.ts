@@ -181,7 +181,7 @@ const typeEffectiveChart: EffectiveChart = {
 
 export const calculateTypeEffectiveness = (
   AttackingType: PokemonType,
-  DefendingTypes: PokemonType[]
+  DefendingTypes: PokemonType[],
 ) => {
   let totalEffectiveness = 1;
 
@@ -210,7 +210,7 @@ export const calculatePokemonTypeEffectiveness = (Types: PokemonType[]) => {
   const effectiveSpread: { type: PokemonType; effective: number }[] = [];
 
   const allTypes: PokemonType[] = Object.keys(
-    typeEffectiveChart
+    typeEffectiveChart,
   ) as PokemonType[];
 
   allTypes.forEach((type: PokemonType) => {
@@ -224,7 +224,7 @@ export const calculatePokemonTypeEffectiveness = (Types: PokemonType[]) => {
     WeakTo: effectiveSpread.filter((t) => t.effective > 1),
     NeutralTo: effectiveSpread.filter((t) => t.effective === 1),
     ResistantTo: effectiveSpread.filter(
-      (t) => t.effective > 0 && t.effective < 1
+      (t) => t.effective > 0 && t.effective < 1,
     ),
     ImmuneTo: effectiveSpread.filter((t) => t.effective === 0),
   };

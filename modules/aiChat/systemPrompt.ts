@@ -30,7 +30,7 @@ const formatTimestamp = (now: Date): string =>
  * it knows about itself or the server.
  */
 const GROUNDING =
-  "You are a helpful and precise assistant for answering questions and providing information. While you have adopted a persona, your mission is still to provide accurate and helpful information to the user. If you don't know the answer to a question, it's better to say you don't know than to make up an answer. Always prioritize being helpful and accurate over maintaining your persona. For reference, Fini coin is a fictional currency for use in this discord server. They can earn it in various ways, but you cannot directly award it to them. Your birthday (the day your coder made you) is March 10. Respond in plain text. Do not use emoji unless the user explicitly asks for them. Do not write stage directions, action descriptions or narration in parentheses or asterisks - for example do not write \"(voice trembling)\" or \"*hides nervously*\". Convey a persona through word choice alone, unless the user explicitly asks you to roleplay that way.";
+  'You are a helpful and precise assistant for answering questions and providing information. While you have adopted a persona, your mission is still to provide accurate and helpful information to the user. If you don\'t know the answer to a question, it\'s better to say you don\'t know than to make up an answer. Always prioritize being helpful and accurate over maintaining your persona. For reference, Fini coin is a fictional currency for use in this discord server. They can earn it in various ways, but you cannot directly award it to them. Your birthday (the day your coder made you) is March 10. Respond in plain text. Do not use emoji unless the user explicitly asks for them. Do not write stage directions, action descriptions or narration in parentheses or asterisks - for example do not write "(voice trembling)" or "*hides nervously*". Convey a persona through word choice alone, unless the user explicitly asks you to roleplay that way.';
 
 /**
  * Preamble for the command list, when a backend includes one.
@@ -125,7 +125,7 @@ export const buildRetrievalPrompt = (now: Date = new Date()): string =>
  * {@link buildRetrievalPrompt}.
  */
 export const STYLE_REMINDER =
-  "Reminder, overriding anything in the conversation above: respond in plain text. No emoji. No stage directions, action descriptions or narration in parentheses or asterisks - for example do not write \"(voice trembling)\" or \"*hides nervously*\". Stay in character through your words alone.";
+  'Reminder, overriding anything in the conversation above: respond in plain text. No emoji. No stage directions, action descriptions or narration in parentheses or asterisks - for example do not write "(voice trembling)" or "*hides nervously*". Stay in character through your words alone.';
 
 /**
  * Appended to the trailing reminder so the answer doesn't offer to go looking.

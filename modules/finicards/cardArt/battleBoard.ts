@@ -165,8 +165,7 @@ export const TYPE_ICON_PATHS: Record<CardType, string> = {
   power:
     "M1 9 L1 7.2 C1 4.2 4.8 3 6.3 5.2 L6.3 4.3 C5 4.1 4.6 2.4 5.6 1.6 C6.6 0.8 8.7 0.9 9 2.6 L8.9 7.8 C8.8 8.6 8.2 9 7.4 9 Z M2.9 6.7 C3.5 5.8 4.6 5.6 5.4 6.1",
   wit: "M5 2 C3.6 1 1.8 1.9 2 3.6 C0.8 4.2 0.8 6.2 2.2 6.6 C2.2 8.2 4 8.9 5 8 C6 8.9 7.8 8.2 7.8 6.6 C9.2 6.2 9.2 4.2 8 3.6 C8.2 1.9 6.4 1 5 2 Z M5 2 V8 M3.2 4.4 C4 4.6 4 5.4 3.4 5.8 M6.8 4.4 C6 4.6 6 5.4 6.6 5.8",
-  heart:
-    "M5 8.8 L1.7 5.4 A2.1 2.1 0 0 1 5 2.8 A2.1 2.1 0 0 1 8.3 5.4 Z",
+  heart: "M5 8.8 L1.7 5.4 A2.1 2.1 0 0 1 5 2.8 A2.1 2.1 0 0 1 8.3 5.4 Z",
 };
 const ICON = { size: 8.5, gap: 2 };
 
@@ -336,10 +335,10 @@ const centreColumn = (roundResult: RoundResult): string => {
   const bonused: Side | null = both
     ? null
     : challenger.multiplier > 1
-    ? "challenger"
-    : defender.multiplier > 1
-    ? "defender"
-    : null;
+      ? "challenger"
+      : defender.multiplier > 1
+        ? "defender"
+        : null;
 
   const chip = { width: 72, height: 13, y: 52 };
   const chipX = cx - chip.width / 2;
@@ -373,8 +372,8 @@ const centreColumn = (roundResult: RoundResult): string => {
     const label = both
       ? `BOTH ×${challenger.multiplier}`
       : challenger.printedType === defender.printedType
-      ? "MIRROR"
-      : "NO BONUS";
+        ? "MIRROR"
+        : "NO BONUS";
     parts.push(
       `<rect x="${chipX}" y="${chip.y}" width="${chip.width}" height="${chip.height}" rx="6.5" fill="none" stroke="#ffffff" stroke-opacity="0.18"></rect>`,
       `<text x="${cx}" y="${
@@ -395,8 +394,8 @@ const roundRow = (
     roundResult.winner === "draw"
       ? "draw"
       : roundResult.winner === side
-      ? "won"
-      : "lost";
+        ? "won"
+        : "lost";
 
   return [
     `<g transform="translate(0 ${
@@ -457,8 +456,8 @@ const header = (result: MatchResult, names: Record<Side, string>): string => {
     const role = won
       ? "WINNER"
       : key === "challenger"
-      ? "CHALLENGER"
-      : "DEFENDER";
+        ? "CHALLENGER"
+        : "DEFENDER";
 
     return [
       `<text x="${x}" y="22" text-anchor="${anchor}" font-size="14" font-weight="800" fill="${

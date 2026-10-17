@@ -106,10 +106,7 @@ export const clearHistory = async (
       try {
         await anthropic.beta.files.delete(record.attachment);
       } catch (err) {
-        console.error(
-          `Error deleting attachment ${record.attachment}:`,
-          err,
-        );
+        console.error(`Error deleting attachment ${record.attachment}:`, err);
       }
     }
   };

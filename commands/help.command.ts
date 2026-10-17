@@ -150,7 +150,9 @@ export const execute = async (
     console.error("Error running /help command", err);
 
     if (interaction.deferred || interaction.replied) {
-      await interaction.editReply("Error building help.").catch(() => undefined);
+      await interaction
+        .editReply("Error building help.")
+        .catch(() => undefined);
     } else {
       await interaction.reply("Error building help.").catch(() => undefined);
     }
@@ -168,7 +170,8 @@ export const execute = async (
  */
 export const autocomplete = async (interaction: AutocompleteInteraction) => {
   try {
-    const typed = interaction.options.getFocused()?.toString().toLowerCase() ?? "";
+    const typed =
+      interaction.options.getFocused()?.toString().toLowerCase() ?? "";
     const commands = await getCommandIndex();
 
     const matched = commands.filter(

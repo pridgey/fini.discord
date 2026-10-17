@@ -11,7 +11,7 @@ import { recordJackpotWin } from "./jackpotWinners";
  */
 export const rollJackpot = async (
   message: Message | PartialMessage,
-  fromReaction: boolean = false
+  fromReaction: boolean = false,
 ) => {
   // Emoji to react for jackpot (currently pika thumbs up)
   const JACKPOT_EMOJI = "1088849190861410314";
@@ -41,7 +41,7 @@ export const rollJackpot = async (
       jackpotBalance,
       message.author?.username ?? "unknown username",
       message.guild?.name ?? "unknown guild name",
-      "Jackpot"
+      "Jackpot",
     );
 
     // Record the win for /jackpot history. Kept separate from the log entry

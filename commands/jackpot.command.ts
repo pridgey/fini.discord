@@ -44,7 +44,11 @@ export const execute = async (
         `user_id = "Jackpot" && server_id = "${interaction.guildId}"`,
       );
 
-    if (!!bankRecord && bankRecord.balance !== undefined && bankRecord.balance !== null) {
+    if (
+      !!bankRecord &&
+      bankRecord.balance !== undefined &&
+      bankRecord.balance !== null
+    ) {
       try {
         await interaction.reply(
           `The jackpot is currently at ${bankRecord.balance.toLocaleString()} Finicoin.`,

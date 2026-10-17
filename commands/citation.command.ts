@@ -75,7 +75,11 @@ export const execute = async (
       logCommand();
     } else {
       // Check length
-      if (title.length > 200 || penalty.length > 200 || citation.length > 1000) {
+      if (
+        title.length > 200 ||
+        penalty.length > 200 ||
+        citation.length > 1000
+      ) {
         await interaction.deferReply();
 
         const attachment = await generateCitation(

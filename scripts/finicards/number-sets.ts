@@ -13,7 +13,9 @@ import { renumberSets } from "../../modules/finicards/cardStore";
 const result = await renumberSets();
 
 if (!result.ready) {
-  console.log("The number columns are not there yet. Restart Fini to apply the migration, then run this again.");
+  console.log(
+    "The number columns are not there yet. Restart Fini to apply the migration, then run this again.",
+  );
   process.exit(1);
 }
 

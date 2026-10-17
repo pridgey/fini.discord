@@ -1,8 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import {
-  RAKE,
-  calculatePotSplit,
-} from "../../modules/finicards/wagers";
+import { RAKE, calculatePotSplit } from "../../modules/finicards/wagers";
 
 describe("finicards v2 wager pot split", () => {
   it("never mints or destroys coin", () => {
@@ -14,7 +11,10 @@ describe("finicards v2 wager pot split", () => {
   });
 
   it("rakes the configured share of the pot to the jackpot", () => {
-    const split = calculatePotSplit(50, { jackpotShare: 0.1, rakeDraws: false });
+    const split = calculatePotSplit(50, {
+      jackpotShare: 0.1,
+      rakeDraws: false,
+    });
     expect(split.pot).toBe(100);
     expect(split.jackpotCut).toBe(10);
     expect(split.payout).toBe(90);
@@ -33,17 +33,21 @@ describe("finicards v2 wager pot split", () => {
   });
 
   it("clamps a nonsense rake share instead of inventing coin", () => {
-    expect(calculatePotSplit(10, { jackpotShare: 5, rakeDraws: false })).toEqual(
-      { pot: 20, jackpotCut: 20, payout: 0 },
-    );
-    expect(calculatePotSplit(10, { jackpotShare: -1, rakeDraws: false })).toEqual(
-      { pot: 20, jackpotCut: 0, payout: 20 },
-    );
+    expect(
+      calculatePotSplit(10, { jackpotShare: 5, rakeDraws: false }),
+    ).toEqual({ pot: 20, jackpotCut: 20, payout: 0 });
+    expect(
+      calculatePotSplit(10, { jackpotShare: -1, rakeDraws: false }),
+    ).toEqual({ pot: 20, jackpotCut: 0, payout: 20 });
   });
 
   it("treats a zero or negative wager as no pot", () => {
     expect(calculatePotSplit(0)).toEqual({ pot: 0, jackpotCut: 0, payout: 0 });
-    expect(calculatePotSplit(-50)).toEqual({ pot: 0, jackpotCut: 0, payout: 0 });
+    expect(calculatePotSplit(-50)).toEqual({
+      pot: 0,
+      jackpotCut: 0,
+      payout: 0,
+    });
   });
 
   it("defaults to a 10% rake that leaves draws alone", () => {

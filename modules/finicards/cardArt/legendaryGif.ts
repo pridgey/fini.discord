@@ -70,7 +70,15 @@ const n = (value: number): string => value.toFixed(2);
 const overlay = (body: string, defs = ""): string =>
   `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${UNITS.w} ${UNITS.h}"><defs><clipPath id="card"><rect width="${UNITS.w}" height="${UNITS.h}" rx="16"></rect></clipPath>${defs}</defs><g clip-path="url(#card)">${body}</g></svg>`;
 
-const RAINBOW = ["#ff5f6d", "#ffc371", "#f9f871", "#7dffb3", "#6ad7ff", "#b08cff", "#ff7ad9"];
+const RAINBOW = [
+  "#ff5f6d",
+  "#ffc371",
+  "#f9f871",
+  "#7dffb3",
+  "#6ad7ff",
+  "#b08cff",
+  "#ff7ad9",
+];
 
 /** Rainbow stops that end on the colour they start on, so `repeat` is seamless. */
 const rainbowStops = (opacity = 1): string =>
@@ -107,7 +115,12 @@ const hash = (seed: number): number => {
 };
 
 /** Four-point stars that flare and die on their own clocks. */
-const glitter = (phase: number, count = 46, colour = "#ffffff", mask?: MaskName): Layer => {
+const glitter = (
+  phase: number,
+  count = 46,
+  colour = "#ffffff",
+  mask?: MaskName,
+): Layer => {
   const stars: string[] = [];
 
   for (let index = 0; index < count; index++) {
@@ -116,7 +129,8 @@ const glitter = (phase: number, count = 46, colour = "#ffffff", mask?: MaskName)
     const size = 2 + hash(index + 201) * 6;
     // Whole cycles per loop, or the last frame would not meet the first.
     const cycles = 1 + Math.floor(hash(index + 301) * 3);
-    const flare = Math.max(0, Math.sin((phase * cycles + hash(index + 401)) * TAU)) ** 4;
+    const flare =
+      Math.max(0, Math.sin((phase * cycles + hash(index + 401)) * TAU)) ** 4;
     if (flare < 0.03) continue;
 
     const s = size * (0.5 + flare * 0.5);
@@ -157,7 +171,16 @@ const facets = (phase: number): Layer => {
       const c = vertex(col + 1, row + 1);
       const d = vertex(col, row + 1);
       const cell = row * cols + col;
-      const split = hash(cell + 900) > 0.5 ? [[a, b, c], [a, c, d]] : [[a, b, d], [b, c, d]];
+      const split =
+        hash(cell + 900) > 0.5
+          ? [
+              [a, b, c],
+              [a, c, d],
+            ]
+          : [
+              [a, b, d],
+              [b, c, d],
+            ];
 
       split.forEach((triangle, half) => {
         const seed = cell * 2 + half;
@@ -204,8 +227,15 @@ const nebula = (phase: number): Layer => {
     blend: "screen",
     mask: "dark",
     svg: overlay(
-      ["a", "b", "c"].map((id) => `<rect width="${UNITS.w}" height="${UNITS.h}" fill="url(#${id})"></rect>`).join(""),
-      blob("a", "#b04bff", 230, 0) + blob("b", "#2fd9ff", 210, TAU / 3) + blob("c", "#ff4fa3", 200, (TAU * 2) / 3),
+      ["a", "b", "c"]
+        .map(
+          (id) =>
+            `<rect width="${UNITS.w}" height="${UNITS.h}" fill="url(#${id})"></rect>`,
+        )
+        .join(""),
+      blob("a", "#b04bff", 230, 0) +
+        blob("b", "#2fd9ff", 210, TAU / 3) +
+        blob("c", "#ff4fa3", 200, (TAU * 2) / 3),
     ),
   };
 };
@@ -217,7 +247,9 @@ const embers = (phase: number, count = 60): Layer => {
   for (let index = 0; index < count; index++) {
     const cycles = 1 + Math.floor(hash(index + 11) * 2);
     const rise = (phase * cycles + hash(index + 21)) % 1;
-    const x = hash(index + 31) * UNITS.w + Math.sin((phase * 2 + hash(index + 41)) * TAU) * 9;
+    const x =
+      hash(index + 31) * UNITS.w +
+      Math.sin((phase * 2 + hash(index + 41)) * TAU) * 9;
     const y = UNITS.h + 10 - rise * (UNITS.h * (0.55 + hash(index + 51) * 0.5));
     const life = Math.sin(rise * Math.PI);
     const r = 0.8 + hash(index + 61) * 1.9;
@@ -268,7 +300,8 @@ const lightning = (phase: number): Layer => {
       for (let index = 0; index < points.length - 1; index++) {
         const [x0, y0] = points[index];
         const [x1, y1] = points[index + 1];
-        const jolt = (hash(seed + pass * 97 + index * 13) - 0.5) * (70 / (pass + 1));
+        const jolt =
+          (hash(seed + pass * 97 + index * 13) - 0.5) * (70 / (pass + 1));
         next.push([x0, y0], [(x0 + x1) / 2 + jolt, (y0 + y1) / 2 + jolt * 0.3]);
       }
       next.push(points[points.length - 1]);
@@ -284,14 +317,18 @@ const lightning = (phase: number): Layer => {
   };
 
   const count = 1 + Math.floor(hash(slot + 4000) * 2);
-  const bolts = Array.from({ length: count }, (_, index) => bolt(slot * 50 + index * 7)).join("");
+  const bolts = Array.from({ length: count }, (_, index) =>
+    bolt(slot * 50 + index * 7),
+  ).join("");
   const flash = `<rect width="${UNITS.w}" height="${UNITS.h}" fill="#bfe0ff" opacity="${n(0.28 * (1 - age))}"></rect>`;
 
   return { blend: "screen", svg: overlay(flash + bolts) };
 };
 
 /** Whether lightning strikes in this slot of the loop, and how far through it is. */
-const strikeAt = (phase: number): { slot: number; age: number; live: boolean } => {
+const strikeAt = (
+  phase: number,
+): { slot: number; age: number; live: boolean } => {
   const slots = Math.max(1, Math.round(FRAMES / 4));
   const slot = Math.floor(phase * slots);
   return { slot, age: (phase * slots) % 1, live: hash(slot + 3000) <= 0.55 };
@@ -329,7 +366,9 @@ const borderStrike = (phase: number): Layer => {
 /** Dims the whole card, so light laid over it has something to stand out from. */
 const dim = (amount: number): Layer => ({
   blend: "over",
-  svg: overlay(`<rect width="${UNITS.w}" height="${UNITS.h}" fill="#05060d" opacity="${amount}"></rect>`),
+  svg: overlay(
+    `<rect width="${UNITS.w}" height="${UNITS.h}" fill="#05060d" opacity="${amount}"></rect>`,
+  ),
 });
 
 /** A thin border of light that turns once per loop. */
@@ -363,7 +402,8 @@ const sampleInto = (
   const fy = y - y0;
   const base = (y0 * WIDTH + x0) * 4;
   for (let channel = 0; channel < 3; channel++) {
-    const top = frame[base + channel] * (1 - fx) + frame[base + 4 + channel] * fx;
+    const top =
+      frame[base + channel] * (1 - fx) + frame[base + 4 + channel] * fx;
     const bottom =
       frame[base + WIDTH * 4 + channel] * (1 - fx) +
       frame[base + WIDTH * 4 + 4 + channel] * fx;
@@ -380,12 +420,22 @@ const sampleInto = (
  * shear reads as a wobble rather than as a card with depth. Each output pixel
  * is traced back through the camera onto the turned card.
  */
-const turn = (frame: Buffer, yaw: number, pitch: number, scale: number): Buffer => {
+const turn = (
+  frame: Buffer,
+  yaw: number,
+  pitch: number,
+  scale: number,
+): Buffer => {
   const out = Buffer.alloc(frame.length);
   for (let index = 3; index < out.length; index += 4) out[index] = 255;
 
   const camera = WIDTH * 2.6;
-  const [cy, sy, cp, sp] = [Math.cos(yaw), Math.sin(yaw), Math.cos(pitch), Math.sin(pitch)];
+  const [cy, sy, cp, sp] = [
+    Math.cos(yaw),
+    Math.sin(yaw),
+    Math.cos(pitch),
+    Math.sin(pitch),
+  ];
 
   // The card's own axes and normal after turning, in camera space.
   const u = [cy, 0, -sy];
@@ -397,10 +447,13 @@ const turn = (frame: Buffer, yaw: number, pitch: number, scale: number): Buffer 
       // A ray from the eye through this pixel, met with the card's plane.
       const ray = [px - WIDTH / 2, py - HEIGHT / 2, camera];
       const along =
-        (camera * normal[2]) / (ray[0] * normal[0] + ray[1] * normal[1] + ray[2] * normal[2]);
+        (camera * normal[2]) /
+        (ray[0] * normal[0] + ray[1] * normal[1] + ray[2] * normal[2]);
       const hit = [ray[0] * along, ray[1] * along, ray[2] * along - camera];
-      const x = (hit[0] * u[0] + hit[1] * u[1] + hit[2] * u[2]) / scale + WIDTH / 2;
-      const y = (hit[0] * v[0] + hit[1] * v[1] + hit[2] * v[2]) / scale + HEIGHT / 2;
+      const x =
+        (hit[0] * u[0] + hit[1] * u[1] + hit[2] * u[2]) / scale + WIDTH / 2;
+      const y =
+        (hit[0] * v[0] + hit[1] * v[1] + hit[2] * v[2]) / scale + HEIGHT / 2;
       sampleInto(frame, x, y, out, (py * WIDTH + px) * 4);
     }
   }
@@ -417,7 +470,9 @@ const gradientMap = (
   for (let y = 0; y < HEIGHT; y++) {
     for (let x = 0; x < WIDTH; x++) {
       const at = (y * WIDTH + x) * 4;
-      const light = (frame[at] * 0.299 + frame[at + 1] * 0.587 + frame[at + 2] * 0.114) / 255;
+      const light =
+        (frame[at] * 0.299 + frame[at + 1] * 0.587 + frame[at + 2] * 0.114) /
+        255;
       const [r, g, b] = colour(light, x, y);
       out[at] = r;
       out[at + 1] = g;
@@ -427,7 +482,11 @@ const gradientMap = (
   return out;
 };
 
-const mix = (from: number[], to: number[], amount: number): [number, number, number] => [
+const mix = (
+  from: number[],
+  to: number[],
+  amount: number,
+): [number, number, number] => [
   from[0] + (to[0] - from[0]) * amount,
   from[1] + (to[1] - from[1]) * amount,
   from[2] + (to[2] - from[2]) * amount,
@@ -461,7 +520,8 @@ const ghost = (frame: Buffer, phase: number): Buffer => {
       // Screened, so the echo only ever adds light - a double exposure.
       for (let channel = 0; channel < 3; channel++) {
         const under = spectral[at + channel];
-        out[at + channel] = under + ((255 - under) * spectral[echo + channel] * 0.42) / 255;
+        out[at + channel] =
+          under + ((255 - under) * spectral[echo + channel] * 0.42) / 255;
       }
     }
   }
@@ -498,15 +558,26 @@ const xray = (frame: Buffer, phase: number): Buffer => {
  * colour crawls through the picture while nothing in it moves.
  */
 const THERMAL = [
-  [8, 6, 40], [70, 20, 140], [200, 40, 130], [255, 120, 50], [255, 225, 90], [255, 255, 240],
-  [120, 230, 255], [30, 90, 200], [8, 6, 40],
+  [8, 6, 40],
+  [70, 20, 140],
+  [200, 40, 130],
+  [255, 120, 50],
+  [255, 225, 90],
+  [255, 255, 240],
+  [120, 230, 255],
+  [30, 90, 200],
+  [8, 6, 40],
 ];
 
 const thermal = (frame: Buffer, phase: number): Buffer =>
   gradientMap(frame, (light) => {
     const at = ((light * 0.75 + phase) % 1) * (THERMAL.length - 1);
     const index = Math.floor(at);
-    return mix(THERMAL[index], THERMAL[Math.min(THERMAL.length - 1, index + 1)], at - index);
+    return mix(
+      THERMAL[index],
+      THERMAL[Math.min(THERMAL.length - 1, index + 1)],
+      at - index,
+    );
   });
 
 /** Tears rows sideways and pulls the colour channels apart, in bursts. */
@@ -519,12 +590,16 @@ const glitch = (frame: Buffer, phase: number): Buffer => {
 
   for (let y = 0; y < HEIGHT; y++) {
     const band = Math.floor(y / (10 + hash(slot + 9) * 26));
-    const tear = burst && hash(slot * 31 + band) > 0.72 ? Math.round((hash(slot * 17 + band) - 0.5) * 60) : 0;
+    const tear =
+      burst && hash(slot * 31 + band) > 0.72
+        ? Math.round((hash(slot * 17 + band) - 0.5) * 60)
+        : 0;
     const dim = y % 3 === 0 ? 0.82 : 1;
 
     for (let x = 0; x < WIDTH; x++) {
       const at = (y * WIDTH + x) * 4;
-      const sample = (dx: number) => (y * WIDTH + Math.min(WIDTH - 1, Math.max(0, x + tear + dx))) * 4;
+      const sample = (dx: number) =>
+        (y * WIDTH + Math.min(WIDTH - 1, Math.max(0, x + tear + dx))) * 4;
       out[at] = frame[sample(split)] * dim;
       out[at + 1] = frame[sample(0) + 1] * dim;
       out[at + 2] = frame[sample(-split) + 2] * dim;
@@ -595,7 +670,11 @@ const EFFECTS: Record<string, Effect> = {
     blurb: "the art pushes in and eases back, like a held breath",
     frames: 60,
     delay: 120,
-    artMotion: (phase) => ({ zoom: 1.02 + 0.07 * (0.5 - 0.5 * Math.cos(phase * TAU)), x: 0, y: -0.4 }),
+    artMotion: (phase) => ({
+      zoom: 1.02 + 0.07 * (0.5 - 0.5 * Math.cos(phase * TAU)),
+      x: 0,
+      y: -0.4,
+    }),
     layers: () => [],
   },
   drift: {
@@ -690,7 +769,8 @@ const EFFECTS: Record<string, Effect> = {
   },
   xray: {
     tier: 4,
-    blurb: "a violet negative, a band of true colour scanning down, then a rest",
+    blurb:
+      "a violet negative, a band of true colour scanning down, then a rest",
     // 60 frames of scan as before, plus 30 held.
     frames: 90,
     delay: 100,
@@ -729,7 +809,10 @@ const prepareMovingArt = (art: Buffer): Promise<Buffer> => {
     .toBuffer();
 };
 
-const moveArt = async (prepared: Buffer, motion: ArtMotion): Promise<Buffer> => {
+const moveArt = async (
+  prepared: Buffer,
+  motion: ArtMotion,
+): Promise<Buffer> => {
   const meta = await sharp(prepared).metadata();
   const full = { w: meta.width ?? 1, h: meta.height ?? 1 };
   const zoom = Math.min(Math.max(motion.zoom, 1), ART_MARGIN);
@@ -773,7 +856,11 @@ const buildMasks = async (card: Buffer): Promise<Record<MaskName, Buffer>> => {
     edges: await finish(
       grey
         .clone()
-        .convolve({ width: 3, height: 3, kernel: [-1, -1, -1, -1, 8, -1, -1, -1, -1] })
+        .convolve({
+          width: 3,
+          height: 3,
+          kernel: [-1, -1, -1, -1, 8, -1, -1, -1, -1],
+        })
         .linear(6, -30)
         .blur(1.1),
     ),
@@ -789,7 +876,9 @@ const renderGif = async (
 ): Promise<Buffer> => {
   const reveal = !!options.reveal;
   FRAMES = options.frames ?? effect.frames ?? DEFAULT_FRAMES;
-  const delay = reveal ? REVEAL.delay : (options.delay ?? effect.delay ?? DEFAULT_DELAY_MS);
+  const delay = reveal
+    ? REVEAL.delay
+    : (options.delay ?? effect.delay ?? DEFAULT_DELAY_MS);
   // The effect keeps playing under the reveal, at the speed it loops at.
   const count = reveal ? REVEAL.frames : FRAMES;
   const step = reveal
@@ -803,9 +892,15 @@ const renderGif = async (
 
   for (let index = 0; index < count; index++) {
     // Counted back from the end, so a reveal's last frame is the loop's first.
-    const phase = reveal ? (1 - ((count - 1 - index) * step) % 1) % 1 : index * step;
+    const phase = reveal
+      ? (1 - (((count - 1 - index) * step) % 1)) % 1
+      : index * step;
     if (moving && effect.artMotion) {
-      still = await cardFrame(card, await moveArt(moving, effect.artMotion(phase)), null);
+      still = await cardFrame(
+        card,
+        await moveArt(moving, effect.artMotion(phase)),
+        null,
+      );
     }
 
     const layers = await Promise.all(
@@ -840,18 +935,27 @@ const renderGif = async (
   encoder.finish();
 
   return sharp(encoder.out.getData(), { animated: true })
-    .gif({ effort: 8, dither: 0.6, interFrameMaxError: 4, loop: reveal ? 1 : 0 })
+    .gif({
+      effort: 8,
+      dither: 0.6,
+      interFrameMaxError: 4,
+      loop: reveal ? 1 : 0,
+    })
     .toBuffer();
 };
-
 
 /* ------------------------------------------------------------------- api --- */
 
 /** Every effect that can be drawn, by slug, with its tier and a description. */
-export const LEGENDARY_GIF_EFFECTS: Record<string, { tier: LegendaryTier; blurb: string }> =
-  Object.fromEntries(
-    Object.entries(EFFECTS).map(([slug, effect]) => [slug, { tier: effect.tier, blurb: effect.blurb }]),
-  );
+export const LEGENDARY_GIF_EFFECTS: Record<
+  string,
+  { tier: LegendaryTier; blurb: string }
+> = Object.fromEntries(
+  Object.entries(EFFECTS).map(([slug, effect]) => [
+    slug,
+    { tier: effect.tier, blurb: effect.blurb },
+  ]),
+);
 
 let queue: Promise<unknown> = Promise.resolve();
 
@@ -860,7 +964,11 @@ let queue: Promise<unknown> = Promise.resolve();
  * under - it gets the entrance, and then it is a still. Not one of `EFFECTS`,
  * because no copy can carry it.
  */
-const STILL: Effect = { tier: 1, blurb: "the card, unmoving", layers: () => [] };
+const STILL: Effect = {
+  tier: 1,
+  blurb: "the card, unmoving",
+  layers: () => [],
+};
 
 /**
  * Renders `card` under `effect` as a GIF. `art` is the card's artwork, already
@@ -873,9 +981,12 @@ export const renderLegendaryGif = (
   options: LegendaryGifOptions = {},
 ): Promise<Buffer> => {
   const found = EFFECTS[effect];
-  if (!found) return Promise.reject(new Error(`No Legendary effect "${effect}"`));
+  if (!found)
+    return Promise.reject(new Error(`No Legendary effect "${effect}"`));
 
-  return queued(() => renderGif({ ...card, legendary: effect }, art, found, options));
+  return queued(() =>
+    renderGif({ ...card, legendary: effect }, art, found, options),
+  );
 };
 
 /** One at a time: a render is heavy, and the beat it keeps is module state. */
@@ -934,7 +1045,10 @@ export const legendaryGif = async (
     }
     return gif;
   } catch (error) {
-    console.error(`Couldn't render Legendary "${card.name}" (${card.legendary}):`, error);
+    console.error(
+      `Couldn't render Legendary "${card.name}" (${card.legendary}):`,
+      error,
+    );
     return null;
   }
 };
@@ -959,11 +1073,16 @@ export const renderCardMedia = async (
   const gif = await legendaryGif(card, options);
   if (gif) {
     const stem = cardImageName(card).replace(/\.(gif|png)$/, "");
-    return { name: `${stem}${options.reveal ? "-reveal" : ""}.gif`, buffer: gif };
+    return {
+      name: `${stem}${options.reveal ? "-reveal" : ""}.gif`,
+      buffer: gif,
+    };
   }
 
   const still = await renderCardImage(card);
-  return still ? { name: cardImageName(card).replace(/\.gif$/, ".png"), buffer: still } : null;
+  return still
+    ? { name: cardImageName(card).replace(/\.gif$/, ".png"), buffer: still }
+    : null;
 };
 
 /** Several cards at once, dropping any that could not be drawn. */
@@ -971,6 +1090,6 @@ export const renderCardMediaList = async (
   cards: BattleCard[],
   options: { reveal?: boolean } = {},
 ): Promise<CardMedia[]> =>
-  (await Promise.all(cards.map((card) => renderCardMedia(card, options)))).filter(
-    (media): media is CardMedia => media !== null,
-  );
+  (
+    await Promise.all(cards.map((card) => renderCardMedia(card, options)))
+  ).filter((media): media is CardMedia => media !== null);

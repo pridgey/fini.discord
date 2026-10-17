@@ -22,7 +22,9 @@ const buildV2CardBinderResult = async ({
   contextId,
 }: ResultsBuilder<V2UserCardRecord>) => {
   const owned = items.filter((item) => !!item.expand?.card);
-  const cards = owned.map((item) => toBattleCard({ ...item, definition: item.expand!.card }));
+  const cards = owned.map((item) =>
+    toBattleCard({ ...item, definition: item.expand!.card }),
+  );
 
   const container = new ContainerBuilder().setAccentColor(NEUTRAL_ACCENT);
   container.addTextDisplayComponents((text) =>
@@ -36,7 +38,9 @@ const buildV2CardBinderResult = async ({
     files.push(new AttachmentBuilder(await renderBinderPage(cards), { name }));
     container.addMediaGalleryComponents((gallery) =>
       gallery.addItems((item) =>
-        item.setURL(`attachment://${name}`).setDescription("A page of the card binder"),
+        item
+          .setURL(`attachment://${name}`)
+          .setDescription("A page of the card binder"),
       ),
     );
   }
@@ -45,11 +49,15 @@ const buildV2CardBinderResult = async ({
     container.addSectionComponents((section) =>
       section
         .addTextDisplayComponents((text) =>
-          text.setContent(`**${index + 1}.** ${cardLine(card)} · \`${card.instanceId}\``),
+          text.setContent(
+            `**${index + 1}.** ${cardLine(card)} · \`${card.instanceId}\``,
+          ),
         )
         .setButtonAccessory((button) =>
           button
-            .setCustomId(`v2_card_view:${contextId}:${card.instanceId}:${userId}`)
+            .setCustomId(
+              `v2_card_view:${contextId}:${card.instanceId}:${userId}`,
+            )
             .setLabel("View")
             .setStyle(ButtonStyle.Secondary),
         ),
@@ -57,7 +65,9 @@ const buildV2CardBinderResult = async ({
   }
 
   container.addTextDisplayComponents((text) =>
-    text.setContent("-# Pockets read left to right, top row first. Stats read power/wit/heart."),
+    text.setContent(
+      "-# Pockets read left to right, top row first. Stats read power/wit/heart.",
+    ),
   );
 
   return {

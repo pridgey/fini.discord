@@ -11,10 +11,7 @@ import {
   normalizeKeywordSlug,
 } from "../../modules/finicards/keywords";
 import type { BattleCard } from "../../modules/finicards/types";
-import type {
-  CardRarity,
-  CardType,
-} from "../../types/PocketbaseTablesV2";
+import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
 
 const card = (
   name: string,
@@ -69,7 +66,9 @@ describe("finicards v2 keywords", () => {
     });
 
     it("grades every keyword, with Adapt alone at the top", () => {
-      expect(KEYWORDS.every((k) => KEYWORD_GRADES.includes(k.grade))).toBe(true);
+      expect(KEYWORDS.every((k) => KEYWORD_GRADES.includes(k.grade))).toBe(
+        true,
+      );
       expect(keywordsOfGrade("mythic").map((k) => k.slug)).toEqual(["adapt"]);
     });
 

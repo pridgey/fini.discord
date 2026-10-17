@@ -172,7 +172,8 @@ export const drawTrack = (
   names?: string[],
 ): string => {
   const lanes = horses.map((horse) => {
-    const position = horse.positions[Math.min(step, horse.positions.length - 1)];
+    const position =
+      horse.positions[Math.min(step, horse.positions.length - 1)];
     const behind = "=".repeat(position);
     const ahead = " ".repeat(Math.max(TRACK_LENGTH - position, 0));
 
@@ -201,7 +202,10 @@ export const drawTrack = (
  * @param maxFrames The most frames to show
  * @returns Ascending, de-duplicated step indexes, always ending on the finish
  */
-export const selectFrames = (stepCount: number, maxFrames: number): number[] => {
+export const selectFrames = (
+  stepCount: number,
+  maxFrames: number,
+): number[] => {
   const lastStep = Math.max(stepCount - 1, 0);
   if (maxFrames <= 1 || lastStep === 0) return [lastStep];
 

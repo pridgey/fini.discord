@@ -11,28 +11,33 @@ export const generateGptImage = async ({
   prompt,
 }: ImageGenerationParams): Promise<ImageGenerationResult> => {
   try {
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY || "no_key_found"}`,
-        "Content-Type": "application/json",
+    const response = await fetch(
+      "https://api.openai.com/v1/images/generations",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY || "no_key_found"}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-image-2",
+          prompt,
+          n: 1,
+          size: "1024x1024",
+          quality: "medium",
+        }),
+        signal: AbortSignal.timeout(120_000),
       },
-      body: JSON.stringify({
-        model: "gpt-image-2",
-        prompt,
-        n: 1,
-        size: "1024x1024",
-        quality: "medium",
-      }),
-      signal: AbortSignal.timeout(120_000),
-    });
+    );
     const body = (await response.json()) as {
       data?: { b64_json?: string }[];
       error?: { message?: string };
     };
     const base64 = body.data?.[0]?.b64_json;
     if (!response.ok || !base64) {
-      throw new Error(body.error?.message ?? `OpenAI returned ${response.status}`);
+      throw new Error(
+        body.error?.message ?? `OpenAI returned ${response.status}`,
+      );
     }
 
     return {

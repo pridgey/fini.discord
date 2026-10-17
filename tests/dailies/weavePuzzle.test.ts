@@ -15,13 +15,16 @@ const seeded = (seed: number) => () => {
 };
 
 describe("Weave puzzles", () => {
-  const puzzles = Array.from({ length: 300 }, (_, i) => generatePuzzle(seeded(i * 7919 + 1)));
+  const puzzles = Array.from({ length: 300 }, (_, i) =>
+    generatePuzzle(seeded(i * 7919 + 1)),
+  );
 
   it("walk a tour through every square, one step at a time", () => {
     for (let seed = 0; seed < 50; seed++) {
       const tour = randomTour(seeded(seed));
       expect(new Set(tour).size).toBe(CELLS);
-      for (let i = 1; i < tour.length; i++) expect(adjacent(tour[i - 1], tour[i])).toBe(true);
+      for (let i = 1; i < tour.length; i++)
+        expect(adjacent(tour[i - 1], tour[i])).toBe(true);
     }
   });
 
@@ -37,9 +40,12 @@ describe("Weave puzzles", () => {
         expect(word.length).toBeGreaterThanOrEqual(4);
         expect(word.length).toBeLessThanOrEqual(6);
         expect(spell(puzzle.grid, path)).toBe(word);
-        for (let i = 1; i < path.length; i++) expect(adjacent(path[i - 1], path[i])).toBe(true);
+        for (let i = 1; i < path.length; i++)
+          expect(adjacent(path[i - 1], path[i])).toBe(true);
       }
-      expect(new Set(puzzle.words.map((word) => word.word)).size).toBe(WORD_COUNT);
+      expect(new Set(puzzle.words.map((word) => word.word)).size).toBe(
+        WORD_COUNT,
+      );
     }
   });
 
@@ -53,7 +59,9 @@ describe("Weave puzzles", () => {
       expect(sorted(initials)).toBe(sorted(puzzle.thread));
       if (initials === puzzle.thread) inGridOrder++;
       expect(WEAVE_WORDS).toContain(puzzle.thread);
-      expect(puzzle.words.map((word) => word.word)).not.toContain(puzzle.thread);
+      expect(puzzle.words.map((word) => word.word)).not.toContain(
+        puzzle.thread,
+      );
     }
     // Reading the grid in order gives the thread away only by chance.
     expect(inGridOrder).toBeLessThan(puzzles.length / 4);

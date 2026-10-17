@@ -48,7 +48,8 @@ export type DailyGuessRecord = {
 
 export { dayKey, previousDay } from "../shared";
 
-const notFound = (error: unknown) => error instanceof ClientResponseError && error.status === 404;
+const notFound = (error: unknown) =>
+  error instanceof ClientResponseError && error.status === 404;
 
 export const getRound = async (day: string): Promise<DailyRoundRecord | null> =>
   pb
@@ -59,7 +60,9 @@ export const getRound = async (day: string): Promise<DailyRoundRecord | null> =>
       throw error;
     });
 
-export const getRoundById = async (id: string): Promise<DailyRoundRecord | null> =>
+export const getRoundById = async (
+  id: string,
+): Promise<DailyRoundRecord | null> =>
   pb
     .collection<DailyRoundRecord>(ROUNDS)
     .getOne(id)
@@ -80,7 +83,10 @@ export const createRound = async (
     answer_lon: round.answer.lon,
     place,
     photos: round.photos.map(
-      (photo, i) => new File([new Uint8Array(photo)], `view-${i + 1}.jpg`, { type: "image/jpeg" }),
+      (photo, i) =>
+        new File([new Uint8Array(photo)], `view-${i + 1}.jpg`, {
+          type: "image/jpeg",
+        }),
     ),
     credit: round.credit,
     license: round.license,
@@ -89,7 +95,11 @@ export const createRound = async (
   });
 
 /** Notes where a round was posted in a server. */
-export const recordPost = async (roundId: string, serverId: string, post: DailyPost) => {
+export const recordPost = async (
+  roundId: string,
+  serverId: string,
+  post: DailyPost,
+) => {
   const round = await pb.collection<DailyRoundRecord>(ROUNDS).getOne(roundId);
   await pb
     .collection<DailyRoundRecord>(ROUNDS)
@@ -97,10 +107,14 @@ export const recordPost = async (roundId: string, serverId: string, post: DailyP
 };
 
 /** The round's photos, downloaded from Pocketbase. */
-export const roundPhotos = async (round: DailyRoundRecord): Promise<Buffer[]> => {
+export const roundPhotos = async (
+  round: DailyRoundRecord,
+): Promise<Buffer[]> => {
   const photos = await Promise.all(
     round.photos.map(async (name) => {
-      const response = await fetch(pb.files.getURL(round, name)).catch(() => null);
+      const response = await fetch(pb.files.getURL(round, name)).catch(
+        () => null,
+      );
       return response?.ok ? Buffer.from(await response.arrayBuffer()) : null;
     }),
   );
@@ -123,11 +137,14 @@ export const findGuess = async (
   pb
     .collection<DailyGuessRecord>(GUESSES)
     .getFirstListItem(
-      pb.filter("round = {:roundId} && server_id = {:serverId} && user_id = {:userId}", {
-        roundId,
-        serverId,
-        userId,
-      }),
+      pb.filter(
+        "round = {:roundId} && server_id = {:serverId} && user_id = {:userId}",
+        {
+          roundId,
+          serverId,
+          userId,
+        },
+      ),
     )
     .catch((error) => {
       if (notFound(error)) return null;
@@ -139,18 +156,27 @@ export const findGuess = async (
  * in this server - the unique index refuses the second, so a double-click on
  * Lock in can't pay twice.
  */
-export const saveGuess = async (guess: DailyGuessRecord): Promise<DailyGuessRecord | null> =>
+export const saveGuess = async (
+  guess: DailyGuessRecord,
+): Promise<DailyGuessRecord | null> =>
   pb
     .collection<DailyGuessRecord>(GUESSES)
     .create(guess)
     .catch((error) => {
-      if (error instanceof ClientResponseError && error.status === 400) return null;
+      if (error instanceof ClientResponseError && error.status === 400)
+        return null;
       throw error;
     });
 
 /** Every guess at a round in a server, best first. */
-export const guessesFor = async (roundId: string, serverId: string): Promise<DailyGuessRecord[]> =>
+export const guessesFor = async (
+  roundId: string,
+  serverId: string,
+): Promise<DailyGuessRecord[]> =>
   pb.collection<DailyGuessRecord>(GUESSES).getFullList({
-    filter: pb.filter("round = {:roundId} && server_id = {:serverId}", { roundId, serverId }),
+    filter: pb.filter("round = {:roundId} && server_id = {:serverId}", {
+      roundId,
+      serverId,
+    }),
     sort: "-total,km",
   });

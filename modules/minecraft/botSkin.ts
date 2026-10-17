@@ -133,10 +133,10 @@ export type ProfileIdentity = { id: string; name: string };
  * Looks up an account's uuid by name. Null when no such account exists -
  * Mojang answers 404, which is not an error worth throwing over.
  */
-const lookupAccount = async (
-  name: string,
-): Promise<ProfileIdentity | null> => {
-  const response = await fetch(`${MOJANG_NAME_API}/${encodeURIComponent(name)}`);
+const lookupAccount = async (name: string): Promise<ProfileIdentity | null> => {
+  const response = await fetch(
+    `${MOJANG_NAME_API}/${encodeURIComponent(name)}`,
+  );
   if (response.status === 404 || response.status === 204) return null;
   if (!response.ok) {
     throw new Error(`Mojang name lookup failed: ${response.status}`);

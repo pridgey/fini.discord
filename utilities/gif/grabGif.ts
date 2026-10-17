@@ -3,7 +3,7 @@ import seedrandom from "seedrandom";
 export const grabGif = async (
   query: string,
   engine: "giphy" | "tenor" = "giphy",
-  rating: "g" | "pg" | "pg-13" | "r" = "pg-13"
+  rating: "g" | "pg" | "pg-13" | "r" = "pg-13",
 ) => {
   try {
     // URL-arize the query param

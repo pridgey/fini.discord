@@ -303,9 +303,7 @@ describe("blame command", () => {
       );
 
       // Should not throw
-      expect(
-        execute(mockInteraction, mockLogCommand),
-      ).resolves.toBeUndefined();
+      expect(execute(mockInteraction, mockLogCommand)).resolves.toBeUndefined();
     });
   });
 

@@ -17,4 +17,6 @@ export const distanceKm = (a: LatLon, b: LatLon): number => {
 
 /** "43 km", "1,204 km", "850 m". */
 export const formatDistance = (km: number): string =>
-  km < 1 ? `${Math.round(km * 1000)} m` : `${Math.round(km).toLocaleString("en-US")} km`;
+  km < 1
+    ? `${Math.round(km * 1000)} m`
+    : `${Math.round(km).toLocaleString("en-US")} km`;

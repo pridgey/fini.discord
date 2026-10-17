@@ -1,5 +1,9 @@
 import { converseWithAI } from "../modules/aiChat/aiChat";
-import { CHAT_MARKER, parseChatRequests, splitForChat } from "../modules/minecraft/botChat";
+import {
+  CHAT_MARKER,
+  parseChatRequests,
+  splitForChat,
+} from "../modules/minecraft/botChat";
 import { BotControl } from "../modules/minecraft/botControl";
 import { decideLifecycle } from "../modules/minecraft/botLifecycle";
 import {
@@ -139,7 +143,9 @@ const tick = async (): Promise<number> => {
 
   if (lifecycle === "spawn" && humans && humans.length > 0) {
     const host = humans[0];
-    console.log(`${humans.join(", ")} online - spawning ${BOT_NAME} near ${host}`);
+    console.log(
+      `${humans.join(", ")} online - spawning ${BOT_NAME} near ${host}`,
+    );
     await bot.spawnNear(host);
     resetSession();
     return SAMPLE_INTERVAL_MS;
@@ -179,7 +185,10 @@ const wander = async (): Promise<number> => {
   );
   const senses = {
     safeDistanceAhead,
-    headroom: state.noProgressSamples > 0 ? await bot.senseHeadroom(position) : undefined,
+    headroom:
+      state.noProgressSamples > 0
+        ? await bot.senseHeadroom(position)
+        : undefined,
     inWater: await bot.senseWater(position),
   };
 

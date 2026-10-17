@@ -5,7 +5,11 @@ import {
   ContainerBuilder,
   MessageFlags,
 } from "discord.js";
-import { GRADE_LABEL, KEYWORDS, type KeywordDefinition as Keyword } from "../keywords";
+import {
+  GRADE_LABEL,
+  KEYWORDS,
+  type KeywordDefinition as Keyword,
+} from "../keywords";
 import { RULES } from "../rules";
 import { NEUTRAL_ACCENT } from "./theme";
 
@@ -18,7 +22,13 @@ import { NEUTRAL_ACCENT } from "./theme";
 
 export const ABILITIES_BUTTON = "v2_abilities";
 
-type Group = { id: string; emoji: string; title: string; blurb: string; slugs: string[] };
+type Group = {
+  id: string;
+  emoji: string;
+  title: string;
+  blurb: string;
+  slugs: string[];
+};
 
 export const ABILITY_GROUPS: Group[] = [
   {
@@ -47,21 +57,45 @@ export const ABILITY_GROUPS: Group[] = [
     emoji: "🧩",
     title: "Building your lineup",
     blurb: "Reward the cards you play together.",
-    slugs: ["kinship", "trinity", "chorus", "lone_wolf", "synergy", "thrifty", "versatile"],
+    slugs: [
+      "kinship",
+      "trinity",
+      "chorus",
+      "lone_wolf",
+      "synergy",
+      "thrifty",
+      "versatile",
+    ],
   },
   {
     id: "defence",
     emoji: "🛡️",
     title: "Types and defence",
     blurb: "Bend the type triangle, or the defending stat.",
-    slugs: ["adapt", "guard", "fortress", "bulwark", "pierce", "brace", "feint", "glass_cannon"],
+    slugs: [
+      "adapt",
+      "guard",
+      "fortress",
+      "bulwark",
+      "pierce",
+      "brace",
+      "feint",
+      "glass_cannon",
+    ],
   },
   {
     id: "rounds",
     emoji: "🎯",
     title: "Winning and losing rounds",
     blurb: "Change a close round, or pass something on after it.",
-    slugs: ["first_strike", "edge", "rally", "martyr", "parting_shot", "spoiler"],
+    slugs: [
+      "first_strike",
+      "edge",
+      "rally",
+      "martyr",
+      "parting_shot",
+      "spoiler",
+    ],
   },
   {
     id: "tiebreak",
@@ -113,7 +147,9 @@ const allGroups = (): Group[] => {
 const INTRO = [
   "### Abilities",
   "A card can carry one ability. The rarer the card, the less likely it has one - and the less likely it's a strong one.",
-  ...(RULES.keywordsEnabled ? [] : ["-# Abilities are switched off in battles for now."]),
+  ...(RULES.keywordsEnabled
+    ? []
+    : ["-# Abilities are switched off in battles for now."]),
 ];
 
 const overview = (): string =>
@@ -134,7 +170,8 @@ const groupPage = (group: Group): string =>
     ...(group.blurb ? [`-# ${group.blurb}`] : []),
     "",
     ...abilitiesIn(group).map(
-      (keyword) => `**${keyword.name}** · _${GRADE_LABEL[keyword.grade]}_\n${keyword.description}`,
+      (keyword) =>
+        `**${keyword.name}** · _${GRADE_LABEL[keyword.grade]}_\n${keyword.description}`,
     ),
   ].join("\n");
 
@@ -151,24 +188,36 @@ const navigation = (open: string | null) => {
         .setCustomId(`${ABILITIES_BUTTON}:${group.id}`)
         .setEmoji(group.emoji)
         .setLabel(group.title)
-        .setStyle(group.id === open ? ButtonStyle.Primary : ButtonStyle.Secondary)
+        .setStyle(
+          group.id === open ? ButtonStyle.Primary : ButtonStyle.Secondary,
+        )
         .setDisabled(group.id === open),
     ),
   ];
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
   for (let i = 0; i < buttons.length; i += 5) {
-    rows.push(new ActionRowBuilder<ButtonBuilder>().addComponents(...buttons.slice(i, i + 5)));
+    rows.push(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        ...buttons.slice(i, i + 5),
+      ),
+    );
   }
   return rows;
 };
 
 /** The guide, open at a group's page, or at the overview for null or an unknown id. */
 export const buildAbilitiesMessage = (groupId: string | null = null) => {
-  const group = allGroups().find((candidate) => candidate.id === groupId) ?? null;
+  const group =
+    allGroups().find((candidate) => candidate.id === groupId) ?? null;
   const container = new ContainerBuilder()
     .setAccentColor(NEUTRAL_ACCENT)
-    .addTextDisplayComponents((text) => text.setContent(group ? groupPage(group) : overview()))
+    .addTextDisplayComponents((text) =>
+      text.setContent(group ? groupPage(group) : overview()),
+    )
     .addSeparatorComponents((separator) => separator)
     .addActionRowComponents(...navigation(group?.id ?? null));
-  return { components: [container], flags: [MessageFlags.IsComponentsV2] as const };
+  return {
+    components: [container],
+    flags: [MessageFlags.IsComponentsV2] as const,
+  };
 };

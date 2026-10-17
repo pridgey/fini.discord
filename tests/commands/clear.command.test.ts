@@ -1,7 +1,9 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 
 // Mock clearHistory utility
-const mockClearHistory = mock((_userId: string, _guildId: string, _provider: string) => Promise.resolve());
+const mockClearHistory = mock(
+  (_userId: string, _guildId: string, _provider: string) => Promise.resolve(),
+);
 
 mock.module("../../modules/aiChat/chatHistory", () => ({
   clearHistory: mockClearHistory,
@@ -174,9 +176,7 @@ describe("clear command", () => {
       );
 
       // Should not throw
-      expect(
-        execute(mockInteraction, mockLogCommand),
-      ).resolves.toBeUndefined();
+      expect(execute(mockInteraction, mockLogCommand)).resolves.toBeUndefined();
     });
 
     it("should call logCommand even on error", async () => {
@@ -265,10 +265,12 @@ describe("clear command", () => {
   describe("Integration behavior", () => {
     it("should clear histories sequentially", async () => {
       const clearOrder: string[] = [];
-      mockClearHistory.mockImplementation((_userId: string, _guildId: string, provider: string) => {
-        clearOrder.push(provider);
-        return Promise.resolve();
-      });
+      mockClearHistory.mockImplementation(
+        (_userId: string, _guildId: string, provider: string) => {
+          clearOrder.push(provider);
+          return Promise.resolve();
+        },
+      );
 
       await execute(mockInteraction, mockLogCommand);
 

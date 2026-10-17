@@ -11,7 +11,8 @@ import type { LatLon } from "./score";
  */
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org";
-export const USER_AGENT = "fini-discord-bot/1.0 (+https://finicards.pridgey.dev)";
+export const USER_AGENT =
+  "fini-discord-bot/1.0 (+https://finicards.pridgey.dev)";
 
 /** The places a point is in, as far down as a town. */
 export type PlaceInfo = {
@@ -31,13 +32,23 @@ export type PlaceInfo = {
  */
 export type GuessLevel = "country" | "province" | "city";
 
-export type GeocodedGuess = LatLon & { label: string; place: PlaceInfo; level: GuessLevel };
+export type GeocodedGuess = LatLon & {
+  label: string;
+  place: PlaceInfo;
+  level: GuessLevel;
+};
 
 type NominatimAddress = Record<string, string | undefined>;
 
 /** The kinds of result that name a country or a province, and no further. */
 const COUNTRY_TYPES = new Set(["country", "continent"]);
-const PROVINCE_TYPES = new Set(["state", "province", "region", "state_district", "county"]);
+const PROVINCE_TYPES = new Set([
+  "state",
+  "province",
+  "region",
+  "state_district",
+  "county",
+]);
 
 export const levelOf = (addressType: string | undefined): GuessLevel =>
   COUNTRY_TYPES.has(addressType ?? "")
@@ -47,7 +58,9 @@ export const levelOf = (addressType: string | undefined): GuessLevel =>
       : "city";
 
 /** Reads the places out of a Nominatim address. */
-export const placeFromAddress = (address: NominatimAddress = {}): PlaceInfo => ({
+export const placeFromAddress = (
+  address: NominatimAddress = {},
+): PlaceInfo => ({
   countryCode: address.country_code?.toUpperCase(),
   country: address.country,
   provinceCode: address["ISO3166-2-lvl4"],
@@ -64,7 +77,9 @@ export const placeFromAddress = (address: NominatimAddress = {}): PlaceInfo => (
 export const parseCoordinates = (text: string): LatLon | null => {
   const match = text
     .trim()
-    .match(/^\(?\s*(-?\d{1,2}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*\)?$/);
+    .match(
+      /^\(?\s*(-?\d{1,2}(?:\.\d+)?)\s*[,\s]\s*(-?\d{1,3}(?:\.\d+)?)\s*\)?$/,
+    );
   if (!match) return null;
   const lat = Number(match[1]);
   const lon = Number(match[2]);
@@ -76,7 +91,10 @@ let lastRequest = 0;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** One Nominatim request, a second clear of the last. Throws if it fails. */
-const nominatim = async <T>(path: "search" | "reverse", params: Record<string, string>): Promise<T> => {
+const nominatim = async <T>(
+  path: "search" | "reverse",
+  params: Record<string, string>,
+): Promise<T> => {
   const wait = lastRequest + 1100 - Date.now();
   if (wait > 0) await sleep(wait);
   lastRequest = Date.now();
@@ -96,7 +114,9 @@ const nominatim = async <T>(path: "search" | "reverse", params: Record<string, s
     signal: AbortSignal.timeout(10_000),
   }).catch(() => null);
   if (!response?.ok) {
-    throw new Error(`Place search failed: ${response?.status ?? "no response"}`);
+    throw new Error(
+      `Place search failed: ${response?.status ?? "no response"}`,
+    );
   }
   return (await response.json()) as T;
 };
@@ -113,7 +133,9 @@ type NominatimPlace = {
 };
 
 /** The places a point is in, down to its town. Null out at sea, or anywhere nameless. */
-export const describePlace = async (point: LatLon): Promise<PlaceInfo | null> => {
+export const describePlace = async (
+  point: LatLon,
+): Promise<PlaceInfo | null> => {
   const found = await nominatim<NominatimPlace>("reverse", {
     lat: String(point.lat),
     lon: String(point.lon),
@@ -129,20 +151,29 @@ export const describePlace = async (point: LatLon): Promise<PlaceInfo | null> =>
  * doesn't spell as one ("administrative": "Dubai"), the place's own name
  * stands in, or the guess would have no town to be judged by.
  */
-export const guessPlace = (found: Pick<NominatimPlace, "name" | "address" | "addresstype">): PlaceInfo => {
+export const guessPlace = (
+  found: Pick<NominatimPlace, "name" | "address" | "addresstype">,
+): PlaceInfo => {
   const place = placeFromAddress(found.address);
-  if (!place.city && levelOf(found.addresstype) === "city" && found.name) place.city = found.name;
+  if (!place.city && levelOf(found.addresstype) === "city" && found.name)
+    place.city = found.name;
   return place;
 };
 
 /** The place a guess names, or null when nothing matches. */
-export const geocodeGuess = async (text: string): Promise<GeocodedGuess | null> => {
+export const geocodeGuess = async (
+  text: string,
+): Promise<GeocodedGuess | null> => {
   const coordinates = parseCoordinates(text);
   if (coordinates) {
     const place = (await describePlace(coordinates)) ?? {};
     return {
       ...coordinates,
-      label: [`${coordinates.lat.toFixed(4)}, ${coordinates.lon.toFixed(4)}`, place.city, place.country]
+      label: [
+        `${coordinates.lat.toFixed(4)}, ${coordinates.lon.toFixed(4)}`,
+        place.city,
+        place.country,
+      ]
         .filter(Boolean)
         .join(" · "),
       place,
@@ -150,7 +181,10 @@ export const geocodeGuess = async (text: string): Promise<GeocodedGuess | null> 
     };
   }
 
-  const [first] = await nominatim<NominatimPlace[]>("search", { q: text.trim(), limit: "1" });
+  const [first] = await nominatim<NominatimPlace[]>("search", {
+    q: text.trim(),
+    limit: "1",
+  });
   if (!first) return null;
   return {
     lat: Number(first.lat),

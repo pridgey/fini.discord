@@ -25,7 +25,19 @@ const everyPath = (): { moves: string[]; seen: TutorialView[] }[] => {
   return finished;
 };
 
-const HAPPY = ["c0", "d0", "c2", "d0", "b2", "leave", "d0", "c1", "d0", "c3", "retreat"];
+const HAPPY = [
+  "c0",
+  "d0",
+  "c2",
+  "d0",
+  "b2",
+  "leave",
+  "d0",
+  "c1",
+  "d0",
+  "c3",
+  "retreat",
+];
 
 describe("the dungeon tutorial", () => {
   const paths = everyPath();
@@ -53,7 +65,8 @@ describe("the dungeon tutorial", () => {
 
   it("wins the first fight and the boss, and loses to the raccoons, every time", () => {
     for (const { seen } of paths) {
-      const after = (stage: TutorialStage) => seen.find((view) => view.stage === stage)!.state;
+      const after = (stage: TutorialStage) =>
+        seen.find((view) => view.stage === stage)!.state;
       expect(after("doors").path[0].result).toBe("won");
       expect(after("to-boss").path.at(-1)?.result).toBe("warded");
       expect(after("walk-out").path.at(-1)?.result).toBe("won");
@@ -91,7 +104,10 @@ describe("the dungeon tutorial", () => {
   it("builds buttons with only the taught move switched on, all within Discord's id limit", async () => {
     const view = replayTutorial(HAPPY.slice(0, 9));
     expect(view.stage).toBe("boss");
-    const message = await buildTutorialMessage(view, { userId: "1", playerName: "Tester" });
+    const message = await buildTutorialMessage(view, {
+      userId: "1",
+      playerName: "Tester",
+    });
     const tree = message.components.map((component) => component.toJSON());
     const json = JSON.stringify(tree);
 
@@ -101,15 +117,21 @@ describe("the dungeon tutorial", () => {
       if (!node || typeof node !== "object") return;
       const record = node as Record<string, unknown>;
       if (typeof record.custom_id === "string") {
-        buttons.push({ id: record.custom_id, disabled: record.disabled === true });
+        buttons.push({
+          id: record.custom_id,
+          disabled: record.disabled === true,
+        });
       }
       Object.values(record).forEach(walk);
     };
     walk(tree);
     expect(buttons.length).toBeGreaterThan(0);
-    for (const button of buttons) expect(button.id.length).toBeLessThanOrEqual(100);
+    for (const button of buttons)
+      expect(button.id.length).toBeLessThanOrEqual(100);
 
-    const enabled = buttons.filter((button) => !button.disabled).map((button) => button.id.split(":")[2]);
+    const enabled = buttons
+      .filter((button) => !button.disabled)
+      .map((button) => button.id.split(":")[2]);
     expect(new Set(enabled)).toEqual(view.allowed);
     expect(json).toContain("Last Stand");
   });
@@ -117,10 +139,13 @@ describe("the dungeon tutorial", () => {
   it("ends with a graduation and the run's summary", async () => {
     const view = replayTutorial(HAPPY);
     expect(view.stage).toBe("done");
-    const message = await buildTutorialMessage(view, { userId: "1", playerName: "Tester" });
-    expect(JSON.stringify(message.components.map((component) => component.toJSON()))).toContain(
-      "graduated",
-    );
+    const message = await buildTutorialMessage(view, {
+      userId: "1",
+      playerName: "Tester",
+    });
+    expect(
+      JSON.stringify(message.components.map((component) => component.toJSON())),
+    ).toContain("graduated");
     expect(message.files).toHaveLength(1);
   });
 });

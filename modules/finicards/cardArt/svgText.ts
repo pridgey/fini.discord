@@ -169,7 +169,12 @@ export const wrapAbility = (
   options: FitOptions,
 ): { firstLine: string; rest: string[] } => {
   const prefixWidth = keywordName
-    ? estimateWidth(`${keywordName} — `, options.fontSize, options.letterSpacing, true)
+    ? estimateWidth(
+        `${keywordName} — `,
+        options.fontSize,
+        options.letterSpacing,
+        true,
+      )
     : 0;
 
   const words = (description ?? "").trim().split(/\s+/).filter(Boolean);

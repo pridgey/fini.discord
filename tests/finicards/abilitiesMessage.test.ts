@@ -8,7 +8,8 @@ import {
 } from "../../modules/finicards/ui/abilitiesMessage";
 
 const contentOf = (groupId: string | null) =>
-  (buildAbilitiesMessage(groupId).components[0].toJSON() as any).components[0].content as string;
+  (buildAbilitiesMessage(groupId).components[0].toJSON() as any).components[0]
+    .content as string;
 
 const buttonsOf = (groupId: string | null) =>
   (buildAbilitiesMessage(groupId).components[0].toJSON() as any).components
@@ -35,10 +36,14 @@ describe("the abilities guide", () => {
   it("offers every group as a button, with the open one switched off", () => {
     const buttons = buttonsOf("defence");
     expect(buttons).toHaveLength(ABILITY_GROUPS.length + 1);
-    expect(buttons.filter((button: any) => button.disabled).map((button: any) => button.custom_id)).toEqual([
-      "v2_abilities:defence",
-    ]);
-    expect(buttonsOf(null).find((button: any) => button.disabled).custom_id).toBe("v2_abilities:overview");
+    expect(
+      buttons
+        .filter((button: any) => button.disabled)
+        .map((button: any) => button.custom_id),
+    ).toEqual(["v2_abilities:defence"]);
+    expect(
+      buttonsOf(null).find((button: any) => button.disabled).custom_id,
+    ).toBe("v2_abilities:overview");
   });
 
   it("falls back to the overview for a group it doesn't know", () => {

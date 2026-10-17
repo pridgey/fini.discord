@@ -47,7 +47,10 @@ const NO_REPLY_OUTPUT = "<no reply - interaction expired>";
  * each one is still a bug to fix where it happened.
  */
 process.on("unhandledRejection", (reason) => {
-  console.error("Unhandled promise rejection - this is a bug, the bot kept running:", reason);
+  console.error(
+    "Unhandled promise rejection - this is a bug, the bot kept running:",
+    reason,
+  );
 });
 
 // Initialize client and announce intents
@@ -80,7 +83,10 @@ client.once("clientReady", async (cl) => {
   /* The Finicards site: copies collections out to a public mailbox and takes
    * deck requests back. Off unless FINI_WEB_POCKETBASE_URL is set. */
   startWebSync(
-    () => Object.fromEntries(cl.guilds.cache.map((guild) => [guild.id, guild.name])),
+    () =>
+      Object.fromEntries(
+        cl.guilds.cache.map((guild) => [guild.id, guild.name]),
+      ),
     makeCardPoster(cl),
   );
 
@@ -372,7 +378,9 @@ client.on("interactionCreate", async (interaction) => {
 const waitForPocketbase = async () => {
   const health = `${process.env.POCKETBASE_URL ?? ""}/api/health`;
   for (let attempt = 0; attempt < 60; attempt++) {
-    const response = await fetch(health, { signal: AbortSignal.timeout(2000) }).catch(() => null);
+    const response = await fetch(health, {
+      signal: AbortSignal.timeout(2000),
+    }).catch(() => null);
     if (response?.ok) return;
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }

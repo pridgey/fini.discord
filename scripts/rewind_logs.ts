@@ -75,7 +75,7 @@ const getData = async () => {
 
     await writeFile(`rewind-${YEAR}-${SERVER_CHOICE}.csv`, fileData);
     console.log(
-      `File 'rewind-${YEAR}-${SERVER_CHOICE}.csv' created. Job complete.`
+      `File 'rewind-${YEAR}-${SERVER_CHOICE}.csv' created. Job complete.`,
     );
   }
 };

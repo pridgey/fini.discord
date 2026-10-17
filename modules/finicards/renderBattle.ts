@@ -35,4 +35,3 @@ export const renderCardFace = (card: BattleCard): string => {
 
   return `${TYPE_EMOJI[card.type]} **${card.name}**\n\`\`\`\n${rows.join("\n")}\n\`\`\``;
 };
-

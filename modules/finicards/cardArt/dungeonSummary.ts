@@ -1,13 +1,6 @@
 import sharp from "sharp";
 import type { DungeonState, PathNode, RoomTag } from "../dungeon";
-import {
-  EVENT_PURPLE,
-  GOLD,
-  crown,
-  n,
-  swords,
-  text,
-} from "./dungeonScene";
+import { EVENT_PURPLE, GOLD, crown, n, swords, text } from "./dungeonScene";
 import { TYPE_PALETTES } from "./palettes";
 import { truncateToWidth } from "./svgText";
 
@@ -50,7 +43,12 @@ const node = (entry: PathNode, x: number, y: number, room: number): string => {
     tag.kind === "shop"
       ? `<circle cx="${n(x)}" cy="${n(y)}" r="3.6" fill="none" stroke="${INK}" stroke-width="1.4"></circle>`
       : tag.kind === "event"
-        ? text(x, y + 3.6, "?", { size: 10, weight: 800, anchor: "middle", fill: faded ? colour : INK })
+        ? text(x, y + 3.6, "?", {
+            size: 10,
+            weight: 800,
+            anchor: "middle",
+            fill: faded ? colour : INK,
+          })
         : swords(x, y, 3.6, fell ? RED : faded ? colour : INK);
 
   return [
@@ -69,11 +67,26 @@ const node = (entry: PathNode, x: number, y: number, room: number): string => {
   ].join("");
 };
 
-const tile = (x: number, width: number, label: string, value: string, fill = "#ffffff"): string =>
+const tile = (
+  x: number,
+  width: number,
+  label: string,
+  value: string,
+  fill = "#ffffff",
+): string =>
   [
     `<rect x="${n(x)}" y="34" width="${n(width)}" height="36" rx="5" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.1"></rect>`,
-    text(x + 7, 46, label, { size: 6, mono: true, spacing: 0.8, opacity: 0.55 }),
-    text(x + 7, 63.5, value, { size: value.length > 5 ? 11 : 14, weight: 800, fill }),
+    text(x + 7, 46, label, {
+      size: 6,
+      mono: true,
+      spacing: 0.8,
+      opacity: 0.55,
+    }),
+    text(x + 7, 63.5, value, {
+      size: value.length > 5 ? 11 : 14,
+      weight: 800,
+      fill,
+    }),
   ].join("");
 
 export type DungeonSummaryInput = {
@@ -140,13 +153,20 @@ export const buildDungeonSummarySvg = ({
     `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${WIDTH}" height="${height}" viewBox="0 0 ${WIDTH} ${height}" font-family="Archivo, sans-serif">`,
     `<defs><linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1a1d33"></stop><stop offset="1" stop-color="#0d0f1c"></stop></linearGradient></defs>`,
     `<rect width="${WIDTH}" height="${height}" rx="10" fill="url(#sheet)"></rect>`,
-    text(12, 22, fell ? `FELL IN ROOM ${progress.depth}` : `WALKED OUT OF ROOM ${progress.depth}`, {
-      size: 9,
-      weight: 800,
-      spacing: 1.6,
-      mono: true,
-      fill: fell ? RED : "#ffffff",
-    }),
+    text(
+      12,
+      22,
+      fell
+        ? `FELL IN ROOM ${progress.depth}`
+        : `WALKED OUT OF ROOM ${progress.depth}`,
+      {
+        size: 9,
+        weight: 800,
+        spacing: 1.6,
+        mono: true,
+        fill: fell ? RED : "#ffffff",
+      },
+    ),
     text(WIDTH - 12, 22, `${progress.geld} GELD IN HAND`, {
       size: 8,
       weight: 700,
@@ -171,12 +191,19 @@ export const buildDungeonSummarySvg = ({
       return `<circle cx="${n(x)}" cy="84.5" r="2.6" fill="${colour}"></circle>${text(x + 5, 87, label, { size: 5.6, mono: true, spacing: 0.5, opacity: 0.6 })}`;
     }),
     `<path d="M12 97.5 H${WIDTH - 12}" stroke="#ffffff" stroke-opacity="0.1"></path>`,
-    text(12, 108, offset > 0 ? `THE LAST ${shown.length} ROOMS · SMALL DOTS ARE THE DOORS NOT TAKEN` : "THE PATH · SMALL DOTS ARE THE DOORS NOT TAKEN", {
-      size: 5.6,
-      mono: true,
-      spacing: 0.8,
-      opacity: 0.45,
-    }),
+    text(
+      12,
+      108,
+      offset > 0
+        ? `THE LAST ${shown.length} ROOMS · SMALL DOTS ARE THE DOORS NOT TAKEN`
+        : "THE PATH · SMALL DOTS ARE THE DOORS NOT TAKEN",
+      {
+        size: 5.6,
+        mono: true,
+        spacing: 0.8,
+        opacity: 0.45,
+      },
+    ),
     ...steps,
     ...shown.map((entry, index) => {
       const { x, y } = position(index);

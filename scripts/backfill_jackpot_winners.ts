@@ -137,7 +137,11 @@ const backfillFromLog = async () => {
     const amount = parseFloat(match[1]);
     const wonAt = new Date(entry.created!);
 
-    const existing = await findJackpotWin(entry.server_id, entry.user_id, wonAt);
+    const existing = await findJackpotWin(
+      entry.server_id,
+      entry.user_id,
+      wonAt,
+    );
     if (existing) {
       skipped++;
       continue;
@@ -189,9 +193,15 @@ const backfillFromLog = async () => {
 const crossCheckDiscord = async (since: Date) => {
   const guildIds = guildFilter
     ? [guildFilter]
-    : [...new Set((await pb
-        .collection<JackpotWinnerRecord>("jackpot_winners")
-        .getFullList({ fields: "server_id" })).map((w) => w.server_id))];
+    : [
+        ...new Set(
+          (
+            await pb
+              .collection<JackpotWinnerRecord>("jackpot_winners")
+              .getFullList({ fields: "server_id" })
+          ).map((w) => w.server_id),
+        ),
+      ];
 
   console.log(
     `\nCross-checking Discord for jackpot reactions since ${since.toISOString()}...`,

@@ -40,7 +40,9 @@ describe("finicards v2 practice battles", () => {
   describe("telling practice from a real battle", () => {
     it("is a battle whose two sides are one user", () => {
       expect(isPractice({ challenger_id: "u1", defender_id: "u1" })).toBe(true);
-      expect(isPractice({ challenger_id: "u1", defender_id: "u2" })).toBe(false);
+      expect(isPractice({ challenger_id: "u1", defender_id: "u2" })).toBe(
+        false,
+      );
     });
 
     it("plays the challenger's lineup first, then the defender's", () => {
@@ -60,7 +62,9 @@ describe("finicards v2 practice battles", () => {
       const hands = dealPracticeHands(deck("a", 12), deck("b", 12), 5);
       expect(hands.challenger).toHaveLength(5);
       expect(hands.defender).toHaveLength(5);
-      expect(ids(hands.challenger).every((id) => id.startsWith("a"))).toBe(true);
+      expect(ids(hands.challenger).every((id) => id.startsWith("a"))).toBe(
+        true,
+      );
       expect(ids(hands.defender).every((id) => id.startsWith("b"))).toBe(true);
     });
 

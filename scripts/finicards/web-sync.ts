@@ -7,7 +7,12 @@
  * Against an empty mailbox this sends every card, its artwork and its
  * rendered face, which takes several minutes; after that, only what changed.
  */
-import { startWebSync, summaryLine, syncOnce, webSyncEnabled } from "../../modules/finicards/webSync";
+import {
+  startWebSync,
+  summaryLine,
+  syncOnce,
+  webSyncEnabled,
+} from "../../modules/finicards/webSync";
 
 /** The bot knows its servers by name; a script only knows what it is told. */
 const serverNames = (): Record<string, string> => {
@@ -33,7 +38,9 @@ if (process.argv.includes("--watch")) {
   for (;;) {
     const started = Date.now();
     const summary = await syncOnce(serverNames());
-    console.log(`${summaryLine(summary)} in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+    console.log(
+      `${summaryLine(summary)} in ${((Date.now() - started) / 1000).toFixed(1)}s`,
+    );
     failed += summary.failed;
     if (!summary.facesLeft || summary.failed) break;
   }

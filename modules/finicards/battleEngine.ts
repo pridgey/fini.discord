@@ -8,7 +8,12 @@ import type {
 } from "./keywords";
 import { combatKeyword, createSideState, findKeyword } from "./keywords";
 import type { BattleRules } from "./rules";
-import { RULES, TYPE_BEATEN_BY, TYPE_PRIORITY, typeMultiplierFor } from "./rules";
+import {
+  RULES,
+  TYPE_BEATEN_BY,
+  TYPE_PRIORITY,
+  typeMultiplierFor,
+} from "./rules";
 import type {
   BattleCard,
   MatchResult,
@@ -411,8 +416,16 @@ export const resolveMatch = ({
 
     rounds.push(round);
 
-    tiebreakDamage.challenger += tiebreakDamageOf(round, "challenger", rules).counted;
-    tiebreakDamage.defender += tiebreakDamageOf(round, "defender", rules).counted;
+    tiebreakDamage.challenger += tiebreakDamageOf(
+      round,
+      "challenger",
+      rules,
+    ).counted;
+    tiebreakDamage.defender += tiebreakDamageOf(
+      round,
+      "defender",
+      rules,
+    ).counted;
 
     recordRound(round, challengerState, defenderState);
   }
@@ -427,7 +440,8 @@ export const resolveMatch = ({
   let decidedBy: MatchResult["decidedBy"];
 
   if (roundsWon.challenger !== roundsWon.defender) {
-    winner = roundsWon.challenger > roundsWon.defender ? "challenger" : "defender";
+    winner =
+      roundsWon.challenger > roundsWon.defender ? "challenger" : "defender";
     decidedBy = "rounds";
   } else if (tiebreakDamage.challenger !== tiebreakDamage.defender) {
     winner =

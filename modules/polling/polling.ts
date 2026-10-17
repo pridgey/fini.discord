@@ -75,7 +75,9 @@ export const checkReminders = async (cl: Client) => {
     try {
       const channel = await cl.channels.fetch(reminder.channel_id);
       if (!channel?.isSendable()) {
-        console.error(`Reminder ${reminder.id}'s channel can't be posted in; dropping it`);
+        console.error(
+          `Reminder ${reminder.id}'s channel can't be posted in; dropping it`,
+        );
         await pb.collection("reminder").delete(reminder.id!);
         continue;
       }
@@ -85,8 +87,15 @@ export const checkReminders = async (cl: Client) => {
       await pb.collection("reminder").delete(reminder.id!);
     } catch (err) {
       const gone = err instanceof DiscordAPIError && CHANNEL_GONE.has(err.code);
-      console.error(`Couldn't send reminder ${reminder.id}${gone ? "; dropping it" : ""}:`, err);
-      if (gone) await pb.collection("reminder").delete(reminder.id!).catch(() => undefined);
+      console.error(
+        `Couldn't send reminder ${reminder.id}${gone ? "; dropping it" : ""}:`,
+        err,
+      );
+      if (gone)
+        await pb
+          .collection("reminder")
+          .delete(reminder.id!)
+          .catch(() => undefined);
     }
   }
 };

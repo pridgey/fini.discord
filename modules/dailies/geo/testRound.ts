@@ -54,7 +54,8 @@ export const holdGuess = (userId: string, guess: GeocodedGuess) => {
 const id = (action: string) => `${GEO_BUTTON}:${action}`;
 
 /** The box a guess is typed into. `edit` replaces the guess on screen; `new` adds one. */
-export const guessModal = (mode: "new" | "edit") => sharedGuessModal(`${GEO_MODAL}:${mode}`);
+export const guessModal = (mode: "new" | "edit") =>
+  sharedGuessModal(`${GEO_MODAL}:${mode}`);
 
 const factsOf = (round: GeoRound): RoundFacts => ({
   answer: round.answer,
@@ -71,7 +72,9 @@ export const roundMessage = (round: GeoRound) => ({
     "-# Test round: only you can see it, and nothing is paid. Guess with the button or `/geo-test guess`.",
   ].join("\n"),
   files: photoFiles(round.photos),
-  components: [row(button(id("guess"), "Make a guess", ButtonStyle.Primary, "📍"))],
+  components: [
+    row(button(id("guess"), "Make a guess", ButtonStyle.Primary, "📍")),
+  ],
 });
 
 /** Where the bot understood the guess to be, to lock in or redo. */
@@ -79,11 +82,23 @@ export const guessMessage = (guess: GeocodedGuess) =>
   guessView(guess, { lock: id("lock"), retry: id("retry") });
 
 /** The answer beside the guess, each check, and what it would have paid. */
-export const revealMessage = async (round: GeoRound, place: PlaceInfo, guess: GeocodedGuess) => {
+export const revealMessage = async (
+  round: GeoRound,
+  place: PlaceInfo,
+  guess: GeocodedGuess,
+) => {
   const facts = factsOf(round);
-  const view = await revealView(facts, place, guess, scoreGuess(facts, place, guess), { paid: false });
+  const view = await revealView(
+    facts,
+    place,
+    guess,
+    scoreGuess(facts, place, guess),
+    { paid: false },
+  );
   return {
     ...view,
-    components: [row(button(id("new"), "New round", ButtonStyle.Primary, "🌍"))],
+    components: [
+      row(button(id("new"), "New round", ButtonStyle.Primary, "🌍")),
+    ],
   };
 };

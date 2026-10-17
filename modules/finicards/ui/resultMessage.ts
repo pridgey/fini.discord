@@ -8,12 +8,7 @@ import {
 } from "discord.js";
 import { BATTLE_BOARD_FILE, renderBattleBoard } from "../cardArt";
 import type { PotSplit } from "../wagers";
-import type {
-  MatchResult,
-  RoundResult,
-  Side,
-  SideCombat,
-} from "../types";
+import type { MatchResult, RoundResult, Side, SideCombat } from "../types";
 import { tiebreakDamageOf } from "../battleEngine";
 import { combatKeyword, type KeywordDefinition } from "../keywords";
 import { TYPE_EMOJI } from "../rules";
@@ -93,9 +88,12 @@ const defenseCell = (combat: SideCombat): string => {
   // Rounds stored before the parts were tracked only have the total.
   if (!defense) return `${combat.defenseFaced}`;
   const parts = `${defense.base}${offset(defense.bonus)}${offset(-defense.pierce)}`;
-  const value = parts === `${defense.base}` ? parts : `${parts}=${combat.defenseFaced}`;
+  const value =
+    parts === `${defense.base}` ? parts : `${parts}=${combat.defenseFaced}`;
   // Only worth naming the stat when `Feint` moved it off the matching one.
-  return defense.stat === combat.printedType ? value : `${value} ${TYPE_NAME[defense.stat]}`;
+  return defense.stat === combat.printedType
+    ? value
+    : `${value} ${TYPE_NAME[defense.stat]}`;
 };
 
 const NAME_WIDTH = 18;
@@ -114,14 +112,23 @@ export const damageTable = (round: RoundResult): string => {
     ["", "Attack", "Defence", "Dmg"],
     ...SIDES.map((side) => {
       const combat = round[side];
-      return [fitName(combat.card.name), attackCell(combat), defenseCell(combat), `${combat.damage}`];
+      return [
+        fitName(combat.card.name),
+        attackCell(combat),
+        defenseCell(combat),
+        `${combat.damage}`,
+      ];
     }),
   ];
-  const widths = rows[0].map((_, column) => Math.max(...rows.map((row) => row[column].length)));
+  const widths = rows[0].map((_, column) =>
+    Math.max(...rows.map((row) => row[column].length)),
+  );
   const line = (row: string[]) =>
     row
       .map((cell, column) =>
-        column === row.length - 1 ? cell.padStart(widths[column]) : cell.padEnd(widths[column]),
+        column === row.length - 1
+          ? cell.padStart(widths[column])
+          : cell.padEnd(widths[column]),
       )
       .join("  ")
       .trimEnd();
@@ -131,7 +138,9 @@ export const damageTable = (round: RoundResult): string => {
 /** `Nico Robin: Giant Slayer +3 · Hinata Hyuga: Bulwark +2 def` - who did what. */
 const bonusNote = (round: RoundResult): string =>
   SIDES.filter((side) => round[side].bonuses.length > 0)
-    .map((side) => `${round[side].card.name}: ${round[side].bonuses.join(", ")}`)
+    .map(
+      (side) => `${round[side].card.name}: ${round[side].bonuses.join(", ")}`,
+    )
     .join(" · ");
 
 /** The same round written out in full, for the detail view. */
@@ -230,11 +239,14 @@ export const keywordReport = (
     const claimed = new Set<string>();
     const keywords = {} as Record<Side, KeywordDefinition | null>;
     const landed = new Set<Side>();
-    const who = (side: Side) => `\`R${round.slot}\` **${round[side].card.name}**`;
+    const who = (side: Side) =>
+      `\`R${round.slot}\` **${round[side].card.name}**`;
 
     for (const side of SIDES) {
       const combat = round[side];
-      const keyword = result.rules.keywordsEnabled ? combatKeyword(combat) : null;
+      const keyword = result.rules.keywordsEnabled
+        ? combatKeyword(combat)
+        : null;
       keywords[side] = keyword;
 
       /* Stat and matchup changes. Not all of them are this card's own doing - a
@@ -246,7 +258,10 @@ export const keywordReport = (
             ? ` · ${TYPE_NAME[combat.printedType]} ${combat.baseAttackStat} → **${combat.attackStat}**`
             : "";
         fired.push(`${who(side)} — ${combat.bonuses.join(", ")}${stat}`);
-        if (keyword && combat.bonuses.some((bonus) => bonus.startsWith(keyword.name))) {
+        if (
+          keyword &&
+          combat.bonuses.some((bonus) => bonus.startsWith(keyword.name))
+        ) {
           landed.add(side);
         }
       }
@@ -255,7 +270,8 @@ export const keywordReport = (
 
       // Outcome and hand-on keywords leave a note naming the side instead.
       for (const note of round.notes) {
-        if (!note.startsWith(`${keyword.name}:`) || !note.includes(side)) continue;
+        if (!note.startsWith(`${keyword.name}:`) || !note.includes(side))
+          continue;
         claimed.add(note);
         fired.push(`${who(side)} — ${namedNote(note, names)}`);
         landed.add(side);
@@ -265,7 +281,11 @@ export const keywordReport = (
     /* Tiebreak keywords change nothing in the round itself, only the total -
        this card's own count, or (`Mercy`) the opposing card's. */
     for (const side of SIDES) {
-      const { dealt, own, counted } = tiebreakDamageOf(round, side, result.rules);
+      const { dealt, own, counted } = tiebreakDamageOf(
+        round,
+        side,
+        result.rules,
+      );
       if (own !== dealt) {
         fired.push(
           `${who(side)} — ${keywords[side]?.name}: ${dealt} damage counts as **${own}** toward total damage`,
@@ -345,7 +365,10 @@ export type BuiltResultMessage = {
 export const buildResultMessage = async (
   input: ResultMessageInput,
 ): Promise<BuiltResultMessage> =>
-  composeResultMessage(input, await renderBattleBoard(input.result, input.names));
+  composeResultMessage(
+    input,
+    await renderBattleBoard(input.result, input.names),
+  );
 
 /**
  * Builds the result from an already-rendered board, or from none - a null board

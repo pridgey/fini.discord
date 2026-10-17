@@ -104,7 +104,9 @@ describe("getAvailableTools", () => {
     // 403 feature_disabled is what llama.cpp returns with no MCP servers
     // configured. Previously that meant an empty list and no retrieval pass.
     globalThis.fetch = (async () =>
-      new Response("feature_disabled", { status: 403 })) as unknown as typeof fetch;
+      new Response("feature_disabled", {
+        status: 403,
+      })) as unknown as typeof fetch;
 
     const tools = await getAvailableTools();
 

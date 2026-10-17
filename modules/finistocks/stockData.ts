@@ -160,7 +160,9 @@ let lastMalRequest = 0;
 export async function malFetch<T>(path: string): Promise<T | null> {
   const clientId = process.env.MAL_CLIENT_ID;
   if (!clientId) {
-    console.error("❌ MAL_CLIENT_ID is not set; anime can't be synced without it");
+    console.error(
+      "❌ MAL_CLIENT_ID is not set; anime can't be synced without it",
+    );
     return null;
   }
 
@@ -319,11 +321,13 @@ async function syncSeason(config: SeasonConfig): Promise<{
 
   while (next && page <= MAX_SEASON_PAGES) {
     try {
-      const json: MalSeasonResponse | null = await malFetch<MalSeasonResponse>(next);
+      const json: MalSeasonResponse | null =
+        await malFetch<MalSeasonResponse>(next);
 
       if (!json) {
         // malFetch has already said why; a 404 on page 1 is a season not yet listed
-        if (page > 1) console.error(`❌ Giving up on ${year} ${season} at page ${page}`);
+        if (page > 1)
+          console.error(`❌ Giving up on ${year} ${season} at page ${page}`);
         break;
       }
 
@@ -334,7 +338,11 @@ async function syncSeason(config: SeasonConfig): Promise<{
 
       // Process each anime in this page
       for (const { node } of json.data) {
-        const result = await upsertAnimeAndUpdateStock(snapshotOf(node), year, season);
+        const result = await upsertAnimeAndUpdateStock(
+          snapshotOf(node),
+          year,
+          season,
+        );
 
         if (result.isNew) {
           newAnime++;

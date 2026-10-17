@@ -141,7 +141,12 @@ const strip = (
     ? { name: 22, series: 35, keyword: 44 }
     : { name: 28, series: 44, keyword: 0 };
   const chipWidth =
-    estimateWidth(keywordLabel, KEYWORD_CHIP.fontSize, KEYWORD_CHIP.spacing, true) +
+    estimateWidth(
+      keywordLabel,
+      KEYWORD_CHIP.fontSize,
+      KEYWORD_CHIP.spacing,
+      true,
+    ) +
     KEYWORD_CHIP.padding * 2;
 
   return [

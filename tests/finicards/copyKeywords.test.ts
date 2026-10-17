@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
-import { rollCopyKeyword, toBattleCard } from "../../modules/finicards/cardStore";
+import {
+  rollCopyKeyword,
+  toBattleCard,
+} from "../../modules/finicards/cardStore";
 import { findKeyword } from "../../modules/finicards/keywords";
 import type { OwnedCard } from "../../modules/finicards/types";
 
@@ -37,7 +40,9 @@ const owned = (overrides: Partial<OwnedCard> = {}): OwnedCard => ({
 
 describe("copy keywords", () => {
   it("fights with the copy's keyword", () => {
-    expect(toBattleCard(owned({ keyword: "vanguard" })).keyword).toBe("vanguard");
+    expect(toBattleCard(owned({ keyword: "vanguard" })).keyword).toBe(
+      "vanguard",
+    );
   });
 
   it("ignores a keyword left on the definition", () => {

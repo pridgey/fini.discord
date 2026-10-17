@@ -70,7 +70,10 @@ const LEVELS: GuessLevel[] = ["country", "province", "city"];
 const named = (guess: GeocodedGuess, level: GuessLevel) =>
   LEVELS.indexOf(guess.level) >= LEVELS.indexOf(level);
 
-export const judgeGuess = (guess: GeocodedGuess, answer: JudgedAnswer): Verdict => {
+export const judgeGuess = (
+  guess: GeocodedGuess,
+  answer: JudgedAnswer,
+): Verdict => {
   const km = distanceKm(guess, answer);
   const checks: Check[] = [];
 
@@ -100,7 +103,13 @@ export const judgeGuess = (guess: GeocodedGuess, answer: JudgedAnswer): Verdict 
   ) => {
     const fc = PAY[kind];
     if (!climbing) {
-      checks.push({ kind, label, outcome: "locked", fc, note: "needs the step before" });
+      checks.push({
+        kind,
+        label,
+        outcome: "locked",
+        fc,
+        note: "needs the step before",
+      });
       return;
     }
     if (level && !named(guess, level)) {
@@ -115,7 +124,13 @@ export const judgeGuess = (guess: GeocodedGuess, answer: JudgedAnswer): Verdict 
       return;
     }
     if (!right) climbing = false;
-    checks.push({ kind, label, outcome: right ? "earned" : "missed", fc, note: right ? undefined : missNote });
+    checks.push({
+      kind,
+      label,
+      outcome: right ? "earned" : "missed",
+      fc,
+      note: right ? undefined : missNote,
+    });
   };
 
   const answerContinent = continentOf(answer.place.countryCode);
@@ -131,7 +146,8 @@ export const judgeGuess = (guess: GeocodedGuess, answer: JudgedAnswer): Verdict 
   rung(
     "country",
     answer.place.country ?? "Country",
-    !!answer.place.countryCode && answer.place.countryCode === guess.place.countryCode,
+    !!answer.place.countryCode &&
+      answer.place.countryCode === guess.place.countryCode,
     "country",
     guess.place.country ? `you said ${guess.place.country}` : undefined,
   );
@@ -151,7 +167,8 @@ export const judgeGuess = (guess: GeocodedGuess, answer: JudgedAnswer): Verdict 
     guess.place.province ? `you said ${guess.place.province}` : undefined,
   );
 
-  const sameTown = sameName(answer.place.city, guess.place.city) || km <= SAME_TOWN_KM;
+  const sameTown =
+    sameName(answer.place.city, guess.place.city) || km <= SAME_TOWN_KM;
   rung(
     "city",
     answer.place.city ?? "The town",
@@ -161,9 +178,14 @@ export const judgeGuess = (guess: GeocodedGuess, answer: JudgedAnswer): Verdict 
   );
 
   const townRight = checks.at(-1)?.outcome === "earned";
-  const bonus = townRight ? Math.round(PAY.closeness * Math.exp(-km / CLOSENESS_FALLOFF_KM)) : 0;
+  const bonus = townRight
+    ? Math.round(PAY.closeness * Math.exp(-km / CLOSENESS_FALLOFF_KM))
+    : 0;
   const total =
-    checks.reduce((sum, check) => sum + (check.outcome === "earned" ? check.fc : 0), 0) + bonus;
+    checks.reduce(
+      (sum, check) => sum + (check.outcome === "earned" ? check.fc : 0),
+      0,
+    ) + bonus;
 
   return { km, checks, bonus, total };
 };

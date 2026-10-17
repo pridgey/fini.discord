@@ -36,7 +36,10 @@ const flag = (name: string): string | undefined => {
 
 /* ------------------------------------------------------------------- run --- */
 
-const loadCard = async (): Promise<{ card: BattleCard; art: Buffer | null }> => {
+const loadCard = async (): Promise<{
+  card: BattleCard;
+  art: Buffer | null;
+}> => {
   const image = flag("image");
 
   if (image) {
@@ -69,7 +72,9 @@ const loadCard = async (): Promise<{ card: BattleCard; art: Buffer | null }> => 
   // A card's own artwork file wins over a linked image, as it does in the game.
   const source = await resolveArtSource({
     ...definition,
-    art_url: definition.art ? pb.files.getURL(definition, definition.art) : definition.art_url,
+    art_url: definition.art
+      ? pb.files.getURL(definition, definition.art)
+      : definition.art_url,
   });
   const response = source?.url ? await fetch(source.url) : null;
 
@@ -102,12 +107,15 @@ const run = async () => {
   const only = flag("effect");
   const names = only ? [only] : Object.keys(LEGENDARY_GIF_EFFECTS);
   const stem = card.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-  const number = (name: string) => (flag(name) ? Number(flag(name)) : undefined);
+  const number = (name: string) =>
+    flag(name) ? Number(flag(name)) : undefined;
 
   for (const name of names) {
     const effect = LEGENDARY_GIF_EFFECTS[name];
     if (!effect) {
-      console.log(`No effect "${name}". Try: ${Object.keys(LEGENDARY_GIF_EFFECTS).join(", ")}`);
+      console.log(
+        `No effect "${name}". Try: ${Object.keys(LEGENDARY_GIF_EFFECTS).join(", ")}`,
+      );
       continue;
     }
 
@@ -118,7 +126,10 @@ const run = async () => {
       frames: number("frames"),
       delay: number("delay"),
     });
-    const file = path.join(OUT_DIR, `${stem}-${name}${reveal ? "-reveal" : ""}.gif`);
+    const file = path.join(
+      OUT_DIR,
+      `${stem}-${name}${reveal ? "-reveal" : ""}.gif`,
+    );
     await writeFile(file, gif);
     console.log(
       `T${effect.tier} ${name.padEnd(10)} ${(gif.length / 1024 / 1024).toFixed(2)} MB  ${Math.round(performance.now() - started)} ms  ${file}`,

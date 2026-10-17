@@ -145,9 +145,7 @@ describe("buildSystemPrompt capabilities", () => {
   });
 
   it("treats a blank capability string as absent", () => {
-    expect(buildSystemPrompt(new Date(), "   ")).not.toContain(
-      "authoritative",
-    );
+    expect(buildSystemPrompt(new Date(), "   ")).not.toContain("authoritative");
   });
 
   it("keeps the date and grounding ahead of the command list", () => {

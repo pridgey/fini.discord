@@ -1,6 +1,9 @@
 import { ChatInputCommandInteraction } from "discord.js";
 import { DUNGEON } from "../../modules/finicards/dungeon";
-import { buildRunMessage, payEntryFee } from "../../modules/finicards/dungeonFlow";
+import {
+  buildRunMessage,
+  payEntryFee,
+} from "../../modules/finicards/dungeonFlow";
 import { getActiveRun, startRun } from "../../modules/finicards/dungeonStore";
 import { canAfford } from "../../modules/finicards/wagers";
 import { replayTutorial } from "../../modules/finicards/dungeonTutorial";

@@ -30,7 +30,9 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("post-daily")
-      .setDescription("Post today's daily rounds now, without waiting for noon"),
+      .setDescription(
+        "Post today's daily rounds now, without waiting for noon",
+      ),
   )
   .addSubcommand((sub) =>
     sub
@@ -49,7 +51,8 @@ export const execute = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
 ) => {
-  if (!(await requireAdmin(interaction, "use the location game prototype"))) return;
+  if (!(await requireAdmin(interaction, "use the location game prototype")))
+    return;
   logCommand();
 
   await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
@@ -77,19 +80,25 @@ export const execute = async (
   }
 
   if (!roundFor(interaction.user.id)) {
-    await interaction.editReply("You don't have a test round going. Start one with `/geo-test new`.");
+    await interaction.editReply(
+      "You don't have a test round going. Start one with `/geo-test new`.",
+    );
     return;
   }
 
-  const guess = await geocodeGuess(interaction.options.getString("place", true)).catch(
-    () => undefined,
-  );
+  const guess = await geocodeGuess(
+    interaction.options.getString("place", true),
+  ).catch(() => undefined);
   if (guess === undefined) {
-    await interaction.editReply("The place search didn't answer. Try again in a moment.");
+    await interaction.editReply(
+      "The place search didn't answer. Try again in a moment.",
+    );
     return;
   }
   if (!guess) {
-    await interaction.editReply("I couldn't find that place. Try a bigger place nearby, or paste coordinates.");
+    await interaction.editReply(
+      "I couldn't find that place. Try a bigger place nearby, or paste coordinates.",
+    );
     return;
   }
 

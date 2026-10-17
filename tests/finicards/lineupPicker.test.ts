@@ -138,23 +138,32 @@ describe("finicards v2 lineup picker", () => {
   describe("stays inside Discord's limits", () => {
     it("uses at most five buttons per row", () => {
       const view = buildPickerView("battle1", hand(), []);
-      for (const row of json(view).components.filter((c: any) => c.type === 1)) {
+      for (const row of json(view).components.filter(
+        (c: any) => c.type === 1,
+      )) {
         expect(row.components.length).toBeLessThanOrEqual(5);
       }
     });
 
     it("keeps custom ids under 100 characters", () => {
-      for (const id of buttonIds(buildPickerView("abcdefghijklmno", hand(), [1]))) {
+      for (const id of buttonIds(
+        buildPickerView("abcdefghijklmno", hand(), [1]),
+      )) {
         expect(id.length).toBeLessThanOrEqual(100);
       }
     });
 
     it("keeps labels under 80 characters", () => {
       const long = [card("a"), card("b"), card("c"), card("d"), card("e")].map(
-        (entry) => ({ ...entry, name: "An Extremely Long Card Name That Goes On" }),
+        (entry) => ({
+          ...entry,
+          name: "An Extremely Long Card Name That Goes On",
+        }),
       );
       const view = buildPickerView("battle1", long, []);
-      for (const row of json(view).components.filter((c: any) => c.type === 1)) {
+      for (const row of json(view).components.filter(
+        (c: any) => c.type === 1,
+      )) {
         for (const button of row.components) {
           expect((button.label as string).length).toBeLessThanOrEqual(80);
         }
@@ -250,7 +259,9 @@ describe("finicards v2 lineup picker", () => {
     it("keeps a long name's keyword inside the label limit", () => {
       RULES.keywordsEnabled = true;
       const long = { ...withKeyword("a", "last_stand"), name: "N".repeat(120) };
-      const [label] = labels(buildPickerView("battle1", [long, card("b"), card("c")], []));
+      const [label] = labels(
+        buildPickerView("battle1", [long, card("b"), card("c")], []),
+      );
       expect(label.length).toBeLessThanOrEqual(80);
       expect(label.endsWith("· Last Stand")).toBe(true);
     });

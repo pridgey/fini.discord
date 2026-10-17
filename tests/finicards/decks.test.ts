@@ -6,10 +6,7 @@ import {
 } from "../../modules/finicards/decks";
 import { HAND_SIZE } from "../../modules/finicards/draw";
 import type { OwnedCard } from "../../modules/finicards/types";
-import type {
-  CardRarity,
-  CardType,
-} from "../../types/PocketbaseTablesV2";
+import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
 
 const owned = (
   id: string,
@@ -23,7 +20,10 @@ const owned = (
   const type = overrides.type ?? "power";
   const spike = overrides.spike ?? 7;
   const rest = Math.max(1, Math.floor((15 - spike) / 2));
-  const stats = { power: rest, wit: rest, heart: rest } as Record<CardType, number>;
+  const stats = { power: rest, wit: rest, heart: rest } as Record<
+    CardType,
+    number
+  >;
   stats[type] = spike;
 
   return {
@@ -71,15 +71,25 @@ describe("finicards v2 decks", () => {
 
     it("will not deal from a deck that has shrunk below the minimum", () => {
       const cards = (count: number) =>
-        Array.from({ length: count }, (_, index) => ({ instanceId: `c${index}` })) as any;
+        Array.from({ length: count }, (_, index) => ({
+          instanceId: `c${index}`,
+        })) as any;
       const deck = { name: "Main" } as any;
 
-      expect(unplayableReason({ deck, cards: cards(DECK_SIZE), missing: [] })).toBeNull();
+      expect(
+        unplayableReason({ deck, cards: cards(DECK_SIZE), missing: [] }),
+      ).toBeNull();
 
       // Built at the minimum, then two of its cards were sold.
-      const shrunk = unplayableReason({ deck, cards: cards(DECK_SIZE - 2), missing: ["a", "b"] });
+      const shrunk = unplayableReason({
+        deck,
+        cards: cards(DECK_SIZE - 2),
+        missing: ["a", "b"],
+      });
       expect(shrunk).toContain(`has ${DECK_SIZE - 2} cards`);
-      expect(shrunk).toContain("2 of its cards are no longer in your collection");
+      expect(shrunk).toContain(
+        "2 of its cards are no longer in your collection",
+      );
     });
   });
 
@@ -109,9 +119,7 @@ describe("finicards v2 decks", () => {
 
     it("is stable across rebuilds", () => {
       const pool = collection(30);
-      expect(buildDeckCards(pool)).toEqual(
-        buildDeckCards(pool),
-      );
+      expect(buildDeckCards(pool)).toEqual(buildDeckCards(pool));
     });
   });
 
@@ -135,9 +143,7 @@ describe("finicards v2 decks", () => {
         owned("u1", { rarity: "uncommon" }),
         owned("f1", { rarity: "full_art" }),
       ];
-      expect(buildDeckCards(pool, { rarity: "uncommon" })).toEqual([
-        "u1",
-      ]);
+      expect(buildDeckCards(pool, { rarity: "uncommon" })).toEqual(["u1"]);
     });
 
     it("filters by tag", () => {
@@ -158,15 +164,15 @@ describe("finicards v2 decks", () => {
         owned("b", { type: "wit", rarity: "common", tags: ["magic"] }),
         owned("c", { type: "power", rarity: "uncommon", tags: ["magic"] }),
       ];
-      expect(
-        buildDeckCards(pool, { type: "wit", rarity: "uncommon" }),
-      ).toEqual(["a"]);
+      expect(buildDeckCards(pool, { type: "wit", rarity: "uncommon" })).toEqual(
+        ["a"],
+      );
     });
 
     it("returns nothing when no card matches", () => {
-      expect(
-        buildDeckCards(collection(10), { tag: "nonexistent" }),
-      ).toEqual([]);
+      expect(buildDeckCards(collection(10), { tag: "nonexistent" })).toEqual(
+        [],
+      );
     });
 
     it("can build a mono-type deck, which the type wheel will punish", () => {

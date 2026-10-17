@@ -14,7 +14,8 @@ const EXPLOITS = ['x" || name != "', "x' || name != '"];
 const real = new PocketBase("http://127.0.0.1:1");
 const seen: string[] = [];
 const recording = {
-  filter: (raw: string, params: Record<string, unknown>) => real.filter(raw, params),
+  filter: (raw: string, params: Record<string, unknown>) =>
+    real.filter(raw, params),
   collection: () => ({
     getFullList: async (options: { filter: string }) => {
       seen.push(options.filter);
@@ -24,7 +25,11 @@ const recording = {
       seen.push(filter);
       throw new Error("not found");
     },
-    getList: async (_page: number, _perPage: number, options: { filter: string }) => {
+    getList: async (
+      _page: number,
+      _perPage: number,
+      options: { filter: string },
+    ) => {
       seen.push(options.filter);
       return { items: [], page: 1, perPage: 10, totalItems: 0, totalPages: 0 };
     },
@@ -42,10 +47,15 @@ const contained = (filter: string, typed: string) => {
 
 describe("typed text in database queries", () => {
   it("can't break out of a personality name", async () => {
-    const { getPersonalityByName } = await import("../../modules/personalities/getPersonality");
+    const { getPersonalityByName } =
+      await import("../../modules/personalities/getPersonality");
     for (const typed of EXPLOITS) {
       seen.length = 0;
-      await getPersonalityByName({ userId: "u1", personalityName: typed, serverId: "s1" }).catch(() => undefined);
+      await getPersonalityByName({
+        userId: "u1",
+        personalityName: typed,
+        serverId: "s1",
+      }).catch(() => undefined);
       expect(seen.length).toBeGreaterThan(0);
       for (const filter of seen) contained(filter, typed);
     }

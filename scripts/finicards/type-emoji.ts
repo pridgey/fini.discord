@@ -20,7 +20,14 @@ import type { CardType } from "../../types/PocketbaseTablesV2";
  * same name is replaced. A different bot has different ids: run this for it.
  */
 
-const ASSETS = path.join(import.meta.dir, "..", "..", "modules", "finicards", "assets");
+const ASSETS = path.join(
+  import.meta.dir,
+  "..",
+  "..",
+  "modules",
+  "finicards",
+  "assets",
+);
 const IDS_FILE = path.join(ASSETS, "type-emoji.json");
 const SIZE = 128;
 const emojiName = (type: CardType) => `fc_${type}`;
@@ -44,7 +51,10 @@ const draw = (type: CardType): Promise<Buffer> => {
     .toBuffer();
 };
 
-const api = async (route: string, init: { method?: string; body?: string } = {}): Promise<any> => {
+const api = async (
+  route: string,
+  init: { method?: string; body?: string } = {},
+): Promise<any> => {
   const response = await fetch(`https://discord.com/api/v10${route}`, {
     ...init,
     headers: {
@@ -52,7 +62,10 @@ const api = async (route: string, init: { method?: string; body?: string } = {})
       "Content-Type": "application/json",
     },
   });
-  if (!response.ok) throw new Error(`${init.method ?? "GET"} ${route}: ${response.status} ${await response.text()}`);
+  if (!response.ok)
+    throw new Error(
+      `${init.method ?? "GET"} ${route}: ${response.status} ${await response.text()}`,
+    );
   return response.status === 204 ? null : response.json();
 };
 
@@ -69,7 +82,8 @@ for (const type of TYPE_PRIORITY) {
 if (process.argv.includes("--upload")) {
   if (!process.env.FINI_TOKEN) throw new Error("FINI_TOKEN is not set");
   const application = (await api("/applications/@me")).id as string;
-  const existing: { id: string; name: string }[] = (await api(`/applications/${application}/emojis`)).items ?? [];
+  const existing: { id: string; name: string }[] =
+    (await api(`/applications/${application}/emojis`)).items ?? [];
 
   const ids: Record<string, string> = await readFile(IDS_FILE, "utf8")
     .then((text) => JSON.parse(text))
@@ -78,10 +92,16 @@ if (process.argv.includes("--upload")) {
   for (const type of TYPE_PRIORITY) {
     const name = emojiName(type);
     const old = existing.find((emoji) => emoji.name === name);
-    if (old) await api(`/applications/${application}/emojis/${old.id}`, { method: "DELETE" });
+    if (old)
+      await api(`/applications/${application}/emojis/${old.id}`, {
+        method: "DELETE",
+      });
     const made = await api(`/applications/${application}/emojis`, {
       method: "POST",
-      body: JSON.stringify({ name, image: `data:image/png;base64,${images.get(type)!.toString("base64")}` }),
+      body: JSON.stringify({
+        name,
+        image: `data:image/png;base64,${images.get(type)!.toString("base64")}`,
+      }),
     });
     ids[type] = `<:${made.name}:${made.id}>`;
     console.log(`${old ? "replaced" : "uploaded"} ${ids[type]}`);

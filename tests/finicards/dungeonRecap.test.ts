@@ -1,11 +1,20 @@
 import { describe, expect, it } from "bun:test";
-import { recordRound, resolveRound } from "../../modules/finicards/battleEngine";
+import {
+  recordRound,
+  resolveRound,
+} from "../../modules/finicards/battleEngine";
 import { DUNGEON, type DungeonState } from "../../modules/finicards/dungeon";
 import { KEYWORDS, createSideState } from "../../modules/finicards/keywords";
 import { RULES } from "../../modules/finicards/rules";
 import type { BattleCard, RoundResult } from "../../modules/finicards/types";
-import { enemyAbilityLines, explainsKeyword } from "../../modules/finicards/ui/enemyAbility";
-import { damageTable, roundBlock } from "../../modules/finicards/ui/resultMessage";
+import {
+  enemyAbilityLines,
+  explainsKeyword,
+} from "../../modules/finicards/ui/enemyAbility";
+import {
+  damageTable,
+  roundBlock,
+} from "../../modules/finicards/ui/resultMessage";
 import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
 
 const card = (
@@ -47,7 +56,10 @@ const names = { challenger: "Aya", defender: "The dungeon" };
 
 // The fight that prompted this: Bulwark looked like part of Hinata's attack and
 // Giant Slayer's +3 looked like it still had to be added to Robin's 9.
-const hinata = card("Hinata Hyuga", "wit", [4, 7, 4], "bulwark", { cost: 3, rarity: "uncommon" });
+const hinata = card("Hinata Hyuga", "wit", [4, 7, 4], "bulwark", {
+  cost: 3,
+  rarity: "uncommon",
+});
 const robin = card("Sudden Nico Robin", "wit", [3, 6, 5], "giant_slayer");
 
 describe("damage table", () => {
@@ -80,7 +92,9 @@ describe("damage table", () => {
 
   it("names each card's bonuses under the table, once", () => {
     const block = roundBlock(clash(hinata, robin), names);
-    expect(block).toContain("Hinata Hyuga: Bulwark +2 def · Sudden Nico Robin: Giant Slayer +3");
+    expect(block).toContain(
+      "Hinata Hyuga: Bulwark +2 def · Sudden Nico Robin: Giant Slayer +3",
+    );
     expect(block).not.toContain("+Bulwark");
   });
 });
@@ -110,7 +124,9 @@ const runAt = (played: [BattleCard, BattleCard][]): DungeonState => {
 
 describe("enemy ability lines", () => {
   it("explains every keyword in the library", () => {
-    const missing = KEYWORDS.filter((keyword) => !explainsKeyword(keyword.slug, robin));
+    const missing = KEYWORDS.filter(
+      (keyword) => !explainsKeyword(keyword.slug, robin),
+    );
     expect(missing.map((keyword) => keyword.slug)).toEqual([]);
   });
 
@@ -122,25 +138,34 @@ describe("enemy ability lines", () => {
 
   it("works out slot keywords from the leg", () => {
     const vanguard = card("Guard Dog", "power", [7, 4, 4], "vanguard");
-    expect(enemyAbilityLines(runAt([]), vanguard)[0]).toContain("**+3** this fight");
+    expect(enemyAbilityLines(runAt([]), vanguard)[0]).toContain(
+      "**+3** this fight",
+    );
     const twoIn = runAt([
       [card("A", "power", [9, 3, 3]), card("X", "wit", [3, 5, 3])],
       [card("B", "power", [9, 3, 3]), card("Y", "wit", [3, 5, 3])],
     ]);
-    expect(enemyAbilityLines(twoIn, vanguard)[0]).toContain("No bonus this fight");
+    expect(enemyAbilityLines(twoIn, vanguard)[0]).toContain(
+      "No bonus this fight",
+    );
     expect(enemyAbilityLines(twoIn, vanguard)[0]).toContain("fight 3 of 3");
   });
 
   it("starts a fresh leg once the last one is full", () => {
     const full = runAt(
-      ["A", "B", "C"].map((id) => [card(id, "power", [9, 3, 3]), card(`e${id}`, "wit", [3, 5, 3])]),
+      ["A", "B", "C"].map((id) => [
+        card(id, "power", [9, 3, 3]),
+        card(`e${id}`, "wit", [3, 5, 3]),
+      ]),
     );
     const vanguard = card("Guard Dog", "power", [7, 4, 4], "vanguard");
     expect(enemyAbilityLines(full, vanguard)[0]).toContain("**+3** this fight");
   });
 
   it("counts an enemy fought to a stalemate as part of its own lineup", () => {
-    const vegeta = card("Hulking Vegeta", "power", [8, 4, 4], "synergy", { tags: ["dragon_ball"] });
+    const vegeta = card("Hulking Vegeta", "power", [8, 4, 4], "synergy", {
+      tags: ["dragon_ball"],
+    });
     const level = card("Chise", "power", [8, 4, 4]);
     const afterDraw = runAt([[level, vegeta]]);
     expect(afterDraw.leg.rounds[0].winner).toBe("draw");
@@ -150,18 +175,28 @@ describe("enemy ability lines", () => {
   });
 
   it("says a tiebreak keyword does nothing here", () => {
-    expect(enemyAbilityLines(runAt([]), card("Brute", "power", [9, 3, 3], "grit"))[0]).toContain(
-      "Does nothing in a dungeon",
-    );
+    expect(
+      enemyAbilityLines(
+        runAt([]),
+        card("Brute", "power", [9, 3, 3], "grit"),
+      )[0],
+    ).toContain("Does nothing in a dungeon");
   });
 
   it("shows what earlier fights handed on", () => {
     const martyr = card("Martyr", "wit", [3, 5, 3], "martyr");
-    const lines = enemyAbilityLines(runAt([[card("A", "power", [9, 3, 3]), martyr]]), robin);
-    expect(lines).toContain("-# ↳ Carried in from earlier this leg, for the enemy: Martyr +3.");
+    const lines = enemyAbilityLines(
+      runAt([[card("A", "power", [9, 3, 3]), martyr]]),
+      robin,
+    );
+    expect(lines).toContain(
+      "-# ↳ Carried in from earlier this leg, for the enemy: Martyr +3.",
+    );
   });
 
   it("is empty for an enemy with no ability and nothing carried in", () => {
-    expect(enemyAbilityLines(runAt([]), card("Plain", "wit", [3, 6, 5]))).toEqual([]);
+    expect(
+      enemyAbilityLines(runAt([]), card("Plain", "wit", [3, 6, 5])),
+    ).toEqual([]);
   });
 });

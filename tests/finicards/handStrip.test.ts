@@ -30,7 +30,10 @@ describe("finicards v2 hand strip", () => {
   it("renders a PNG for any hand size the picker supports", async () => {
     for (const size of [3, 4, 5, 6, 8]) {
       const hand = Array.from({ length: size }, (_, index) =>
-        card(`Card ${index}`, (["power", "wit", "heart"] as CardType[])[index % 3]),
+        card(
+          `Card ${index}`,
+          (["power", "wit", "heart"] as CardType[])[index % 3],
+        ),
       );
       const buffer = await renderHandStrip(hand);
       expect(buffer).not.toBeNull();
@@ -74,21 +77,24 @@ describe("finicards v2 hand strip", () => {
        across every strip and painted all three lead boxes the first card's
        colour. These assert the ids are unique per strip. */
     it("gives every strip its own gradient and clip ids", async () => {
-      const { renderHandStrip: render } = await import(
-        "../../modules/finicards/cardArt/handStrip"
-      );
+      const { renderHandStrip: render } =
+        await import("../../modules/finicards/cardArt/handStrip");
       // Render is opaque, so assert on the palettes being distinct instead - the
       // visual bug is only possible if the ids collide, which the naming now
       // prevents by construction.
       expect(TYPE_PALETTES.power.bright).not.toBe(TYPE_PALETTES.wit.bright);
       expect(TYPE_PALETTES.wit.bright).not.toBe(TYPE_PALETTES.heart.bright);
-      expect(await render([card("A", "power"), card("B", "wit")])).not.toBeNull();
+      expect(
+        await render([card("A", "power"), card("B", "wit")]),
+      ).not.toBeNull();
     });
   });
 
   describe("naming", () => {
     it("derives a safe filename", () => {
-      expect(handStripName("Fen — challenger")).toMatch(/^hand-[a-z0-9-]+\.png$/);
+      expect(handStripName("Fen — challenger")).toMatch(
+        /^hand-[a-z0-9-]+\.png$/,
+      );
     });
 
     it("falls back when a name has nothing usable", () => {

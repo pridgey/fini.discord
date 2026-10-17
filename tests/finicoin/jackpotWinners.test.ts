@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test";
 
-const mockCreate = mock((data?: any) => Promise.resolve({ id: "rec1", ...data }));
+const mockCreate = mock((data?: any) =>
+  Promise.resolve({ id: "rec1", ...data }),
+);
 const mockGetFirstListItem = mock((_filter?: string, _opts?: any) =>
   Promise.resolve({ id: "existing" } as any),
 );
@@ -13,9 +15,8 @@ mock.module("../../utilities/pocketbase", () => ({
   pb: { collection: mockCollection },
 }));
 
-const { recordJackpotWin, findJackpotWin } = await import(
-  "../../modules/finicoin/jackpotWinners"
-);
+const { recordJackpotWin, findJackpotWin } =
+  await import("../../modules/finicoin/jackpotWinners");
 
 describe("recordJackpotWin", () => {
   beforeEach(() => {

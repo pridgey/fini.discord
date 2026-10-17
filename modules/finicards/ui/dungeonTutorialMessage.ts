@@ -1,12 +1,11 @@
-import {
-  AttachmentBuilder,
-  ContainerBuilder,
-  MessageFlags,
-} from "discord.js";
+import { AttachmentBuilder, ContainerBuilder, MessageFlags } from "discord.js";
 import { DUNGEON_SUMMARY_FILE, renderDungeonSummary } from "../cardArt";
 import { coinFor } from "../dungeon";
 import { encodeMoves, type TutorialView } from "../dungeonTutorial";
-import { buildDungeonMessage, type BuiltDungeonMessage } from "./dungeonMessage";
+import {
+  buildDungeonMessage,
+  type BuiltDungeonMessage,
+} from "./dungeonMessage";
 
 /** The tutorial's buttons: `v2_dtut:<moves so far>:<this move>`. */
 export const TUTORIAL_NAMESPACE = "v2_dtut";
@@ -38,7 +37,9 @@ export const buildTutorialMessage = async (
     if (summary) {
       coach.addMediaGalleryComponents((gallery) =>
         gallery.addItems((item) =>
-          item.setURL(`attachment://${DUNGEON_SUMMARY_FILE}`).setDescription("Your practice run"),
+          item
+            .setURL(`attachment://${DUNGEON_SUMMARY_FILE}`)
+            .setDescription("Your practice run"),
         ),
       );
     }

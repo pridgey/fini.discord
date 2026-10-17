@@ -1,7 +1,9 @@
 import { describe, it, expect, mock, beforeEach } from "bun:test";
 
 // Mock pocketbase
-const mockGetFirstListItem = mock((_query?: string) => Promise.resolve({ balance: 10000 } as any));
+const mockGetFirstListItem = mock((_query?: string) =>
+  Promise.resolve({ balance: 10000 } as any),
+);
 const mockCollection = mock(() => ({
   getFirstListItem: mockGetFirstListItem,
 }));
@@ -225,9 +227,7 @@ describe("jackpot command", () => {
       );
 
       // Should not throw
-      expect(
-        execute(mockInteraction, mockLogCommand),
-      ).resolves.toBeUndefined();
+      expect(execute(mockInteraction, mockLogCommand)).resolves.toBeUndefined();
     });
 
     it("should call logCommand even on error", async () => {

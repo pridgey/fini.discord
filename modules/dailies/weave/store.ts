@@ -45,10 +45,15 @@ export const getWeaveRound = (day: string): Promise<WeaveRoundRecord | null> =>
     .getFirstListItem(pb.filter("day = {:day}", { day }))
     .catch(nullOn404);
 
-export const getWeaveRoundById = (id: string): Promise<WeaveRoundRecord | null> =>
+export const getWeaveRoundById = (
+  id: string,
+): Promise<WeaveRoundRecord | null> =>
   pb.collection<WeaveRoundRecord>(ROUNDS).getOne(id).catch(nullOn404);
 
-export const createWeaveRound = (day: string, puzzle: WeavePuzzle): Promise<WeaveRoundRecord> =>
+export const createWeaveRound = (
+  day: string,
+  puzzle: WeavePuzzle,
+): Promise<WeaveRoundRecord> =>
   pb.collection<WeaveRoundRecord>(ROUNDS).create({ day, ...puzzle, posts: {} });
 
 export const recordWeavePost = async (
@@ -88,11 +93,14 @@ export const findWeavePlay = (
   pb
     .collection<WeavePlayRecord>(PLAYS)
     .getFirstListItem(
-      pb.filter("round = {:roundId} && server_id = {:serverId} && user_id = {:userId}", {
-        roundId,
-        serverId,
-        userId,
-      }),
+      pb.filter(
+        "round = {:roundId} && server_id = {:serverId} && user_id = {:userId}",
+        {
+          roundId,
+          serverId,
+          userId,
+        },
+      ),
     )
     .catch(nullOn404);
 
@@ -145,8 +153,14 @@ export const saveWeaveProgress = (
   });
 
 /** Every board for a round in a server, best first. */
-export const weavePlaysFor = (roundId: string, serverId: string): Promise<WeavePlayRecord[]> =>
+export const weavePlaysFor = (
+  roundId: string,
+  serverId: string,
+): Promise<WeavePlayRecord[]> =>
   pb.collection<WeavePlayRecord>(PLAYS).getFullList({
-    filter: pb.filter("round = {:roundId} && server_id = {:serverId}", { roundId, serverId }),
+    filter: pb.filter("round = {:roundId} && server_id = {:serverId}", {
+      roundId,
+      serverId,
+    }),
     sort: "-paid,updated",
   });

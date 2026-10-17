@@ -43,7 +43,9 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       );
 
       if (didInstall) {
-        await sendStatus(`✅ NeoForge ${version} installed. Starting server...`);
+        await sendStatus(
+          `✅ NeoForge ${version} installed. Starting server...`,
+        );
       }
 
       // Anything already in latest.log belongs to a previous boot
@@ -94,7 +96,10 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       for (const service of services) {
         try {
           serviceLines.push(
-            describeOutcome(service, await ensureService(service, process.cwd())),
+            describeOutcome(
+              service,
+              await ensureService(service, process.cwd()),
+            ),
           );
         } catch (error) {
           console.error(`Failed to check the ${service} service:`, error);

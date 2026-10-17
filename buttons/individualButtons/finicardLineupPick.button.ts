@@ -76,7 +76,9 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
 
   /* "Start over" clears the picks rather than adding one. */
   if (candidate === "reset") {
-    await interaction.update(buildPickerView(battleId, hand, [], pickerContext));
+    await interaction.update(
+      buildPickerView(battleId, hand, [], pickerContext),
+    );
     return;
   }
 
@@ -90,7 +92,8 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     // Should be impossible - picked cards aren't offered - but a stale ephemeral
     // from an earlier click could still send one.
     await interaction.reply({
-      content: "You've already placed that card. Use the newest picker message.",
+      content:
+        "You've already placed that card. Use the newest picker message.",
       flags: [MessageFlags.Ephemeral],
     });
     return;

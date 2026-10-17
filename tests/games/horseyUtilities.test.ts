@@ -77,13 +77,17 @@ describe("runRace", () => {
 
 describe("rankHorses", () => {
   it("places the furthest horse first", () => {
-    expect(rankHorses(raceEndingAt([10, 24, 15, 3, 8]))).toEqual([3, 1, 2, 5, 4]);
+    expect(rankHorses(raceEndingAt([10, 24, 15, 3, 8]))).toEqual([
+      3, 1, 2, 5, 4,
+    ]);
   });
 
   // Horses move in whole steps and the race stops the moment anyone crosses,
   // so dead heats are common rather than exotic.
   it("gives tied horses the same place and skips the one they consumed", () => {
-    expect(rankHorses(raceEndingAt([24, 24, 20, 5, 5]))).toEqual([1, 1, 3, 4, 4]);
+    expect(rankHorses(raceEndingAt([24, 24, 20, 5, 5]))).toEqual([
+      1, 1, 3, 4, 4,
+    ]);
   });
 
   it("handles a five-way tie", () => {
@@ -227,11 +231,13 @@ describe("drawTrack", () => {
     });
 
     it("truncates a long name rather than pushing the track off screen", () => {
-      const track = drawTrack(
-        raceEndingAt([0, 0, 0, 0, 0]),
-        0,
-        ["x".repeat(32), "b", "c", "d", "e"],
-      );
+      const track = drawTrack(raceEndingAt([0, 0, 0, 0, 0]), 0, [
+        "x".repeat(32),
+        "b",
+        "c",
+        "d",
+        "e",
+      ]);
       const widths = track
         .split("\n")
         .filter((line) => line.includes("🏇"))

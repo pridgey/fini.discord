@@ -53,7 +53,10 @@ export const execute = async (
     }
 
     // Add the item to the sentence
-    slapMessage = slapMessage.replace("{2}", randomItem.items[0]?.item || "nothing");
+    slapMessage = slapMessage.replace(
+      "{2}",
+      randomItem.items[0]?.item || "nothing",
+    );
 
     // Update the HammerspaceItem stats
     try {

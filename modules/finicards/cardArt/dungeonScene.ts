@@ -53,7 +53,12 @@ export type TextOptions = {
   mono?: boolean;
 };
 
-export const text = (x: number, y: number, value: string, options: TextOptions): string =>
+export const text = (
+  x: number,
+  y: number,
+  value: string,
+  options: TextOptions,
+): string =>
   `<text x="${n(x)}" y="${n(y)}" font-size="${options.size}" font-weight="${options.weight ?? 400}" fill="${options.fill ?? "#ffffff"}" fill-opacity="${options.opacity ?? 1}" text-anchor="${options.anchor ?? "start"}"${options.spacing ? ` letter-spacing="${options.spacing}"` : ""}${options.mono ? ` font-family="${MONO}"` : ""}>${escapeXml(value)}</text>`;
 
 /** A wall torch and the light it throws. */
@@ -96,7 +101,12 @@ const finish = (): string =>
   `<rect width="${SCENE.width}" height="${SCENE.height}" fill="url(#vignette)"></rect></g>`;
 
 /** An arch-topped opening, as a path. */
-const arch = (x: number, top: number, width: number, bottom: number): string => {
+const arch = (
+  x: number,
+  top: number,
+  width: number,
+  bottom: number,
+): string => {
   const radius = width / 2;
   return `M${n(x)} ${n(bottom)} V${n(top + radius)} A${n(radius)} ${n(radius)} 0 0 1 ${n(x + width)} ${n(top + radius)} V${n(bottom)} Z`;
 };
@@ -109,7 +119,12 @@ export const crown = (x: number, y: number, width: number): string => {
   return `<path d="M${n(x - half)} ${n(y)} l${n(half * 0.1)} ${n(-half * 0.8)} l${n(half * 0.4)} ${n(half * 0.4)} l${n(half * 0.5)} ${n(-half * 0.7)} l${n(half * 0.5)} ${n(half * 0.7)} l${n(half * 0.4)} ${n(-half * 0.4)} l${n(half * 0.1)} ${n(half * 0.8)} z" fill="${GOLD}" stroke="#8a6a1a" stroke-width="0.8" stroke-linejoin="round"></path>`;
 };
 
-export const swords = (x: number, y: number, size: number, colour: string): string =>
+export const swords = (
+  x: number,
+  y: number,
+  size: number,
+  colour: string,
+): string =>
   [
     [-1, 1],
     [1, -1],
@@ -141,7 +156,10 @@ const fightScene = (
   const ARCH = { x: 34, top: 20, width: 112, bottom: 150 };
   const COLUMN = { x: 166, width: 200 };
 
-  const name = wrapToWidth(enemy.name, COLUMN.width, 2, { fontSize: 16, bold: true });
+  const name = wrapToWidth(enemy.name, COLUMN.width, 2, {
+    fontSize: 16,
+    bold: true,
+  });
   const nameBottom = 52 + (name.length - 1) * 18;
 
   const statBoxes = () => {
@@ -158,12 +176,17 @@ const fightScene = (
         lead
           ? `<rect x="${n(cursor)}" y="${y}" width="${n(width)}" height="34" rx="4" fill="url(#lead)"></rect>`
           : `<rect x="${n(cursor)}" y="${y}" width="${n(width)}" height="34" rx="4" fill="#0b0c16" fill-opacity="0.55" stroke="#ffffff" stroke-opacity="0.14"></rect>`,
-        text(cursor + 7, y + 13, lead ? STAT_LABELS[type].full : STAT_LABELS[type].short, {
-          size: lead ? 7.5 : 7,
-          spacing: 0.9,
-          mono: true,
-          opacity: lead ? 0.92 : 0.5,
-        }),
+        text(
+          cursor + 7,
+          y + 13,
+          lead ? STAT_LABELS[type].full : STAT_LABELS[type].short,
+          {
+            size: lead ? 7.5 : 7,
+            spacing: 0.9,
+            mono: true,
+            opacity: lead ? 0.92 : 0.5,
+          },
+        ),
         text(cursor + width - 7, y + 28, String(enemy.stats[type]), {
           size: lead ? 20 : 15,
           weight: 800,
@@ -180,7 +203,10 @@ const fightScene = (
   const chipWidth = estimateWidth(keywordLabel, 7.5, 0.8, true) + 12;
 
   return [
-    backdrop({ top: "#1a1d33", bottom: "#0d0f1c", glow: palette.main }, ARCH.x + ARCH.width / 2),
+    backdrop(
+      { top: "#1a1d33", bottom: "#0d0f1c", glow: palette.main },
+      ARCH.x + ARCH.width / 2,
+    ),
     `<defs><linearGradient id="lead" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${palette.bright}"></stop><stop offset="1" stop-color="${palette.deep}"></stop></linearGradient><clipPath id="doorway"><path d="${arch(ARCH.x, ARCH.top, ARCH.width, ARCH.bottom)}"></path></clipPath></defs>`,
     torch(16, 62),
     torch(SCENE.width - 12, 40),
@@ -191,7 +217,9 @@ const fightScene = (
       ? `<image x="${ARCH.x}" y="${ARCH.top}" width="${ARCH.width}" height="${ARCH.bottom - ARCH.top}" clip-path="url(#doorway)" preserveAspectRatio="xMidYMid slice" xlink:href="${art}"></image>`
       : `<g clip-path="url(#doorway)"><ellipse cx="${ARCH.x + ARCH.width / 2}" cy="${ARCH.bottom}" rx="46" ry="74" fill="${palette.deep}" fill-opacity="0.55"></ellipse><circle cx="${ARCH.x + ARCH.width / 2}" cy="74" r="22" fill="${palette.deep}" fill-opacity="0.75"></circle></g>`,
     `<path d="${arch(ARCH.x, ARCH.top, ARCH.width, ARCH.bottom)}" fill="none" stroke="${rim}" stroke-width="2.4"></path>`,
-    room.tier === "boss" ? crown(ARCH.x + ARCH.width / 2, ARCH.top + 3, 34) : "",
+    room.tier === "boss"
+      ? crown(ARCH.x + ARCH.width / 2, ARCH.top + 3, 34)
+      : "",
     text(COLUMN.x, 32, `ROOM ${depth} · ${TIER_LABEL[room.tier]}`, {
       size: 8,
       weight: 700,
@@ -233,7 +261,8 @@ const effectColour = (effect: Effect): string => {
   if (effect.kind !== "buff") return GOLD;
   const stat = TYPE_PRIORITY.find((type) => (effect.buff.mods[type] ?? 0) > 0);
   const single =
-    TYPE_PRIORITY.filter((type) => (effect.buff.mods[type] ?? 0) > 0).length === 1;
+    TYPE_PRIORITY.filter((type) => (effect.buff.mods[type] ?? 0) > 0).length ===
+    1;
   return stat && single ? TYPE_PALETTES[stat].bright : GOLD;
 };
 
@@ -266,7 +295,10 @@ const effectIcon = (effect: Effect, x: number, y: number): string => {
         [-5, 5],
         [5, 5],
       ]
-        .map(([dx, dy]) => `<circle cx="${x + dx}" cy="${y + dy}" r="1.9" fill="#3a2a05" transform="rotate(-10 ${x} ${y})"></circle>`)
+        .map(
+          ([dx, dy]) =>
+            `<circle cx="${x + dx}" cy="${y + dy}" r="1.9" fill="#3a2a05" transform="rotate(-10 ${x} ${y})"></circle>`,
+        )
         .join("")}`;
     case "coffee":
       // A steaming cup.
@@ -285,12 +317,16 @@ const shopScene = (room: ShopRoom, depth: number): string => {
   const TILE = compact
     ? { width: 86, height: 98, y: 56, gap: 6 }
     : { width: 112, height: 98, y: 56, gap: 8 };
-  const total = room.offers.length * TILE.width + (room.offers.length - 1) * TILE.gap;
+  const total =
+    room.offers.length * TILE.width + (room.offers.length - 1) * TILE.gap;
   const left = (SCENE.width - total) / 2;
   const stripe = 20;
 
   return [
-    backdrop({ top: "#2a2018", bottom: "#120e0b", glow: "#ffb155" }, SCENE.width / 2),
+    backdrop(
+      { top: "#2a2018", bottom: "#120e0b", glow: "#ffb155" },
+      SCENE.width / 2,
+    ),
     torch(14, 96),
     torch(SCENE.width - 14, 96),
     // Awning: stripes, then a scalloped hem.
@@ -311,22 +347,43 @@ const shopScene = (room: ShopRoom, depth: number): string => {
       const x = left + index * (TILE.width + TILE.gap);
       const centre = x + TILE.width / 2;
       const name = compact
-        ? wrapToWidth(offer.name, TILE.width - 14, 2, { fontSize: 9, bold: true })
-        : wrapToWidth(offer.name, TILE.width - 56, 2, { fontSize: 10, bold: true });
-      const blurb = wrapToWidth(offer.blurb, TILE.width - 14, 3, { fontSize: compact ? 6 : 6.6 });
+        ? wrapToWidth(offer.name, TILE.width - 14, 2, {
+            fontSize: 9,
+            bold: true,
+          })
+        : wrapToWidth(offer.name, TILE.width - 56, 2, {
+            fontSize: 10,
+            bold: true,
+          });
+      const blurb = wrapToWidth(offer.blurb, TILE.width - 14, 3, {
+        fontSize: compact ? 6 : 6.6,
+      });
       const blurbTop = compact ? 36 + name.length * 10 + 2 : 56;
 
       return [
         `<g opacity="${offer.sold ? 0.32 : 1}">`,
         `<rect x="${n(x)}" y="${TILE.y}" width="${TILE.width}" height="${TILE.height}" rx="7" fill="#0b0c16" fill-opacity="0.78" stroke="${GOLD}" stroke-opacity="0.35"></rect>`,
-        text(x + 8, TILE.y + 13, String(index + 1), { size: 8, weight: 700, mono: true, opacity: 0.55 }),
+        text(x + 8, TILE.y + 13, String(index + 1), {
+          size: 8,
+          weight: 700,
+          mono: true,
+          opacity: 0.55,
+        }),
         compact
           ? `<g transform="translate(${n(x + TILE.width - 20)} ${TILE.y + 18}) scale(0.7)">${effectIcon(offer.effect, 0, 0)}</g>`
           : effectIcon(offer.effect, x + 24, TILE.y + 30),
         ...name.map((line, row) =>
           compact
-            ? text(x + 8, TILE.y + 36 + row * 10, line, { size: 9, weight: 800 })
-            : text(x + 42, TILE.y + (name.length > 1 ? 26 : 32) + row * 11, line, { size: 10, weight: 800 }),
+            ? text(x + 8, TILE.y + 36 + row * 10, line, {
+                size: 9,
+                weight: 800,
+              })
+            : text(
+                x + 42,
+                TILE.y + (name.length > 1 ? 26 : 32) + row * 11,
+                line,
+                { size: 10, weight: 800 },
+              ),
         ),
         ...blurb.map((line, row) =>
           text(x + 8, TILE.y + blurbTop + row * (compact ? 7.6 : 8.4), line, {
@@ -361,7 +418,10 @@ const eventScene = (room: EventRoom, depth: number): string => {
   const CIRCLE = { x: 86, y: 88 };
   const COLUMN = { x: 166, width: 200 };
 
-  const title = wrapToWidth(room.title, COLUMN.width, 2, { fontSize: 16, bold: true });
+  const title = wrapToWidth(room.title, COLUMN.width, 2, {
+    fontSize: 16,
+    bold: true,
+  });
   const titleBottom = 52 + (title.length - 1) * 18;
   const story = wrapToWidth(room.text, COLUMN.width, 3, { fontSize: 8.2 });
   const reward = wrapToWidth(
@@ -372,7 +432,10 @@ const eventScene = (room: EventRoom, depth: number): string => {
   );
 
   return [
-    backdrop({ top: "#211a3a", bottom: "#0e0b1c", glow: EVENT_PURPLE }, CIRCLE.x),
+    backdrop(
+      { top: "#211a3a", bottom: "#0e0b1c", glow: EVENT_PURPLE },
+      CIRCLE.x,
+    ),
     torch(14, 44),
     torch(SCENE.width - 12, 40),
     // A rune circle: rings, tick marks, and the question at its centre.
@@ -382,7 +445,12 @@ const eventScene = (room: EventRoom, depth: number): string => {
     `<circle cx="${CIRCLE.x}" cy="${CIRCLE.y}" r="38" fill="none" stroke="${palette.bright}" stroke-width="1.2"></circle>`,
     `<path d="M${CIRCLE.x} ${CIRCLE.y - 38} L${CIRCLE.x + 32.9} ${CIRCLE.y + 19} H${CIRCLE.x - 32.9} Z" fill="none" stroke="${palette.bright}" stroke-opacity="0.5"></path>`,
     `<path d="M${CIRCLE.x} ${CIRCLE.y + 38} L${CIRCLE.x + 32.9} ${CIRCLE.y - 19} H${CIRCLE.x - 32.9} Z" fill="none" stroke="${palette.bright}" stroke-opacity="0.5"></path>`,
-    text(CIRCLE.x, CIRCLE.y + 15, "?", { size: 44, weight: 800, anchor: "middle", fill: palette.glow }),
+    text(CIRCLE.x, CIRCLE.y + 15, "?", {
+      size: 44,
+      weight: 800,
+      anchor: "middle",
+      fill: palette.glow,
+    }),
     text(COLUMN.x, 32, `ROOM ${depth} · EVENT`, {
       size: 8,
       weight: 700,
@@ -394,7 +462,10 @@ const eventScene = (room: EventRoom, depth: number): string => {
       text(COLUMN.x, 52 + index * 18, line, { size: 16, weight: 800 }),
     ),
     ...story.map((line, index) =>
-      text(COLUMN.x, titleBottom + 15 + index * 10.5, line, { size: 8.2, opacity: 0.74 }),
+      text(COLUMN.x, titleBottom + 15 + index * 10.5, line, {
+        size: 8.2,
+        opacity: 0.74,
+      }),
     ),
     `<rect x="${COLUMN.x}" y="118" width="${COLUMN.width}" height="22" rx="5" fill="url(#check)"></rect>`,
     `<defs><linearGradient id="check" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${palette.bright}"></stop><stop offset="1" stop-color="${palette.deep}"></stop></linearGradient></defs>`,
@@ -404,13 +475,18 @@ const eventScene = (room: EventRoom, depth: number): string => {
       spacing: 1.2,
       mono: true,
     }),
-    text(COLUMN.x + COLUMN.width - 8, 132.5, `${STAT_LABELS[room.stat].short} + D6 ≥ ${room.target}`, {
-      size: 9,
-      weight: 800,
-      spacing: 0.6,
-      mono: true,
-      anchor: "end",
-    }),
+    text(
+      COLUMN.x + COLUMN.width - 8,
+      132.5,
+      `${STAT_LABELS[room.stat].short} + D6 ≥ ${room.target}`,
+      {
+        size: 9,
+        weight: 800,
+        spacing: 0.6,
+        mono: true,
+        anchor: "end",
+      },
+    ),
     ...reward.map((line, index) =>
       text(COLUMN.x, 160 + index * 9.5, line, {
         size: 7,
@@ -472,20 +548,31 @@ const doorsScene = (
   const centres =
     doors.length === 1
       ? [SCENE.width / 2]
-      : doors.map((_, index) => SCENE.width / 2 + (index - (doors.length - 1) / 2) * 150);
+      : doors.map(
+          (_, index) =>
+            SCENE.width / 2 + (index - (doors.length - 1) / 2) * 150,
+        );
 
   return [
-    backdrop({ top: "#1a1d33", bottom: "#0d0f1c", glow: "#6c78f0" }, SCENE.width / 2),
+    backdrop(
+      { top: "#1a1d33", bottom: "#0d0f1c", glow: "#6c78f0" },
+      SCENE.width / 2,
+    ),
     torch(SCENE.width / 2, 70),
     doors.length === 1 ? `${torch(60, 70)}${torch(SCENE.width - 60, 70)}` : "",
-    text(SCENE.width / 2, 18, `ROOM ${depth + 1} · ${doors.length === 1 ? "ONLY ONE WAY ON" : "CHOOSE A DOOR"}`, {
-      size: 8,
-      weight: 700,
-      spacing: 1.6,
-      mono: true,
-      anchor: "middle",
-      opacity: 0.8,
-    }),
+    text(
+      SCENE.width / 2,
+      18,
+      `ROOM ${depth + 1} · ${doors.length === 1 ? "ONLY ONE WAY ON" : "CHOOSE A DOOR"}`,
+      {
+        size: 8,
+        weight: 700,
+        spacing: 1.6,
+        mono: true,
+        anchor: "middle",
+        opacity: 0.8,
+      },
+    ),
     ...doors.map((room, index) => {
       const centre = centres[index];
       const x = centre - DOOR.width / 2;
@@ -508,7 +595,13 @@ const doorsScene = (
         `<path d="${arch(x, DOOR.top, DOOR.width, DOOR.bottom)}" fill="none" stroke="${colour}" stroke-width="2" stroke-opacity="0.9"></path>`,
         `<rect x="${n(x + 3)}" y="${DOOR.bottom - 2}" width="${DOOR.width - 6}" height="2.5" fill="${colour}"></rect>`,
         sight === "fogged"
-          ? text(centre, DOOR.top + 40, "?", { size: 26, weight: 800, fill: FOG, anchor: "middle", opacity: 0.85 })
+          ? text(centre, DOOR.top + 40, "?", {
+              size: 26,
+              weight: 800,
+              fill: FOG,
+              anchor: "middle",
+              opacity: 0.85,
+            })
           : doorEmblem(room, centre, DOOR.top + 30),
         `<rect x="${n(centre - 71)}" y="${DOOR.bottom + 9}" width="142" height="18" rx="9" fill="#0b0c16" fill-opacity="0.82" stroke="${colour}" stroke-opacity="0.6"></rect>`,
         text(centre, DOOR.bottom + 21.6, `${index + 1} · ${hint}`, {

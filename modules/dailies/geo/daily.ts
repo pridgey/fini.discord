@@ -52,13 +52,17 @@ const ids = (roundId: string) => ({
   retry: `${DAILY_BUTTON}:retry:${roundId}`,
 });
 
-export const modalId = (roundId: string, mode: "new" | "edit") => `${DAILY_MODAL}:${roundId}:${mode}`;
+export const modalId = (roundId: string, mode: "new" | "edit") =>
+  `${DAILY_MODAL}:${roundId}:${mode}`;
 
 /** Rounds tried before giving up for this minute, when a spot can't be named. */
 const ROUND_TRIES = 3;
 
 /** Makes a round whose spot is named down to its town, or null. */
-const makeRound = async (): Promise<{ round: GeoRound; place: PlaceInfo } | null> => {
+const makeRound = async (): Promise<{
+  round: GeoRound;
+  place: PlaceInfo;
+} | null> => {
   for (let attempt = 0; attempt < ROUND_TRIES; attempt++) {
     const round = await findRound();
     if (!round) return null;
@@ -87,13 +91,18 @@ export const roundPost = (round: DailyRoundRecord, photos: Buffer[]) => ({
     `-# One guess each until the next round, tomorrow at ${POST_TIME}. Missed this post? \`/daily geo\` brings it back.`,
   ].join("\n"),
   files: photoFiles(photos),
-  components: [row(button(ids(round.id).guess, "Make a guess", ButtonStyle.Primary, "📍"))],
+  components: [
+    row(button(ids(round.id).guess, "Make a guess", ButtonStyle.Primary, "📍")),
+  ],
 });
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 /** Yesterday's answer, on a map with everyone's pins, and who scored what. */
-export const resultsPost = async (round: DailyRoundRecord, guesses: DailyGuessRecord[]) => {
+export const resultsPost = async (
+  round: DailyRoundRecord,
+  guesses: DailyGuessRecord[],
+) => {
   const answer = { lat: round.answer_lat, lon: round.answer_lon };
   // The answer goes last, so it is drawn over any guess that landed on it.
   const pins: Pin[] = [
@@ -105,25 +114,32 @@ export const resultsPost = async (round: DailyRoundRecord, guesses: DailyGuessRe
     })),
     { ...answer, color: "#ef4444", label: "Here" },
   ];
-  const lines = guesses.slice(0, 10).map(
-    (guess, i) =>
-      `${MEDALS[i] ?? "▫️"} **${guess.username}** · ${guess.total} fc · ${formatDistance(guess.km)} away`,
-  );
+  const lines = guesses
+    .slice(0, 10)
+    .map(
+      (guess, i) =>
+        `${MEDALS[i] ?? "▫️"} **${guess.username}** · ${guess.total} fc · ${formatDistance(guess.km)} away`,
+    );
   return {
     content: [
       `📍 **Yesterday's daily** was taken in **${placeName(round.place)}**.`,
       "",
       ...(lines.length ? lines : ["Nobody played it."]),
-      guesses.length > lines.length ? `-# …and ${guesses.length - lines.length} more` : null,
+      guesses.length > lines.length
+        ? `-# …and ${guesses.length - lines.length} more`
+        : null,
       creditLine(factsOf(round)),
     ]
       .filter((line) => line !== null)
       .join("\n"),
     // With no guesses there is only the answer's pin, shown at country scale.
     files: [
-      new AttachmentBuilder(await renderMap(pins, pins.length > 1 ? { line: false } : { zoom: 6 }), {
-        name: "yesterday.png",
-      }),
+      new AttachmentBuilder(
+        await renderMap(pins, pins.length > 1 ? { line: false } : { zoom: 6 }),
+        {
+          name: "yesterday.png",
+        },
+      ),
     ],
   };
 };
@@ -136,7 +152,9 @@ export const resultsPost = async (round: DailyRoundRecord, guesses: DailyGuessRe
 export const postDaily = async (cl: Client): Promise<number> => {
   const round = await ensureTodaysRound();
   if (!round) {
-    console.error("Daily geo: couldn't find a round this time; trying again next minute");
+    console.error(
+      "Daily geo: couldn't find a round this time; trying again next minute",
+    );
     return 0;
   }
 
@@ -157,8 +175,14 @@ export const postDaily = async (cl: Client): Promise<number> => {
     photos ??= await roundPhotos(round);
     const message = await sendTo(cl, channelId, roundPost(round, photos));
     if (message) {
-      await recordPost(round.id, guild.id, { channelId, messageId: message.id });
-      round.posts = { ...(round.posts ?? {}), [guild.id]: { channelId, messageId: message.id } };
+      await recordPost(round.id, guild.id, {
+        channelId,
+        messageId: message.id,
+      });
+      round.posts = {
+        ...(round.posts ?? {}),
+        [guild.id]: { channelId, messageId: message.id },
+      };
       posted++;
     }
   }
@@ -186,10 +210,15 @@ export const runGeoDaily = async (cl: Client) => {
 /** Guesses waiting on Lock in, by round, server and player. A restart drops them. */
 const pending = new Map<string, GeocodedGuess>();
 const locking = new Set<string>();
-const key = (roundId: string, serverId: string, userId: string) => `${roundId}:${serverId}:${userId}`;
+const key = (roundId: string, serverId: string, userId: string) =>
+  `${roundId}:${serverId}:${userId}`;
 
-export const holdDailyGuess = (roundId: string, serverId: string, userId: string, guess: GeocodedGuess) =>
-  pending.set(key(roundId, serverId, userId), guess);
+export const holdDailyGuess = (
+  roundId: string,
+  serverId: string,
+  userId: string,
+  guess: GeocodedGuess,
+) => pending.set(key(roundId, serverId, userId), guess);
 
 export const dailyGuessView = (roundId: string, guess: GeocodedGuess) => {
   const { lock, retry } = ids(roundId);
@@ -205,8 +234,10 @@ export const cannotGuess = async (
   serverId: string,
   userId: string,
 ): Promise<string | null> => {
-  if (!round) return "That round is gone. The current one is up with `/daily geo`.";
-  if (round.day !== currentDay()) return "That round is over. The current one is up with `/daily geo`.";
+  if (!round)
+    return "That round is gone. The current one is up with `/daily geo`.";
+  if (round.day !== currentDay())
+    return "That round is over. The current one is up with `/daily geo`.";
   const played = await findGuess(round.id, serverId, userId);
   if (played) {
     return `You've played this round: **${played.total} fc**, ${formatDistance(played.km)} away. The next one is up at ${POST_TIME}.`;
@@ -259,10 +290,16 @@ export const lockDailyGuess = async (
   round: DailyRoundRecord,
   player: Player,
   fallbackChannelId: string | null,
-): Promise<{ reveal: Awaited<ReturnType<typeof revealView>> } | { refusal: string }> => {
+): Promise<
+  { reveal: Awaited<ReturnType<typeof revealView>> } | { refusal: string }
+> => {
   const k = key(round.id, player.serverId, player.userId);
   const guess = pending.get(k);
-  if (!guess) return { refusal: "That guess has expired. Make it again with the button on the round." };
+  if (!guess)
+    return {
+      refusal:
+        "That guess has expired. Make it again with the button on the round.",
+    };
   if (locking.has(k)) return { refusal: "Still locking in your guess." };
 
   locking.add(k);
@@ -289,13 +326,22 @@ export const lockDailyGuess = async (
     pending.delete(k);
 
     if (scored.total > 0) {
-      await addCoin(player.userId, player.serverId, scored.total, player.username, player.serverName, "Reserve");
+      await addCoin(
+        player.userId,
+        player.serverId,
+        scored.total,
+        player.username,
+        player.serverName,
+        "Reserve",
+      );
     }
 
     // Missing the continent counts as wrong, whatever the hemispheres paid.
     const right =
-      scored.verdict.checks.find((check) => check.kind === "continent")?.outcome === "earned";
-    const channelId = round.posts?.[player.serverId]?.channelId ?? fallbackChannelId;
+      scored.verdict.checks.find((check) => check.kind === "continent")
+        ?.outcome === "earned";
+    const channelId =
+      round.posts?.[player.serverId]?.channelId ?? fallbackChannelId;
     if (channelId) {
       await sendTo(
         cl,
@@ -306,7 +352,11 @@ export const lockDailyGuess = async (
       );
     }
 
-    return { reveal: await revealView(facts, round.place, guess, scored, { paid: true }) };
+    return {
+      reveal: await revealView(facts, round.place, guess, scored, {
+        paid: true,
+      }),
+    };
   } finally {
     locking.delete(k);
   }
@@ -326,4 +376,3 @@ export const todaysRoundFor = async (serverId: string, userId: string) => {
   if (refusal) return { content: refusal };
   return roundPost(round, await roundPhotos(round));
 };
-

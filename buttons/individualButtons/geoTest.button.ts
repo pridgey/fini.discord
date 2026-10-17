@@ -14,7 +14,8 @@ export const namespace = GEO_BUTTON;
 
 /** The `/geo-test` buttons: guess, try again, lock in, and a new round. */
 export async function execute(interaction: ButtonInteraction, args: string[]) {
-  if (!(await requireAdmin(interaction, "use the location game prototype"))) return;
+  if (!(await requireAdmin(interaction, "use the location game prototype")))
+    return;
   const [action] = args;
   const userId = interaction.user.id;
 
@@ -26,7 +27,9 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       });
       return;
     }
-    await interaction.showModal(guessModal(action === "guess" ? "new" : "edit"));
+    await interaction.showModal(
+      guessModal(action === "guess" ? "new" : "edit"),
+    );
     return;
   }
 
@@ -40,7 +43,11 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
     await interaction.deferUpdate();
-    const reveal = await revealMessage(current.round, current.place, current.pending);
+    const reveal = await revealMessage(
+      current.round,
+      current.place,
+      current.pending,
+    );
     endRound(userId);
     await interaction.editReply({ ...reveal, attachments: [] });
     return;

@@ -22,7 +22,7 @@ const deleteAllCommands = async () => {
       Routes.applicationGuildCommands(clientId, gekin_guildId),
       {
         body: [],
-      }
+      },
     );
 
     console.log("Deleted Guild Commands", { guild: "gekin", gekin_response });
@@ -32,7 +32,7 @@ const deleteAllCommands = async () => {
       Routes.applicationGuildCommands(clientId, league_guildId),
       {
         body: [],
-      }
+      },
     );
 
     console.log("Deleted Guild Commands", { guild: "gekin", league_response });

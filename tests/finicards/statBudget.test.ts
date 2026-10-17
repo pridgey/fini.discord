@@ -34,7 +34,10 @@ describe("finicards v2 stat budget", () => {
 
     it("never exceeds the rarity spike ceiling", () => {
       for (const rarity of RARITIES) {
-        const spread = normalizeSpread({ power: 999, wit: 1, heart: 1 }, rarity);
+        const spread = normalizeSpread(
+          { power: 999, wit: 1, heart: 1 },
+          rarity,
+        );
         expect(spread.power).toBeLessThanOrEqual(RULES.spikeCeiling[rarity]);
         expect(spreadTotal(spread)).toBe(RULES.statTotal);
       }
@@ -42,14 +45,20 @@ describe("finicards v2 stat budget", () => {
 
     it("never drops a stat below the floor, so no card has a free hole", () => {
       for (const rarity of RARITIES) {
-        const spread = normalizeSpread({ power: 999, wit: 0, heart: 0 }, rarity);
+        const spread = normalizeSpread(
+          { power: 999, wit: 0, heart: 0 },
+          rarity,
+        );
         expect(spread.wit).toBeGreaterThanOrEqual(RULES.statFloor);
         expect(spread.heart).toBeGreaterThanOrEqual(RULES.statFloor);
       }
     });
 
     it("produces whole numbers only", () => {
-      const spread = normalizeSpread({ power: 7, wit: 5, heart: 3 }, "uncommon");
+      const spread = normalizeSpread(
+        { power: 7, wit: 5, heart: 3 },
+        "uncommon",
+      );
       for (const value of Object.values(spread)) {
         expect(Number.isInteger(value)).toBe(true);
       }
@@ -95,7 +104,10 @@ describe("finicards v2 stat budget", () => {
     });
 
     it("lets a full-art spike to 12", () => {
-      const spread = normalizeSpread({ power: 90, wit: 5, heart: 5 }, "full_art");
+      const spread = normalizeSpread(
+        { power: 90, wit: 5, heart: 5 },
+        "full_art",
+      );
       expect(spread.power).toBe(12);
       expect(formatSpread(spread)).toBe("12/2/1");
     });
@@ -125,12 +137,12 @@ describe("finicards v2 stat budget", () => {
 
   describe("validateSpread", () => {
     it("accepts the doc's example spreads", () => {
-      expect(validateSpread({ power: 5, wit: 5, heart: 5 }, "common").valid).toBe(
-        true,
-      );
-      expect(validateSpread({ power: 7, wit: 5, heart: 3 }, "common").valid).toBe(
-        true,
-      );
+      expect(
+        validateSpread({ power: 5, wit: 5, heart: 5 }, "common").valid,
+      ).toBe(true);
+      expect(
+        validateSpread({ power: 7, wit: 5, heart: 3 }, "common").valid,
+      ).toBe(true);
       expect(
         validateSpread({ power: 9, wit: 3, heart: 3 }, "uncommon").valid,
       ).toBe(true);
@@ -163,7 +175,7 @@ describe("finicards v2 stat budget", () => {
         "wit",
       );
       expect(result.valid).toBe(false);
-      expect(result.issues.join(" ")).toContain('is not the highest stat');
+      expect(result.issues.join(" ")).toContain("is not the highest stat");
     });
   });
 });

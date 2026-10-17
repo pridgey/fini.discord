@@ -26,7 +26,13 @@ export async function loadButtonHandlers() {
  * left alone here - replying "unknown" would use up the press before the
  * collector could answer it.
  */
-const COLLECTOR_BUTTONS = [/^v2pack-/, /^v2sell-/, /^v2trade-/, /^cancel-trade$/, /^purchase$/];
+const COLLECTOR_BUTTONS = [
+  /^v2pack-/,
+  /^v2sell-/,
+  /^v2trade-/,
+  /^cancel-trade$/,
+  /^purchase$/,
+];
 
 export const isCollectorButton = (customId: string): boolean =>
   COLLECTOR_BUTTONS.some((pattern) => pattern.test(customId));

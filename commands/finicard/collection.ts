@@ -1,5 +1,8 @@
 import { ChatInputCommandInteraction } from "discord.js";
-import { buildCardMessage, compositionString } from "../../modules/finicards/ui";
+import {
+  buildCardMessage,
+  compositionString,
+} from "../../modules/finicards/ui";
 import { buildCardPages } from "../../modules/finicards/cardPages";
 import {
   buildCollectionQuery,
@@ -120,10 +123,7 @@ export const showRecord = async (
   interaction: ChatInputCommandInteraction,
   { serverId }: FinicardContext,
 ): Promise<void> => {
-  const record = await getBattleRecordForUser(
-    interaction.user.id,
-    serverId,
-  );
+  const record = await getBattleRecordForUser(interaction.user.id, serverId);
   const collection = await getUserCollection(interaction.user.id, serverId);
 
   await interaction.editReply(

@@ -199,7 +199,7 @@ export const headingTowards = (from: Vec3, to: Vec3): number => {
 };
 
 export const normaliseHeading = (heading: number): number => {
-  const wrapped = ((heading + 180) % 360 + 360) % 360;
+  const wrapped = (((heading + 180) % 360) + 360) % 360;
   return wrapped - 180;
 };
 
@@ -209,17 +209,15 @@ export const normaliseHeading = (heading: number): number => {
  * `previous` is null on the first sample, when there is no movement to judge
  * yet. `random` returns [0, 1) and is injected so tests can choose headings.
  */
-export const decideWander = (
-  args: {
-    position: Vec3;
-    previous: Vec3 | null;
-    anchor: Vec3;
-    state: WanderState;
-    config?: WanderConfig;
-    random?: () => number;
-    senses?: WanderSenses;
-  },
-): WanderDecision => {
+export const decideWander = (args: {
+  position: Vec3;
+  previous: Vec3 | null;
+  anchor: Vec3;
+  state: WanderState;
+  config?: WanderConfig;
+  random?: () => number;
+  senses?: WanderSenses;
+}): WanderDecision => {
   const {
     position,
     previous,
@@ -237,12 +235,10 @@ export const decideWander = (
    * straight back into the wall that just stopped the bot - observed in game
    * as jump/jump/turn thrashing that netted 5 blocks in a minute.
    */
-  const turnAway = () =>
-    normaliseHeading(state.heading + 90 + random() * 180);
+  const turnAway = () => normaliseHeading(state.heading + 90 + random() * 180);
 
   /** A gentle change of course, so free walking meanders instead of zig-zagging. */
-  const drift = () =>
-    normaliseHeading(state.heading + (random() * 2 - 1) * 60);
+  const drift = () => normaliseHeading(state.heading + (random() * 2 - 1) * 60);
 
   /*
    * The leash is checked first and overrides everything. Without it the bot
@@ -429,6 +425,12 @@ export const decideWander = (
 
   return {
     action: { kind: "walk" },
-    state: { ...state, noProgressSamples: 0, samplesOnHeading, recent, wedgeResets },
+    state: {
+      ...state,
+      noProgressSamples: 0,
+      samplesOnHeading,
+      recent,
+      wedgeResets,
+    },
   };
 };

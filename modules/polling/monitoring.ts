@@ -7,7 +7,7 @@ import { pb } from "../../utilities/pocketbase";
  * Utility function to check the status of a single monitored service
  */
 export const checkServiceStatus = async (
-  service: Pick<MonitorRecord, "ip">
+  service: Pick<MonitorRecord, "ip">,
 ) => {
   const httpIncluded =
     service.ip.startsWith("http://") || service.ip.startsWith("https://");
@@ -67,7 +67,7 @@ export const checkMonitoredServices = async (cl: Client) => {
   const filteredServices = monitoredServices.filter(
     (service) =>
       minute % service.frequency === 0 || // Interval equals current minute
-      (service.frequency === 60 && minute === 0) // Interval is every hour
+      (service.frequency === 60 && minute === 0), // Interval is every hour
   );
 
   for (const service of filteredServices) {
@@ -102,7 +102,7 @@ export const checkMonitoredServices = async (cl: Client) => {
             service.server_id,
             `<@${service.user_id}> The monitored service _'${
               service.name
-            }'_ is currently :red_square: **DOWN**. It has been marked as unhealthy since ${failureDate.toLocaleString()}.`
+            }'_ is currently :red_square: **DOWN**. It has been marked as unhealthy since ${failureDate.toLocaleString()}.`,
           );
         }
       }
@@ -126,7 +126,7 @@ export const checkMonitoredServices = async (cl: Client) => {
           service.server_id,
           `<@${service.user_id}> The monitored service _'${
             service.name
-          }'_ is currently :red_square: **DOWN**. It has been marked as unhealthy since ${failureDate.toLocaleString()}.`
+          }'_ is currently :red_square: **DOWN**. It has been marked as unhealthy since ${failureDate.toLocaleString()}.`,
         );
       }
     }

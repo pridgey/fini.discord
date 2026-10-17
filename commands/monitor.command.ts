@@ -52,9 +52,9 @@ export const execute = async (
     .collection<MonitorRecord>("monitoring")
     .getFullList({
       filter: pb.filter("name = {:name} && server_id = {:server}", {
-            name,
-            server: interaction.guild?.id ?? "",
-          }),
+        name,
+        server: interaction.guild?.id ?? "",
+      }),
     });
 
   if (existingMonitors.length > 0) {

@@ -71,8 +71,7 @@ export const formatDuration = (seconds: number): string => {
  * truthiness check, because the error type `string` includes `""`.
  */
 export type TimeRangeResult =
-  | { ok: true; range: TimeRange }
-  | { ok: false; error: string };
+  { ok: true; range: TimeRange } | { ok: false; error: string };
 
 /**
  * Validates the pair of options into a range.

@@ -136,7 +136,9 @@ export const converseWithClaude = async ({
      * different; see `llamaTools.ts`.
      */
     if (!options.skipHistory) {
-      systemPrompt.push(buildSystemPrompt(new Date(), await getCapabilityDigest()));
+      systemPrompt.push(
+        buildSystemPrompt(new Date(), await getCapabilityDigest()),
+      );
     }
 
     console.log("Submitting to Anthropic for response", { finalMessage });
@@ -144,9 +146,7 @@ export const converseWithClaude = async ({
       model: CURRENT_MODEL,
       max_tokens: MAX_CHAT_TOKENS,
       messages: formattedHistory,
-      ...(systemPrompt.length
-        ? { system: systemPrompt.join("\n\n") }
-        : {}),
+      ...(systemPrompt.length ? { system: systemPrompt.join("\n\n") } : {}),
       betas: ["files-api-2025-04-14"],
       tools: [
         {

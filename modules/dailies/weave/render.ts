@@ -33,7 +33,10 @@ const FONT = "Archivo, DejaVu Sans, sans-serif";
 
 const tileX = (cell: number) => MARGIN + colOf(cell) * (TILE + GAP);
 const tileY = (cell: number) => MARGIN + rowOf(cell) * (TILE + GAP);
-const centre = (cell: number) => ({ x: tileX(cell) + TILE / 2, y: tileY(cell) + TILE / 2 });
+const centre = (cell: number) => ({
+  x: tileX(cell) + TILE / 2,
+  y: tileY(cell) + TILE / 2,
+});
 
 export type RenderInput = {
   puzzle: WeavePuzzle;
@@ -42,14 +45,21 @@ export type RenderInput = {
   reveal?: boolean;
 };
 
-export const weaveBoardSvg = ({ puzzle, progress, reveal = false }: RenderInput): string => {
+export const weaveBoardSvg = ({
+  puzzle,
+  progress,
+  reveal = false,
+}: RenderInput): string => {
   const shown = reveal ? puzzle.words.map((_, i) => i) : progress.found;
   const colourOf = new Map<number, (typeof WORD_COLOURS)[number]>();
   for (const index of shown) {
-    for (const cell of puzzle.words[index].cells) colourOf.set(cell, WORD_COLOURS[index % WORD_COLOURS.length]);
+    for (const cell of puzzle.words[index].cells)
+      colourOf.set(cell, WORD_COLOURS[index % WORD_COLOURS.length]);
   }
   const hinted = new Set(
-    progress.hinted.filter((i) => !shown.includes(i)).map((i) => puzzle.words[i].cells[0]),
+    progress.hinted
+      .filter((i) => !shown.includes(i))
+      .map((i) => puzzle.words[i].cells[0]),
   );
 
   const tiles = Array.from({ length: SIZE * SIZE }, (_, cell) => {
@@ -65,7 +75,9 @@ export const weaveBoardSvg = ({ puzzle, progress, reveal = false }: RenderInput)
   // Paths go over the tiles and under the letters, so a word reads as one stroke.
   const paths = shown.map((index) => {
     const { cells } = puzzle.words[index];
-    const points = cells.map((cell) => `${centre(cell).x},${centre(cell).y}`).join(" ");
+    const points = cells
+      .map((cell) => `${centre(cell).x},${centre(cell).y}`)
+      .join(" ");
     const colour = WORD_COLOURS[index % WORD_COLOURS.length].path;
     const start = centre(cells[0]);
     return [
@@ -87,7 +99,9 @@ export const weaveBoardSvg = ({ puzzle, progress, reveal = false }: RenderInput)
   // red if not. Until then its letters stay alphabetical, which isn't a word.
   const solved = reveal || progress.threadGuess === puzzle.thread;
   const over = solved || !canGuessThread(puzzle, progress);
-  const threadShown = over ? [...puzzle.thread] : [...threadLetters(puzzle, { ...progress, found: shown })];
+  const threadShown = over
+    ? [...puzzle.thread]
+    : [...threadLetters(puzzle, { ...progress, found: shown })];
   const boxGap = 12;
   const boxes = puzzle.thread.length;
   const boxesWidth = boxes * THREAD_BOX + (boxes - 1) * boxGap;
@@ -95,7 +109,13 @@ export const weaveBoardSvg = ({ puzzle, progress, reveal = false }: RenderInput)
   const thread = Array.from({ length: boxes }, (_, i) => {
     const x = boxesLeft + i * (THREAD_BOX + boxGap);
     const letter = threadShown[i];
-    const fill = solved ? "#5fa834" : over ? "#c4473f" : letter ? TILE_FILL : "#3a3e57";
+    const fill = solved
+      ? "#5fa834"
+      : over
+        ? "#c4473f"
+        : letter
+          ? TILE_FILL
+          : "#3a3e57";
     const ink = over ? "#ffffff" : letter ? INK : "#8a8fa8";
     return [
       `<rect x="${x}" y="${THREAD_TOP}" width="${THREAD_BOX}" height="${THREAD_BOX}" rx="12" fill="${fill}"/>`,
@@ -118,4 +138,6 @@ export const weaveBoardSvg = ({ puzzle, progress, reveal = false }: RenderInput)
 export const WEAVE_IMAGE = "weave.png";
 
 export const renderWeaveBoard = (input: RenderInput): Promise<Buffer> =>
-  sharp(Buffer.from(weaveBoardSvg(input))).png().toBuffer();
+  sharp(Buffer.from(weaveBoardSvg(input)))
+    .png()
+    .toBuffer();

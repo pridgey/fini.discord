@@ -90,7 +90,10 @@ type Flag = "bars" | "low-res" | "cutout" | "crop";
 type Subject = { card: BattleCard; file: string; label: string };
 
 function slugOf(value: string): string {
-  return value.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+  return value
+    .replace(/[^a-z0-9]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
 }
 
 const args = process.argv.slice(2);
@@ -104,7 +107,9 @@ const flag = (name: string): string | undefined => {
  * under the served one, so a side check (candidate images, say) does not
  * replace the pool's page and keeps a separate review.
  */
-const OUT_DIR = flag("out") ? path.join(SERVE_ROOT, slugOf(flag("out")!)) : SERVE_ROOT;
+const OUT_DIR = flag("out")
+  ? path.join(SERVE_ROOT, slugOf(flag("out")!))
+  : SERVE_ROOT;
 const REVIEW_FILE = path.join(OUT_DIR, "review.json");
 
 const slug = slugOf;
@@ -163,7 +168,11 @@ const fromPool = async (set?: number): Promise<Subject[]> => {
 
     const response = await fetch(pb.files.getURL(row, row.image));
     if (!response.ok) continue;
-    const file = path.join(OUT_DIR, "source", `${row.id}${path.extname(row.image)}`);
+    const file = path.join(
+      OUT_DIR,
+      "source",
+      `${row.id}${path.extname(row.image)}`,
+    );
     await writeFile(file, Buffer.from(await response.arrayBuffer()));
 
     subjects.push({
@@ -235,9 +244,14 @@ const blackBars = async (
     for (let y = 0; y < height; y++) if (!dark(x, y)) return false;
     return true;
   };
-  const run = (length: number, test: (index: number) => boolean, reverse: boolean) => {
+  const run = (
+    length: number,
+    test: (index: number) => boolean,
+    reverse: boolean,
+  ) => {
     let count = 0;
-    while (count < length && test(reverse ? length - 1 - count : count)) count++;
+    while (count < length && test(reverse ? length - 1 - count : count))
+      count++;
     // An image that is black all over is dark art, not bars.
     return count === length ? 0 : count / length;
   };
@@ -319,7 +333,9 @@ const adjustFor = async (
     const bars = await blackBars(await trimPadding(stored), 40);
     // A hair past the measured edge, so no sliver of the bar survives.
     const pad = (share: number) =>
-      share >= 0.01 ? Math.round(Math.min(share + 0.006, 0.45) * 1000) / 1000 : 0;
+      share >= 0.01
+        ? Math.round(Math.min(share + 0.006, 0.45) * 1000) / 1000
+        : 0;
     const trim = {
       left: pad(bars.left),
       top: pad(bars.top),
@@ -349,7 +365,8 @@ const adjustFor = async (
       width: picture.width * (1 - trim.left - trim.right),
       height: picture.height * (1 - trim.top - trim.bottom),
     };
-    const within = (value: number) => Math.round(Math.min(Math.max(value, 0), 1) * 1000) / 1000;
+    const within = (value: number) =>
+      Math.round(Math.min(Math.max(value, 0), 1) * 1000) / 1000;
     adjust.focus = {
       x: within((entry.focus.x * full.w - kept.left) / kept.width),
       y: within((entry.focus.y * full.h - kept.top) / kept.height),
@@ -357,13 +374,17 @@ const adjustFor = async (
     notes.push("review: crop centred on the marked subject");
   }
 
-  if (entry.fixes.includes("replace")) notes.push("review: image to be replaced");
+  if (entry.fixes.includes("replace"))
+    notes.push("review: image to be replaced");
 
   return { adjust: adjust.trim || adjust.focus ? adjust : null, notes };
 };
 
 const jpeg = (buffer: Buffer): Promise<Buffer> =>
-  sharp(buffer).flatten({ background: "#14162a" }).jpeg({ quality: 84 }).toBuffer();
+  sharp(buffer)
+    .flatten({ background: "#14162a" })
+    .jpeg({ quality: 84 })
+    .toBuffer();
 
 const checkSubject = async (
   subject: Subject,
@@ -386,8 +407,10 @@ const checkSubject = async (
   // Measured on what the renderers will actually crop: padding and any
   // reviewed bars already gone.
   const art =
-    (await loadArt({ buffer: await readFile(subject.file), adjust: reviewed.adjust })) ??
-    (await readFile(subject.file));
+    (await loadArt({
+      buffer: await readFile(subject.file),
+      adjust: reviewed.adjust,
+    })) ?? (await readFile(subject.file));
   const meta = await sharp(art).metadata();
   const size = { w: meta.width ?? 1, h: meta.height ?? 1 };
   const aspect = size.w / size.h;
@@ -416,7 +439,10 @@ const checkSubject = async (
 
   for (const foil of frames) {
     const layout = layoutFor(card.rarity, foil);
-    const buffer = await renderCardImage({ ...card, foil }, { width: PREVIEW_WIDTH });
+    const buffer = await renderCardImage(
+      { ...card, foil },
+      { width: PREVIEW_WIDTH },
+    );
     if (!buffer) continue;
 
     // How far the art is stretched to cover this frame at the size cards print.
@@ -465,12 +491,16 @@ const checkSubject = async (
   // counting those would flag every wide image in the pool.
   const frameLoss = Math.max(
     0,
-    ...shots.filter((shot) => shot.file.match(/-(plain|foil)\.jpg$/)).map((shot) => shot.loss),
+    ...shots
+      .filter((shot) => shot.file.match(/-(plain|foil)\.jpg$/))
+      .map((shot) => shot.loss),
   );
   // A crop someone has placed by hand is no longer a guess to be flagged.
   if (frameLoss > CROP_LIMIT && !reviewed.adjust?.focus) {
     flags.add("crop");
-    notes.push(`a frame crops away ${Math.round(frameLoss * 100)}% of the picture`);
+    notes.push(
+      `a frame crops away ${Math.round(frameLoss * 100)}% of the picture`,
+    );
   }
 
   const thumb = `${stem}-source.jpg`;
@@ -508,10 +538,14 @@ const FLAG_ORDER: Flag[] = ["bars", "cutout", "low-res", "crop"];
 
 const buildPage = (results: Result[]): string => {
   const pct = (loss: number) => `${Math.round(loss * 100)}%`;
-  const tone = (loss: number) => (loss > CROP_LIMIT ? "bad" : loss > 0.25 ? "warn" : "ok");
-  const count = (name: Flag) => results.filter((result) => result.flags.includes(name)).length;
+  const tone = (loss: number) =>
+    loss > CROP_LIMIT ? "bad" : loss > 0.25 ? "warn" : "ok";
+  const count = (name: Flag) =>
+    results.filter((result) => result.flags.includes(name)).length;
   const flagged = results.filter((result) => result.flags.length > 0).length;
-  const sets = [...new Set(results.map((result) => result.subject.card.set ?? 0))].sort();
+  const sets = [
+    ...new Set(results.map((result) => result.subject.card.set ?? 0)),
+  ].sort();
 
   const button = (group: string, value: string, label: string) =>
     `<button data-group="${group}" data-value="${value}">${label}</button>`;
@@ -553,7 +587,9 @@ ${sets.length > 1 ? `<span>Set</span>${button("set", "", "all")}${sets.map((set)
 </nav>
 ${results
   .map(
-    (result) => `<section data-key="${escapeHtml(result.key)}" data-name="${escapeHtml(result.subject.card.name)}" data-flags="${result.flags.join(" ")}" data-rarity="${result.subject.card.rarity}" data-set="${result.subject.card.set ?? 0}"><h2>${result.flags.map((name) => `<span class="flag ${name}">${name}</span>`).join("")}${escapeHtml(result.subject.card.name)} <small>${result.subject.card.rarity.replace("_", " ")}${result.subject.card.set ? ` · S${result.subject.card.set}` : ""} · ${result.source} · ${escapeHtml(result.subject.label)}</small></h2>
+    (
+      result,
+    ) => `<section data-key="${escapeHtml(result.key)}" data-name="${escapeHtml(result.subject.card.name)}" data-flags="${result.flags.join(" ")}" data-rarity="${result.subject.card.rarity}" data-set="${result.subject.card.set ?? 0}"><h2>${result.flags.map((name) => `<span class="flag ${name}">${name}</span>`).join("")}${escapeHtml(result.subject.card.name)} <small>${result.subject.card.rarity.replace("_", " ")}${result.subject.card.set ? ` · S${result.subject.card.set}` : ""} · ${result.source} · ${escapeHtml(result.subject.label)}</small></h2>
 ${result.notes.length ? `<div class="notes">${result.notes.map(escapeHtml).join(" · ")}</div>` : ""}
 <div class="review">
 <button data-fix="ok">Looks good</button><button data-fix="crop">Bad crop</button><button data-fix="bars">Trim bars</button><button data-fix="replace">Replace image</button>
@@ -730,17 +766,26 @@ const serve = (port: number) => {
 
       const target = path.join(
         SERVE_ROOT,
-        decodeURIComponent(url.pathname.endsWith("/") ? `${url.pathname}index.html` : url.pathname),
+        decodeURIComponent(
+          url.pathname.endsWith("/")
+            ? `${url.pathname}index.html`
+            : url.pathname,
+        ),
       );
       // Nothing outside the served folder.
-      if (!target.startsWith(SERVE_ROOT + path.sep)) return new Response("no", { status: 403 });
+      if (!target.startsWith(SERVE_ROOT + path.sep))
+        return new Response("no", { status: 403 });
 
       // Each page keeps its review beside it.
       if (path.basename(target) === "review.json") {
         if (request.method === "POST") {
           // Parsed before it is written, so a bad request cannot wreck the file.
           const review = await request.json();
-          if (typeof review !== "object" || review === null || Array.isArray(review)) {
+          if (
+            typeof review !== "object" ||
+            review === null ||
+            Array.isArray(review)
+          ) {
             return new Response("expected an object", { status: 400 });
           }
           await writeFile(target, JSON.stringify(review, null, 2));
@@ -766,14 +811,24 @@ const serve = (port: number) => {
 const applyReview = async (commit: boolean) => {
   const review = await loadReview();
   const subjects = await fromPool();
-  const writes: { id: string; name: string; adjust: ArtAdjust | null; notes: string[] }[] = [];
+  const writes: {
+    id: string;
+    name: string;
+    adjust: ArtAdjust | null;
+    notes: string[];
+  }[] = [];
 
   for (const subject of subjects) {
     const entry = review[keyOf(subject)];
     if (!entry) continue;
     const { adjust, notes } = await adjustFor(subject.file, entry);
     if (adjust || notes.length > 0) {
-      writes.push({ id: subject.card.definitionId, name: subject.card.name, adjust, notes });
+      writes.push({
+        id: subject.card.definitionId,
+        name: subject.card.name,
+        adjust,
+        notes,
+      });
     }
   }
 
@@ -835,7 +890,9 @@ const run = async () => {
   if (subjects.length === 0) {
     // `--serve` alone just puts the page that is already there back up.
     if (!args.includes("--serve")) {
-      console.log("Nothing to check. Pass --all, --set <n>, --image <file> or --dir <folder>.");
+      console.log(
+        "Nothing to check. Pass --all, --set <n>, --image <file> or --dir <folder>.",
+      );
     }
     return;
   }

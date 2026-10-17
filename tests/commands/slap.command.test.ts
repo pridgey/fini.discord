@@ -1,4 +1,12 @@
-import { afterEach, describe, it, expect, mock, beforeEach, spyOn } from "bun:test";
+import {
+  afterEach,
+  describe,
+  it,
+  expect,
+  mock,
+  beforeEach,
+  spyOn,
+} from "bun:test";
 
 // Mock logHammerspaceUsage utility
 const mockLogHammerspaceUsage = mock(() => Promise.resolve());
@@ -285,9 +293,7 @@ describe("slap command", () => {
       });
 
       // Should not throw
-      expect(
-        execute(mockInteraction, mockLogCommand),
-      ).resolves.toBeUndefined();
+      expect(execute(mockInteraction, mockLogCommand)).resolves.toBeUndefined();
     });
 
     it("should handle missing item property", async () => {
@@ -310,9 +316,7 @@ describe("slap command", () => {
       );
 
       // Should not throw
-      expect(
-        execute(mockInteraction, mockLogCommand),
-      ).resolves.toBeUndefined();
+      expect(execute(mockInteraction, mockLogCommand)).resolves.toBeUndefined();
     });
 
     it("should call logCommand even on error", async () => {

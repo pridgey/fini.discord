@@ -35,7 +35,9 @@ export type CardPagesInput = {
 /** The first page, ready to send as a reply or to put in place of a message. */
 export const buildCardPages = async (input: CardPagesInput) => {
   const perPage = input.binder ? BINDER_PAGE_SIZE : COLLECTION_PAGE_SIZE;
-  const query = QueryHandler(input.binder ? "v2_card_binder" : "v2_card_collection");
+  const query = QueryHandler(
+    input.binder ? "v2_card_binder" : "v2_card_collection",
+  );
   const results = await query.query({
     page: 1,
     perPage,
@@ -90,8 +92,12 @@ export const buildDeckPages = async (
   const composition = { power: 0, wit: 0, heart: 0 };
   for (const card of contents.cards) composition[card.type] += 1;
   const notes = [
-    contents.missing.length > 0 ? `${contents.missing.length} no longer owned` : "",
-    contents.cards.length < DECK_SIZE ? `too small to play, needs ${DECK_SIZE}` : "",
+    contents.missing.length > 0
+      ? `${contents.missing.length} no longer owned`
+      : "",
+    contents.cards.length < DECK_SIZE
+      ? `too small to play, needs ${DECK_SIZE}`
+      : "",
   ].filter(Boolean);
 
   return buildCardPages({

@@ -75,7 +75,10 @@ describe("forRetrieval", () => {
         role: "user",
         content: [
           { type: "text", text: "what is this?" },
-          { type: "image_url", image_url: { url: "data:image/png;base64,AAA" } },
+          {
+            type: "image_url",
+            image_url: { url: "data:image/png;base64,AAA" },
+          },
         ],
       },
     ]);

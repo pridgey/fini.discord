@@ -34,10 +34,14 @@ const { power, wit, heart } = TYPE_PALETTES;
 const outline = (): string => {
   const teeth = 20;
   const step = UNITS.w / teeth;
-  const top = Array.from({ length: teeth }, (_, index) => `L${(index + 0.5) * step},0 L${(index + 1) * step},5`);
+  const top = Array.from(
+    { length: teeth },
+    (_, index) => `L${(index + 0.5) * step},0 L${(index + 1) * step},5`,
+  );
   const bottom = Array.from(
     { length: teeth },
-    (_, index) => `L${UNITS.w - (index + 0.5) * step},${UNITS.h} L${UNITS.w - (index + 1) * step},${UNITS.h - 5}`,
+    (_, index) =>
+      `L${UNITS.w - (index + 0.5) * step},${UNITS.h} L${UNITS.w - (index + 1) * step},${UNITS.h - 5}`,
   );
   return `M0,5 ${top.join(" ")} L${UNITS.w},${UNITS.h - 5} ${bottom.join(" ")} Z`;
 };
@@ -46,7 +50,8 @@ const outline = (): string => {
 const crimp = (y: number): string => {
   const ridges = Array.from(
     { length: 42 },
-    (_, index) => `<rect x="${6 + index * 7}" y="${y + 7}" width="2.4" height="${CRIMP - 13}" fill="#ffffff" opacity="0.2"></rect>`,
+    (_, index) =>
+      `<rect x="${6 + index * 7}" y="${y + 7}" width="2.4" height="${CRIMP - 13}" fill="#ffffff" opacity="0.2"></rect>`,
   ).join("");
   return `<rect x="0" y="${y}" width="${UNITS.w}" height="${CRIMP}" fill="#1a1c33"></rect>
     <rect x="0" y="${y}" width="${UNITS.w}" height="${CRIMP}" fill="url(#foil)" opacity="0.5"></rect>${ridges}
@@ -88,9 +93,19 @@ const stripes = Array.from({ length: 9 }, (_, index) => {
 }).join("");
 
 const sparkles = [
-  [38, 72, 1.6], [262, 96, 1.3], [226, 52, 1], [52, 322, 1.2], [250, 344, 1.6], [150, 60, 0.9], [28, 204, 1], [274, 236, 1.1],
+  [38, 72, 1.6],
+  [262, 96, 1.3],
+  [226, 52, 1],
+  [52, 322, 1.2],
+  [250, 344, 1.6],
+  [150, 60, 0.9],
+  [28, 204, 1],
+  [274, 236, 1.1],
 ]
-  .map(([x, y, r]) => `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffffff" opacity="0.85"></circle>`)
+  .map(
+    ([x, y, r]) =>
+      `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffffff" opacity="0.85"></circle>`,
+  )
   .join("");
 
 /** The three types as a wheel: each beats the next one round. */
@@ -140,7 +155,10 @@ const BACK = svg(`${base}
   ${finish}`);
 
 const drawn = (source: string, width: number): Promise<Buffer> =>
-  sharp(Buffer.from(source), { density: 300 }).resize({ width }).png().toBuffer();
+  sharp(Buffer.from(source), { density: 300 })
+    .resize({ width })
+    .png()
+    .toBuffer();
 
 /* --------------------------------------------------------------- opening --- */
 
@@ -153,7 +171,8 @@ const CLEAR = { r: 0, g: 0, b: 0, alpha: 0 };
 const ease = (t: number): number => t * t * (3 - 2 * t);
 const clamp = (t: number): number => Math.min(1, Math.max(0, t));
 /** Where `t` is between `from` and `to`, as 0 to 1. */
-const span = (t: number, from: number, to: number): number => clamp((t - from) / (to - from));
+const span = (t: number, from: number, to: number): number =>
+  clamp((t - from) / (to - from));
 
 /** When each part of the opening happens, as fractions of its length. */
 const BEAT = { flip: [0.08, 0.36], zip: [0.44, 0.8], fade: [0.76, 1] } as const;
@@ -198,7 +217,12 @@ const unzipped = (back: Buffer, open: number, spread: number): Buffer => {
     const row = y * PACK.w * 4;
     const to = y * width * 4;
     back.copy(out, to + (margin - pull) * 4, row, row + half * 4);
-    back.copy(out, to + (margin + half + pull) * 4, row + half * 4, row + PACK.w * 4);
+    back.copy(
+      out,
+      to + (margin + half + pull) * 4,
+      row + half * 4,
+      row + PACK.w * 4,
+    );
   }
 
   return out;
@@ -209,7 +233,13 @@ const drawOpening = async (front: Buffer, back: Buffer): Promise<Buffer> => {
   const unzippedWidth = PACK.w + 2 * (GAP + 60);
 
   /** A piece of the pack, turned and faded, placed by where its centre goes. */
-  const piece = async (input: Buffer, angle: number, opacity: number, cx: number, cy: number) => {
+  const piece = async (
+    input: Buffer,
+    angle: number,
+    opacity: number,
+    cx: number,
+    cy: number,
+  ) => {
     const turned = await sharp(input)
       .rotate(angle, { background: CLEAR })
       .ensureAlpha()
@@ -217,7 +247,11 @@ const drawOpening = async (front: Buffer, back: Buffer): Promise<Buffer> => {
       .png()
       .toBuffer();
     const meta = await sharp(turned).metadata();
-    return { input: turned, left: Math.round(cx - (meta.width ?? 0) / 2), top: Math.round(cy - (meta.height ?? 0) / 2) };
+    return {
+      input: turned,
+      left: Math.round(cx - (meta.width ?? 0) / 2),
+      top: Math.round(cy - (meta.height ?? 0) / 2),
+    };
   };
 
   const frames: Buffer[] = [];
@@ -243,7 +277,8 @@ const drawOpening = async (front: Buffer, back: Buffer): Promise<Buffer> => {
         .png()
         .toBuffer();
       // A last shiver before it goes.
-      const shiver = Math.sin(t * 90) * 1.6 * span(t, BEAT.flip[1], BEAT.zip[0]);
+      const shiver =
+        Math.sin(t * 90) * 1.6 * span(t, BEAT.flip[1], BEAT.zip[0]);
       layers.push(await piece(side, shiver, 1, cx, cy));
     } else {
       layers.push({ input: Buffer.from(light(t)), left: 0, top: 0 });
@@ -264,14 +299,27 @@ const drawOpening = async (front: Buffer, back: Buffer): Promise<Buffer> => {
     }
 
     frames.push(
-      await sharp({ create: { width: CANVAS.w, height: CANVAS.h, channels: 4, background: BACKDROP } })
+      await sharp({
+        create: {
+          width: CANVAS.w,
+          height: CANVAS.h,
+          channels: 4,
+          background: BACKDROP,
+        },
+      })
         .composite(layers)
         .raw()
         .toBuffer(),
     );
   }
 
-  const encoder = new GifEncoder(CANVAS.w, CANVAS.h, "neuquant", false, PACK_OPENING_FRAMES);
+  const encoder = new GifEncoder(
+    CANVAS.w,
+    CANVAS.h,
+    "neuquant",
+    false,
+    PACK_OPENING_FRAMES,
+  );
   encoder.setDelay(PACK_OPENING_DELAY_MS);
   encoder.setRepeat(-1);
   encoder.setQuality(8);
@@ -292,7 +340,10 @@ const cover = await drawn(FRONT, 600);
 await writeFile(PACK_COVER_FILE, cover);
 console.log(`${PACK_COVER_FILE}  ${Math.round(cover.length / 1024)} KB`);
 
-const opening = await drawOpening(await drawn(FRONT, PACK.w), await drawn(BACK, PACK.w));
+const opening = await drawOpening(
+  await drawn(FRONT, PACK.w),
+  await drawn(BACK, PACK.w),
+);
 await writeFile(PACK_OPENING_FILE, opening);
 console.log(`${PACK_OPENING_FILE}  ${Math.round(opening.length / 1024)} KB`);
 

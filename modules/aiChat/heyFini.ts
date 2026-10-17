@@ -11,7 +11,8 @@ export const HEY_FINI = "hey fini";
 const TYPING_RENEW_MS = 11_000;
 
 /** Whether a message is talking to Fini. */
-export const isHeyFini = (text: string) => text.toLowerCase().startsWith(HEY_FINI);
+export const isHeyFini = (text: string) =>
+  text.toLowerCase().startsWith(HEY_FINI);
 
 /**
  * Answers a "hey fini" message: shows Fini typing, asks the model the user

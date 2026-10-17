@@ -9,13 +9,20 @@
  * The site only accepts such a link in development - `bun run dev` - and the
  * script refuses to touch a mailbox that is not on this machine.
  */
-import { remote, remoteUrl, signIn, webSyncEnabled } from "../../modules/finicards/webSync";
+import {
+  remote,
+  remoteUrl,
+  signIn,
+  webSyncEnabled,
+} from "../../modules/finicards/webSync";
 
 const discordId = process.argv[2] ?? process.env.ADMIN_ID ?? "";
 const site = process.env.FINI_WEB_DEV_SITE ?? "http://127.0.0.1:5199";
 
 if (!webSyncEnabled() || !discordId) {
-  console.error("Set the FINI_WEB_POCKETBASE_* settings, and pass a Discord id or set ADMIN_ID.");
+  console.error(
+    "Set the FINI_WEB_POCKETBASE_* settings, and pass a Discord id or set ADMIN_ID.",
+  );
   process.exit(1);
 }
 if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(remoteUrl())) {
@@ -26,13 +33,19 @@ if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(remoteUrl())) {
 await signIn();
 const users = remote.collection("users");
 const links = await remote.collection("_externalAuths").getFullList({
-  filter: remote.filter("provider = 'discord' && providerId = {:id}", { id: discordId }),
+  filter: remote.filter("provider = 'discord' && providerId = {:id}", {
+    id: discordId,
+  }),
 });
 
 let userId = links[0]?.recordRef as string | undefined;
 if (!userId) {
   const password = crypto.randomUUID();
-  const user = await users.create({ name: "Local player", password, passwordConfirm: password });
+  const user = await users.create({
+    name: "Local player",
+    password,
+    passwordConfirm: password,
+  });
   await remote.collection("_externalAuths").create({
     collectionRef: user.collectionId,
     recordRef: user.id,

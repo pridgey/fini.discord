@@ -32,7 +32,10 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
       return;
     }
 
-    const pages = await buildDeckPages(deck, { viewerId: interaction.user.id, binder: false });
+    const pages = await buildDeckPages(deck, {
+      viewerId: interaction.user.id,
+      binder: false,
+    });
     if (!pages) {
       await interaction.followUp({
         content: `**${deck.name}** has no cards left in your collection. Add some with \`/finicard deck add\`.`,
@@ -44,8 +47,12 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     await interaction.editReply({ ...pages, attachments: [] });
   } catch (error) {
     console.error("Error opening a v2 deck:", error, { args });
-    const failed = { content: "❌ Failed to open that deck", flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral] };
-    if (interaction.replied || interaction.deferred) await interaction.followUp(failed).catch(() => undefined);
+    const failed = {
+      content: "❌ Failed to open that deck",
+      flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral],
+    };
+    if (interaction.replied || interaction.deferred)
+      await interaction.followUp(failed).catch(() => undefined);
     else await interaction.reply(failed).catch(() => undefined);
   }
 }

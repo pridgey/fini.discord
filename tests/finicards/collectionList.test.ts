@@ -12,7 +12,10 @@ const deck = (name: string, cards: string[]): V2DeckRecord => ({
 
 describe("collection list deck names", () => {
   test("a card lists every deck it is in", () => {
-    const names = deckNamesByCard([deck("Alpha", ["a", "b"]), deck("Beta", ["b", "c"])]);
+    const names = deckNamesByCard([
+      deck("Alpha", ["a", "b"]),
+      deck("Beta", ["b", "c"]),
+    ]);
     expect(names.get("a")).toEqual(["Alpha"]);
     expect(names.get("b")).toEqual(["Alpha", "Beta"]);
     expect(names.get("c")).toEqual(["Beta"]);
@@ -20,6 +23,8 @@ describe("collection list deck names", () => {
   });
 
   test("a deck holding a card twice names it once", () => {
-    expect(deckNamesByCard([deck("Alpha", ["a", "a"])]).get("a")).toEqual(["Alpha"]);
+    expect(deckNamesByCard([deck("Alpha", ["a", "a"])]).get("a")).toEqual([
+      "Alpha",
+    ]);
   });
 });

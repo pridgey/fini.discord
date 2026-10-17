@@ -146,7 +146,9 @@ export const availableSecretArts = (
 export const availableLegendaries = (
   definitions: V2CardDefinitionRecord[],
 ): V2CardDefinitionRecord[] =>
-  definitions.filter((definition) => definition.rarity === "full_art" && !definition.secret_art);
+  definitions.filter(
+    (definition) => definition.rarity === "full_art" && !definition.secret_art,
+  );
 
 /**
  * A Legendary of `tier`: an animation, and a card that has no Legendary with
@@ -164,12 +166,17 @@ export const pickLegendary = (
   const effects = [
     rolled,
     ...Object.keys(LEGENDARY_EFFECTS)
-      .filter((effect) => LEGENDARY_EFFECTS[effect] === tier && effect !== rolled)
+      .filter(
+        (effect) => LEGENDARY_EFFECTS[effect] === tier && effect !== rolled,
+      )
       .sort(),
   ];
   for (const effect of effects) {
-    const open = pool.filter((definition) => !holders.has(legendaryKey(definition.id ?? "", effect)));
-    if (open.length > 0) return { definition: open[Math.floor(random() * open.length)], effect };
+    const open = pool.filter(
+      (definition) => !holders.has(legendaryKey(definition.id ?? "", effect)),
+    );
+    if (open.length > 0)
+      return { definition: open[Math.floor(random() * open.length)], effect };
   }
   return null;
 };
@@ -232,7 +239,8 @@ export const openPack = async (
   // opens exactly as it did before they existed.
   const secretArts = availableSecretArts(definitions, counts);
   const secretSlot =
-    secretArts.length > 0 && random() < (input.secretArtChance ?? SECRET_ART_CHANCE)
+    secretArts.length > 0 &&
+    random() < (input.secretArtChance ?? SECRET_ART_CHANCE)
       ? Math.floor(random() * rarities.length)
       : -1;
 
@@ -240,12 +248,16 @@ export const openPack = async (
   // card - and never the Secret Art's place, should a pack hold both.
   const legendaries = availableLegendaries(definitions);
   const legendaryHolders =
-    legendaries.length > 0 ? await getLegendaryHolders(input.serverId) : new Set<string>();
+    legendaries.length > 0
+      ? await getLegendaryHolders(input.serverId)
+      : new Set<string>();
   const legendaryTier =
     legendaries.length > 0
       ? rollLegendaryTier(random(), input.legendaryOdds ?? LEGENDARY_ODDS)
       : null;
-  let legendarySlot = legendaryTier ? Math.floor(random() * rarities.length) : -1;
+  let legendarySlot = legendaryTier
+    ? Math.floor(random() * rarities.length)
+    : -1;
   if (legendarySlot >= 0 && legendarySlot === secretSlot) {
     legendarySlot = (legendarySlot + 1) % rarities.length;
   }
@@ -269,7 +281,8 @@ export const openPack = async (
 
     const definitionId = definition.id ?? "";
     // A Legendary takes none of its card's ordinary copies.
-    if (!legendary) counts.set(definitionId, (counts.get(definitionId) ?? 0) + 1);
+    if (!legendary)
+      counts.set(definitionId, (counts.get(definitionId) ?? 0) + 1);
 
     const foil = random() < foilChance;
     const record = await grantCard({

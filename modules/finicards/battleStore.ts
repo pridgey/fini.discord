@@ -1,4 +1,7 @@
-import type { V2BattleRecord, V2DeckRecord } from "../../types/PocketbaseTablesV2";
+import type {
+  V2BattleRecord,
+  V2DeckRecord,
+} from "../../types/PocketbaseTablesV2";
 import { pb } from "../../utilities/pocketbase";
 import { resolveMatch } from "./battleEngine";
 import { V2_BATTLE, loadLineupByIds } from "./cardStore";
@@ -56,8 +59,7 @@ export type CreateChallengeInput = {
 };
 
 export type CreateChallengeOutcome =
-  | { ok: true; battle: V2BattleRecord }
-  | { ok: false; reason: string };
+  { ok: true; battle: V2BattleRecord } | { ok: false; reason: string };
 
 export const createChallenge = async (
   input: CreateChallengeInput,
@@ -222,8 +224,7 @@ export const lineupFor = (battle: V2BattleRecord, side: Side): string[] =>
 /* -------------------------------------------------------------------------- */
 
 export type AcceptOutcome =
-  | { ok: true; battle: V2BattleRecord }
-  | { ok: false; reason: string };
+  { ok: true; battle: V2BattleRecord } | { ok: false; reason: string };
 
 export const acceptChallenge = async (
   battleId: string,

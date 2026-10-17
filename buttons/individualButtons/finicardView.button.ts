@@ -102,8 +102,12 @@ export async function execute(interaction: ButtonInteraction, args: string[]) {
     });
   } catch (error) {
     console.error("Error viewing v2 card:", error, { args });
-    const failed = { content: "❌ Failed to load that card", flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral] };
-    if (interaction.replied || interaction.deferred) await interaction.followUp(failed).catch(() => undefined);
+    const failed = {
+      content: "❌ Failed to load that card",
+      flags: [MessageFlags.Ephemeral] as [MessageFlags.Ephemeral],
+    };
+    if (interaction.replied || interaction.deferred)
+      await interaction.followUp(failed).catch(() => undefined);
     else await interaction.reply(failed).catch(() => undefined);
   }
 }

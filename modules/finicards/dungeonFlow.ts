@@ -13,7 +13,10 @@ import { payoutFor, type DungeonReward } from "./dungeon";
 import { FOIL_CHANCE, selectCard } from "./packs";
 import type { BattleCard } from "./types";
 import { loadHand, recordReward, stateOf } from "./dungeonStore";
-import { buildDungeonMessage, type BuiltDungeonMessage } from "./ui/dungeonMessage";
+import {
+  buildDungeonMessage,
+  type BuiltDungeonMessage,
+} from "./ui/dungeonMessage";
 import { refundWager, stakeWager, type WagerParty } from "./wagers";
 
 /**

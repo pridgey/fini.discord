@@ -1,5 +1,8 @@
 import type { ButtonInteraction, TextChannel } from "discord.js";
-import type { V2BattleRecord, V2DeckRecord } from "../../types/PocketbaseTablesV2";
+import type {
+  V2BattleRecord,
+  V2DeckRecord,
+} from "../../types/PocketbaseTablesV2";
 import { acceptChallenge, getBattle } from "./battleStore";
 import { loadLineupByIds } from "./cardStore";
 import { buildRevealMessage } from "./ui";
@@ -14,8 +17,7 @@ import { canAfford, stakeWager } from "./wagers";
  */
 
 export type AcceptAndRevealResult =
-  | { ok: true; battle: V2BattleRecord }
-  | { ok: false; reason: string };
+  { ok: true; battle: V2BattleRecord } | { ok: false; reason: string };
 
 export const acceptAndReveal = async (
   interaction: ButtonInteraction,
@@ -61,7 +63,9 @@ export const acceptAndReveal = async (
   const challengerHand = await loadLineupByIds(
     accepted.battle.challenger_hand ?? [],
   );
-  const defenderHand = await loadLineupByIds(accepted.battle.defender_hand ?? []);
+  const defenderHand = await loadLineupByIds(
+    accepted.battle.defender_hand ?? [],
+  );
 
   const message = await buildRevealMessage({
     battleId,

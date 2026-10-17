@@ -31,7 +31,10 @@ afterEach(() => {
   pb.collection = realCollection;
 });
 
-const postable = { isSendable: () => true, send: async (text: string) => void sent.push(text) };
+const postable = {
+  isSendable: () => true,
+  send: async (text: string) => void sent.push(text),
+};
 const notPostable = { isSendable: () => false };
 
 /** A client whose channel lookups answer with `channels[id]`, throwing it if it's an error. */
@@ -59,7 +62,9 @@ describe("reminders", () => {
   it("carries on past a failure, and keeps a reminder that may still be sent", async () => {
     due = [reminder("a", "flaky"), reminder("b", "fine")];
 
-    await checkReminders(clientWith({ flaky: new Error("network"), fine: postable }));
+    await checkReminders(
+      clientWith({ flaky: new Error("network"), fine: postable }),
+    );
 
     expect(sent).toHaveLength(1);
     expect(deleted).toEqual(["b"]);
@@ -76,7 +81,9 @@ describe("reminders", () => {
       {},
     );
 
-    await checkReminders(clientWith({ deleted: unknownChannel, voice: notPostable }));
+    await checkReminders(
+      clientWith({ deleted: unknownChannel, voice: notPostable }),
+    );
 
     expect(deleted).toEqual(["gone", "closed"]);
   });

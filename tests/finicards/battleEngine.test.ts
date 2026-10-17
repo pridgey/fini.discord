@@ -4,10 +4,7 @@ import {
   resolveMatch,
 } from "../../modules/finicards/battleEngine";
 import type { BattleCard } from "../../modules/finicards/types";
-import type {
-  CardRarity,
-  CardType,
-} from "../../types/PocketbaseTablesV2";
+import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
 
 /** Test card builder. Stats are written power/wit/heart, as the doc writes them. */
 const card = (
@@ -248,7 +245,15 @@ describe("finicards v2 battle engine", () => {
     it("supports a 5-round match without touching the engine", () => {
       const lineup = (type: CardType) =>
         Array.from({ length: 5 }, (_, index) =>
-          card(`${type}-${index}`, type, ...(type === "power" ? [7, 5, 3] : type === "wit" ? [3, 7, 5] : [5, 3, 7]) as [number, number, number]),
+          card(
+            `${type}-${index}`,
+            type,
+            ...((type === "power"
+              ? [7, 5, 3]
+              : type === "wit"
+                ? [3, 7, 5]
+                : [5, 3, 7]) as [number, number, number]),
+          ),
         );
 
       const result = resolveMatch({

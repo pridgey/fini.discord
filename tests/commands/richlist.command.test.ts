@@ -218,9 +218,7 @@ describe("richlist command", () => {
       mockInteraction.client.users.fetch = mockFetch;
 
       // Should not throw
-      expect(
-        execute(mockInteraction, mockLogCommand),
-      ).resolves.toBeUndefined();
+      expect(execute(mockInteraction, mockLogCommand)).resolves.toBeUndefined();
     });
   });
 
@@ -307,9 +305,7 @@ describe("richlist command", () => {
       );
 
       // Should not throw
-      expect(
-        execute(mockInteraction, mockLogCommand),
-      ).resolves.toBeUndefined();
+      expect(execute(mockInteraction, mockLogCommand)).resolves.toBeUndefined();
     });
 
     it("should call logCommand even on error", async () => {

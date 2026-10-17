@@ -94,7 +94,9 @@ export const calculatePotSplit = (
   config: RakeConfig = RAKE,
 ): PotSplit => {
   const pot = Math.max(0, wager) * 2;
-  const jackpotCut = Math.floor(pot * Math.min(1, Math.max(0, config.jackpotShare)));
+  const jackpotCut = Math.floor(
+    pot * Math.min(1, Math.max(0, config.jackpotShare)),
+  );
   return { pot, jackpotCut, payout: pot - jackpotCut };
 };
 

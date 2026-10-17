@@ -25,7 +25,7 @@ const registerAllCommands = async () => {
     const importedFiles = await Promise.all(
       commandFiles
         .filter((file) => !file.includes("archived"))
-        .map((file) => import(`./../${file}`))
+        .map((file) => import(`./../${file}`)),
     );
     const commandData = importedFiles.map((cmdData) => cmdData.data.toJSON());
 
@@ -41,7 +41,7 @@ const registerAllCommands = async () => {
       Routes.applicationGuildCommands(clientId, gekin_guildId),
       {
         body: commandData,
-      }
+      },
     );
 
     console.log("Registered Commands", { guild: "gekin", response_gekin });
@@ -51,7 +51,7 @@ const registerAllCommands = async () => {
       Routes.applicationGuildCommands(clientId, league_guildId),
       {
         body: commandData,
-      }
+      },
     );
 
     console.log("Registered Commands", { guild: "league", response_league });

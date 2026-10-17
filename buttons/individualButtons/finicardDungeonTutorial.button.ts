@@ -1,5 +1,8 @@
 import { ButtonInteraction } from "discord.js";
-import { decodeMoves, replayTutorial } from "../../modules/finicards/dungeonTutorial";
+import {
+  decodeMoves,
+  replayTutorial,
+} from "../../modules/finicards/dungeonTutorial";
 import {
   TUTORIAL_NAMESPACE,
   buildTutorialMessage,

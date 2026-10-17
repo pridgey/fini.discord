@@ -28,7 +28,9 @@ const tile = (z: number, x: number, y: number): Promise<Buffer | null> => {
     headers: { "User-Agent": USER_AGENT },
     signal: AbortSignal.timeout(10_000),
   })
-    .then(async (response) => (response.ok ? Buffer.from(await response.arrayBuffer()) : null))
+    .then(async (response) =>
+      response.ok ? Buffer.from(await response.arrayBuffer()) : null,
+    )
     .catch(() => null);
   // A failed tile is tried again next time rather than kept as a hole.
   fetching.then((buffer) => buffer || tiles.delete(key));
@@ -55,7 +57,11 @@ export const project = ({ lat, lon }: LatLon, z: number) => {
 const unwrap = (pins: Pin[]): Pin[] =>
   pins.map((pin) => {
     const delta = pin.lon - pins[0].lon;
-    return delta > 180 ? { ...pin, lon: pin.lon - 360 } : delta < -180 ? { ...pin, lon: pin.lon + 360 } : pin;
+    return delta > 180
+      ? { ...pin, lon: pin.lon - 360 }
+      : delta < -180
+        ? { ...pin, lon: pin.lon + 360 }
+        : pin;
   });
 
 /** The closest zoom that fits every pin with room to spare, within [min, max]. */
@@ -67,8 +73,10 @@ export const fitZoom = (
 ): number => {
   for (let z = max; z > min; z--) {
     const points = pins.map((pin) => project(pin, z));
-    const spanX = Math.max(...points.map((p) => p.x)) - Math.min(...points.map((p) => p.x));
-    const spanY = Math.max(...points.map((p) => p.y)) - Math.min(...points.map((p) => p.y));
+    const spanX =
+      Math.max(...points.map((p) => p.x)) - Math.min(...points.map((p) => p.x));
+    const spanY =
+      Math.max(...points.map((p) => p.y)) - Math.min(...points.map((p) => p.y));
     if (spanX <= width * 0.7 && spanY <= height * 0.7) return z;
   }
   return min;
@@ -109,8 +117,14 @@ export const renderMap = async (
   const z = zoom ?? (placed.length > 1 ? fitZoom(placed, width, height) : 5);
   const points = placed.map((pin) => project(pin, z));
   const centre = {
-    x: (Math.min(...points.map((p) => p.x)) + Math.max(...points.map((p) => p.x))) / 2,
-    y: (Math.min(...points.map((p) => p.y)) + Math.max(...points.map((p) => p.y))) / 2,
+    x:
+      (Math.min(...points.map((p) => p.x)) +
+        Math.max(...points.map((p) => p.x))) /
+      2,
+    y:
+      (Math.min(...points.map((p) => p.y)) +
+        Math.max(...points.map((p) => p.y))) /
+      2,
   };
   const left = centre.x - width / 2;
   const top = centre.y - height / 2;
@@ -125,14 +139,21 @@ export const renderMap = async (
 
   const layers: OverlayOptions[] = [];
   await Promise.all(
-    Array.from({ length: lastX - firstX + 1 }, (_, i) => firstX + i).flatMap((x) =>
-      Array.from({ length: lastY - firstY + 1 }, (_, j) => firstY + j).map(async (y) => {
-        if (y < 0 || y >= count) return;
-        const image = await tile(z, ((x % count) + count) % count, y);
-        if (image) {
-          layers.push({ input: image, left: (x - firstX) * TILE, top: (y - firstY) * TILE });
-        }
-      }),
+    Array.from({ length: lastX - firstX + 1 }, (_, i) => firstX + i).flatMap(
+      (x) =>
+        Array.from({ length: lastY - firstY + 1 }, (_, j) => firstY + j).map(
+          async (y) => {
+            if (y < 0 || y >= count) return;
+            const image = await tile(z, ((x % count) + count) % count, y);
+            if (image) {
+              layers.push({
+                input: image,
+                left: (x - firstX) * TILE,
+                top: (y - firstY) * TILE,
+              });
+            }
+          },
+        ),
     ),
   );
 

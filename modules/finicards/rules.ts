@@ -118,4 +118,6 @@ export const typeMultiplierFor = (
   defender: CardType,
   rules: BattleRules = RULES,
 ): number =>
-  beatsType(attacker, defender) ? rules.typeMultiplier : rules.neutralMultiplier;
+  beatsType(attacker, defender)
+    ? rules.typeMultiplier
+    : rules.neutralMultiplier;

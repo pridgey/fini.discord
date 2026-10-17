@@ -1,4 +1,8 @@
-import { ButtonInteraction, ChatInputCommandInteraction, type GuildMember } from "discord.js";
+import {
+  ButtonInteraction,
+  ChatInputCommandInteraction,
+  type GuildMember,
+} from "discord.js";
 import {
   getCardDefinitions,
   getPopulationCounts,
@@ -9,7 +13,10 @@ import {
   markFreePackOpened,
   passOnSpecial,
 } from "../../modules/finicards/freePacks";
-import { rollGuaranteedTier, type LegendaryTier } from "../../modules/finicards/legendary";
+import {
+  rollGuaranteedTier,
+  type LegendaryTier,
+} from "../../modules/finicards/legendary";
 import {
   availableSecretArts,
   openPack,
@@ -44,7 +51,10 @@ const certainTier = (tier: LegendaryTier): Record<LegendaryTier, number> => ({
  *
  * Never rejects - it is not awaited, and an unhandled rejection takes the bot down.
  */
-const logAgainPack = async (press: ButtonInteraction, set: number | null): Promise<void> => {
+const logAgainPack = async (
+  press: ButtonInteraction,
+  set: number | null,
+): Promise<void> => {
   try {
     const output = await press
       .fetchReply()
@@ -84,11 +94,12 @@ export const openPackFor = async (
   const serverName = interaction.guild?.name ?? "unknown guild name";
   const identifier = `${interaction.user.username}-${serverName}`;
 
-
   // A forced pull is a test, not a purchase: it costs nothing - which is
   // why only the bot admin may ask for one.
   if (test && !isAdmin(interaction.user.id)) {
-    await interaction.editReply("The `test` option is for the bot admin. Leave it off to open a pack.");
+    await interaction.editReply(
+      "The `test` option is for the bot admin. Leave it off to open a pack.",
+    );
     return;
   }
 
@@ -97,7 +108,9 @@ export const openPackFor = async (
   const freePacks =
     test || set
       ? []
-      : await getUnopenedFreePacks(interaction.user.id, serverId).catch(() => []);
+      : await getUnopenedFreePacks(interaction.user.id, serverId).catch(
+          () => [],
+        );
   const freePack = freePacks[0] ?? null;
 
   const price = set ? SET_PACK_COST : PACK_COST;
@@ -106,8 +119,7 @@ export const openPackFor = async (
     ? (Number(test.slice(-1)) as LegendaryTier)
     : null;
 
-  const balance =
-    (await getUserBalance(interaction.user.id, serverId)) || 0;
+  const balance = (await getUserBalance(interaction.user.id, serverId)) || 0;
 
   if (balance < cost) {
     await interaction.editReply(
@@ -122,7 +134,8 @@ export const openPackFor = async (
   // Asked for, and impossible: say so rather than hand over a plain pack.
   if (
     test === "secret_art" &&
-    availableSecretArts(definitions, await getPopulationCounts(serverId)).length === 0
+    availableSecretArts(definitions, await getPopulationCounts(serverId))
+      .length === 0
   ) {
     await interaction.editReply(
       definitions.some((definition) => definition.secret_art)
@@ -204,10 +217,15 @@ export const openPackFor = async (
   const reimbursement =
     shortfall > 0 ? Math.round((cost / PACK_SIZE) * shortfall) : 0;
 
-  const cards = pulls.map((owned) => ({ ...toBattleCard(owned), isNew: owned.isNew }));
+  const cards = pulls.map((owned) => ({
+    ...toBattleCard(owned),
+    isNew: owned.isNew,
+  }));
   const pack = {
     cards,
-    opener: (interaction.member as GuildMember | null)?.displayName ?? interaction.user.displayName,
+    opener:
+      (interaction.member as GuildMember | null)?.displayName ??
+      interaction.user.displayName,
     cost,
     shortfall,
     reimbursement,
@@ -216,7 +234,9 @@ export const openPackFor = async (
           note: `Free pack · ${freePacks.length - 1} more to open`,
         }
       : set
-        ? { note: `Set ${set} pack · ${cost > 0 ? `${cost} fc` : "test, free"}` }
+        ? {
+            note: `Set ${set} pack · ${cost > 0 ? `${cost} fc` : "test, free"}`,
+          }
         : {}),
   };
 
@@ -234,7 +254,9 @@ export const openPackFor = async (
               ? "Open another free pack"
               : `Buy another pack · ${PACK_COST} fc`,
           buy: (press) =>
-            openPackFor(press, { set, test: null }).finally(() => logAgainPack(press, set)),
+            openPackFor(press, { set, test: null }).finally(() =>
+              logAgainPack(press, set),
+            ),
         },
   );
 };

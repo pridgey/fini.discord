@@ -4,7 +4,7 @@ import { getBotChannelForServer } from "../config/configUtils";
 export const sendToChannelById = async (
   cl: Client,
   channelId: string,
-  message: string
+  message: string,
 ) => {
   try {
     const channel = await cl.channels.fetch(channelId);
@@ -12,7 +12,7 @@ export const sendToChannelById = async (
       await (channel as TextChannel).send(message);
     } else {
       console.error(
-        `Channel with ID ${channelId} is not text-based or could not be found.`
+        `Channel with ID ${channelId} is not text-based or could not be found.`,
       );
     }
   } catch (error) {
@@ -23,7 +23,7 @@ export const sendToChannelById = async (
 export const sendToBotChannelByServerId = async (
   cl: Client,
   serverId: string,
-  message: string
+  message: string,
 ) => {
   // Get bot channel for server
   const botChannelId = await getBotChannelForServer(serverId);
@@ -41,7 +41,7 @@ export const sendToBotChannelByServerId = async (
     } else {
       // No bot channel or system channel configured
       console.error(
-        `No bot channel configured for server ID ${serverId}. Message not sent.`
+        `No bot channel configured for server ID ${serverId}. Message not sent.`,
       );
     }
   }

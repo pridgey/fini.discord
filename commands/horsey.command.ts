@@ -6,10 +6,7 @@ import {
 } from "discord.js";
 import { addCoin, getUserBalance } from "../modules/finicoin";
 import { createRateLimiter } from "../utilities/rateLimiter";
-import {
-  getHorseyNames,
-  labelFor,
-} from "../modules/games/horsey/horseyNames";
+import { getHorseyNames, labelFor } from "../modules/games/horsey/horseyNames";
 import {
   formFor,
   getHorseyStats,
@@ -100,7 +97,8 @@ export const data = new SlashCommandBuilder()
  */
 export const autocomplete = async (interaction: AutocompleteInteraction) => {
   const names = await getHorseyNames(interaction.guildId ?? "unknown guild id");
-  const typed = interaction.options.getFocused()?.toString().toLowerCase() ?? "";
+  const typed =
+    interaction.options.getFocused()?.toString().toLowerCase() ?? "";
 
   const options = names
     .map((_, index) => ({

@@ -29,7 +29,10 @@ export const data = new SlashCommandBuilder()
       .setRequired(true)
       .addChoices(
         { name: `Flux-Schnell (${FLUX_COST} fini coin)`, value: "flux" },
-        { name: `GPT Image 2 (${GPT_IMAGE_COST} fini coin)`, value: "gpt-image" },
+        {
+          name: `GPT Image 2 (${GPT_IMAGE_COST} fini coin)`,
+          value: "gpt-image",
+        },
         {
           name: `Recraft V3 (${REFACTOR_COST} fini coin)`,
           value: "refactor",

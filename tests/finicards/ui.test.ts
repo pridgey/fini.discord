@@ -69,7 +69,9 @@ describe("finicards v2 message UI", () => {
     it("summarises a hand's shape without implying order", () => {
       // Whatever the type emoji are - the bot's own, or the standard circles.
       const { power, wit, heart } = TYPE_EMOJI;
-      expect(compositionOf(hand("a"))).toBe(`${power}${power}${wit}${wit}${heart}`);
+      expect(compositionOf(hand("a"))).toBe(
+        `${power}${power}${wit}${wit}${heart}`,
+      );
 
       // A collection is counted, not drawn out: it would not fit in a message.
       const big = compositionString({ power: 120, wit: 0, heart: 45 });
@@ -83,8 +85,12 @@ describe("finicards v2 message UI", () => {
     });
 
     it("leads a chip with the type stat, padded so a hand lines up", () => {
-      expect(cardChip(card("Vegeta", "power", 10, 3, 2))).toContain("`10` Vegeta");
-      expect(cardChip(card("Krillin", "power", 6, 3, 2))).toContain("` 6` Krillin");
+      expect(cardChip(card("Vegeta", "power", 10, 3, 2))).toContain(
+        "`10` Vegeta",
+      );
+      expect(cardChip(card("Krillin", "power", 6, 3, 2))).toContain(
+        "` 6` Krillin",
+      );
     });
 
     it("states the type wheel in the mechanic hint", () => {
@@ -105,7 +111,9 @@ describe("finicards v2 message UI", () => {
 
     it("explains a mirror and a disadvantage differently", () => {
       expect(explainMultiplier("wit", "wit", 1, "Fen")).toContain("mirror");
-      expect(explainMultiplier("power", "heart", 1, "Fen")).toContain("loses to");
+      expect(explainMultiplier("power", "heart", 1, "Fen")).toContain(
+        "loses to",
+      );
     });
   });
 
@@ -114,8 +122,18 @@ describe("finicards v2 message UI", () => {
       const message = await buildRevealMessage({
         battleId: "b1",
         wager: 60,
-        challenger: { side: "challenger", name: "Fen", userId: "1", cards: hand("a") },
-        defender: { side: "defender", name: "Rho", userId: "2", cards: hand("b") },
+        challenger: {
+          side: "challenger",
+          name: "Fen",
+          userId: "1",
+          cards: hand("a"),
+        },
+        defender: {
+          side: "defender",
+          name: "Rho",
+          userId: "2",
+          cards: hand("b"),
+        },
       });
 
       // Header plus one container per player.
@@ -137,8 +155,18 @@ describe("finicards v2 message UI", () => {
       const message = await buildRevealMessage({
         battleId: "b1",
         wager: 0,
-        challenger: { side: "challenger", name: "Fen", userId: "1", cards: hand("a") },
-        defender: { side: "defender", name: "Rho", userId: "2", cards: hand("b") },
+        challenger: {
+          side: "challenger",
+          name: "Fen",
+          userId: "1",
+          cards: hand("a"),
+        },
+        defender: {
+          side: "defender",
+          name: "Rho",
+          userId: "2",
+          cards: hand("b"),
+        },
       });
 
       const challengerBlock = message.components[1].toJSON() as any;
@@ -155,8 +183,18 @@ describe("finicards v2 message UI", () => {
       const message = await buildRevealMessage({
         battleId: "b1",
         wager: 0,
-        challenger: { side: "challenger", name: "Fen", userId: "1", cards: hand("a") },
-        defender: { side: "defender", name: "Rho", userId: "2", cards: hand("b") },
+        challenger: {
+          side: "challenger",
+          name: "Fen",
+          userId: "1",
+          cards: hand("a"),
+        },
+        defender: {
+          side: "defender",
+          name: "Rho",
+          userId: "2",
+          cards: hand("b"),
+        },
       });
 
       const names = message.files.map((file: any) => file.name);
@@ -168,8 +206,18 @@ describe("finicards v2 message UI", () => {
       const message = await buildRevealMessage({
         battleId: "b1",
         wager: 0,
-        challenger: { side: "challenger", name: "Fen", userId: "1", cards: hand("a") },
-        defender: { side: "defender", name: "Rho", userId: "2", cards: hand("b") },
+        challenger: {
+          side: "challenger",
+          name: "Fen",
+          userId: "1",
+          cards: hand("a"),
+        },
+        defender: {
+          side: "defender",
+          name: "Rho",
+          userId: "2",
+          cards: hand("b"),
+        },
       });
 
       const header = message.components[0].toJSON() as any;
@@ -182,8 +230,18 @@ describe("finicards v2 message UI", () => {
       const message = await buildRevealMessage({
         battleId: "b1",
         wager: 0,
-        challenger: { side: "challenger", name: "Fen", userId: "111", cards: hand("a") },
-        defender: { side: "defender", name: "Rho", userId: "222", cards: hand("b") },
+        challenger: {
+          side: "challenger",
+          name: "Fen",
+          userId: "111",
+          cards: hand("a"),
+        },
+        defender: {
+          side: "defender",
+          name: "Rho",
+          userId: "222",
+          cards: hand("b"),
+        },
       });
 
       const header = textOf(message.components[0].toJSON());
@@ -230,7 +288,9 @@ describe("finicards v2 message UI", () => {
       expect(message.files).toHaveLength(1);
       expect(message.files[0].name).toBe(BATTLE_BOARD_FILE);
       const gallery = json.components.find((c: any) => c.type === GALLERY);
-      expect(gallery.items[0].media.url).toBe(`attachment://${BATTLE_BOARD_FILE}`);
+      expect(gallery.items[0].media.url).toBe(
+        `attachment://${BATTLE_BOARD_FILE}`,
+      );
     });
 
     it("leaves the per-round text to the board and the breakdown", () => {
@@ -257,8 +317,14 @@ describe("finicards v2 message UI", () => {
 
     it("calls out a damage-decided match explicitly", async () => {
       const level = resolveMatch({
-        challengerLineup: [card("A", "power", 7, 5, 3), card("B", "wit", 3, 7, 5)],
-        defenderLineup: [card("C", "wit", 5, 7, 3), card("D", "power", 7, 5, 3)],
+        challengerLineup: [
+          card("A", "power", 7, 5, 3),
+          card("B", "wit", 3, 7, 5),
+        ],
+        defenderLineup: [
+          card("C", "wit", 5, 7, 3),
+          card("D", "power", 7, 5, 3),
+        ],
       });
       const built = await buildResultMessage({
         result: level,
@@ -283,7 +349,8 @@ describe("finicards v2 message UI", () => {
         names: { challenger: "Fen", defender: "Rho" },
         userIds: { challenger: "1", defender: "2" },
       });
-      const headline = (built.components[0].toJSON() as any).components[0].content;
+      const headline = (built.components[0].toJSON() as any).components[0]
+        .content;
       expect(headline).toContain("Draw");
       expect(headline).not.toContain("wins");
     });
@@ -348,8 +415,12 @@ describe("finicards v2 message UI", () => {
       });
       const report = keywordReport(result, names).join("\n");
 
-      expect(report).toContain("`R2` **Anchor** — Last Stand +3 · Heart 6 → **9**");
-      expect(report).toContain("Didn't trigger: Avenge (Scout) · Momentum (Pup)");
+      expect(report).toContain(
+        "`R2` **Anchor** — Last Stand +3 · Heart 6 → **9**",
+      );
+      expect(report).toContain(
+        "Didn't trigger: Avenge (Scout) · Momentum (Pup)",
+      );
     });
 
     it("reports a tiebreak keyword and names the side in a round note", () => {
@@ -358,12 +429,17 @@ describe("finicards v2 message UI", () => {
           card("Herald", "wit", 3, 9, 3, { keyword: "rally" }),
           card("Nova", "wit", 4, 16, 1, { keyword: "overwhelm" }),
         ],
-        defenderLineup: [card("A", "heart", 3, 3, 9), card("B", "power", 5, 5, 5)],
+        defenderLineup: [
+          card("A", "heart", 3, 3, 9),
+          card("B", "power", 5, 5, 5),
+        ],
         rules,
       });
       const report = keywordReport(result, names).join("\n");
 
-      expect(report).toContain("`R1` **Herald** — Rally: next Fen card gets +2");
+      expect(report).toContain(
+        "`R1` **Herald** — Rally: next Fen card gets +2",
+      );
       expect(report).toContain("`R2` **Nova** — Rally +2 · Wit 16 → **18**");
       expect(report).toContain("Overwhelm: 13 damage counts as **16**");
       expect(report).not.toContain("Didn't trigger");

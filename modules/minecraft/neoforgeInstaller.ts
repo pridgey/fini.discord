@@ -27,7 +27,10 @@ export const getNeoForgeVersion = async (): Promise<string | null> => {
 
     return script.match(/^NEOFORGE_VERSION=(\S+)/m)?.[1] ?? null;
   } catch (error) {
-    console.error("Failed to read NeoForge version from startserver.sh:", error);
+    console.error(
+      "Failed to read NeoForge version from startserver.sh:",
+      error,
+    );
     return null;
   }
 };

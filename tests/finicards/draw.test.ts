@@ -99,7 +99,8 @@ describe("finicards v2 dealing", () => {
       const source = deck(8);
       const seen = new Set<string>();
       for (let attempt = 0; attempt < 500; attempt++) {
-        for (const dealt of dealHand(source, 5, random)) seen.add(dealt.instanceId);
+        for (const dealt of dealHand(source, 5, random))
+          seen.add(dealt.instanceId);
       }
       expect(seen.size).toBe(8);
     });

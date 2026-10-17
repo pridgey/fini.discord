@@ -26,7 +26,9 @@ export const makeCardPoster =
     await (channel as TextChannel).send({
       ...message,
       components: [
-        new TextDisplayBuilder().setContent(`🎴 <@${discordId}> is showing a card from the Finicards site`),
+        new TextDisplayBuilder().setContent(
+          `🎴 <@${discordId}> is showing a card from the Finicards site`,
+        ),
         ...message.components,
       ],
       allowedMentions: { parse: [] },

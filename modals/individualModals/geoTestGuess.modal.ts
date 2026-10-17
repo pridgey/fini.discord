@@ -14,8 +14,12 @@ export const namespace = GEO_MODAL;
  * A typed `/geo-test` guess. A first guess gets a message of its own, below the
  * photos; "Try again" replaces the guess on screen.
  */
-export async function execute(interaction: ModalSubmitInteraction, args: string[]) {
-  if (!(await requireAdmin(interaction, "use the location game prototype"))) return;
+export async function execute(
+  interaction: ModalSubmitInteraction,
+  args: string[],
+) {
+  if (!(await requireAdmin(interaction, "use the location game prototype")))
+    return;
   const [mode] = args;
   const replacing = mode === "edit" && interaction.isFromMessage();
 
@@ -23,18 +27,25 @@ export async function execute(interaction: ModalSubmitInteraction, args: string[
   else await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
   const say = (content: string) =>
-    interaction.editReply({ content, files: [], attachments: [], components: [] });
+    interaction.editReply({
+      content,
+      files: [],
+      attachments: [],
+      components: [],
+    });
 
   if (!roundFor(interaction.user.id)) {
     await say("That test round is over. Start another with `/geo-test new`.");
     return;
   }
 
-  const guess = await geocodeGuess(interaction.fields.getTextInputValue("place")).catch(
-    () => undefined,
-  );
+  const guess = await geocodeGuess(
+    interaction.fields.getTextInputValue("place"),
+  ).catch(() => undefined);
   if (guess === undefined) {
-    await say("The place search didn't answer. Try again in a moment with `/geo-test guess`.");
+    await say(
+      "The place search didn't answer. Try again in a moment with `/geo-test guess`.",
+    );
     return;
   }
   if (!guess) {
@@ -45,5 +56,8 @@ export async function execute(interaction: ModalSubmitInteraction, args: string[
   }
 
   holdGuess(interaction.user.id, guess);
-  await interaction.editReply({ ...(await guessMessage(guess)), attachments: [] });
+  await interaction.editReply({
+    ...(await guessMessage(guess)),
+    attachments: [],
+  });
 }

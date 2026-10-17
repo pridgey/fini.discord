@@ -52,7 +52,10 @@ describe("finicards set numbers", () => {
   });
 
   it("keeps two cards of one name and rarity in a fixed order", () => {
-    const cards = [def("b", "The Doctor", "uncommon", 2), def("a", "The Doctor", "uncommon", 2)];
+    const cards = [
+      def("b", "The Doctor", "uncommon", 2),
+      def("a", "The Doctor", "uncommon", 2),
+    ];
     expect(numberSets(cards).get("a")?.number).toBe(1);
     expect(numberSets([...cards].reverse()).get("a")?.number).toBe(1);
   });

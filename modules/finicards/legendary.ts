@@ -47,11 +47,14 @@ export const LEGENDARY_ODDS: Record<LegendaryTier, number> = {
 };
 
 /** The tier of an effect, or null for a slug that is not one. */
-export const legendaryTier = (effect: string | undefined | null): LegendaryTier | null =>
-  (effect && LEGENDARY_EFFECTS[effect]) || null;
+export const legendaryTier = (
+  effect: string | undefined | null,
+): LegendaryTier | null => (effect && LEGENDARY_EFFECTS[effect]) || null;
 
 /** What a Legendary prints where a full-art prints `FA`: L1 to L4. */
-export const legendaryCode = (effect: string | undefined | null): string | null => {
+export const legendaryCode = (
+  effect: string | undefined | null,
+): string | null => {
   const tier = legendaryTier(effect);
   return tier ? `L${tier}` : null;
 };
@@ -74,15 +77,23 @@ export const rollLegendaryTier = (
 };
 
 /** An effect of `tier`, each as likely as the others in it. */
-export const rollLegendaryEffect = (tier: LegendaryTier, roll: number): string => {
+export const rollLegendaryEffect = (
+  tier: LegendaryTier,
+  roll: number,
+): string => {
   const effects = Object.keys(LEGENDARY_EFFECTS)
     .filter((effect) => LEGENDARY_EFFECTS[effect] === tier)
     .sort();
-  return effects[Math.min(Math.floor(roll * effects.length), effects.length - 1)];
+  return effects[
+    Math.min(Math.floor(roll * effects.length), effects.length - 1)
+  ];
 };
 
 /** A tier chosen at the tiers' usual proportions, for a pull that is certain. */
 export const rollGuaranteedTier = (roll: number): LegendaryTier => {
-  const total = LEGENDARY_TIERS.reduce((sum, tier) => sum + LEGENDARY_ODDS[tier], 0);
+  const total = LEGENDARY_TIERS.reduce(
+    (sum, tier) => sum + LEGENDARY_ODDS[tier],
+    0,
+  );
   return rollLegendaryTier(roll * total) ?? 1;
 };

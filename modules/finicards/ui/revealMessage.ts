@@ -116,7 +116,9 @@ export const buildRevealMessage = async (
 
   const files: AttachmentBuilder[] = [];
   if (challengerStrip) {
-    files.push(new AttachmentBuilder(challengerStrip, { name: challengerFile }));
+    files.push(
+      new AttachmentBuilder(challengerStrip, { name: challengerFile }),
+    );
   }
   if (defenderStrip) {
     files.push(new AttachmentBuilder(defenderStrip, { name: defenderFile }));
@@ -139,7 +141,9 @@ export const buildRevealMessage = async (
           : [
               "## ⚔️ Hands are dealt",
               `<@${input.challenger.userId}> vs <@${input.defender.userId}>${
-                input.wager > 0 ? ` · **${input.wager} fc** each` : " · friendly"
+                input.wager > 0
+                  ? ` · **${input.wager} fc** each`
+                  : " · friendly"
               }`,
             ].join("\n"),
       ),

@@ -1,6 +1,11 @@
 import { watchRequests } from "./realtime";
 import { signIn, webSyncEnabled } from "./remote";
-import { answerRequest, pendingRequests, resolveRequest, type CardPoster } from "./requests";
+import {
+  answerRequest,
+  pendingRequests,
+  resolveRequest,
+  type CardPoster,
+} from "./requests";
 import { forgetMailbox, summaryLine, syncOnce } from "./sync";
 
 /**
@@ -60,7 +65,8 @@ export const startWebSync = (
   let quietUntil = 0;
   const holdOff = () => {
     failures += 1;
-    quietUntil = Date.now() + Math.min(30_000 * 2 ** (failures - 1), 10 * 60_000);
+    quietUntil =
+      Date.now() + Math.min(30_000 * 2 ** (failures - 1), 10 * 60_000);
   };
 
   const pass = () =>
@@ -84,7 +90,11 @@ export const startWebSync = (
         failures = 0;
       } catch (error) {
         // Say so once, not every fifteen seconds while the mailbox is down.
-        if (!failing) console.error("Web sync: pass failed:", (error as Error)?.message ?? error);
+        if (!failing)
+          console.error(
+            "Web sync: pass failed:",
+            (error as Error)?.message ?? error,
+          );
         failing = true;
         forgetMailbox();
         holdOff();
@@ -111,11 +121,14 @@ export const startWebSync = (
             });
             continue;
           }
-          const outcome = await resolveRequest(request, Date.now(), { showCard }).catch((error) => {
+          const outcome = await resolveRequest(request, Date.now(), {
+            showCard,
+          }).catch((error) => {
             console.error("Web sync: request failed:", error);
             return {
               status: "rejected" as const,
-              message: "Something went wrong on Fini's side. Nothing was changed.",
+              message:
+                "Something went wrong on Fini's side. Nothing was changed.",
             };
           });
           // The deck is in the mailbox before the site is told it was saved.
@@ -127,7 +140,11 @@ export const startWebSync = (
         }
       });
     } catch (error) {
-      if (!failing) console.error("Web sync: could not read requests:", (error as Error)?.message ?? error);
+      if (!failing)
+        console.error(
+          "Web sync: could not read requests:",
+          (error as Error)?.message ?? error,
+        );
       failing = true;
       holdOff();
     } finally {
@@ -142,7 +159,10 @@ export const startWebSync = (
   const timers = [
     setInterval(() => void pass(), SYNC_EVERY_MS),
     setInterval(() => void drain(), REQUESTS_EVERY_MS),
-    setInterval(() => void inTurn(async () => forgetMailbox()), REREAD_EVERY_MS),
+    setInterval(
+      () => void inTurn(async () => forgetMailbox()),
+      REREAD_EVERY_MS,
+    ),
   ];
 
   return {

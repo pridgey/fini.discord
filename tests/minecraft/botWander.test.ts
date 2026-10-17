@@ -18,7 +18,9 @@ const at = (x: number, y: number, z: number): Vec3 => ({ x, y, z });
  * A stalled bot resets its course rather than stopping - stopping leaves it
  * stranded forever, since only gravity could ever move it again.
  */
-const expectWedgeTurn = (action: { kind: string } & Record<string, unknown>) => {
+const expectWedgeTurn = (
+  action: { kind: string } & Record<string, unknown>,
+) => {
   expect(action.kind).toBe("turn");
   expect(action.reason).toBe("wedged");
 };
@@ -56,7 +58,10 @@ describe("headingTowards", () => {
   });
 
   it("points north for -Z", () => {
-    expect(Math.abs(headingTowards(ORIGIN, at(0, 80, -10)))).toBeCloseTo(180, 5);
+    expect(Math.abs(headingTowards(ORIGIN, at(0, 80, -10)))).toBeCloseTo(
+      180,
+      5,
+    );
   });
 
   it("points west for +X", () => {
@@ -80,7 +85,11 @@ describe("decideWander", () => {
   });
 
   it("keeps walking while making progress", () => {
-    const { action, state } = step(at(0, 80, 8), at(0, 80, 0), initialWanderState());
+    const { action, state } = step(
+      at(0, 80, 8),
+      at(0, 80, 0),
+      initialWanderState(),
+    );
     expect(action.kind).toBe("walk");
     expect(state.noProgressSamples).toBe(0);
   });
@@ -91,7 +100,11 @@ describe("decideWander", () => {
    * carried on for another 22 blocks. So a jump is always the first response.
    */
   it("jumps the first time it stops making progress", () => {
-    const { action, state } = step(at(0, 80, 0), at(0, 80, 0), initialWanderState());
+    const { action, state } = step(
+      at(0, 80, 0),
+      at(0, 80, 0),
+      initialWanderState(),
+    );
     expect(action.kind).toBe("jump");
     expect(state.noProgressSamples).toBe(1);
   });
@@ -240,8 +253,9 @@ describe("decideWander", () => {
         heading: 0,
         noProgressSamples: DEFAULT_WANDER_CONFIG.wedgedWindow + 5,
         samplesOnHeading: 0,
-        recent: Array.from({ length: DEFAULT_WANDER_CONFIG.wedgedWindow }, () =>
-          outside,
+        recent: Array.from(
+          { length: DEFAULT_WANDER_CONFIG.wedgedWindow },
+          () => outside,
         ),
         wedgeResets: 0,
       };

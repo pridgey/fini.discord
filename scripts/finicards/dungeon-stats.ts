@@ -21,13 +21,19 @@ const flag = (name: string): string | undefined => {
 };
 
 const server = flag("server");
-const runs = await pb.collection<V2DungeonRunRecord>(V2_DUNGEON_RUN).getFullList({
-  ...(server ? { filter: `server_id = "${server.replace(/["\\]/g, "")}"` } : {}),
-  sort: "created",
-});
+const runs = await pb
+  .collection<V2DungeonRunRecord>(V2_DUNGEON_RUN)
+  .getFullList({
+    ...(server
+      ? { filter: `server_id = "${server.replace(/["\\]/g, "")}"` }
+      : {}),
+    sort: "created",
+  });
 
 const wanted = flag("year");
-const years = summariseYears(runs).filter((year) => !wanted || year.year === Number(wanted));
+const years = summariseYears(runs).filter(
+  (year) => !wanted || year.year === Number(wanted),
+);
 
 if (args.includes("--json")) {
   console.log(JSON.stringify(years, null, 2));
@@ -44,11 +50,15 @@ for (const year of years) {
   console.log(`\n=== ${year.year}${server ? ` · server ${server}` : ""} ===`);
   console.log(`Runs            ${year.runs}  (${endings})`);
   console.log(`Players         ${year.players.length}`);
-  console.log(`Deepest         room ${year.deepest?.depth ?? 0}${year.deepest ? `, by ${year.deepest.name}` : ""}`);
+  console.log(
+    `Deepest         room ${year.deepest?.depth ?? 0}${year.deepest ? `, by ${year.deepest.name}` : ""}`,
+  );
   console.log(`Average depth   ${year.averageDepth.toFixed(1)} rooms`);
   console.log(`Fights won      ${year.fightsWon}  (bosses: ${year.bossesWon})`);
   console.log(`Geld earned     ${year.geldEarned}`);
-  console.log(`Finicoin        ${year.feesPaid} in entry fees, ${year.coinPaid} paid out, ${year.feesPaid - year.coinPaid} kept by the Reserve`);
+  console.log(
+    `Finicoin        ${year.feesPaid} in entry fees, ${year.coinPaid} paid out, ${year.feesPaid - year.coinPaid} kept by the Reserve`,
+  );
   console.log(`Cards won       ${year.cardsWon}`);
 
   console.log("\nPlayers, by deepest run");
@@ -58,10 +68,13 @@ for (const year of years) {
     );
   }
 
-  const cards = Object.entries(year.cardWins).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  const cards = Object.entries(year.cardWins)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
   if (cards.length > 0) {
     console.log("\nCards, by fights won");
-    for (const [card, wins] of cards) console.log(`  ${card.padEnd(30)} ${wins}`);
+    for (const [card, wins] of cards)
+      console.log(`  ${card.padEnd(30)} ${wins}`);
   }
 }
 process.exit(0);

@@ -32,8 +32,7 @@ export const execute = async (
   logCommand: () => void,
 ) => {
   const selectedModel = interaction.options.get("model")?.value?.toString() as
-    | ChatModel
-    | undefined;
+    ChatModel | undefined;
 
   const userID = interaction.user.id;
   const serverID = interaction.guildId ?? "unknown";

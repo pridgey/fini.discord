@@ -5,7 +5,7 @@ import { pb } from "../pocketbase";
  * Utility function to get configuration for a specific server
  */
 export const getConfigForServer = async (
-  serverId: string
+  serverId: string,
 ): Promise<ConfigRecord | null> => {
   const configRecord = await pb
     .collection<ConfigRecord>("config")
@@ -19,7 +19,7 @@ export const getConfigForServer = async (
  * Utility function to get the bot channel ID for a specific server
  */
 export const getBotChannelForServer = async (
-  serverId: string
+  serverId: string,
 ): Promise<string | null> => {
   const configRecord = await getConfigForServer(serverId);
 
@@ -32,7 +32,8 @@ export const getBotChannelForServer = async (
  */
 export const getFinicardsChannelForServer = async (
   serverId: string,
-): Promise<string | null> => finicardsChannelOf(await getConfigForServer(serverId));
+): Promise<string | null> =>
+  finicardsChannelOf(await getConfigForServer(serverId));
 
 export const finicardsChannelOf = (
   config: Pick<ConfigRecord, "bot_channel" | "finicards_channel"> | null,
@@ -50,7 +51,9 @@ export const saveConfigForServer = async (
   const configRecord = await getConfigForServer(serverId);
 
   if (configRecord?.id) {
-    await pb.collection<ConfigRecord>("config").update(configRecord.id, updates);
+    await pb
+      .collection<ConfigRecord>("config")
+      .update(configRecord.id, updates);
     return;
   }
 

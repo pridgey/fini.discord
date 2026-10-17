@@ -1,4 +1,7 @@
-import { SlashCommandBuilder, SlashCommandStringOption } from "@discordjs/builders";
+import {
+  SlashCommandBuilder,
+  SlashCommandStringOption,
+} from "@discordjs/builders";
 import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import {
   SORT_LABEL as COLLECTION_SORT_LABEL,
@@ -6,9 +9,17 @@ import {
   type CollectionSort,
   type CollectionTier,
 } from "../modules/finicards/collectionFilters";
-import { HAND_SIZE, MAX_HAND_SIZE, MIN_HAND_SIZE } from "../modules/finicards/draw";
+import {
+  HAND_SIZE,
+  MAX_HAND_SIZE,
+  MIN_HAND_SIZE,
+} from "../modules/finicards/draw";
 import { DUNGEON } from "../modules/finicards/dungeon";
-import { BOOSTER_SETS, PACK_COST, SET_PACK_COST } from "../modules/finicards/packs";
+import {
+  BOOSTER_SETS,
+  PACK_COST,
+  SET_PACK_COST,
+} from "../modules/finicards/packs";
 import { runSell } from "../modules/finicards/sellFlow";
 import { runTrade } from "../modules/finicards/tradeFlow";
 import { buildAbilitiesMessage } from "../modules/finicards/ui/abilitiesMessage";
@@ -20,7 +31,6 @@ import { grantCards } from "./finicard/grant";
 import { openPackFor } from "./finicard/pack";
 import { handleDeckSubcommand } from "./finicard/deck";
 
-
 /**
  * Finicards: the card game.
  *
@@ -30,7 +40,6 @@ import { handleDeckSubcommand } from "./finicard/deck";
  * `/sell-card` and `/fuse-cards` were retired when it launched,
  * and later deleted.
  */
-
 
 /** The `view` choice shared by every command that shows cards as pages. */
 const withViewOption = (option: SlashCommandStringOption) =>
@@ -45,21 +54,31 @@ const withViewOption = (option: SlashCommandStringOption) =>
 
 export const data = new SlashCommandBuilder()
   .setName("finicard")
-  .setDescription("Finicards - packs, your collection, decks, battles and dungeons")
+  .setDescription(
+    "Finicards - packs, your collection, decks, battles and dungeons",
+  )
   .addSubcommand((sub) =>
     sub
       .setName("pack")
-      .setDescription(`Open a booster pack: five cards for ${PACK_COST} fc, or ${SET_PACK_COST} fc from one set. Free packs open first.`)
+      .setDescription(
+        `Open a booster pack: five cards for ${PACK_COST} fc, or ${SET_PACK_COST} fc from one set. Free packs open first.`,
+      )
       .addIntegerOption((opt) =>
         opt
           .setName("set")
-          .setDescription(`Draw every card from one set (${SET_PACK_COST} fc). Leave blank for a mix of all sets.`)
-          .addChoices(...BOOSTER_SETS.map((set) => ({ name: `Set ${set}`, value: set }))),
+          .setDescription(
+            `Draw every card from one set (${SET_PACK_COST} fc). Leave blank for a mix of all sets.`,
+          )
+          .addChoices(
+            ...BOOSTER_SETS.map((set) => ({ name: `Set ${set}`, value: set })),
+          ),
       )
       .addStringOption((opt) =>
         opt
           .setName("test")
-          .setDescription("[Bot admin] Testing: force a special pull into this pack, free of charge")
+          .setDescription(
+            "[Bot admin] Testing: force a special pull into this pack, free of charge",
+          )
           .addChoices(
             { name: "Secret Art", value: "secret_art" },
             { name: "Legendary tier 1", value: "legendary_1" },
@@ -72,7 +91,9 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("collection")
-      .setDescription("Your cards - as a list with their ids, or as binder pages")
+      .setDescription(
+        "Your cards - as a list with their ids, or as binder pages",
+      )
       .addUserOption((option) =>
         option
           .setName("who")
@@ -83,12 +104,16 @@ export const data = new SlashCommandBuilder()
       .addStringOption((option) =>
         option
           .setName("sort")
-          .setDescription("What order to show the cards in (default: newest first)")
+          .setDescription(
+            "What order to show the cards in (default: newest first)",
+          )
           .addChoices(
-            ...(Object.keys(COLLECTION_SORT_LABEL) as CollectionSort[]).map((value) => ({
-              name: COLLECTION_SORT_LABEL[value],
-              value,
-            })),
+            ...(Object.keys(COLLECTION_SORT_LABEL) as CollectionSort[]).map(
+              (value) => ({
+                name: COLLECTION_SORT_LABEL[value],
+                value,
+              }),
+            ),
           )
           .setRequired(false),
       )
@@ -108,10 +133,12 @@ export const data = new SlashCommandBuilder()
           .setName("rarity")
           .setDescription("Only cards of this rarity")
           .addChoices(
-            ...(Object.keys(COLLECTION_TIER_LABEL) as CollectionTier[]).map((value) => ({
-              name: COLLECTION_TIER_LABEL[value],
-              value,
-            })),
+            ...(Object.keys(COLLECTION_TIER_LABEL) as CollectionTier[]).map(
+              (value) => ({
+                name: COLLECTION_TIER_LABEL[value],
+                value,
+              }),
+            ),
           )
           .setRequired(false),
       )
@@ -119,14 +146,19 @@ export const data = new SlashCommandBuilder()
         option
           .setName("set")
           .setDescription("Only cards from this set")
-          .addChoices(...BOOSTER_SETS.map((set) => ({ name: `Set ${set}`, value: set })))
+          .addChoices(
+            ...BOOSTER_SETS.map((set) => ({ name: `Set ${set}`, value: set })),
+          )
           .setRequired(false),
       )
       .addBooleanOption((option) =>
         option.setName("foil").setDescription("Only foils").setRequired(false),
       )
       .addBooleanOption((option) =>
-        option.setName("ability").setDescription("Only cards that rolled an ability").setRequired(false),
+        option
+          .setName("ability")
+          .setDescription("Only cards that rolled an ability")
+          .setRequired(false),
       )
       .addStringOption((option) =>
         option
@@ -228,12 +260,12 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("dungeon-tutorial")
-      .setDescription("Learn the dungeon with a borrowed hand - free, private, five rooms"),
+      .setDescription(
+        "Learn the dungeon with a borrowed hand - free, private, five rooms",
+      ),
   )
   .addSubcommand((sub) =>
-    sub
-      .setName("pending")
-      .setDescription("Battles waiting on your lineup"),
+    sub.setName("pending").setDescription("Battles waiting on your lineup"),
   )
   .addSubcommand((sub) =>
     sub.setName("record").setDescription("Your battle record"),
@@ -345,7 +377,9 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub
       .setName("sell")
-      .setDescription("Sell or trade one of your cards - to anyone, to a player, or to Fini")
+      .setDescription(
+        "Sell or trade one of your cards - to anyone, to a player, or to Fini",
+      )
       .addStringOption((option) =>
         option
           .setName("card")
@@ -355,47 +389,66 @@ export const data = new SlashCommandBuilder()
       .addIntegerOption((option) =>
         option
           .setName("price")
-          .setDescription("Asking price in Finicoin (ignored when selling to Fini)")
+          .setDescription(
+            "Asking price in Finicoin (ignored when selling to Fini)",
+          )
           .setMinValue(0)
           .setRequired(false),
       )
       .addUserOption((option) =>
         option
           .setName("who")
-          .setDescription("Who to sell to: a player, or Fini. Leave blank to offer it to anyone")
+          .setDescription(
+            "Who to sell to: a player, or Fini. Leave blank to offer it to anyone",
+          )
           .setRequired(false),
       ),
   )
   .addSubcommand((sub) =>
     sub
       .setName("trade")
-      .setDescription("Offer another player a trade: your cards and fc for theirs")
+      .setDescription(
+        "Offer another player a trade: your cards and fc for theirs",
+      )
       .addUserOption((option) =>
-        option.setName("with").setDescription("Who to trade with").setRequired(true),
+        option
+          .setName("with")
+          .setDescription("Who to trade with")
+          .setRequired(true),
       )
       .addStringOption((option) =>
         option
           .setName("give")
-          .setDescription("Your card ids, separated by spaces (from /finicard collection)")
+          .setDescription(
+            "Your card ids, separated by spaces (from /finicard collection)",
+          )
           .setRequired(false),
       )
       .addStringOption((option) =>
         option
           .setName("want")
-          .setDescription("Their card ids, separated by spaces (from /finicard collection)")
+          .setDescription(
+            "Their card ids, separated by spaces (from /finicard collection)",
+          )
           .setRequired(false),
       )
       .addIntegerOption((option) =>
-        option.setName("give_fc").setDescription("Finicoin you add to your side").setMinValue(0).setRequired(false),
+        option
+          .setName("give_fc")
+          .setDescription("Finicoin you add to your side")
+          .setMinValue(0)
+          .setRequired(false),
       )
       .addIntegerOption((option) =>
-        option.setName("want_fc").setDescription("Finicoin you ask them to add").setMinValue(0).setRequired(false),
+        option
+          .setName("want_fc")
+          .setDescription("Finicoin you ask them to add")
+          .setMinValue(0)
+          .setRequired(false),
       ),
   )
   .addSubcommand((sub) =>
-    sub
-      .setName("abilities")
-      .setDescription("Every ability and what it does"),
+    sub.setName("abilities").setDescription("Every ability and what it does"),
   )
   .addSubcommand((sub) =>
     sub

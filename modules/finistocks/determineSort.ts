@@ -1,9 +1,5 @@
 export type AnimeSortOptions =
-  | "title"
-  | "cheapest"
-  | "expensive"
-  | "latest"
-  | "oldest";
+  "title" | "cheapest" | "expensive" | "latest" | "oldest";
 
 /**
  * Utility function to determine the PocketBase sort option based on the provided sort string.

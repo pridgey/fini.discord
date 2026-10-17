@@ -68,12 +68,49 @@ const tutorialCard = (
 });
 
 export const TUTORIAL_HAND: BattleCard[] = [
-  tutorialCard("brick", "Brick Brickman", "power", [7, 4, 4], TUTORIAL_ART.brick),
-  tutorialCard("owlbert", "Professor Owlbert", "wit", [3, 8, 4], TUTORIAL_ART.owlbert),
-  tutorialCard("grandma", "Grandma Tsunami", "heart", [3, 4, 8], TUTORIAL_ART.grandma),
-  tutorialCard("crouton", "Captain Crouton", "power", [7, 3, 5], TUTORIAL_ART.crouton, "last_stand"),
-  tutorialCard("accountant", "The Accountant", "wit", [4, 7, 4], TUTORIAL_ART.accountant),
-  tutorialCard("gerald", "Gerald the Golden Retriever", "heart", [5, 2, 8], TUTORIAL_ART.gerald),
+  tutorialCard(
+    "brick",
+    "Brick Brickman",
+    "power",
+    [7, 4, 4],
+    TUTORIAL_ART.brick,
+  ),
+  tutorialCard(
+    "owlbert",
+    "Professor Owlbert",
+    "wit",
+    [3, 8, 4],
+    TUTORIAL_ART.owlbert,
+  ),
+  tutorialCard(
+    "grandma",
+    "Grandma Tsunami",
+    "heart",
+    [3, 4, 8],
+    TUTORIAL_ART.grandma,
+  ),
+  tutorialCard(
+    "crouton",
+    "Captain Crouton",
+    "power",
+    [7, 3, 5],
+    TUTORIAL_ART.crouton,
+    "last_stand",
+  ),
+  tutorialCard(
+    "accountant",
+    "The Accountant",
+    "wit",
+    [4, 7, 4],
+    TUTORIAL_ART.accountant,
+  ),
+  tutorialCard(
+    "gerald",
+    "Gerald the Golden Retriever",
+    "heart",
+    [5, 2, 8],
+    TUTORIAL_ART.gerald,
+  ),
 ];
 
 const CROUTON = "tutorial-crouton";
@@ -85,7 +122,13 @@ const fight = (
 ): FightRoom => ({ kind: "fight", tier, geld, enemy });
 
 const SQUIRREL = fight(
-  tutorialCard("squirrel", "The Sneaky Squirrel", "wit", [2, 6, 3], TUTORIAL_ART.squirrel),
+  tutorialCard(
+    "squirrel",
+    "The Sneaky Squirrel",
+    "wit",
+    [2, 6, 3],
+    TUTORIAL_ART.squirrel,
+  ),
   12,
 );
 
@@ -96,8 +139,10 @@ const GOOSE: EventRoom = {
   stat: "heart",
   target: 9,
   reward: { kind: "geld", amount: 10 },
-  passText: "You plead your case with real feeling. The goose weeps, rules in your favour and fines itself.",
-  failText: "The goose finds you guilty of Bread Crimes and honks you out of the courtroom.",
+  passText:
+    "You plead your case with real feeling. The goose weeps, rules in your favour and fines itself.",
+  failText:
+    "The goose finds you guilty of Bread Crimes and honks you out of the courtroom.",
 };
 
 const SHOP: ShopRoom = {
@@ -110,7 +155,12 @@ const SHOP: ShopRoom = {
       sold: false,
       effect: {
         kind: "buff",
-        buff: { name: "Whetstone", note: "+1 Power", mods: { power: 1 }, rooms: null },
+        buff: {
+          name: "Whetstone",
+          note: "+1 Power",
+          mods: { power: 1 },
+          rooms: null,
+        },
       },
     },
     {
@@ -120,7 +170,12 @@ const SHOP: ShopRoom = {
       sold: false,
       effect: {
         kind: "buff",
-        buff: { name: "Lucky Coin", note: "+1 event rolls", mods: { roll: 1 }, rooms: null },
+        buff: {
+          name: "Lucky Coin",
+          note: "+1 event rolls",
+          mods: { roll: 1 },
+          rooms: null,
+        },
       },
     },
     {
@@ -145,15 +200,28 @@ const RACCOONS = fight(
 );
 
 const PAPERWORK = fight(
-  tutorialCard("paperwork", "Lord Paperwork, Keeper of Forms", "wit", [3, 9, 4], TUTORIAL_ART.paperwork),
+  tutorialCard(
+    "paperwork",
+    "Lord Paperwork, Keeper of Forms",
+    "wit",
+    [3, 9, 4],
+    TUTORIAL_ART.paperwork,
+  ),
   30,
   "boss",
 );
 
 /* Rooms behind the doors the tutorial does not let you take. Only their door's
    hint is ever seen, so they need a type and nothing else. */
-const elsewhere = (type: CardType, tier: FightRoom["tier"] = "normal"): FightRoom =>
-  fight(tutorialCard(`elsewhere-${type}`, "Somebody Else", type, [5, 5, 5], ""), 0, tier);
+const elsewhere = (
+  type: CardType,
+  tier: FightRoom["tier"] = "normal",
+): FightRoom =>
+  fight(
+    tutorialCard(`elsewhere-${type}`, "Somebody Else", type, [5, 5, 5], ""),
+    0,
+    tier,
+  );
 
 /* ------------------------------------------------------------- the script -- */
 
@@ -211,7 +279,10 @@ const ready = (state: DungeonState) =>
   );
 
 /** The moves the coach is waiting for right now, as button actions. */
-export const allowedMoves = (state: DungeonState, stage: TutorialStage): Set<string> => {
+export const allowedMoves = (
+  state: DungeonState,
+  stage: TutorialStage,
+): Set<string> => {
   const cards = (keep: (card: BattleCard) => boolean) =>
     ready(state)
       .filter(({ card }) => keep(card))
@@ -267,7 +338,12 @@ const apply = (state: DungeonState, action: string): DungeonState | null => {
 const start = (): DungeonState => {
   const state = createRun(SOURCE)!;
   // Every run starts with a ward, and the tutorial's has a job to do.
-  return { ...state, room: SQUIRREL, path: [{ room: tagOf(SQUIRREL) }], wards: DUNGEON.startingWards };
+  return {
+    ...state,
+    room: SQUIRREL,
+    path: [{ room: tagOf(SQUIRREL) }],
+    wards: DUNGEON.startingWards,
+  };
 };
 
 export type TutorialView = {
@@ -334,7 +410,9 @@ export const decodeMoves = (raw: string): string[] =>
 const lastResult = (state: DungeonState) => state.path.at(-1)?.result;
 const GELD_PER_FC = Math.round(1 / DUNGEON.coinPerGeld);
 const keptShare =
-  DUNGEON.fallenKeep === 0.5 ? "half" : `${Math.round(DUNGEON.fallenKeep * 100)}%`;
+  DUNGEON.fallenKeep === 0.5
+    ? "half"
+    : `${Math.round(DUNGEON.fallenKeep * 100)}%`;
 
 /** The coach's note for where the tutorial stands. Markdown, for Discord. */
 const coachFor = (stage: TutorialStage, state: DungeonState): string => {

@@ -9,7 +9,13 @@ import {
 import { addCoin, getUserBalance } from "../finicoin";
 import { renderCardMedia } from "./cardArt";
 import { toBattleCard } from "./cardStore";
-import { buybackPrice, findSellable, handOver, sellToFini, stillOwns } from "./market";
+import {
+  buybackPrice,
+  findSellable,
+  handOver,
+  sellToFini,
+  stillOwns,
+} from "./market";
 import { rarityLabel } from "./ui/theme";
 
 /**
@@ -39,7 +45,9 @@ export const runSell = async (
   const toFini = !!buyer && buyer.id === interaction.client.user.id;
 
   if (buyer && !toFini && (buyer.bot || buyer.id === seller.id)) {
-    await interaction.editReply("Pick another player to sell to, or leave `who` blank to offer it to anyone.");
+    await interaction.editReply(
+      "Pick another player to sell to, or leave `who` blank to offer it to anyone.",
+    );
     return;
   }
 
@@ -57,10 +65,19 @@ export const runSell = async (
   const media = await renderCardMedia(card);
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("v2sell-cancel").setLabel("Cancel").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder()
+      .setCustomId("v2sell-cancel")
+      .setLabel("Cancel")
+      .setStyle(ButtonStyle.Secondary),
     new ButtonBuilder()
       .setCustomId("v2sell-buy")
-      .setLabel(toFini ? "Confirm" : buyer ? `(${buyer.username}) I accept` : "(Anyone) Purchase")
+      .setLabel(
+        toFini
+          ? "Confirm"
+          : buyer
+            ? `(${buyer.username}) I accept`
+            : "(Anyone) Purchase",
+      )
       .setStyle(toFini ? ButtonStyle.Danger : ButtonStyle.Primary),
   );
 
@@ -71,11 +88,16 @@ export const runSell = async (
         ? `${seller} is offering their ${title} to ${buyer} for ${price} fc. ${buyer}, do you accept?`
         : `${seller} is selling their ${title} for ${price} fc. Anyone can buy it.`,
     components: [row],
-    files: media ? [new AttachmentBuilder(media.buffer, { name: media.name })] : [],
+    files: media
+      ? [new AttachmentBuilder(media.buffer, { name: media.name })]
+      : [],
   });
 
   let closed = false;
-  const close = async (update: (content: string) => Promise<unknown>, content: string) => {
+  const close = async (
+    update: (content: string) => Promise<unknown>,
+    content: string,
+  ) => {
     closed = true;
     await update(content);
     collector.stop();
@@ -89,38 +111,65 @@ export const runSell = async (
   collector.on("end", async () => {
     if (closed) return;
     await interaction
-      .editReply({ content: `Nobody took ${seller}'s ${title} for ${price} fc.`, components: [] })
+      .editReply({
+        content: `Nobody took ${seller}'s ${title} for ${price} fc.`,
+        components: [],
+      })
       .catch(() => undefined);
   });
 
   collector.on("collect", async (press) => {
     try {
-      const done = (content: string) => press.update({ content, components: [] });
+      const done = (content: string) =>
+        press.update({ content, components: [] });
       const isSeller = press.user.id === seller.id;
-      const mayBuy = toFini ? isSeller : buyer ? press.user.id === buyer.id : !isSeller;
-      const mayCancel = isSeller || (!!buyer && !toFini && press.user.id === buyer.id);
+      const mayBuy = toFini
+        ? isSeller
+        : buyer
+          ? press.user.id === buyer.id
+          : !isSeller;
+      const mayCancel =
+        isSeller || (!!buyer && !toFini && press.user.id === buyer.id);
 
       if (press.customId === "v2sell-cancel") {
         if (!mayCancel) return void (await press.deferUpdate());
-        return void (await close(done, `${press.user} cancelled the sale of ${title}.`));
+        return void (await close(
+          done,
+          `${press.user} cancelled the sale of ${title}.`,
+        ));
       }
 
       if (!mayBuy) {
         return void (await press.reply({
-          content: isSeller ? "You can't buy your own card." : "This offer isn't for you.",
+          content: isSeller
+            ? "You can't buy your own card."
+            : "This offer isn't for you.",
           ephemeral: true,
         }));
       }
 
       // It may have been sold, traded or lost since the listing went up.
       if (!(await stillOwns(seller.id, copy.id ?? ""))) {
-        return void (await close(done, `${seller} no longer has that ${title}, so the sale is off.`));
+        return void (await close(
+          done,
+          `${seller} no longer has that ${title}, so the sale is off.`,
+        ));
       }
 
       if (toFini) {
         await sellToFini(copy);
-        await addCoin(seller.id, serverId, price, seller.username, serverName, "Reserve");
-        return void (await close(done, `${seller} sold their ${title} to Fini for ${price} fc.`));
+        await addCoin(
+          seller.id,
+          serverId,
+          price,
+          seller.username,
+          serverName,
+          "Reserve",
+        );
+        return void (await close(
+          done,
+          `${seller} sold their ${title} to Fini for ${price} fc.`,
+        ));
       }
 
       const balance = (await getUserBalance(press.user.id, serverId)) || 0;
@@ -135,14 +184,30 @@ export const runSell = async (
       if (closed) return void (await press.deferUpdate());
       closed = true;
       if (price > 0) {
-        await addCoin(seller.id, serverId, price, seller.username, serverName, press.user.id);
+        await addCoin(
+          seller.id,
+          serverId,
+          price,
+          seller.username,
+          serverName,
+          press.user.id,
+        );
       }
-      await handOver(copy, press.user.id, `${press.user.username}-${serverName}`);
+      await handOver(
+        copy,
+        press.user.id,
+        `${press.user.username}-${serverName}`,
+      );
       await done(`${press.user} bought ${seller}'s ${title} for ${price} fc.`);
       collector.stop();
     } catch (error) {
       console.error("Error during a v2 card sale", error);
-      await press.reply({ content: "Something went wrong with that sale.", ephemeral: true }).catch(() => undefined);
+      await press
+        .reply({
+          content: "Something went wrong with that sale.",
+          ephemeral: true,
+        })
+        .catch(() => undefined);
     }
   });
 };

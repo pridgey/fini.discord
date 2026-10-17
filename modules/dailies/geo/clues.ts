@@ -60,7 +60,9 @@ const GROUP_CAPS: [prefix: string, cap: number][] = [
 ];
 /** The furniture groups share one cap between them, as well as their own. */
 const FURNITURE_CAP = 2;
-const FURNITURE = GROUP_CAPS.filter(([prefix]) => prefix.startsWith("object--")).map(([prefix]) => prefix);
+const FURNITURE = GROUP_CAPS.filter(([prefix]) =>
+  prefix.startsWith("object--"),
+).map(([prefix]) => prefix);
 
 const weightOf = (value: string): number =>
   CLUE_WEIGHTS.find(([prefix]) => value.startsWith(prefix))?.[1] ?? 0;

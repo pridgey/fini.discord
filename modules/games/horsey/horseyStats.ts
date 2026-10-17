@@ -34,13 +34,12 @@ export const recordRaceResult = async (
       const won = winningHorseIds.includes(horse) ? 1 : 0;
 
       if (record?.id) {
-        await pb.collection<HorseyStatsRecord>("horsey_stats").update(
-          record.id,
-          {
+        await pb
+          .collection<HorseyStatsRecord>("horsey_stats")
+          .update(record.id, {
             wins: (record.wins ?? 0) + won,
             races: (record.races ?? 0) + 1,
-          },
-        );
+          });
       } else {
         await pb.collection<HorseyStatsRecord>("horsey_stats").create({
           server_id: serverId,

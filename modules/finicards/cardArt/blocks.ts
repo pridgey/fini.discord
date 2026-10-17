@@ -71,17 +71,25 @@ export const tagsBlock = (spec: TagsSpec, tags: string[]): string => {
   const [first, second] = tags;
   if (!first) return "";
 
-  const upper = (value: string) => escapeXml(value.toUpperCase().replace(/_/g, " "));
+  const upper = (value: string) =>
+    escapeXml(value.toUpperCase().replace(/_/g, " "));
 
   if (spec.style === "inline") {
-    const opacity = spec.opacity !== undefined ? ` opacity="${spec.opacity}"` : "";
-    const type = { fontSize: spec.size, letterSpacing: spec.letterSpacing, bold: true };
-    const widthOf = (text: string) => estimateWidth(text, spec.size, spec.letterSpacing, true);
+    const opacity =
+      spec.opacity !== undefined ? ` opacity="${spec.opacity}"` : "";
+    const type = {
+      fontSize: spec.size,
+      letterSpacing: spec.letterSpacing,
+      bold: true,
+    };
+    const widthOf = (text: string) =>
+      estimateWidth(text, spec.size, spec.letterSpacing, true);
 
     // The line is shared, not halved: a lone tag has all of it, and a short
     // tag leaves what it does not use to the other.
     const labels = [first, second].filter(Boolean).map(upper);
-    const room = spec.maxWidth - (labels.length > 1 ? widthOf(spec.separator) : 0);
+    const room =
+      spec.maxWidth - (labels.length > 1 ? widthOf(spec.separator) : 0);
     const half = room / labels.length;
     const fitted = labels.map((label, index) => {
       const other = labels[1 - index];
@@ -149,7 +157,8 @@ export const abilityBlock = (
   spec: AbilitySpec,
   content: AbilityContent,
 ): string => {
-  const opacity = spec.opacity !== undefined ? ` opacity="${spec.opacity}"` : "";
+  const opacity =
+    spec.opacity !== undefined ? ` opacity="${spec.opacity}"` : "";
   const fontOptions = { fontSize: spec.size };
 
   if (!content.keyword) {
@@ -213,10 +222,7 @@ export const flavourBlock = (
  * happens to be, so a Power card and a Heart card have different geometry. The
  * box widths come out of one ratio, so the bar always spans exactly `x0`→`x1`.
  */
-export const statBarBlock = (
-  spec: StatBarSpec,
-  card: BattleCard,
-): string => {
+export const statBarBlock = (spec: StatBarSpec, card: BattleCard): string => {
   if (spec.style === "inline") return inlineStatBar(spec, card);
   return boxedStatBar(spec, card);
 };
@@ -251,7 +257,8 @@ const boxedStatBar = (
     } else {
       // The double-rare frame washes its boxes in translucent white; a plain
       // fill/stroke pair covers every other template.
-      const translucent = spec.box.fill === "#ffffff" && spec.box.stroke === "#ffffff";
+      const translucent =
+        spec.box.fill === "#ffffff" && spec.box.stroke === "#ffffff";
       const boxAttrs = translucent
         ? `fill="#ffffff" fill-opacity="0.10" stroke="#ffffff" stroke-opacity="0.14"`
         : `fill="${spec.box.fill}" stroke="${spec.box.stroke}"`;
