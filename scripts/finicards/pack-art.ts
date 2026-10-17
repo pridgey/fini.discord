@@ -7,14 +7,15 @@ import {
   PACK_OPENING_DELAY_MS,
   PACK_OPENING_FILE,
   PACK_OPENING_FRAMES,
-} from "../modules/finicards/cardArt/packOpening";
-import { TYPE_PALETTES } from "../modules/finicards/cardArt/palettes";
+} from "../../modules/finicards/cardArt/packOpening";
+import { TYPE_PALETTES } from "../../modules/finicards/cardArt/palettes";
+import { FINICARDS_WORK_DIR } from "../../modules/finicards/workDir";
 
 /**
  * Draws the v2 booster pack and its opening animation, and saves both where
  * the game reads them (`modules/finicards/assets`).
  *
- *   bun run scripts/finicards_v2_pack_art.ts
+ *   bun run scripts/finicards/pack-art.ts
  *
  * Run it again after changing anything here; the game only ever reads the
  * saved files. The opening: the pack turns over to show its back, unzips down
@@ -296,7 +297,7 @@ await writeFile(PACK_OPENING_FILE, opening);
 console.log(`${PACK_OPENING_FILE}  ${Math.round(opening.length / 1024)} KB`);
 
 if (process.argv.includes("--back")) {
-  const file = path.join(path.dirname(PACK_COVER_FILE), "..", "..", "..", "scripts", "test_images", "booster-pack-back.png");
+  const file = path.join(FINICARDS_WORK_DIR, "booster-pack-back.png");
   await writeFile(file, await drawn(BACK, 600));
   console.log(file);
 }

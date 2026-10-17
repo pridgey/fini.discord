@@ -112,7 +112,7 @@ export type DungeonConfig = {
 };
 
 /**
- * Tuned with `scripts/finicards_v2_simulate.ts --dungeon --keywords`. The fee
+ * Tuned with `scripts/finicards/simulate.ts --dungeon --keywords`. The fee
  * goes to the Reserve and the payout comes back out of it; `coinPerGeld` is set
  * so a typical deck played carefully comes out ahead of its fee, and a run that
  * ends in an early fall does not.

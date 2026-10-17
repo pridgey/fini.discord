@@ -1,22 +1,23 @@
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
-import { resolveArtSource } from "../modules/finicards/cardArt/generateCardImage";
+import { resolveArtSource } from "../../modules/finicards/cardArt/generateCardImage";
 import {
   LEGENDARY_GIF_EFFECTS,
   renderLegendaryGif,
-} from "../modules/finicards/cardArt/legendaryGif";
-import type { BattleCard } from "../modules/finicards/types";
-import type { V2CardDefinitionRecord } from "../types/PocketbaseTablesV2";
-import { pb } from "../utilities/pocketbase";
+} from "../../modules/finicards/cardArt/legendaryGif";
+import type { BattleCard } from "../../modules/finicards/types";
+import type { V2CardDefinitionRecord } from "../../types/PocketbaseTablesV2";
+import { pb } from "../../utilities/pocketbase";
+import { FINICARDS_WORK_DIR } from "../../modules/finicards/workDir";
 
 /**
  * Renders Legendary GIFs to disk, for looking at and tuning the effects.
  *
- *   bun --env-file=.env run scripts/finicards_v2_foil_prototype.ts --card Vegeta
- *   bun --env-file=.env run scripts/finicards_v2_foil_prototype.ts --card Videl --effect facets
- *   bun run scripts/finicards_v2_foil_prototype.ts --image ~/art/x.png --name "Mystery"
- *   bun --env-file=.env run scripts/finicards_v2_foil_prototype.ts --card Videl --effect facets --reveal
+ *   bun --env-file=.env run scripts/finicards/foil-prototype.ts --card Vegeta
+ *   bun --env-file=.env run scripts/finicards/foil-prototype.ts --card Videl --effect facets
+ *   bun run scripts/finicards/foil-prototype.ts --image ~/art/x.png --name "Mystery"
+ *   bun --env-file=.env run scripts/finicards/foil-prototype.ts --card Videl --effect facets --reveal
  *
  * `--reveal` renders the pull reveal instead of the loop. `--frames` and
  * `--delay` override an effect's own timing.
@@ -25,7 +26,7 @@ import { pb } from "../utilities/pocketbase";
  * (`modules/finicards/cardArt/legendaryGif.ts`); this only drives them.
  */
 
-const OUT_DIR = path.join(import.meta.dir, "test_images", "foil");
+const OUT_DIR = path.join(FINICARDS_WORK_DIR, "foil");
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => {

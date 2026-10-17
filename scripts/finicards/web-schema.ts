@@ -1,7 +1,7 @@
 /**
  * Applies the web mailbox's schema over its API.
  *
- *   bun --env-file=.env run scripts/finicards_v2_web_schema.ts
+ *   bun --env-file=.env run scripts/finicards/web-schema.ts
  *
  * The schema lives in `web/pocketbase/pb_migrations/` as ordinary Pocketbase
  * migrations. A hosted mailbox may not offer a way to drop files beside the
@@ -16,9 +16,9 @@
  */
 import { readdirSync } from "fs";
 import { join, resolve } from "path";
-import { remote, remoteUrl, signIn, webSyncEnabled } from "../modules/finicards/webSync";
+import { remote, remoteUrl, signIn, webSyncEnabled } from "../../modules/finicards/webSync";
 
-const MIGRATIONS = resolve(import.meta.dir, "../web/pocketbase/pb_migrations");
+const MIGRATIONS = resolve(import.meta.dir, "../../web/pocketbase/pb_migrations");
 const APPLIED = "web_schema";
 
 if (!webSyncEnabled()) {

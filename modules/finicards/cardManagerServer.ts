@@ -1,11 +1,11 @@
 import { timingSafeEqual } from "crypto";
-import { handleCardManager } from "../../scripts/finicards_v2_card_manager";
+import { handleCardManager } from "./cardManager/cardManager";
 import { isPrivateAddress } from "./privateAddress";
 
 /**
  * The card manager, kept up by the bot.
  *
- * The same tool `scripts/finicards_v2_art_check.ts --serve` puts on localhost,
+ * The same tool `scripts/finicards/art-check.ts --serve` puts on localhost,
  * started with Fini and reachable from the home network, so managing cards
  * does not need an ssh tunnel. Off unless FINI_CARD_MANAGER_PORT is set.
  *

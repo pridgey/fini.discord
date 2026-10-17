@@ -1,7 +1,7 @@
 /**
  * Makes a sign-in link for the site running against a local mailbox.
  *
- *   bun --env-file=.env run scripts/finicards_v2_web_dev_login.ts [discord id]
+ *   bun --env-file=.env run scripts/finicards/web-dev-login.ts [discord id]
  *
  * A local mailbox has no Discord application to sign in through, so this
  * stands in for it: it makes a user tied to the Discord id (yours, from
@@ -9,7 +9,7 @@
  * The site only accepts such a link in development - `bun run dev` - and the
  * script refuses to touch a mailbox that is not on this machine.
  */
-import { remote, remoteUrl, signIn, webSyncEnabled } from "../modules/finicards/webSync";
+import { remote, remoteUrl, signIn, webSyncEnabled } from "../../modules/finicards/webSync";
 
 const discordId = process.argv[2] ?? process.env.ADMIN_ID ?? "";
 const site = process.env.FINI_WEB_DEV_SITE ?? "http://127.0.0.1:5199";

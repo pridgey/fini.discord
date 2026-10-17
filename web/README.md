@@ -59,9 +59,9 @@ everything past that until the hour is up. Two things follow:
 | `web/src/lib/cards.ts` | Filtering, sorting and deck checks. Pure, tested in `tests/web/` |
 | `web/pocketbase/pb_migrations/` | The mailbox's schema and access rules |
 | `modules/finicards/webSync/` | Fini's half: sending copies, answering requests |
-| `scripts/finicards_v2_web_schema.ts` | Applies the mailbox's schema over its API |
-| `scripts/finicards_v2_web_sync.ts` | Runs the sync without the bot |
-| `scripts/finicards_v2_web_dev_login.ts` | Sign-in link for a local mailbox |
+| `scripts/finicards/web-schema.ts` | Applies the mailbox's schema over its API |
+| `scripts/finicards/web-sync.ts` | Runs the sync without the bot |
+| `scripts/finicards/web-dev-login.ts` | Sign-in link for a local mailbox |
 
 The site imports nothing from outside `web/`. Deck limits, keyword text and
 Legendary effects are sent by Fini (`web_meta`), so the two cannot disagree.
@@ -84,7 +84,7 @@ the keyword does - where they can.
    superuser for Fini to sign in as. Put the three settings from step 3 in
    `.env`, then apply the schema:
    ```
-   bun --env-file=.env run scripts/finicards_v2_web_schema.ts
+   bun --env-file=.env run scripts/finicards/web-schema.ts
    ```
    It runs the files in `web/pocketbase/pb_migrations/` over the API, and
    only the ones not yet applied, so it is also how a later schema change
@@ -124,13 +124,13 @@ A local mailbox stands in for Pockethost, and a made-up sign-in for Discord.
 export FINI_WEB_POCKETBASE_URL=http://127.0.0.1:8092
 export FINI_WEB_POCKETBASE_EMAIL=dev@fini.local
 export FINI_WEB_POCKETBASE_PASSWORD=a-long-password
-bun --env-file=.env run scripts/finicards_v2_web_sync.ts --watch
+bun --env-file=.env run scripts/finicards/web-sync.ts --watch
 
 # 3. the site
 cd web && bun install && VITE_POCKETBASE_URL=http://127.0.0.1:8092 bun run dev
 
 # 4. a link that signs in as you (ADMIN_ID), or as any Discord id given
-bun --env-file=.env run scripts/finicards_v2_web_dev_login.ts
+bun --env-file=.env run scripts/finicards/web-dev-login.ts
 ```
 
 The `?token=` sign-in exists only in `bun run dev`; a production build has no

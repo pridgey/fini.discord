@@ -335,7 +335,7 @@ the move being taught. The tests walk every path it allows.
 
 ### How far it goes
 
-`bun run scripts/finicards_v2_simulate.ts --dungeon --keywords`, 2000 runs a
+`bun run scripts/finicards/simulate.ts --dungeon --keywords`, 2000 runs a
 row. *careful* works out every clash and walks out when nothing in hand can win;
 *gut* plays the best-looking card and never walks out.
 
@@ -450,7 +450,7 @@ nothing to upload. If Discord ever refuses such an edit, the screen is sent
 whole instead and the log says so.
 
 The pack art and its animation are files in `assets/`, drawn by
-`scripts/finicards_v2_pack_art.ts`. Run that script after changing the design;
+`scripts/finicards/pack-art.ts`. Run that script after changing the design;
 the game only reads the files.
 
 **Population.** A card can have a per-server cap (`population`, 0 for none),
@@ -531,12 +531,12 @@ secret - and number past the total, which is how one reads `218/217`. An
 inactive card keeps its number: the gap it leaves is the hint that it exists.
 
 `setNumbers.ts` does the numbering; the card manager renumbers after every
-save, and `scripts/finicards_v2_number_sets.ts` does it by hand.
+save, and `scripts/finicards/number-sets.ts` does it by hand.
 
 ## The card manager
 
 ```bash
-bun --env-file=.env run scripts/finicards_v2_art_check.ts --serve   # http://127.0.0.1:8765/cards/
+bun --env-file=.env run scripts/finicards/art-check.ts --serve   # http://127.0.0.1:8765/cards/
 ```
 
 A local page for the card pool: make and edit cards, set stats inside the
@@ -555,8 +555,8 @@ those still come from the command above.
 
 ## Launch
 
-`scripts/finicards_v2_migrate_collections.ts` carries v1 collections into v2.
-It reports what it would do unless given `--commit`:
+The launch migration (`scripts/finicards_v2_migrate_collections.ts`, deleted
+afterwards and kept in git history) carried v1 collections into v2:
 
 1. Wipes the v2 data made while testing: copies, decks, dungeon runs, battles.
 2. Takes v1's colour off the converted cards' tags.
@@ -569,8 +569,8 @@ It reports what it would do unless given `--commit`:
    admin's.
 
 This was run on 2026-10-12: 2,782 copies for 15 players and 69 free packs
-across two servers. It is kept for the record and should not be run again -
-it begins by wiping every v2 copy.
+across two servers. It was deleted once it had run, since its first step
+wipes every v2 copy; read it in git history if it is ever needed.
 
 The `/finicard import` command that first filled the pool has been removed:
 the pool is kept in the card manager, and writing the v1 conversion over it
@@ -584,9 +584,9 @@ paid, cards won, and when it ended - so the record does not depend on the
 shape of the game's working state (`dungeonStats.ts`).
 
 ```bash
-bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts              # every year
-bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts --year 2026
-bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts --server <id> --json
+bun --env-file=.env run scripts/finicards/dungeon-stats.ts              # every year
+bun --env-file=.env run scripts/finicards/dungeon-stats.ts --year 2026
+bun --env-file=.env run scripts/finicards/dungeon-stats.ts --server <id> --json
 ```
 
 Per year: runs and how they ended, players, the deepest run, average depth,
@@ -654,7 +654,7 @@ against its own odds (`KEYWORD_ODDS` in `keywords.ts`):
 | strong | Guard, Bulwark, Pierce, Intimidate, Feint, Fortress | 68-75% / 60-67% |
 | mythic | Adapt | 85% / 76% |
 
-Measured with `bun run scripts/finicards_v2_simulate.ts --grade`: the keyword on
+Measured with `bun run scripts/finicards/simulate.ts --grade`: the keyword on
 all three of one side's cards, the other side either bare or carrying keywords
 rolled at the real odds. The second column matters for the keywords that only
 mean anything against other keywords (`Silence`, `Mimic`, `Spoiler`, `Purist`);
@@ -748,16 +748,12 @@ the keyword was fixed per card; nothing reads it, and the import blanks it.
 | `cardArt/` | Card image rendering: palettes, per-template geometry, text fitting, generated blocks. |
 | `templates/` | The five card templates. `templates/mockups/` holds the original designs. |
 
-Surface files outside the module: `commands/finicard.command.ts`,
-`buttons/individualButtons/v2Battle{Accept,Decline}.button.ts`,
-`buttons/individualButtons/finicardDeckPick.button.ts`,
-`buttons/individualButtons/v2Lineup{Open,Pick}.button.ts`,
-`buttons/individualButtons/finicardDungeon.button.ts`,
-`buttons/individualButtons/v2Card{View,Back,Sell}.button.ts`,
-`buttons/individualButtons/finicardDeckShow.button.ts`,
-`queries/queryFunctions/v2Card{Collection,Binder}.query.ts`,
-`types/PocketbaseTablesV2.ts`, `scripts/finicards_v2_*.ts`,
-`tests/finicards/`.
+Surface files outside the module: `commands/finicard.command.ts` and its
+subcommands in `commands/finicard/`, `buttons/individualButtons/finicard*.button.ts`,
+`queries/queryFunctions/finicard{Collection,Binder}.query.ts`,
+`types/PocketbaseTablesV2.ts`, the tools in `scripts/finicards/`, and
+`tests/finicards/`. The card manager the bot serves is inside the module, in
+`cardManager/`; its working files live in `scripts/test_images/` (see `workDir.ts`).
 
 Buttons answered by a collector on their own message - the pack's, and
 `/finicard sell`'s - are listed in `buttons/buttonHandler.ts` so the router
@@ -1111,7 +1107,7 @@ credit the artist at its right-hand end.
 **Type emoji.** Power, Wit and Heart are three custom emoji belonging to the
 bot's own Discord application - circles in the card colours, carrying the
 battle board's glyphs. Their ids are in `assets/type-emoji.json`, written by
-`scripts/finicards_v2_type_emoji.ts --upload`; without that file the standard
+`scripts/finicards/type-emoji.ts --upload`; without that file the standard
 circles stand in. A custom emoji is some thirty characters of text, so a tally
 of more than eight cards is counted (`🟠 12 · 🔵 9`) rather than drawn out.
 

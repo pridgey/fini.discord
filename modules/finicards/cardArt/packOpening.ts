@@ -7,7 +7,7 @@ import path from "path";
  * Both are files kept with the module, the same for every pack, and only ever
  * read here. The opening is a GIF that plays once and ends on an empty frame,
  * so the first card can take its place. They are drawn by
- * `scripts/finicards_v2_pack_art.ts`, which is where to change how they look.
+ * `scripts/finicards/pack-art.ts`, which is where to change how they look.
  */
 
 const ASSETS = path.join(import.meta.dir, "..", "assets");

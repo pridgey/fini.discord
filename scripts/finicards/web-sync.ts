@@ -1,13 +1,13 @@
 /**
  * Runs the web sync without the bot.
  *
- *   bun --env-file=.env run scripts/finicards_v2_web_sync.ts           one pass, then exit
- *   bun --env-file=.env run scripts/finicards_v2_web_sync.ts --watch   keep going, answering requests
+ *   bun --env-file=.env run scripts/finicards/web-sync.ts           one pass, then exit
+ *   bun --env-file=.env run scripts/finicards/web-sync.ts --watch   keep going, answering requests
  *
  * Against an empty mailbox this sends every card, its artwork and its
  * rendered face, which takes several minutes; after that, only what changed.
  */
-import { startWebSync, summaryLine, syncOnce, webSyncEnabled } from "../modules/finicards/webSync";
+import { startWebSync, summaryLine, syncOnce, webSyncEnabled } from "../../modules/finicards/webSync";
 
 /** The bot knows its servers by name; a script only knows what it is told. */
 const serverNames = (): Record<string, string> => {

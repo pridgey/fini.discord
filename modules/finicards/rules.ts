@@ -8,7 +8,7 @@ import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
  * The design doc calls out `typeMultiplier` as "the single number defining game
  * feel" and expects extended tuning, so nothing here is inlined at a call site.
  * `resolveMatch` takes an optional partial override of this object, which is
- * what `scripts/finicards_v2_simulate.ts` sweeps.
+ * what `scripts/finicards/simulate.ts` sweeps.
  */
 export type BattleRules = {
   /** Damage bonus when the attacker's type beats the defender's type. */
@@ -74,7 +74,7 @@ const FALLBACK_TYPE_EMOJI: Record<CardType, string> = {
 /**
  * The bot's own type emoji - circles in the cards' colours, with the battle
  * board's glyphs - as `<:name:id>`. They belong to one Discord application, so
- * their ids are kept in a file that `scripts/finicards_v2_type_emoji.ts`
+ * their ids are kept in a file that `scripts/finicards/type-emoji.ts`
  * writes when it uploads them; without it, the standard circles stand in.
  */
 const uploadedTypeEmoji = (): Partial<Record<CardType, string>> => {

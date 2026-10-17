@@ -7,28 +7,29 @@ import {
   paddingBox,
   renderCardImage,
   trimPadding,
-} from "../modules/finicards/cardArt/generateCardImage";
-import { renderDungeonScene } from "../modules/finicards/cardArt/dungeonScene";
-import { renderHandStrip } from "../modules/finicards/cardArt/handStrip";
-import { layoutFor } from "../modules/finicards/cardArt/layouts";
-import type { BattleCard } from "../modules/finicards/types";
-import type { CardDefinitionRecord } from "../types/PocketbaseTables";
+} from "../../modules/finicards/cardArt/generateCardImage";
+import { renderDungeonScene } from "../../modules/finicards/cardArt/dungeonScene";
+import { renderHandStrip } from "../../modules/finicards/cardArt/handStrip";
+import { layoutFor } from "../../modules/finicards/cardArt/layouts";
+import type { BattleCard } from "../../modules/finicards/types";
+import type { CardDefinitionRecord } from "../../types/PocketbaseTables";
 import type {
   ArtAdjust,
   CardRarity,
   V2CardDefinitionRecord,
-} from "../types/PocketbaseTablesV2";
-import { pb } from "../utilities/pocketbase";
-import { handleCardManager } from "./finicards_v2_card_manager";
+} from "../../types/PocketbaseTablesV2";
+import { pb } from "../../utilities/pocketbase";
+import { handleCardManager } from "../../modules/finicards/cardManager/cardManager";
+import { FINICARDS_WORK_DIR } from "../../modules/finicards/workDir";
 
 /**
  * Art check: renders artwork everywhere v2 shows it, onto one page, and flags
  * the images that need a person to look at them.
  *
- *   bun --env-file=.env run scripts/finicards_v2_art_check.ts --all
- *   bun --env-file=.env run scripts/finicards_v2_art_check.ts --set 3
- *   bun run scripts/finicards_v2_art_check.ts --image ~/art/reigen.png --rarity uncommon
- *   bun run scripts/finicards_v2_art_check.ts --dir ~/art/set3
+ *   bun --env-file=.env run scripts/finicards/art-check.ts --all
+ *   bun --env-file=.env run scripts/finicards/art-check.ts --set 3
+ *   bun run scripts/finicards/art-check.ts --image ~/art/reigen.png --rarity uncommon
+ *   bun run scripts/finicards/art-check.ts --dir ~/art/set3
  *
  * `--all` and `--set` check the cards already in the pool. `--image` / `--dir`
  * check files that have not been uploaded anywhere yet; in a directory the
@@ -52,7 +53,7 @@ import { handleCardManager } from "./finicards_v2_card_manager";
  * Reviewing. Every card on the page has verdict buttons and a note, and a
  * click on its source picture marks where the subject is. Served with
  *
- *   bun --env-file=.env run scripts/finicards_v2_art_check.ts --serve
+ *   bun --env-file=.env run scripts/finicards/art-check.ts --serve
  *
  * (add `--all` to re-render first), the page saves each click to `review.json`
  * beside it, keyed by card id, and reads it back on load - so a review
@@ -63,18 +64,18 @@ import { handleCardManager } from "./finicards_v2_card_manager";
  * `art_adjust`. A re-render already shows them applied, so the page is the
  * preview; writing them to the cards is a separate step:
  *
- *   bun --env-file=.env run scripts/finicards_v2_art_check.ts --apply-review
- *   bun --env-file=.env run scripts/finicards_v2_art_check.ts --apply-review --commit
+ *   bun --env-file=.env run scripts/finicards/art-check.ts --apply-review
+ *   bun --env-file=.env run scripts/finicards/art-check.ts --apply-review --commit
  *
  * Without `--commit` it only reports what it would write.
  *
  * Replacing an image outright, and everything else about a card, is the card
- * manager's job (`finicards_v2_card_manager.ts`), which `--serve` puts at
+ * manager's job (`cardManager.ts`), which `--serve` puts at
  * `/cards/`.
  */
 
 /** What `--serve` serves. */
-const SERVE_ROOT = path.join(import.meta.dir, "test_images", "art-check");
+const SERVE_ROOT = path.join(FINICARDS_WORK_DIR, "art-check");
 
 /** Width the page's renders are made at. The real cards are `CARD_WIDTH`. */
 const PREVIEW_WIDTH = 300;

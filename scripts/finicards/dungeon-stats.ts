@@ -1,15 +1,15 @@
-import { V2_DUNGEON_RUN } from "../modules/finicards/dungeonStore";
-import { summariseYears } from "../modules/finicards/dungeonStats";
-import type { V2DungeonRunRecord } from "../types/PocketbaseTablesV2";
-import { pb } from "../utilities/pocketbase";
+import { V2_DUNGEON_RUN } from "../../modules/finicards/dungeonStore";
+import { summariseYears } from "../../modules/finicards/dungeonStats";
+import type { V2DungeonRunRecord } from "../../types/PocketbaseTablesV2";
+import { pb } from "../../utilities/pocketbase";
 
 /**
  * Dungeon runs, year by year.
  *
- *   bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts
- *   bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts --year 2026
- *   bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts --server <id>
- *   bun --env-file=.env run scripts/finicards_v2_dungeon_stats.ts --json
+ *   bun --env-file=.env run scripts/finicards/dungeon-stats.ts
+ *   bun --env-file=.env run scripts/finicards/dungeon-stats.ts --year 2026
+ *   bun --env-file=.env run scripts/finicards/dungeon-stats.ts --server <id>
+ *   bun --env-file=.env run scripts/finicards/dungeon-stats.ts --json
  *
  * Reads only. Every run is kept after it ends, so this is the whole history.
  */

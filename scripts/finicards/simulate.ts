@@ -1,10 +1,10 @@
 /**
  * Finicards v2 balance sweep.
  *
- *   bun run scripts/finicards_v2_simulate.ts
- *   bun run scripts/finicards_v2_simulate.ts --matches 5000 --keywords
- *   bun run scripts/finicards_v2_simulate.ts --grade
- *   bun run scripts/finicards_v2_simulate.ts --dungeon --keywords
+ *   bun run scripts/finicards/simulate.ts
+ *   bun run scripts/finicards/simulate.ts --matches 5000 --keywords
+ *   bun run scripts/finicards/simulate.ts --grade
+ *   bun run scripts/finicards/simulate.ts --dungeon --keywords
  *
  * The design doc names `typeMultiplier` "the single number defining game feel"
  * and expects extended tuning, so this exists to answer the tuning question with
@@ -28,9 +28,9 @@
  *   4. Matches feel decisive - how often a match ends level on rounds.
  */
 
-import { resolveMatch } from "../modules/finicards/battleEngine";
-import { buildDeckCards } from "../modules/finicards/decks";
-import { HAND_SIZE, dealHand } from "../modules/finicards/draw";
+import { resolveMatch } from "../../modules/finicards/battleEngine";
+import { buildDeckCards } from "../../modules/finicards/decks";
+import { HAND_SIZE, dealHand } from "../../modules/finicards/draw";
 import {
   DUNGEON,
   buyOffer,
@@ -47,19 +47,19 @@ import {
   type DungeonState,
   type Room,
   type RoomSource,
-} from "../modules/finicards/dungeon";
-import { PACK_ODDS, rollRarity } from "../modules/finicards/packs";
-import { assignKeyword } from "../modules/finicards/convertLegacyCards";
-import { GRADE_LABEL, KEYWORDS } from "../modules/finicards/keywords";
+} from "../../modules/finicards/dungeon";
+import { PACK_ODDS, rollRarity } from "../../modules/finicards/packs";
+import { assignKeyword } from "../../modules/finicards/convertLegacyCards";
+import { GRADE_LABEL, KEYWORDS } from "../../modules/finicards/keywords";
 import {
   RARITY_COST,
   RULES,
   TYPE_BEATS,
   TYPE_PRIORITY,
-} from "../modules/finicards/rules";
-import { normalizeSpread } from "../modules/finicards/statBudget";
-import type { BattleCard } from "../modules/finicards/types";
-import type { CardRarity, CardType } from "../types/PocketbaseTablesV2";
+} from "../../modules/finicards/rules";
+import { normalizeSpread } from "../../modules/finicards/statBudget";
+import type { BattleCard } from "../../modules/finicards/types";
+import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
 
 /* -------------------------------------------------------------------------- */
 /* Arguments                                                                  */

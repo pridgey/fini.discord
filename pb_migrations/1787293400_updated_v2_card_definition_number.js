@@ -6,7 +6,7 @@
  * `v2_card_definition.number` is a card's place in its release set and
  * `set_size` how many cards that set counts, printed together in the footer as
  * "12/217". A Secret Art is not counted, so its number runs past the size:
- * "218/217". Both are written by `scripts/finicards_v2_number_sets.ts`.
+ * "218/217". Both are written by `scripts/finicards/number-sets.ts`.
  */
 
 const CARD_DEFINITION_ID = "pbc_2100000001";

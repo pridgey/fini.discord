@@ -6,22 +6,23 @@ import {
   loadArt,
   renderCardImage,
   resolveArtSource,
-} from "../modules/finicards/cardArt/generateCardImage";
-import { renderDungeonScene } from "../modules/finicards/cardArt/dungeonScene";
-import { renderHandStrip } from "../modules/finicards/cardArt/handStrip";
-import { layoutFor } from "../modules/finicards/cardArt/layouts";
-import { renumberSets, toBattleCard } from "../modules/finicards/cardStore";
-import { SPIKE_GAMMA } from "../modules/finicards/convertLegacyCards";
-import { RARITY_COST, RULES } from "../modules/finicards/rules";
-import { deriveType, normalizeSpread, validateSpread } from "../modules/finicards/statBudget";
-import type { BattleCard } from "../modules/finicards/types";
+} from "../cardArt/generateCardImage";
+import { renderDungeonScene } from "../cardArt/dungeonScene";
+import { renderHandStrip } from "../cardArt/handStrip";
+import { layoutFor } from "../cardArt/layouts";
+import { renumberSets, toBattleCard } from "../cardStore";
+import { SPIKE_GAMMA } from "../convertLegacyCards";
+import { RARITY_COST, RULES } from "../rules";
+import { deriveType, normalizeSpread, validateSpread } from "../statBudget";
+import type { BattleCard } from "../types";
 import type {
   ArtAdjust,
   CardRarity,
   V2CardDefinitionRecord,
   V2UserCardRecord,
-} from "../types/PocketbaseTablesV2";
-import { pb } from "../utilities/pocketbase";
+} from "../../../types/PocketbaseTablesV2";
+import { pb } from "../../../utilities/pocketbase";
+import { FINICARDS_WORK_DIR } from "../workDir";
 
 /**
  * The card manager: a local web page for looking after the v2 card pool.
@@ -39,14 +40,14 @@ import { pb } from "../utilities/pocketbase";
  * A card never gets a keyword here: those are rolled per copy when pulled.
  */
 
-const DATA = path.join(import.meta.dir, "test_images", "card-manager");
+const DATA = path.join(FINICARDS_WORK_DIR, "card-manager");
 const CANDIDATES = path.join(DATA, "candidates");
 const THUMBS = path.join(DATA, "thumbs");
 const WIKIS_FILE = path.join(DATA, "wikis.json");
 const EDITS_FILE = path.join(DATA, "edits.jsonl");
-const PAGE_FILE = path.join(import.meta.dir, "finicards_v2_card_manager.html");
+const PAGE_FILE = path.join(import.meta.dir, "cardManager.html");
 /** Where the picker this replaced kept its candidates. */
-const OLD_PICKER = path.join(import.meta.dir, "test_images", "art-candidates");
+const OLD_PICKER = path.join(FINICARDS_WORK_DIR, "art-candidates");
 
 const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) finicards-card-manager/1.0";
 /**

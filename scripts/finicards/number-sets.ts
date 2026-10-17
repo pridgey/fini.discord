@@ -1,9 +1,9 @@
-import { renumberSets } from "../modules/finicards/cardStore";
+import { renumberSets } from "../../modules/finicards/cardStore";
 
 /**
  * Numbers every card within its release set, for the "12/217" in the footer.
  *
- *   bun --env-file=.env run scripts/finicards_v2_number_sets.ts
+ *   bun --env-file=.env run scripts/finicards/number-sets.ts
  *
  * Safe to run again: only cards whose number is out of date are written. The
  * card manager does the same after every save, so this is for the first run

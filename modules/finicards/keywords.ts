@@ -901,7 +901,7 @@ export const keywordsOfGrade = (grade: KeywordGrade): KeywordDefinition[] =>
  * usually gets something good to swing it; a full-art is devastating on stats
  * alone and usually gets nothing, or something small. That is what keeps every
  * rarity worth pulling, and it is tuned against
- * `scripts/finicards_v2_simulate.ts --keywords`.
+ * `scripts/finicards/simulate.ts --keywords`.
  */
 export const KEYWORD_ODDS: Record<CardRarity, Record<KeywordGrade, number>> = {
   common: { minor: 0.1, standard: 0.5, strong: 0.35, mythic: 0.005 },

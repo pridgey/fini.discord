@@ -1,17 +1,17 @@
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
-import { TYPE_ICON_PATHS } from "../modules/finicards/cardArt/battleBoard";
-import { TYPE_PALETTES } from "../modules/finicards/cardArt/palettes";
-import { TYPE_PRIORITY } from "../modules/finicards/rules";
-import type { CardType } from "../types/PocketbaseTablesV2";
+import { TYPE_ICON_PATHS } from "../../modules/finicards/cardArt/battleBoard";
+import { TYPE_PALETTES } from "../../modules/finicards/cardArt/palettes";
+import { TYPE_PRIORITY } from "../../modules/finicards/rules";
+import type { CardType } from "../../types/PocketbaseTablesV2";
 
 /**
  * The type emoji: Power, Wit and Heart as circles in the cards' own colours,
  * each carrying the glyph the battle board draws for it.
  *
- *   bun --env-file=.env run scripts/finicards_v2_type_emoji.ts            draw only
- *   bun --env-file=.env run scripts/finicards_v2_type_emoji.ts --upload   and upload
+ *   bun --env-file=.env run scripts/finicards/type-emoji.ts            draw only
+ *   bun --env-file=.env run scripts/finicards/type-emoji.ts --upload   and upload
  *
  * Drawn into `modules/finicards/assets`. With `--upload` they are also set as
  * emoji of the bot's own Discord application - which work in every server the
@@ -20,7 +20,7 @@ import type { CardType } from "../types/PocketbaseTablesV2";
  * same name is replaced. A different bot has different ids: run this for it.
  */
 
-const ASSETS = path.join(import.meta.dir, "..", "modules", "finicards", "assets");
+const ASSETS = path.join(import.meta.dir, "..", "..", "modules", "finicards", "assets");
 const IDS_FILE = path.join(ASSETS, "type-emoji.json");
 const SIZE = 128;
 const emojiName = (type: CardType) => `fc_${type}`;
