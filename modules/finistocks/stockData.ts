@@ -148,8 +148,6 @@ interface SeasonConfig {
 // Helper Functions
 // ============================================================================
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 let lastMalRequest = 0;
 
 /**
@@ -170,7 +168,7 @@ export async function malFetch<T>(path: string): Promise<T | null> {
   const { spacingMs, backoffMs, attempts, timeoutMs } = malTiming;
   for (let attempt = 1; attempt <= attempts; attempt++) {
     const wait = lastMalRequest + spacingMs - Date.now();
-    if (wait > 0) await sleep(wait);
+    if (wait > 0) await Bun.sleep(wait);
     lastMalRequest = Date.now();
 
     const response = await fetch(url, {
@@ -202,7 +200,7 @@ export async function malFetch<T>(path: string): Promise<T | null> {
     console.warn(
       `   ⏳ MAL ${path}: ${response?.status ?? "no response"}, retrying in ${Math.round(backoff / 1000)}s`,
     );
-    await sleep(backoff + Math.random() * backoffMs * 0.25);
+    await Bun.sleep(backoff + Math.random() * backoffMs * 0.25);
   }
   return null;
 }

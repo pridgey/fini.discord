@@ -86,8 +86,6 @@ export type ServerBootResult =
   | { status: "failed"; elapsedMs: number; reason: string }
   | { status: "timeout"; elapsedMs: number };
 
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 /**
  * `screen -ls` exits non-zero when there are no sessions at all, so the
  * output is what matters rather than the exit code.
@@ -178,7 +176,7 @@ export const waitForServerReady = async ({
   let bootLog = "";
 
   while (Date.now() - startedAt < timeoutMs) {
-    await wait(POLL_INTERVAL_MS);
+    await Bun.sleep(POLL_INTERVAL_MS);
 
     const elapsedMs = Date.now() - startedAt;
     const { text, marker: nextMarker } = await readLogSince(marker);

@@ -88,7 +88,6 @@ export const parseCoordinates = (text: string): LatLon | null => {
 };
 
 let lastRequest = 0;
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** One Nominatim request, a second clear of the last. Throws if it fails. */
 const nominatim = async <T>(
@@ -96,7 +95,7 @@ const nominatim = async <T>(
   params: Record<string, string>,
 ): Promise<T> => {
   const wait = lastRequest + 1100 - Date.now();
-  if (wait > 0) await sleep(wait);
+  if (wait > 0) await Bun.sleep(wait);
   lastRequest = Date.now();
 
   const url = new URL(`${NOMINATIM_URL}/${path}`);

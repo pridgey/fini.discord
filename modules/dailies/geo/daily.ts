@@ -32,6 +32,7 @@ import {
 } from "./messages";
 import { formatDistance } from "./score";
 import { POST_HOUR, POST_TIME, currentDay, sendTo } from "../shared";
+import { warnAndUse } from "../../../utilities/fallback";
 
 /**
  * The daily location game. Each day at noon a round is made and posted in every
@@ -66,7 +67,9 @@ const makeRound = async (): Promise<{
   for (let attempt = 0; attempt < ROUND_TRIES; attempt++) {
     const round = await findRound();
     if (!round) return null;
-    const place = await describePlace(round.answer).catch(() => null);
+    const place = await describePlace(round.answer).catch(
+      warnAndUse(null, "name the round's place"),
+    );
     if (place?.countryCode) return { round, place };
   }
   return null;

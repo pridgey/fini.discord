@@ -14,6 +14,7 @@ import { toBattleCard } from "./cardStore";
 import { findSellable, handOver, stillOwns } from "./market";
 import type { OwnedCard } from "./types";
 import { rarityLabel } from "./ui/theme";
+import { warnAndUse } from "../../utilities/fallback";
 
 /**
  * `/finicard trade`: one player offers another an exchange - any of their cards
@@ -219,7 +220,9 @@ export const runTrade = async (
 
   const media = await Promise.all(
     [...from.cards, ...to.cards].map((copy) =>
-      renderCardMedia(toBattleCard(copy)).catch(() => null),
+      renderCardMedia(toBattleCard(copy)).catch(
+        warnAndUse(null, "draw a traded card"),
+      ),
     ),
   );
   const files = media.flatMap((item) =>

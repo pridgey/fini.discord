@@ -12,6 +12,7 @@ import {
   scoreGuess,
   type RoundFacts,
 } from "./messages";
+import { warnAndUse } from "../../../utilities/fallback";
 
 /**
  * The `/geo-test` prototype: one private round at a time, held in memory, so a
@@ -35,7 +36,9 @@ export const startRound = async (userId: string): Promise<GeoRound | null> => {
   for (let attempt = 0; attempt < ROUND_TRIES; attempt++) {
     const round = await findRound();
     if (!round) return null;
-    const place = await describePlace(round.answer).catch(() => null);
+    const place = await describePlace(round.answer).catch(
+      warnAndUse(null, "name the round's place"),
+    );
     if (!place?.countryCode) continue;
     rounds.set(userId, { round, place });
     return round;

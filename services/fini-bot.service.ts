@@ -63,8 +63,6 @@ let logMarker: LogMarker | null = null;
 /** Players with a reply already in flight, so one message gets one answer. */
 const answering = new Set<string>();
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const fmt = (v: Vec3) =>
   `${v.x.toFixed(1)},${v.y.toFixed(1)},${v.z.toFixed(1)}`;
 
@@ -295,7 +293,7 @@ const main = async () => {
       logMarker = null;
       wait = IDLE_POLL_MS;
     }
-    await sleep(wait);
+    await Bun.sleep(wait);
   }
 };
 

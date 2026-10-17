@@ -23,6 +23,7 @@ import {
   buildPackOpeningMessage,
   type PackMessageInput,
 } from "./ui/cardMessage";
+import { warnAndUse } from "../../utilities/fallback";
 
 /**
  * Opening a pack, the way v1 did it: the sealed pack and a button, then the
@@ -64,8 +65,6 @@ export const packShowOrder = (cards: BattleCard[]): BattleCard[] =>
       (a, b) => SHOW_ORDER(a.card) - SHOW_ORDER(b.card) || a.index - b.index,
     )
     .map(({ card }) => card);
-
-const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 type Built = {
   components: unknown[];
@@ -129,8 +128,10 @@ export const presentPack = async (
       ? renderCardMedia(card, { reveal: true })
       : null,
   );
+  // A failed drawing is logged here, once; where these are awaited later it
+  // falls back to the card's text face without saying so again.
   for (const pending of [...stills, ...reveals])
-    pending?.catch(() => undefined);
+    pending?.catch(warnAndUse(undefined, "draw a pack card"));
 
   const cover = await buildPackCoverMessage({
     size: cards.length,
@@ -267,7 +268,7 @@ export const presentPack = async (
     // The reveal plays once; the card is then swapped for how it stays - a
     // Legendary's loop, a Secret Art's still.
     if (reveal && still) {
-      await wait(LEGENDARY_REVEAL_MS + REVEAL_REST_MS);
+      await Bun.sleep(LEGENDARY_REVEAL_MS + REVEAL_REST_MS);
       if (screen === here) {
         await put({ editReply: surface.editReply }, view(still)).catch(
           () => undefined,
@@ -350,7 +351,7 @@ export const presentPack = async (
       // Rarely still in flight by the time anyone presses; see `preload`.
       const landed = await Promise.race([
         preload.then(() => true),
-        wait(1500).then(() => false),
+        Bun.sleep(1500).then(() => false),
       ]);
       if (!landed) {
         await acknowledge();
@@ -360,11 +361,13 @@ export const presentPack = async (
       if (press.customId === PACK_BUTTON.all) {
         await showAll(surface());
       } else if (press.customId === PACK_BUTTON.open && shown < 0) {
-        const opening = await buildPackOpeningMessage().catch(() => null);
+        const opening = await buildPackOpeningMessage().catch(
+          warnAndUse(null, "build the pack opening"),
+        );
         if (opening) {
           screen += 1;
           await put(surface(), opening);
-          await wait(PACK_OPENING_MS + LOAD_MS);
+          await Bun.sleep(PACK_OPENING_MS + LOAD_MS);
         }
         busy = false;
         await showCard(0, surface());

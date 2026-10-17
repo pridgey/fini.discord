@@ -32,6 +32,7 @@ import {
   type WebCollection,
   type WebRow,
 } from "./snapshot";
+import { warnAndUse } from "../../../utilities/fallback";
 
 /**
  * Keeps the web mailbox matching Fini's database.
@@ -384,7 +385,11 @@ export const syncOnce = async (
     async (definition) => {
       const id = definition.id ?? "";
       const key = artKeyOf(definition);
-      const art = key ? await webArt(definition).catch(() => null) : null;
+      const art = key
+        ? await webArt(definition).catch(
+            warnAndUse(null, `make web art for ${definition.card_name}`),
+          )
+        : null;
       if (key && !art) {
         // Could not be had just now. Say nothing, and try again after a restart.
         heldArt.set(id, key);
