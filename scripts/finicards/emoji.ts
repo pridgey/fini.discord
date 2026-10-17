@@ -7,17 +7,21 @@ import { TYPE_PRIORITY } from "../../modules/finicards/rules";
 import type { CardType } from "../../types/PocketbaseTablesV2";
 
 /**
- * The type emoji: Power, Wit and Heart as circles in the cards' own colours,
- * each carrying the glyph the battle board draws for it.
+ * The bot's Finicards emoji: Power, Wit and Heart as circles in the cards' own
+ * colours, each carrying the glyph the battle board draws for it, and the card
+ * itself - the site's favicon.
  *
- *   bun --env-file=.env run scripts/finicards/type-emoji.ts            draw only
- *   bun --env-file=.env run scripts/finicards/type-emoji.ts --upload   and upload
+ *   bun --env-file=.env run scripts/finicards/emoji.ts            draw only
+ *   bun --env-file=.env run scripts/finicards/emoji.ts --upload   and upload
+ *   bun --env-file=.env run scripts/finicards/emoji.ts --upload card   just one
  *
  * Drawn into `modules/finicards/assets`. With `--upload` they are also set as
  * emoji of the bot's own Discord application - which work in every server the
- * bot is in - and their ids are written to `type-emoji.json`, which is what the
- * game reads (`TYPE_EMOJI` in `rules.ts`). An emoji already there under the
- * same name is replaced. A different bot has different ids: run this for it.
+ * bot is in - and their ids are written to `emoji.json`, which is what the game
+ * reads (`TYPE_EMOJI` and `CARD_EMOJI` in `rules.ts`). An emoji already there under the
+ * same name is replaced, which gives it a new id and breaks it in old messages,
+ * so name the ones that changed. A different bot has different ids: run this
+ * for it.
  */
 
 const ASSETS = path.join(
@@ -28,9 +32,19 @@ const ASSETS = path.join(
   "finicards",
   "assets",
 );
-const IDS_FILE = path.join(ASSETS, "type-emoji.json");
+const IDS_FILE = path.join(ASSETS, "emoji.json");
+const FAVICON = path.join(
+  import.meta.dir,
+  "..",
+  "..",
+  "web",
+  "public",
+  "favicon.svg",
+);
 const SIZE = 128;
-const emojiName = (type: CardType) => `fc_${type}`;
+/** An emoji's key in `emoji.json`: a card type, or `card` for the card. */
+type EmojiKey = CardType | "card";
+const emojiName = (key: EmojiKey) => `fc_${key}`;
 
 const draw = (type: CardType): Promise<Buffer> => {
   const palette = TYPE_PALETTES[type];
@@ -69,8 +83,15 @@ const api = async (
   return response.status === 204 ? null : response.json();
 };
 
+/** The favicon, square and transparent around the card. */
+const drawCard = async (): Promise<Buffer> =>
+  sharp(await readFile(FAVICON), { density: (72 * SIZE) / 64 })
+    .resize(SIZE, SIZE)
+    .png()
+    .toBuffer();
+
 await mkdir(ASSETS, { recursive: true });
-const images = new Map<CardType, Buffer>();
+const images = new Map<EmojiKey, Buffer>();
 for (const type of TYPE_PRIORITY) {
   const image = await draw(type);
   images.set(type, image);
@@ -78,6 +99,9 @@ for (const type of TYPE_PRIORITY) {
   await writeFile(file, image);
   console.log(`drew ${file}`);
 }
+images.set("card", await drawCard());
+await writeFile(path.join(ASSETS, "card.png"), images.get("card")!);
+console.log(`drew ${path.join(ASSETS, "card.png")}`);
 
 if (process.argv.includes("--upload")) {
   if (!process.env.FINI_TOKEN) throw new Error("FINI_TOKEN is not set");
@@ -89,8 +113,12 @@ if (process.argv.includes("--upload")) {
     .then((text) => JSON.parse(text))
     .catch(() => ({}));
 
-  for (const type of TYPE_PRIORITY) {
-    const name = emojiName(type);
+  // Names after --upload pick which emoji go up; none means all of them.
+  const picked = process.argv
+    .slice(process.argv.indexOf("--upload") + 1)
+    .filter((arg): arg is EmojiKey => images.has(arg as EmojiKey));
+  for (const key of picked.length > 0 ? picked : images.keys()) {
+    const name = emojiName(key);
     const old = existing.find((emoji) => emoji.name === name);
     if (old)
       await api(`/applications/${application}/emojis/${old.id}`, {
@@ -100,11 +128,11 @@ if (process.argv.includes("--upload")) {
       method: "POST",
       body: JSON.stringify({
         name,
-        image: `data:image/png;base64,${images.get(type)!.toString("base64")}`,
+        image: `data:image/png;base64,${images.get(key)!.toString("base64")}`,
       }),
     });
-    ids[type] = `<:${made.name}:${made.id}>`;
-    console.log(`${old ? "replaced" : "uploaded"} ${ids[type]}`);
+    ids[key] = `<:${made.name}:${made.id}>`;
+    console.log(`${old ? "replaced" : "uploaded"} ${ids[key]}`);
   }
 
   await writeFile(IDS_FILE, `${JSON.stringify(ids, null, 2)}\n`);

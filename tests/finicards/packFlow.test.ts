@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import { packShowOrder } from "../../modules/finicards/packFlow";
+import { CARD_EMOJI } from "../../modules/finicards/rules";
 import type { BattleCard } from "../../modules/finicards/types";
 import {
   PACK_BUTTON,
@@ -130,7 +131,7 @@ describe("finicards pack flow", () => {
       opener: "Aya",
     });
     expect(JSON.stringify(pack.components[0].toJSON())).toContain(
-      "## 🎴 Aya's pack",
+      `## ${CARD_EMOJI} Aya's pack`,
     );
   });
 

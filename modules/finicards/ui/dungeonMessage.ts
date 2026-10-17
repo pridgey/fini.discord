@@ -39,7 +39,7 @@ import {
   type Room,
 } from "../dungeon";
 import { cardLabel } from "../lineupPicker";
-import { TYPE_EMOJI } from "../rules";
+import { CARD_EMOJI, TYPE_EMOJI } from "../rules";
 import type { BattleCard, Side } from "../types";
 import { enemyAbilityLines } from "./enemyAbility";
 import { roundBlock } from "./resultMessage";
@@ -185,7 +185,7 @@ const lootLine = (progress: DungeonState): string | null => {
     (rarity) => rarity === "full_art",
   ).length;
   const uncommons = progress.loot.length - fullArts;
-  return `🎴 ${[
+  return `${CARD_EMOJI} ${[
     ...(uncommons > 0 ? [`${uncommons} uncommon`] : []),
     ...(fullArts > 0 ? [`${fullArts} full-art`] : []),
   ].join(" + ")} banked`;
@@ -441,7 +441,7 @@ export const composeDungeonMessage = (
             rewardLine(input.reward, state),
             ...(input.reward?.cards ?? []).map(
               (card) =>
-                `🎴 **Boss drop:** ${cardLine(card)} · \`${card.instanceId}\``,
+                `${CARD_EMOJI} **Boss drop:** ${cardLine(card)} · \`${card.instanceId}\``,
             ),
           ].join("\n"),
         ),

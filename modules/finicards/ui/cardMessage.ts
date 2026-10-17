@@ -7,6 +7,7 @@ import {
   MessageFlags,
 } from "discord.js";
 import { findKeyword } from "../keywords";
+import { CARD_EMOJI } from "../rules";
 import {
   PACK_COVER_NAME,
   PACK_OPENING_NAME,
@@ -116,7 +117,7 @@ export const buildPackMessage = async (
     .setAccentColor(NEUTRAL_ACCENT)
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `## 🎴 ${input.opener ? `${input.opener}'s pack` : "Pack opened"} — ${input.cards.length} card${input.cards.length === 1 ? "" : "s"} ${compositionOf(input.cards)}`,
+        `## ${CARD_EMOJI} ${input.opener ? `${input.opener}'s pack` : "Pack opened"} — ${input.cards.length} card${input.cards.length === 1 ? "" : "s"} ${compositionOf(input.cards)}`,
       ),
     );
 

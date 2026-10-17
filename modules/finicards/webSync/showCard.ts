@@ -1,6 +1,7 @@
 import { Client, TextChannel, TextDisplayBuilder } from "discord.js";
 import { getFinicardsChannelForServer } from "../../../utilities/config/configUtils";
 import { getOwnedCard, toBattleCard } from "../cardStore";
+import { CARD_EMOJI } from "../rules";
 import { buildCardMessage } from "../ui";
 import type { CardPoster } from "./requests";
 
@@ -27,7 +28,7 @@ export const makeCardPoster =
       ...message,
       components: [
         new TextDisplayBuilder().setContent(
-          `🎴 <@${discordId}> is showing a card from the Finicards site`,
+          `${CARD_EMOJI} <@${discordId}> is showing a card from the Finicards site`,
         ),
         ...message.components,
       ],

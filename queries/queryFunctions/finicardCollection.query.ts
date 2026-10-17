@@ -1,6 +1,7 @@
 import { ButtonStyle, ContainerBuilder } from "discord.js";
 import { V2_USER_CARD, toBattleCard } from "../../modules/finicards/cardStore";
 import { getDecks } from "../../modules/finicards/decks";
+import { CARD_EMOJI } from "../../modules/finicards/rules";
 import {
   NEUTRAL_ACCENT,
   activeKeyword,
@@ -112,7 +113,7 @@ const buildV2CardCollectionResult = async ({
   const container = new ContainerBuilder().setAccentColor(NEUTRAL_ACCENT);
 
   container.addTextDisplayComponents((text) =>
-    text.setContent(`## 🎴 ${queryString || "Collection"}`),
+    text.setContent(`## ${CARD_EMOJI} ${queryString || "Collection"}`),
   );
 
   const inDecks = deckNamesByCard(await decksForPage(items));

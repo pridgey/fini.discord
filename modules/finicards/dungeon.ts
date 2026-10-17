@@ -11,7 +11,7 @@ import {
   rollKeyword,
   type SideState,
 } from "./keywords";
-import { RULES, TYPE_PRIORITY, type BattleRules } from "./rules";
+import { CARD_EMOJI, RULES, TYPE_PRIORITY, type BattleRules } from "./rules";
 import type { BattleCard, RoundResult, Side } from "./types";
 
 /**
@@ -1474,7 +1474,7 @@ export const playFight = (
           : "uncommon";
       next.loot.push(rarity);
       lines.push(
-        `🎴 The boss drops ${rarity === "full_art" ? "a **full-art** card" : "an **uncommon** card"}, banked: it's yours when the run ends, however it ends.`,
+        `${CARD_EMOJI} The boss drops ${rarity === "full_art" ? "a **full-art** card" : "an **uncommon** card"}, banked: it's yours when the run ends, however it ends.`,
       );
     }
     openDoors(next, source, false, config);

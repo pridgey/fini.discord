@@ -72,25 +72,32 @@ const FALLBACK_TYPE_EMOJI: Record<CardType, string> = {
 };
 
 /**
- * The bot's own type emoji - circles in the cards' colours, with the battle
- * board's glyphs - as `<:name:id>`. They belong to one Discord application, so
- * their ids are kept in a file that `scripts/finicards/type-emoji.ts`
- * writes when it uploads them; without it, the standard circles stand in.
+ * The bot's own emoji - the type circles in the cards' colours, with the battle
+ * board's glyphs, and the card from the site's favicon - as `<:name:id>`. They
+ * belong to one Discord application, so their ids are kept in a file that
+ * `scripts/finicards/emoji.ts` writes when it uploads them; without it,
+ * standard emoji stand in.
  */
-const uploadedTypeEmoji = (): Partial<Record<CardType, string>> => {
+const uploadedEmoji = (): Partial<Record<CardType | "card", string>> => {
   try {
     return JSON.parse(
-      readFileSync(join(import.meta.dir, "assets", "type-emoji.json"), "utf8"),
+      readFileSync(join(import.meta.dir, "assets", "emoji.json"), "utf8"),
     );
   } catch {
     return {};
   }
 };
 
+const UPLOADED_EMOJI = uploadedEmoji();
+
 export const TYPE_EMOJI: Record<CardType, string> = {
-  ...FALLBACK_TYPE_EMOJI,
-  ...uploadedTypeEmoji(),
+  power: UPLOADED_EMOJI.power ?? FALLBACK_TYPE_EMOJI.power,
+  wit: UPLOADED_EMOJI.wit ?? FALLBACK_TYPE_EMOJI.wit,
+  heart: UPLOADED_EMOJI.heart ?? FALLBACK_TYPE_EMOJI.heart,
 };
+
+/** Finicards' own mark, for packs, collections and shown cards. */
+export const CARD_EMOJI = UPLOADED_EMOJI.card ?? "🎴";
 
 export const RARITY_LABEL: Record<CardRarity, string> = {
   common: "Common",

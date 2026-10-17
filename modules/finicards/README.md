@@ -1106,10 +1106,15 @@ credit the artist at its right-hand end.
 
 **Type emoji.** Power, Wit and Heart are three custom emoji belonging to the
 bot's own Discord application - circles in the card colours, carrying the
-battle board's glyphs. Their ids are in `assets/type-emoji.json`, written by
-`scripts/finicards/type-emoji.ts --upload`; without that file the standard
+battle board's glyphs. Their ids are in `assets/emoji.json`, written by
+`scripts/finicards/emoji.ts --upload`; without that file the standard
 circles stand in. A custom emoji is some thirty characters of text, so a tally
 of more than eight cards is counted (`🟠 12 · 🔵 9`) rather than drawn out.
+
+**Card emoji.** `CARD_EMOJI`, the site's favicon as an emoji in the same file,
+marks packs, collections and shown cards; 🎴 stands in without it. Uploading
+replaces an emoji with a new id, so pass only the ones that changed:
+`emoji.ts --upload card`.
 
 **Where images appear:** `/finicard card` (with the text face as fallback),
 `/finicard pack` (one card at a time, then all five), the collection's

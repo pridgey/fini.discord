@@ -18,6 +18,7 @@ import {
   type RoomSource,
   type ShopRoom,
 } from "./dungeon";
+import { CARD_EMOJI } from "./rules";
 import { TUTORIAL_ART } from "./tutorialArt";
 import type { BattleCard } from "./types";
 import type { CardType } from "../../types/PocketbaseTablesV2";
@@ -496,7 +497,7 @@ const coachFor = (stage: TutorialStage, state: DungeonState): string => {
     case "walk-out":
       return [
         "## 📜 Form 27B, *Defeat*: approved",
-        "🎴 In a real run that boss drop would land in your collection. This one's imaginary, sorry.",
+        `${CARD_EMOJI} In a real run that boss drop would land in your collection. This one's imaginary, sorry.`,
         "## 🎓 Lesson 8: getting out",
         "There's no last room: the enemies keep getting stronger until your hand can't keep up. The real skill is knowing when to leave.",
         `**Walk out** and all your geld becomes Finicoin. **Fall in a fight** and you keep only ${keptShare}. A real run costs **${DUNGEON.entryFee} fc** to enter.`,
