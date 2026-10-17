@@ -6,6 +6,7 @@ import {
   type ChatInputCommandInteraction,
   type Message,
   type MessageEditAttachmentData,
+  MessageFlags,
 } from "discord.js";
 import {
   LEGENDARY_REVEAL_MS,
@@ -294,7 +295,10 @@ export const presentPack = async (
   collector.on("collect", async (press) => {
     if (press.user.id !== interaction.user.id) {
       await press
-        .reply({ content: "This pack isn't yours to open.", ephemeral: true })
+        .reply({
+          content: "This pack isn't yours to open.",
+          flags: [MessageFlags.Ephemeral],
+        })
         .catch(() => undefined);
       return;
     }

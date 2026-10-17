@@ -1,4 +1,4 @@
-import { Collection, ModalSubmitInteraction } from "discord.js";
+import { Collection, ModalSubmitInteraction, MessageFlags } from "discord.js";
 import { getModalFiles } from "../utilities/interactionFiles/getInteractionFiles";
 
 // Store modal handlers in a collection
@@ -33,7 +33,7 @@ export async function handleModalInteraction(
     console.warn(`Unknown modal namespace: ${namespace}`);
     await interaction.reply({
       content: "❌ Unknown modal action",
-      ephemeral: true,
+      flags: [MessageFlags.Ephemeral],
     });
     return;
   }
@@ -46,7 +46,7 @@ export async function handleModalInteraction(
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: "❌ An error occurred while processing this modal",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
     }
   }

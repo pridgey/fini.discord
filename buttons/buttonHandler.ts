@@ -1,4 +1,4 @@
-import { ButtonInteraction, Collection } from "discord.js";
+import { ButtonInteraction, Collection, MessageFlags } from "discord.js";
 import { getButtonFiles } from "../utilities/interactionFiles/getInteractionFiles";
 
 // Store button handlers in a collection
@@ -50,7 +50,7 @@ export async function handleButtonInteraction(interaction: ButtonInteraction) {
     console.warn(`Unknown button namespace: ${namespace}`);
     await interaction.reply({
       content: "❌ Unknown button action",
-      ephemeral: true,
+      flags: [MessageFlags.Ephemeral],
     });
     return;
   }
@@ -63,7 +63,7 @@ export async function handleButtonInteraction(interaction: ButtonInteraction) {
     if (!interaction.replied && !interaction.deferred) {
       await interaction.reply({
         content: "❌ An error occurred while processing this button",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
     }
   }

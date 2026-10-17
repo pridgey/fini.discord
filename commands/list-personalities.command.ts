@@ -19,20 +19,22 @@ export const execute = async (
     });
 
     const messages =
-      splitBigString(`Here are the personalities you've created: \n- Default: Essentially unsets Fini's personality.${personalities.map(
-        (p) =>
-          `\n- ${p.personality_name}${p.active ? " **(Active)**" : ""}: ${
-            p.prompt
-          }`,
-      )}
+      splitBigString(`Here are the personalities you've created: \n- Default: Essentially unsets Fini's personality.${personalities
+        .map(
+          (p) =>
+            `\n- ${p.personality_name}${p.active ? " **(Active)**" : ""}: ${
+              p.prompt
+            }`,
+        )
+        .join("")}
     \n\nTo use a command run /set-personality {name}`);
 
     await interaction.reply(messages.at(0) ?? "No personalities found.");
 
     if (messages.length > 1) {
-      messages.slice(1).forEach(async (m) => {
-        await interaction.followUp(m);
-      });
+      for (const message of messages.slice(1)) {
+        await interaction.followUp(message);
+      }
     }
 
     logCommand();

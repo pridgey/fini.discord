@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from "@discordjs/builders";
-import { ChatInputCommandInteraction } from "discord.js";
+import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import {
   CHAT_MODELS,
   CHAT_MODEL_LABELS,
@@ -38,7 +38,7 @@ export const execute = async (
   const serverID = interaction.guildId ?? "unknown";
 
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
     // No model given means the user is just asking what they're set to
     if (!selectedModel) {
@@ -72,7 +72,10 @@ export const execute = async (
     if (interaction.deferred || interaction.replied) {
       await interaction.editReply(errorMessage);
     } else {
-      await interaction.reply({ content: errorMessage, ephemeral: true });
+      await interaction.reply({
+        content: errorMessage,
+        flags: [MessageFlags.Ephemeral],
+      });
     }
 
     logCommand();

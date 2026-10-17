@@ -5,6 +5,7 @@ import {
   ButtonStyle,
   ComponentType,
   type ChatInputCommandInteraction,
+  MessageFlags,
 } from "discord.js";
 import { addCoin, getUserBalance } from "../finicoin";
 import { renderCardMedia } from "./cardArt";
@@ -144,7 +145,7 @@ export const runSell = async (
           content: isSeller
             ? "You can't buy your own card."
             : "This offer isn't for you.",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         }));
       }
 
@@ -176,7 +177,7 @@ export const runSell = async (
       if (balance < price) {
         return void (await press.reply({
           content: `That costs ${price} fc and you have ${balance}.`,
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         }));
       }
 
@@ -205,7 +206,7 @@ export const runSell = async (
       await press
         .reply({
           content: "Something went wrong with that sale.",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         })
         .catch(() => undefined);
     }

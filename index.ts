@@ -136,22 +136,25 @@ client.once("clientReady", async (cl) => {
       // Get all guilds
       const guilds = await cl.guilds.fetch();
 
-      // For each guild, get the system channel and send the update
-      guilds.forEach(async (g) => {
-        const guild = await g.fetch();
-
-        const splitMessage = splitBigString(fileContents.toString());
-
-        splitMessage.forEach(async (s, index) => {
-          await guild.systemChannel?.send(
-            `${
-              index === 0
-                ? `**${new Date().toLocaleDateString()} Update:**\r\n`
-                : ""
-            }${s}`,
+      // Each server's system channel gets the update, its parts in order. A
+      // server Fini can't post in is skipped rather than stopping the rest.
+      const parts = splitBigString(fileContents.toString());
+      const heading = `**${new Date().toLocaleDateString()} Update:**\r\n`;
+      for (const partial of guilds.values()) {
+        try {
+          const guild = await partial.fetch();
+          for (const [index, part] of parts.entries()) {
+            await guild.systemChannel?.send(
+              `${index === 0 ? heading : ""}${part}`,
+            );
+          }
+        } catch (err) {
+          console.error(
+            `Couldn't post the update in server ${partial.id}:`,
+            err,
           );
-        });
-      });
+        }
+      }
 
       // Empty the file out
       await writeFile(fileName, "");

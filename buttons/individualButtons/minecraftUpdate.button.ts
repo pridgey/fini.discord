@@ -1,4 +1,4 @@
-import { ButtonInteraction } from "discord.js";
+import { ButtonInteraction, MessageFlags } from "discord.js";
 import { requireAdmin } from "../../utilities/discord/isAdmin";
 import { MINECRAFT_SERVER_DIR } from "../../modules/minecraft/minecraft.config";
 import { checkForPackUpdate } from "../../modules/minecraft/packUpdate";
@@ -13,7 +13,7 @@ export async function execute(interaction: ButtonInteraction, _args: string[]) {
       return;
     }
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
     const update = await checkForPackUpdate();
 
@@ -58,7 +58,7 @@ export async function execute(interaction: ButtonInteraction, _args: string[]) {
     } else if (!interaction.replied) {
       await interaction.reply({
         content: "❌ Failed to check for a modpack update",
-        ephemeral: true,
+        flags: [MessageFlags.Ephemeral],
       });
     }
   }

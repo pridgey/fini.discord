@@ -6,6 +6,7 @@ import {
   ComponentType,
   type ChatInputCommandInteraction,
   type User,
+  MessageFlags,
 } from "discord.js";
 import { addCoin, getUserBalance } from "../finicoin";
 import { renderCardMedia } from "./cardArt";
@@ -278,7 +279,7 @@ export const runTrade = async (
         if (!isProposer) {
           return void (await press.reply({
             content: "Only the player who offered this trade can cancel it.",
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral],
           }));
         }
         return void (await close(
@@ -291,7 +292,7 @@ export const runTrade = async (
           content: isProposer
             ? `It's up to ${partner} to accept or decline.`
             : "This trade isn't yours to answer.",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         }));
       }
 
@@ -330,7 +331,7 @@ export const runTrade = async (
       await press
         .reply({
           content: "Something went wrong with that trade.",
-          ephemeral: true,
+          flags: [MessageFlags.Ephemeral],
         })
         .catch(() => undefined);
     }

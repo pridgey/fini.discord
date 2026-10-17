@@ -3,6 +3,7 @@ import {
   ChannelType,
   ChatInputCommandInteraction,
   PermissionFlagsBits,
+  MessageFlags,
 } from "discord.js";
 import { ConfigRecord } from "../types/PocketbaseTables";
 import {
@@ -56,7 +57,7 @@ export const execute = async (
   if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
     return interaction.reply({
       content: "This command is admin only!",
-      ephemeral: true,
+      flags: [MessageFlags.Ephemeral],
     });
   }
 

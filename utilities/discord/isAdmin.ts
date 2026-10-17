@@ -1,4 +1,4 @@
-import { RepliableInteraction } from "discord.js";
+import { RepliableInteraction, MessageFlags } from "discord.js";
 
 /**
  * Discord user id allowed to run owner-only actions. Set ADMIN_ID in .env.
@@ -24,7 +24,7 @@ export const requireAdmin = async (
     content: ADMIN_ID
       ? `❌ Only the bot admin can ${action}.`
       : "❌ No bot admin is configured (`ADMIN_ID` is unset), so owner-only actions are disabled.",
-    ephemeral: true,
+    flags: [MessageFlags.Ephemeral],
   });
 
   return false;
