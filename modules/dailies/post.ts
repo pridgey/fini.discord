@@ -20,6 +20,7 @@ import {
   type DailyRoundRecord,
 } from "./geo/dailyStore";
 import { maxPayFor, placeName } from "./geo/messages";
+import { formatDistance } from "./geo/score";
 import {
   POST_HOUR,
   POST_TIME,
@@ -112,11 +113,40 @@ export const recapLines = (yesterday: Games): string[] => {
   return games;
 };
 
-/** "Played by 4 · best **Aya** 214 fc" */
+/** The ladder's rungs, top first, as the live line names them. */
+const RUNGS = [
+  ["city", "the city"],
+  ["province", "the province"],
+  ["country", "the country"],
+  ["continent", "the continent"],
+] as const;
+
+const reached = (guess: DailyGuessRecord, kind: string) =>
+  guess.checks?.some(
+    (check) => check.kind === kind && check.outcome === "earned",
+  ) ?? false;
+
+/**
+ * "Played by 4 · 🏙️ **Aya**, **Fen** found the city · closest 2 km", or the
+ * highest rung anyone reached. Says nothing of where: the round is still live.
+ */
 const geoLive = (guesses: DailyGuessRecord[]): string => {
   if (!guesses.length) return "No guesses yet.";
-  const [best] = guesses;
-  return `Played by ${guesses.length} · best **${best.username}** ${best.total} fc`;
+  const closest = `closest ${formatDistance(Math.min(...guesses.map((guess) => guess.km)))}`;
+  const played = `Played by ${guesses.length}`;
+
+  const finders = guesses.filter((guess) => reached(guess, "city"));
+  if (finders.length) {
+    const names = finders.slice(0, 3).map((guess) => `**${guess.username}**`);
+    const more = finders.length > 3 ? ` +${finders.length - 3} more` : "";
+    return `${played} · 🏙️ ${names.join(", ")}${more} found the city · ${closest}`;
+  }
+  const best = RUNGS.find(([kind]) =>
+    guesses.some((guess) => reached(guess, kind)),
+  );
+  return best
+    ? `${played} · best so far: ${best[1]} · ${closest}`
+    : `${played} · nobody's found the continent yet · ${closest}`;
 };
 
 /** "Solved by **Aya** (7 guesses), **Fen** (12) · 6 playing" */

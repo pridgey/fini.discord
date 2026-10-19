@@ -31,8 +31,18 @@ const geoRound = {
   posts: {},
 } as unknown as DailyRoundRecord;
 
-const guess = (username: string, total: number) =>
-  ({ username, total, km: 10 }) as DailyGuessRecord;
+/** A guess that climbed the ladder as far as `rung`. */
+const guess = (
+  username: string,
+  total: number,
+  { km = 10, rung = "city" }: { km?: number; rung?: string } = {},
+) => {
+  const ladder = ["continent", "country", "province", "city"];
+  const checks = ladder
+    .slice(0, ladder.indexOf(rung) + 1)
+    .map((kind) => ({ kind, label: kind, outcome: "earned", fc: 1 }));
+  return { username, total, km, checks } as DailyGuessRecord;
+};
 
 const puzzle = generatePuzzle(seeded(7));
 const weaveRound: WeaveRoundRecord = {
@@ -134,9 +144,40 @@ describe("the daily post", () => {
       },
     }).join("\n");
 
-    expect(text).toContain("Played by 2 · best **Aya** 214 fc");
+    expect(text).toContain(
+      "Played by 2 · 🏙️ **Aya**, **Fen** found the city · closest 10 km",
+    );
     expect(text).toContain(
       "Solved by **Aya** (7 guesses), **Fen** (12) · 3 playing",
+    );
+  });
+
+  it("names the best rung reached when nobody has found the city", () => {
+    const live = (guesses: DailyGuessRecord[]) =>
+      todayLines({ geo: { round: geoRound, guesses }, weave: null }).join("\n");
+
+    expect(
+      live([
+        guess("Aya", 60, { km: 134, rung: "country" }),
+        guess("Fen", 40, { km: 862, rung: "continent" }),
+      ]),
+    ).toContain("Played by 2 · best so far: the country · closest 134 km");
+    expect(live([guess("Bo", 10, { km: 13935, rung: "none" })])).toContain(
+      "Played by 1 · nobody's found the continent yet · closest 13,935 km",
+    );
+  });
+
+  it("names three city finders and counts the rest", () => {
+    const finders = ["Aya", "Fen", "Bo", "Cy", "Di"].map((name) =>
+      guess(name, 150, { km: 3 }),
+    );
+    expect(
+      todayLines({
+        geo: { round: geoRound, guesses: finders },
+        weave: null,
+      }).join("\n"),
+    ).toContain(
+      "Played by 5 · 🏙️ **Aya**, **Fen**, **Bo** +2 more found the city · closest 3 km",
     );
   });
 
