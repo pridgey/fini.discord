@@ -96,7 +96,7 @@ export const roundIntro = (photoCount: number): string[] => {
     [`🪙 **${maxPayFor(photoCount)} fc** up for grabs`, photoLine(photoCount)]
       .filter(Boolean)
       .join(" · "),
-    `-# ${PAY.northSouth} per hemisphere · ${PAY.continent} continent · ${PAY.country} country · ${PAY.province} province · ${PAY.city} town · up to ${PAY.closeness} for landing close${multiplier > 1 ? `, all ×${multiplier}` : ""}`,
+    `-# ${PAY.northSouth} per hemisphere · ${PAY.continent} continent · ${PAY.country} country · ${PAY.province} province · ${PAY.city} town${multiplier > 1 ? `, all ×${multiplier}` : ""}`,
   ];
 };
 
@@ -166,8 +166,8 @@ export type SavedGuess = {
 
 /**
  * A player's result shown again - from the guess as saved, so it reads as it
- * did when they locked in. The closeness bonus isn't saved apart, so it's what
- * the total holds beyond the checks.
+ * did when they locked in. Guesses from before the closeness bonus was dropped
+ * hold it in their total beyond the checks, so it's shown from that.
  */
 export const pastRevealView = async (
   facts: RoundFacts,
@@ -219,7 +219,6 @@ export const revealView = async (
       `📏 **${formatDistance(verdict.km)}** away · 🪙 ${paid ? "you won" : "would pay"} **${total} fc** of ${maxPayFor(facts.photoCount)}`,
       "",
       ...verdict.checks.map(checkLine),
-      verdict.bonus > 0 ? `🎯 Landing close **+${verdict.bonus}**` : null,
       verdict.total > 0 ? photoLine(facts.photoCount) : null,
       "",
       `It was taken in **${placeName(place)}**. You guessed ${guess.label}.`,

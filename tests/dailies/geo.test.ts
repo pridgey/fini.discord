@@ -383,14 +383,13 @@ describe("judging a guess", () => {
       .filter((check) => check.outcome === "earned")
       .map((check) => check.label);
 
-  it("pays every check and the full closeness bonus for a guess on the spot", () => {
+  it("pays every check for the right town, 150 fc in all", () => {
     const verdict = judgeGuess(guess(45.764, 4.8357, LYON), answer);
     expect(verdict.checks.every((check) => check.outcome === "earned")).toBe(
       true,
     );
-    expect(verdict.bonus).toBe(50);
     expect(verdict.total).toBe(MAX_PAY);
-    expect(MAX_PAY).toBe(220);
+    expect(MAX_PAY).toBe(150);
   });
 
   it("climbs the ladder until the first miss, and locks the rest", () => {
@@ -412,7 +411,7 @@ describe("judging a guess", () => {
       "locked",
     ]);
     expect(verdict.checks[4].note).toBe("you said Provence-Alpes-Côte d'Azur");
-    expect(verdict.total).toBe(10 + 10 + 20 + 30);
+    expect(verdict.total).toBe(10 + 10 + 15 + 25);
   });
 
   it("judges the hemispheres on their own, even after a wrong continent", () => {
@@ -450,7 +449,7 @@ describe("judging a guess", () => {
       outcome: "locked",
       note: "your guess named a country, not a province",
     });
-    expect(verdict.bonus).toBe(0);
+    expect(verdict.total).toBe(10 + 10 + 15 + 25);
   });
 
   it("counts a town by name, or by being within 10 km of the spot", () => {
@@ -503,12 +502,9 @@ describe("judging a guess", () => {
     expect([3, 4, 2, 1].map(photoMultiplier)).toEqual([1, 1, 1.5, 2]);
   });
 
-  it("shrinks the closeness bonus with distance", () => {
-    const bonusAt = (lat: number) =>
-      judgeGuess(guess(lat, 4.8357, LYON), answer).bonus;
-    const [near, mid, far] = [45.7685, 45.782, 45.82].map(bonusAt);
-    expect(near).toBeGreaterThan(mid);
-    expect(mid).toBeGreaterThan(far);
-    expect(far).toBeGreaterThan(0);
+  it("pays the right town the same wherever in it the guess landed", () => {
+    const totalAt = (lat: number) =>
+      judgeGuess(guess(lat, 4.8357, LYON), answer).total;
+    expect([45.764, 45.7685, 45.82].map(totalAt)).toEqual([150, 150, 150]);
   });
 });

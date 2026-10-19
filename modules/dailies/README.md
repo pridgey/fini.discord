@@ -40,8 +40,8 @@ Rounds and plays live in Pocketbase; their migrations are in `pb_migrations/`.
 
 Street photos from Mapillary (Panoramax without `MAPILLARY_TOKEN`); players
 type a place or coordinates, check it on a map, and lock in one guess. Paid on
-a ladder of checks - hemispheres, continent, country, province, town - and
-closeness, up to 220 fc, more for rounds with fewer photos. `judge.ts` has the
+a ladder of checks - hemispheres, continent, country, province, town - up to
+150 fc, more for rounds with fewer photos. `judge.ts` has the
 rules; `geo/daily.ts` the posting and paying.
 
 ## Weave (`weave/`)

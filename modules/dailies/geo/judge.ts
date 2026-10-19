@@ -4,7 +4,9 @@ import { distanceKm, type LatLon } from "./score";
 
 /**
  * How a guess is paid: a run of yes-or-no checks, each worth a set amount of
- * coin, then a bonus for how close a guess in the right town landed.
+ * coin. The town is the last rung: nobody needs to, or should, place a photo
+ * closer than that. (A bonus for landing close used to follow it; it mostly
+ * paid for where in town the photo happened to be taken.)
  *
  * - The two hemispheres are freebies, judged on their own.
  * - Continent, country, province and town are a ladder: each needs the one
@@ -17,12 +19,10 @@ import { distanceKm, type LatLon } from "./score";
 export const PAY = {
   northSouth: 10,
   eastWest: 10,
-  continent: 20,
-  country: 30,
+  continent: 15,
+  country: 25,
   province: 40,
-  city: 60,
-  /** The most the closeness bonus pays, for a guess on the spot. */
-  closeness: 50,
+  city: 50,
 } as const;
 
 /**
@@ -32,8 +32,6 @@ export const PAY = {
  * was taken somewhere no town is named.
  */
 const SAME_TOWN_KM = 10;
-/** The closeness bonus halves roughly every 2 km. */
-const CLOSENESS_FALLOFF_KM = 3;
 
 export type Check = {
   kind: keyof typeof PAY;
@@ -49,8 +47,6 @@ export type Check = {
 export type Verdict = {
   km: number;
   checks: Check[];
-  /** The closeness bonus, when the town was right. */
-  bonus: number;
   total: number;
 };
 
@@ -177,17 +173,12 @@ export const judgeGuess = (
     guess.place.city ? `you said ${guess.place.city}` : undefined,
   );
 
-  const townRight = checks.at(-1)?.outcome === "earned";
-  const bonus = townRight
-    ? Math.round(PAY.closeness * Math.exp(-km / CLOSENESS_FALLOFF_KM))
-    : 0;
-  const total =
-    checks.reduce(
-      (sum, check) => sum + (check.outcome === "earned" ? check.fc : 0),
-      0,
-    ) + bonus;
+  const total = checks.reduce(
+    (sum, check) => sum + (check.outcome === "earned" ? check.fc : 0),
+    0,
+  );
 
-  return { km, checks, bonus, total };
+  return { km, checks, total };
 };
 
 /** The most a round can pay, before any photo multiplier. */

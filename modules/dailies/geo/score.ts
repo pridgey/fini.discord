@@ -1,4 +1,4 @@
-/** Distance on the globe, which the closeness bonus and the reveal use; see `judge.ts`. */
+/** Distance on the globe, which the same-town check and the reveal use; see `judge.ts`. */
 
 export type LatLon = { lat: number; lon: number };
 
