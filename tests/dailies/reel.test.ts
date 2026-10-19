@@ -14,6 +14,7 @@ import {
   type ReelProgress,
 } from "../../modules/dailies/reel/game";
 import {
+  answerByName,
   frameCandidates,
   parseGuess,
   pickFrames,
@@ -156,6 +157,20 @@ describe("Reel's frames and guesses", () => {
     ];
     expect(pickMatch(results, "dune", 841, "2021")?.movieId).toBe(438631);
     expect(pickMatch(results, "dune", 841, "1984")?.movieId).toBe(841);
+  });
+
+  it("knows the answer by any of its names, held to a typed year", () => {
+    const se7en = {
+      movieId: 807,
+      title: "Se7en",
+      year: "1995",
+      names: ["Se7en", "Se7en", "The Seven Deadly Sins", "Seven"],
+    };
+    expect(answerByName(se7en, "seven")?.title).toBe("Se7en");
+    expect(answerByName(se7en, "SE7EN")?.movieId).toBe(807);
+    expect(answerByName(se7en, "seven", "1995")?.movieId).toBe(807);
+    expect(answerByName(se7en, "seven", "2002")).toBeNull();
+    expect(answerByName(se7en, "seven samurai")).toBeNull();
   });
 
   it("matches nothing rather than a film nobody's heard of", () => {

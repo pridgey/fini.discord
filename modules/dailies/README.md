@@ -106,6 +106,8 @@ paid. Turning it on is all it takes to go live.
   frames so far, newest largest, privately. A guess is typed and matched on
   TMDB's search, by film id, so typos in spacing and capitals, "The" and
   alternate titles all work; a year can be added for remakes ("Dune 1984").
+  Any of the answer's own names on TMDB counts first - "Seven" for Se7en,
+  which search alone would read as Scream 7.
   A guess that finds nothing, or only films with under 100 votes, doesn't
   count; guessing the same film twice doesn't either. Each wrong guess or skip
   shows the next frame.

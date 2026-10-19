@@ -160,10 +160,54 @@ export const parseGuess = (typed: string): { title: string; year?: string } => {
     : { title: typed.trim() };
 };
 
+/** A film with every name TMDB knows it by: its title, original title, and alternative titles. */
+export type NamedFilm = Film & { names: string[] };
+
+/** The answer's names, by film: the same few films are asked about all day. */
+const namesCache = new Map<number, Promise<NamedFilm>>();
+
+const namesOf = (movieId: number): Promise<NamedFilm> => {
+  const cached = namesCache.get(movieId);
+  if (cached) return cached;
+  const fetched = tmdb<
+    TmdbFilm & { alternative_titles?: { titles?: { title: string }[] } }
+  >(`/movie/${movieId}?append_to_response=alternative_titles`).then((film) => ({
+    ...filmOf(film),
+    names: [
+      film.title,
+      film.original_title ?? "",
+      ...(film.alternative_titles?.titles ?? []).map((alt) => alt.title),
+    ].filter(Boolean),
+  }));
+  // A failed fetch isn't kept: the next guess tries again.
+  namesCache.set(movieId, fetched);
+  fetched.catch(() => namesCache.delete(movieId));
+  return fetched;
+};
+
+/**
+ * The answer, if the guess is one of its names - and the year typed, if any,
+ * is its year. "Seven" is Se7en's American title, but search for it and Se7en
+ * isn't in the first page: the films called "7" are.
+ */
+export const answerByName = (
+  answer: NamedFilm,
+  title: string,
+  year?: string,
+): Film | null => {
+  if (year && answer.year !== year) return null;
+  const wanted = normalise(title);
+  return answer.names.some((name) => normalise(name) === wanted)
+    ? { movieId: answer.movieId, title: answer.title, year: answer.year }
+    : null;
+};
+
 /**
  * The film a typed guess means, or null if TMDB knows none by that name.
  *
- * Search ranks by relevance, which usually puts the famous film first - but
+ * Any of the answer's own names - an alternative or original-language title -
+ * counts as naming it. Otherwise it's TMDB's search, which ranks by relevance
+ * and usually puts the famous film first - but
  * "Dune" means the 1984 one just as much as the 2021 one. So when the answer
  * is among the results and has exactly the title typed, the guess is taken to
  * mean it: naming a remake's title is naming the film. A trailing year narrows
@@ -175,6 +219,12 @@ export const matchGuess = async (
 ): Promise<Film | null> => {
   const { title, year } = parseGuess(typed);
   if (!title) return null;
+  const answer = await namesOf(answerId).catch(() => null);
+  if (answer) {
+    const named =
+      answerByName(answer, title, year) ?? answerByName(answer, typed.trim());
+    if (named) return named;
+  }
   const search = async (query: string, year?: string) => {
     const params = new URLSearchParams({ query, include_adult: "false" });
     if (year) params.set("year", year);
