@@ -92,11 +92,12 @@ paid. Turning it on is all it takes to go live.
   of the 1,000 most-voted films of all time (`POOL_PAGES`), not shown in the
   last year. TMDB asks to be credited, and every board says so.
 - **Frames.** Five of the film's text-free backdrops, at least 1280 wide,
-  spread across its 15 most-voted and shown least-voted first, so a round opens
+  spread across its 20 most-voted and shown least-voted first, so a round opens
   on a quieter shot and ends on the famous one. A still that's the same shot
-  as one already kept - by a 64-bit difference hash - is passed over. TMDB's
-  backdrops mix real stills with promo art, which can give a film away early;
-  the hash catches recrops but not zooms of the same picture.
+  as one already kept - recropped, zoomed, regraded, or a moment apart in one
+  photoshoot - is passed over (`reel/shots.ts` slides one over the other and
+  compares where they overlap). TMDB's backdrops mix real stills with promo
+  art, which can still give a film away early.
 - **Playing.** `/daily reel` (or the post's Reel button) shows a player the
   frames so far, newest largest, privately. A guess is typed and matched on
   TMDB's search, by film id, so typos in spacing and capitals, "The" and

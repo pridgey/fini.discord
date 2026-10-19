@@ -14,11 +14,17 @@ import {
   type ReelProgress,
 } from "../../modules/dailies/reel/game";
 import {
-  fingerprint,
+  frameCandidates,
   parseGuess,
   pickFrames,
   pickMatch,
 } from "../../modules/dailies/reel/tmdb";
+import {
+  SAME_SHOT,
+  distinctShots,
+  prepareShot,
+  shotSimilarity,
+} from "../../modules/dailies/reel/shots";
 import { reelBoardText } from "../../modules/dailies/reel/board";
 import type { ReelRoundRecord } from "../../modules/dailies/reel/store";
 
@@ -85,48 +91,27 @@ describe("Reel's frames and guesses", () => {
     width,
   });
 
-  it("picks five frames from the most-voted, the most-voted last", () => {
-    const images = Array.from({ length: 20 }, (_, i) =>
-      image(`/f${i}.jpg`, 100 - i),
-    );
-    const frames = pickFrames(images)!;
-    expect(frames).toHaveLength(5);
-    expect(frames.at(-1)).toBe("/f0.jpg");
-    // Only the 15 most-voted are candidates.
-    expect(frames[0]).toBe("/f14.jpg");
-    expect(new Set(frames).size).toBe(5);
-  });
-
-  it("passes over a still that's the same shot as one already kept", () => {
-    const images = Array.from({ length: 6 }, (_, i) =>
-      image(`/f${i}.jpg`, 100 - i),
-    );
-    const print = (bit: boolean) => Array.from({ length: 64 }, () => bit);
-    /** Patterns far apart from each other and from all-on or all-off. */
-    const unlike = (on: (i: number) => boolean) =>
-      Array.from({ length: 64 }, (_, i) => on(i));
-    const prints = new Map([
-      ["/f0.jpg", print(true)],
-      // One bit off /f0: the same shot, recropped.
-      ["/f1.jpg", [false, ...print(true).slice(1)]],
-      ["/f2.jpg", print(false)],
-      ["/f3.jpg", unlike((i) => i % 2 === 0)],
-      ["/f4.jpg", unlike((i) => i < 32)],
-      ["/f5.jpg", unlike((i) => i % 4 < 2)],
-    ]);
-    const frames = pickFrames(images, prints)!;
-    expect(frames).not.toContain("/f1.jpg");
-    expect(frames).toHaveLength(5);
-    // Without its repeat there aren't five left among four.
-    expect(pickFrames(images.slice(0, 5), prints)).toBeNull();
-  });
-
-  it("refuses a film without five frames wide enough to see", () => {
+  it("draws from the 20 most-voted stills wide enough to see, best first", () => {
     const images = [
-      ...Array.from({ length: 4 }, (_, i) => image(`/ok${i}.jpg`, 10)),
-      image("/small.jpg", 50, 780),
+      ...Array.from({ length: 25 }, (_, i) => image(`/f${i}.jpg`, 100 - i)),
+      image("/small.jpg", 500, 780),
     ];
-    expect(pickFrames(images)).toBeNull();
+    const candidates = frameCandidates(images);
+    expect(candidates).toHaveLength(20);
+    expect(candidates[0]).toBe("/f0.jpg");
+    expect(candidates).not.toContain("/small.jpg");
+  });
+
+  it("spreads five frames across the stills, the most-voted last", () => {
+    const stills = Array.from({ length: 9 }, (_, i) => `/s${i}.jpg`);
+    expect(pickFrames(stills)).toEqual([
+      "/s8.jpg",
+      "/s6.jpg",
+      "/s4.jpg",
+      "/s2.jpg",
+      "/s0.jpg",
+    ]);
+    expect(pickFrames(stills.slice(0, 4))).toBeNull();
   });
 
   // "Blade Runner 2049" reads as a year too; matchGuess searches the whole
@@ -190,29 +175,76 @@ describe("Reel's frames and guesses", () => {
   });
 });
 
-describe("Reel's fingerprints", () => {
-  it("are the same for an image and its resize, and differ for another", async () => {
-    const gradient = await sharp({
-      create: { width: 90, height: 80, channels: 3, background: "#000" },
-    })
-      .composite([
-        {
-          input: Buffer.from(
-            '<svg width="90" height="80"><defs><linearGradient id="g"><stop offset="0" stop-color="#000"/><stop offset="1" stop-color="#fff"/></linearGradient></defs><rect width="90" height="80" fill="url(#g)"/></svg>',
-          ),
-        },
-      ])
+describe("telling the same shot apart", () => {
+  /** A made-up still: soft blobs of light and dark, the same for a seed. */
+  const scene = async (seed: number) => {
+    let state = seed;
+    const random = () => {
+      state = (state * 1664525 + 1013904223) >>> 0;
+      return state / 4294967296;
+    };
+    const blobs = Array.from(
+      { length: 14 },
+      () =>
+        `<circle cx="${random() * 640}" cy="${random() * 360}" r="${20 + random() * 70}" fill="rgb(${Math.round(random() * 255)},${Math.round(random() * 255)},${Math.round(random() * 255)})"/>`,
+    ).join("");
+    return sharp(
+      Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#333"/>${blobs}</svg>`,
+      ),
+    )
+      .blur(4)
       .png()
       .toBuffer();
-    const smaller = await sharp(gradient).resize(45, 40).png().toBuffer();
-    const flipped = await sharp(gradient).flop().png().toBuffer();
-    const [a, b, c] = await Promise.all(
-      [gradient, smaller, flipped].map(fingerprint),
+  };
+  /** Part of a still, blown back up to full size: a recrop. */
+  const recrop = (still: Buffer, left: number, top: number, width: number) =>
+    sharp(still)
+      .extract({ left, top, width, height: Math.round((width * 9) / 16) })
+      .resize(640, 360)
+      .png()
+      .toBuffer();
+
+  it("knows a shifted, zoomed or regraded copy for the same shot", async () => {
+    const still = await scene(1);
+    const [base, shifted, zoomed, regraded] = await Promise.all(
+      [
+        still,
+        await recrop(still, 110, 20, 520),
+        await recrop(still, 40, 30, 420),
+        await sharp(still)
+          .modulate({ brightness: 0.7, hue: 40 })
+          .png()
+          .toBuffer(),
+      ].map(prepareShot),
     );
-    const apart = (x: boolean[], y: boolean[]) =>
-      x.filter((bit, i) => bit !== y[i]).length;
-    expect(apart(a, b)).toBeLessThanOrEqual(4);
-    expect(apart(a, c)).toBeGreaterThan(40);
+    for (const copy of [shifted, zoomed, regraded]) {
+      expect(shotSimilarity(base, copy)).toBeGreaterThanOrEqual(SAME_SHOT);
+    }
+  });
+
+  it("tells different shots apart", async () => {
+    const [a, b, c] = await Promise.all(
+      [1, 2, 3].map(async (seed) => prepareShot(await scene(seed))),
+    );
+    expect(shotSimilarity(a, b)).toBeLessThan(SAME_SHOT);
+    expect(shotSimilarity(a, c)).toBeLessThan(SAME_SHOT);
+  });
+
+  it("keeps the first of each shot, in order", async () => {
+    const one = await scene(1);
+    const shots = new Map([
+      ["/a.jpg", await prepareShot(one)],
+      ["/b.jpg", await prepareShot(await scene(2))],
+      ["/a-again.jpg", await prepareShot(await recrop(one, 60, 10, 560))],
+      ["/c.jpg", await prepareShot(await scene(3))],
+    ]);
+    expect(
+      await distinctShots(
+        ["/a.jpg", "/b.jpg", "/a-again.jpg", "/c.jpg", "/unfetched.jpg"],
+        shots,
+      ),
+    ).toEqual(["/a.jpg", "/b.jpg", "/c.jpg", "/unfetched.jpg"]);
   });
 });
 

@@ -1,5 +1,5 @@
-import sharp from "sharp";
 import { FRAMES, type Film } from "./game";
+import { distinctShots, prepareShot, type Shot } from "./shots";
 
 /**
  * Reel's window on TMDB (themoviedb.org): the films to pick from, their frames,
@@ -21,8 +21,11 @@ export const POOL_PAGES = 50;
 
 /** Narrower frames are too small to make anything out in. */
 const MIN_FRAME_WIDTH = 1280;
-/** Frames are chosen from a film's most-voted: below these they turn odd - black, blurred, near-repeats. */
-const FRAME_CANDIDATES = 15;
+/**
+ * Frames are chosen from a film's most-voted: below these they turn odd -
+ * black, blurred. Twenty leaves enough after repeated shots are dropped.
+ */
+const FRAME_CANDIDATES = 20;
 
 export const tmdbConfigured = (): boolean => !!process.env.TMDB_TOKEN;
 
@@ -76,84 +79,55 @@ export const poolPage = async (page: number): Promise<Film[]> => {
 };
 
 /** A film's most-voted stills wide enough to show: what frames are picked from. */
-const frameCandidates = (images: TmdbImage[]): TmdbImage[] =>
+export const frameCandidates = (images: TmdbImage[]): string[] =>
   images
     .filter((image) => image.width >= MIN_FRAME_WIDTH)
     .sort((a, b) => b.vote_count - a.vote_count)
-    .slice(0, FRAME_CANDIDATES);
-
-/** A picture's rough shape, 64 bits of "is this patch brighter than the next". */
-export type Fingerprint = boolean[];
-
-/** Fingerprints differing in this many bits or fewer are the same shot. */
-const SAME_SHOT_BITS = 12;
-
-const sameShot = (a: Fingerprint, b: Fingerprint): boolean =>
-  a.filter((bit, i) => bit !== b[i]).length <= SAME_SHOT_BITS;
-
-/** The fingerprint of an image: a difference hash, cheap and blind to crops' small shifts. */
-export const fingerprint = async (image: Buffer): Promise<Fingerprint> => {
-  const pixels = await sharp(image)
-    .greyscale()
-    .resize(9, 8, { fit: "fill" })
-    .raw()
-    .toBuffer();
-  return Array.from({ length: 64 }, (_, i) => {
-    const at = Math.floor(i / 8) * 9 + (i % 8);
-    return pixels[at] > pixels[at + 1];
-  });
-};
+    .slice(0, FRAME_CANDIDATES)
+    .map((image) => image.file_path);
 
 /**
- * The five frames to show, hardest first: from a film's most-voted text-free
- * stills, spread evenly, so the round opens on a quiet shot and ends on the one
- * everyone remembers. A still that's the same shot as one already kept - TMDB
- * holds the same promo picture in several crops - is passed over, or a player
- * would spend a frame on one they've seen. Null when the film hasn't five.
+ * The five frames to show from a film's distinct stills, most-voted first:
+ * spread evenly and reversed, so the round opens on a quiet shot and ends on
+ * the one everyone remembers. Null when there aren't five.
  */
-export const pickFrames = (
-  images: TmdbImage[],
-  prints: Map<string, Fingerprint> = new Map(),
-): string[] | null => {
-  const kept: TmdbImage[] = [];
-  for (const image of frameCandidates(images)) {
-    const print = prints.get(image.file_path);
-    const repeat =
-      print &&
-      kept.some((other) => {
-        const otherPrint = prints.get(other.file_path);
-        return otherPrint && sameShot(print, otherPrint);
-      });
-    if (!repeat) kept.push(image);
-  }
-  if (kept.length < FRAMES) return null;
-  const step = (kept.length - 1) / (FRAMES - 1);
+export const pickFrames = (stills: string[]): string[] | null => {
+  if (stills.length < FRAMES) return null;
+  const step = (stills.length - 1) / (FRAMES - 1);
   return Array.from(
     { length: FRAMES },
-    (_, i) => kept[Math.round(i * step)].file_path,
+    (_, i) => stills[Math.round(i * step)],
   ).reverse();
 };
 
-/** A film's frames to show, or null if it hasn't five good ones. */
+/** A small copy of a still, to compare shots with. Null if it couldn't be had. */
+const shotOf = async (path: string): Promise<Shot | null> => {
+  const response = await fetch(frameUrl(path, "w92"), {
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+  if (!response?.ok) return null;
+  return prepareShot(Buffer.from(await response.arrayBuffer()));
+};
+
+/**
+ * A film's frames to show, or null if it hasn't five good ones. A still
+ * that's the same shot as one already kept is passed over (`shots.ts`).
+ */
 export const framesFor = async (movieId: number): Promise<string[] | null> => {
   // `null` language: the stills with no title or text on them.
   const { backdrops } = await tmdb<{ backdrops: TmdbImage[] }>(
     `/movie/${movieId}/images?include_image_language=null`,
   );
-  const prints = new Map<string, Fingerprint>();
+  const candidates = frameCandidates(backdrops);
+  if (candidates.length < FRAMES) return null;
+  const shots = new Map<string, Shot>();
   await Promise.all(
-    frameCandidates(backdrops).map(async ({ file_path }) => {
-      const response = await fetch(frameUrl(file_path, "w92"), {
-        signal: AbortSignal.timeout(10_000),
-      }).catch(() => null);
-      if (!response?.ok) return;
-      prints.set(
-        file_path,
-        await fingerprint(Buffer.from(await response.arrayBuffer())),
-      );
+    candidates.map(async (path) => {
+      const shot = await shotOf(path).catch(() => null);
+      if (shot) shots.set(path, shot);
     }),
   );
-  return pickFrames(backdrops, prints);
+  return pickFrames(await distinctShots(candidates, shots));
 };
 
 const normalise = (title: string) =>
