@@ -18,6 +18,20 @@ export const data = new SlashCommandBuilder()
       .setName("character-b")
       .setDescription("The second fighter")
       .setRequired(true),
+  )
+  .addStringOption((option) =>
+    option
+      .setName("modifiers")
+      .setDescription("Conditions on the fight, e.g. both fighters are tired")
+      .setMaxLength(300),
+  )
+  .addStringOption((option) =>
+    option
+      .setName("setting")
+      .setDescription(
+        "Where the fight happens, e.g. on a beach, in a 10x10 shed",
+      )
+      .setMaxLength(300),
   );
 
 export const execute: SlashCommand["execute"] = async (
@@ -26,8 +40,27 @@ export const execute: SlashCommand["execute"] = async (
 ) => {
   const fighterA = interaction.options.getString("character-a") || "";
   const fighterB = interaction.options.getString("character-b") || "";
+  const modifiers = interaction.options.getString("modifiers")?.trim() || "";
+  const setting = interaction.options.getString("setting")?.trim() || "";
 
-  const prompt = `I've created a pocket dimension that cannot be escaped. I can put any two fictional characters into that plane and they will have the urge to fight one another to the death, even if it is against their character. The characters will always be at their prime strength and have every ability that has been given to them in their canon timelines. Your job is to weigh your own knowledge of the two characters, and using that inform me which of the two wins the death battle and why. Do not present any more information than that. You must decide a winner.
+  // Extra conditions override the prime-strength / pocket-dimension defaults.
+  const contextLines = [
+    setting &&
+      `Instead of the pocket dimension's empty plane, the fight takes place in this setting: ${setting}. Weigh how the setting helps or hinders each fighter.`,
+    modifiers &&
+      `These modifiers apply to the fight and override any default above (including prime strength): ${modifiers}. Weigh how they affect each fighter.`,
+  ].filter(Boolean);
+  const contextBlock = contextLines.length
+    ? `\n\n  ${contextLines.join("\n  ")}`
+    : "";
+  const headerExtras = [
+    setting && `**Setting:** ${setting}`,
+    modifiers && `**Modifiers:** ${modifiers}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const prompt = `I've created a pocket dimension that cannot be escaped. I can put any two fictional characters into that plane and they will have the urge to fight one another to the death, even if it is against their character. The characters will always be at their prime strength and have every ability that has been given to them in their canon timelines. Your job is to weigh your own knowledge of the two characters, and using that inform me which of the two wins the death battle and why. Do not present any more information than that. You must decide a winner.${contextBlock}
   Your response should match this template:
 
   '**Death battle:** {fighterA} vs {fighterB}
@@ -62,7 +95,11 @@ export const execute: SlashCommand["execute"] = async (
   });
 
   let responded = false;
-  const splitResponse = splitBigString(response);
+  // Shown by us rather than the model so the template stays fixed.
+  const fullResponse = headerExtras
+    ? response.replace(/^(.*\n)/, `$1${headerExtras}\n`)
+    : response;
+  const splitResponse = splitBigString(fullResponse);
 
   for (const chunk of splitResponse) {
     if (!responded) {
