@@ -42,6 +42,7 @@ import { cardLabel } from "../lineupPicker";
 import { CARD_EMOJI, TYPE_EMOJI } from "../rules";
 import type { BattleCard, Side } from "../types";
 import { enemyAbilityLines } from "./enemyAbility";
+import { handAbilityLines } from "./handAbility";
 import { roundBlock } from "./resultMessage";
 import {
   DRAW_ACCENT,
@@ -703,7 +704,15 @@ export const composeDungeonMessage = (
     ),
   );
 
-  const legend = keywordLegend(hand.map((entry) => entry.card));
+  // In a fight, each ability also says what it will do in this one.
+  const legend =
+    playing && room.kind === "fight"
+      ? handAbilityLines(
+          progress,
+          hand.map((entry) => entry.card),
+          ready.map((entry) => entry.card),
+        )
+      : keywordLegend(hand.map((entry) => entry.card));
   if (legend.length > 0) {
     handBlock.addTextDisplayComponents((text) =>
       text.setContent(legend.join("\n")),

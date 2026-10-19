@@ -1406,6 +1406,58 @@ export type FightOutcome = {
 };
 
 /**
+ * The round `card` fights against `printedEnemy` in `leg`: the run's buffs
+ * on the card, its weakening on the enemy, and the leg's earlier fights as both
+ * lineups. Mutates `leg`'s side states as a played round does.
+ */
+const fightRound = (
+  state: DungeonState,
+  printedEnemy: BattleCard,
+  leg: DungeonState["leg"],
+  card: BattleCard,
+  rules: BattleRules,
+  config: DungeonConfig,
+): RoundResult => {
+  const mods = modsOf(state);
+  const player = buffedCard(card, mods);
+  const enemy = weakenedEnemy(printedEnemy, mods);
+  const { rounds, states } = leg;
+  return resolveRound({
+    slot: rounds.length + 1,
+    lineupLength: config.legLength,
+    challengerCard: player,
+    defenderCard: enemy,
+    challengerState: states.challenger,
+    defenderState: states.defender,
+    rules,
+    challengerLineup: [
+      ...rounds.map((played) => played.challenger.card),
+      player,
+    ],
+    defenderLineup: [...rounds.map((played) => played.defender.card), enemy],
+    history: rounds,
+  });
+};
+
+/**
+ * The round `card` would fight if played into the current room now, for
+ * saying what its ability will do. Plays nothing: the run is left as it was.
+ */
+export const previewRound = (
+  state: DungeonState,
+  card: BattleCard,
+  rules: BattleRules = RULES,
+  config: DungeonConfig = DUNGEON,
+): RoundResult => {
+  if (state.room.kind !== "fight") throw new Error("Not a fight room.");
+  const leg =
+    state.leg.rounds.length >= config.legLength
+      ? freshLeg()
+      : structuredClone(state.leg);
+  return fightRound(state, state.room.enemy, leg, card, rules, config);
+};
+
+/**
  * Plays `card` into the current fight.
  *
  * Never mutates the state it is given, so a failed write cannot leave a run
@@ -1429,24 +1481,14 @@ export const playFight = (
   }
   const { rounds, states } = next.leg;
 
-  const player = buffedCard(card, mods);
-  const enemy = weakenedEnemy(next.room.enemy, mods);
-
-  const round = resolveRound({
-    slot: rounds.length + 1,
-    lineupLength: config.legLength,
-    challengerCard: player,
-    defenderCard: enemy,
-    challengerState: states.challenger,
-    defenderState: states.defender,
+  const round = fightRound(
+    next,
+    next.room.enemy,
+    next.leg,
+    card,
     rules,
-    challengerLineup: [
-      ...rounds.map((played) => played.challenger.card),
-      player,
-    ],
-    defenderLineup: [...rounds.map((played) => played.defender.card), enemy],
-    history: rounds,
-  });
+    config,
+  );
 
   recordRound(round, states.challenger, states.defender);
   rounds.push(round);

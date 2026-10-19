@@ -28,6 +28,7 @@ import {
   payoutFor,
   playEvent,
   playFight,
+  previewRound,
   doorSight,
   drinkCoffee,
   previewCards,
@@ -47,6 +48,11 @@ import {
   composeDungeonMessage,
 } from "../../modules/finicards/ui";
 import { buffLines } from "../../modules/finicards/ui/dungeonMessage";
+import {
+  handAbilityLines,
+  handExplainsKeyword,
+} from "../../modules/finicards/ui/handAbility";
+import { KEYWORDS } from "../../modules/finicards/keywords";
 import type { BattleCard } from "../../modules/finicards/types";
 import type {
   CardRarity,
@@ -494,6 +500,118 @@ describe("finicards v2 dungeons", () => {
           ["full_art"],
         );
       }
+    });
+  });
+
+  describe("your hand's abilities, in dungeon terms", () => {
+    const wit = (id: string, keyword = "") =>
+      card(id, "wit", [3, 7, 5], keyword);
+    const prey = (id: string, keyword = "") =>
+      card(id, "heart", [1, 1, 1], keyword);
+    /** A run after `played` were each played into a fight they won. */
+    const after = (played: BattleCard[], enemy = prey("next")) => {
+      let state = runIn(fightRoom(prey("e0")));
+      played.forEach((each, index) => {
+        state = {
+          ...chooseDoor(playFight(state, each, source()).state, 0),
+          room: fightRoom(
+            index === played.length - 1 ? enemy : prey(`e${index + 1}`),
+          ),
+        };
+      });
+      return state;
+    };
+    const linesFor = (state: DungeonState, hand: BattleCard[]) =>
+      handAbilityLines(state, hand, hand);
+
+    it("says a Chorus played first has nothing to count yet", () => {
+      const chorus = wit("c", "chorus");
+      expect(linesFor(runIn(fightRoom(prey("e"))), [chorus])).toEqual([
+        expect.stringContaining("**Chorus** · Card c"),
+        "-# ↳ **In Dungeon:** No bonus this fight: you haven't played anything else this leg yet.",
+      ]);
+    });
+
+    it("gives a Chorus the bonus it will fight with, and why", () => {
+      const chorus = wit("c", "chorus");
+      const [, line] = linesFor(after([wit("a"), strong("b")]), [chorus]);
+      expect(line).toBe(
+        "-# ↳ **In Dungeon:** **+2** this fight: your lineup is what you've played this leg, and this: Card a (Wit), Card b (Power), Card c (Wit).",
+      );
+    });
+
+    it("splits the line by card when the same ability does different things", () => {
+      const lines = linesFor(after([wit("a")]), [
+        wit("w", "chorus"),
+        card("h", "heart", [3, 5, 7], "chorus"),
+      ]);
+      expect(lines.slice(1)).toEqual([
+        expect.stringMatching(
+          /^-# ↳ \*\*In Dungeon\*\* · Card w: \*\*\+2\*\* this fight/,
+        ),
+        expect.stringMatching(
+          /^-# ↳ \*\*In Dungeon\*\* · Card h: No bonus this fight/,
+        ),
+      ]);
+    });
+
+    it("says the tiebreak abilities never fire here", () => {
+      expect(linesFor(runIn(fightRoom(prey("e"))), [wit("g", "grit")])[1]).toBe(
+        "-# ↳ **In Dungeon:** Does nothing in a dungeon: each fight is one round, so there is no tiebreaker.",
+      );
+    });
+
+    it("names what a Silence or Mimic would meet", () => {
+      const lines = linesFor(runIn(fightRoom(prey("e", "bulwark"))), [
+        wit("s", "silence"),
+        wit("m", "mimic"),
+      ]);
+      expect(lines).toContain(
+        "-# ↳ **In Dungeon:** Switches off Card e's Bulwark.",
+      );
+      expect(lines).toContain(
+        "-# ↳ **In Dungeon:** Fights with Card e's Bulwark this fight.",
+      );
+    });
+
+    it("says when the enemy's Silence switches every ability off", () => {
+      const [, line] = linesFor(runIn(fightRoom(prey("e", "silence"))), [
+        wit("v", "vanguard"),
+      ]);
+      expect(line).toBe(
+        "-# ↳ **In Dungeon:** Switched off this fight: Card e's Silence.",
+      );
+    });
+
+    it("lists a resting card's ability without explaining it", () => {
+      const chorus = wit("c", "chorus");
+      expect(
+        handAbilityLines(runIn(fightRoom(prey("e"))), [chorus], []),
+      ).toEqual([expect.stringContaining("**Chorus** · Card c")]);
+    });
+
+    it("leaves abilities the battle wording already covers alone", () => {
+      expect(
+        linesFor(runIn(fightRoom(prey("e"))), [wit("b", "bulwark")]),
+      ).toHaveLength(1);
+    });
+
+    it("explains every ability, or leaves it alone on purpose", () => {
+      for (const keyword of KEYWORDS) {
+        expect([keyword.slug, handExplainsKeyword(keyword.slug)]).toEqual([
+          keyword.slug,
+          true,
+        ]);
+      }
+    });
+
+    it("previews a fight without playing it", () => {
+      const state = after([wit("a")]);
+      const before = structuredClone(state);
+      const round = previewRound(state, wit("c", "chorus"));
+      expect(round.slot).toBe(2);
+      expect(round.challenger.bonuses).toEqual(["Chorus +2"]);
+      expect(state).toEqual(before);
     });
   });
 

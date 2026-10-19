@@ -25,7 +25,7 @@ import { TYPE_NAME, activeKeyword } from "./theme";
  * with, not a second copy of the rule that could drift from it.
  */
 
-type Leg = {
+export type Leg = {
   slot: number;
   length: number;
   /** Fights already played in this leg, oldest first. */
@@ -35,7 +35,7 @@ type Leg = {
 };
 
 /** The leg the next fight is in. A full leg means the next fight starts a new one. */
-const legOf = (state: DungeonState, config: DungeonConfig): Leg => {
+export const legOf = (state: DungeonState, config: DungeonConfig): Leg => {
   const full = state.leg.rounds.length >= config.legLength;
   const rounds = full ? [] : state.leg.rounds;
   return {

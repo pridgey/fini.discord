@@ -312,6 +312,14 @@ what to look for. Tiebreak keywords are called out as doing nothing, since a
 fight is one round. Bonuses earlier fights handed on (`Martyr`, `Rally`,
 `Parting Shot`, `Spoiler`) get a line of their own.
 
+Your hand gets the same treatment (`ui/handAbility.ts`): in a fight room each
+ready card's ability says what it will do in this fight. The number comes from
+`previewRound` - the real fight, run with the ability and without it, on a copy
+of the run - so a Chorus played first plainly shows "No bonus this fight" rather
+than looking broken. Abilities the battle wording already describes exactly
+(`Bulwark`, `Pierce`, `Guard`, ...) get no line, and a test keeps every keyword
+either explained or on that list.
+
 **Progress lives in the row, not the button ids** - the opposite of the lineup
 picker, deliberately. `v2_dungeon_run.progress` holds the whole `DungeonState`:
 room, doors, geld, cooldowns, buffs, keyword state. It carries a `step` that
