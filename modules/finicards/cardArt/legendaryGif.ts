@@ -2,7 +2,6 @@ import { createHash } from "crypto";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import os from "os";
 import path from "path";
-import GifEncoder from "gif-encoder-2";
 import sharp, { type Blend, type Sharp } from "sharp";
 import type { ArtAdjust } from "../../../types/PocketbaseTablesV2";
 import type { LegendaryTier } from "../legendary";
@@ -924,19 +923,23 @@ const renderGif = async (
     frames.push(reveal ? revealFrame(finished, index / (count - 1)) : finished);
   }
 
-  // gif-encoder-2 assembles the frames; a pass back through sharp then
-  // re-quantises them and drops the pixels that did not change between frames.
-  const encoder = new GifEncoder(WIDTH, HEIGHT, "neuquant", false, count);
-  encoder.setDelay(delay);
-  encoder.setRepeat(reveal ? -1 : 0);
-  encoder.setQuality(8);
-  encoder.start();
-  for (const frame of frames) encoder.addFrame(frame);
-  encoder.finish();
-
-  return sharp(encoder.out.getData(), { animated: true })
+  // sharp stacks the frames into one animation, colours it and drops the
+  // pixels that did not change between frames. All of it runs off the main
+  // thread: the JavaScript encoder this used before held the bot still for
+  // seconds a card, long enough for button clicks to time out.
+  // Effort 4 renders in about the time the old encoder took; 6 and up double it
+  // for no difference anyone can see.
+  return sharp(Buffer.concat(frames), {
+    raw: {
+      width: WIDTH,
+      height: HEIGHT * count,
+      channels: 4,
+      pageHeight: HEIGHT,
+    },
+  })
     .gif({
-      effort: 8,
+      delay: Array(count).fill(delay),
+      effort: 4,
       dither: 0.6,
       interFrameMaxError: 4,
       loop: reveal ? 1 : 0,
