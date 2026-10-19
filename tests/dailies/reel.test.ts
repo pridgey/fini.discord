@@ -26,6 +26,8 @@ import {
   shotSimilarity,
 } from "../../modules/dailies/reel/shots";
 import { reelBoardText } from "../../modules/dailies/reel/board";
+import { chooseFilm, type FilmSource } from "../../modules/dailies/reel/daily";
+import { withoutPromo } from "../../modules/dailies/reel/promo";
 import type { ReelRoundRecord } from "../../modules/dailies/reel/store";
 
 const ANSWER: Film = { movieId: 157336, title: "Interstellar", year: "2014" };
@@ -279,5 +281,100 @@ describe("Reel's board", () => {
         progress: play("skip", "skip", "skip", "skip", "skip"),
       }),
     ).toContain("It was **Interstellar (2014)**");
+  });
+});
+
+describe("choosing the day's film", () => {
+  /** A pool of `pages` pages of 20 films, ids page*100 + i. */
+  const source = (
+    shown: number[],
+    {
+      pages = 50,
+      noFrames = [] as number[],
+    }: { pages?: number; noFrames?: number[] } = {},
+  ): FilmSource => ({
+    shown: async () =>
+      new Map(
+        shown.map((id, i) => [
+          id,
+          {
+            day: `2026-01-${String(i + 1).padStart(2, "0")}`,
+            title: `Film ${id}`,
+            year: "2000",
+          },
+        ]),
+      ),
+    page: async (page) =>
+      page > pages
+        ? []
+        : Array.from({ length: 20 }, (_, i) => film(page * 100 + i)),
+    frames: async (id) =>
+      noFrames.includes(id) ? null : ["/1", "/2", "/3", "/4", "/5"],
+    random: seededRandom(4),
+  });
+  const seededRandom = (seed: number) => () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  const everyFilm = Array.from({ length: 50 }, (_, p) =>
+    Array.from({ length: 20 }, (_, i) => (p + 1) * 100 + i),
+  ).flat();
+
+  it("never picks a film already shown while others haven't been", async () => {
+    // All but one film shown: that one's the only choice.
+    const left = 3707;
+    const round = await chooseFilm(
+      "2026-10-20",
+      source(everyFilm.filter((id) => id !== left)),
+    );
+    expect(round?.movie_id).toBe(left);
+  });
+
+  it("passes over a film without five good frames", async () => {
+    const left = [3707, 3708];
+    const round = await chooseFilm(
+      "2026-10-20",
+      source(
+        everyFilm.filter((id) => !left.includes(id)),
+        { noFrames: [3707] },
+      ),
+    );
+    expect(round?.movie_id).toBe(3708);
+  });
+
+  it("comes round again, oldest first, once every film has been shown", async () => {
+    const round = await chooseFilm("2026-10-20", source(everyFilm));
+    expect(round?.movie_id).toBe(everyFilm[0]);
+    expect(round?.title).toBe(`Film ${everyFilm[0]}`);
+  });
+});
+
+describe("leaving out promo art", () => {
+  const images = new Map([
+    ["/still.jpg", true],
+    ["/poster.jpg", false],
+    ["/unsure.jpg", null],
+  ]);
+  const judge = async (image: Buffer) => images.get(image.toString()) ?? null;
+  const fetchImage = async (path: string) =>
+    path === "/gone.jpg" ? null : Buffer.from(path);
+
+  it("drops what's judged promo, and keeps what couldn't be judged", async () => {
+    expect(
+      await withoutPromo(
+        ["/still.jpg", "/poster.jpg", "/unsure.jpg", "/gone.jpg"],
+        fetchImage,
+        judge,
+      ),
+    ).toEqual(["/still.jpg", "/unsure.jpg", "/gone.jpg"]);
+  });
+
+  it("keeps a still whose judging failed", async () => {
+    const failing = async () => {
+      throw new Error("API down");
+    };
+    expect(await withoutPromo(["/a.jpg"], fetchImage, failing)).toEqual([
+      "/a.jpg",
+    ]);
   });
 });

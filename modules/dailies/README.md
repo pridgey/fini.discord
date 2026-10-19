@@ -89,15 +89,19 @@ can play it (`/daily reel` chooses the day's film on demand), and nothing is
 paid. Turning it on is all it takes to go live.
 
 - **Films.** From TMDB (`reel/tmdb.ts`, `TMDB_TOKEN` in `.env`): a random one
-  of the 1,000 most-voted films of all time (`POOL_PAGES`), not shown in the
-  last year. TMDB asks to be credited, and every board says so.
+  of the 1,000 most-voted films of all time (`POOL_PAGES`) that hasn't been
+  shown before - about 2.7 years of films. Once the pool is used up, the film
+  shown longest ago comes back. TMDB asks to be credited, and every board says
+  so.
 - **Frames.** Five of the film's text-free backdrops, at least 1280 wide,
   spread across its 20 most-voted and shown least-voted first, so a round opens
-  on a quieter shot and ends on the famous one. A still that's the same shot
+  on a quieter shot and ends on the famous one. Promo art - posters, key art,
+  photoshoots - is left out first: Claude Haiku looks at each candidate
+  (`reel/promo.ts`, `ANTHROPIC_API_KEY`), about 20 small images when a round
+  is made. A still that's the same shot
   as one already kept - recropped, zoomed, regraded, or a moment apart in one
   photoshoot - is passed over (`reel/shots.ts` slides one over the other and
-  compares where they overlap). TMDB's backdrops mix real stills with promo
-  art, which can still give a film away early.
+  compares where they overlap). Two angles on one moment still get through.
 - **Playing.** `/daily reel` (or the post's Reel button) shows a player the
   frames so far, newest largest, privately. A guess is typed and matched on
   TMDB's search, by film id, so typos in spacing and capitals, "The" and

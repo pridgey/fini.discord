@@ -1,4 +1,5 @@
 import { FRAMES, type Film } from "./game";
+import { withoutPromo } from "./promo";
 import { distinctShots, prepareShot, type Shot } from "./shots";
 
 /**
@@ -109,16 +110,28 @@ const shotOf = async (path: string): Promise<Shot | null> => {
   return prepareShot(Buffer.from(await response.arrayBuffer()));
 };
 
+/** A still at a size a model can judge, for the promo check. */
+const judgeableStill = async (path: string): Promise<Buffer | null> => {
+  const response = await fetch(frameUrl(path, "w300"), {
+    signal: AbortSignal.timeout(10_000),
+  });
+  return response.ok ? Buffer.from(await response.arrayBuffer()) : null;
+};
+
 /**
- * A film's frames to show, or null if it hasn't five good ones. A still
- * that's the same shot as one already kept is passed over (`shots.ts`).
+ * A film's frames to show, or null if it hasn't five good ones. Promo art is
+ * left out (`promo.ts`), then any still that's the same shot as one already
+ * kept (`shots.ts`).
  */
 export const framesFor = async (movieId: number): Promise<string[] | null> => {
   // `null` language: the stills with no title or text on them.
   const { backdrops } = await tmdb<{ backdrops: TmdbImage[] }>(
     `/movie/${movieId}/images?include_image_language=null`,
   );
-  const candidates = frameCandidates(backdrops);
+  const candidates = await withoutPromo(
+    frameCandidates(backdrops),
+    judgeableStill,
+  );
   if (candidates.length < FRAMES) return null;
   const shots = new Map<string, Shot>();
   await Promise.all(

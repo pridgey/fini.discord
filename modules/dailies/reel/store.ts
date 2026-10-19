@@ -48,13 +48,21 @@ export const getReelRound = (day: string): Promise<ReelRoundRecord | null> =>
 export const getReelRoundById = (id: string): Promise<ReelRoundRecord | null> =>
   pb.collection<ReelRoundRecord>(ROUNDS).getOne(id).catch(nullOn404);
 
-/** Films shown since `day`, so one doesn't come round again too soon. */
-export const filmsShownSince = async (day: string): Promise<Set<number>> => {
+/** Every film a round has shown, with the last day it was shown. */
+export const filmsShown = async (): Promise<
+  Map<number, { day: string; title: string; year: string }>
+> => {
   const rounds = await pb.collection<ReelRoundRecord>(ROUNDS).getFullList({
-    filter: pb.filter("day >= {:day}", { day }),
-    fields: "movie_id",
+    fields: "movie_id,day,title,year",
+    sort: "day",
   });
-  return new Set(rounds.map((round) => round.movie_id));
+  // Oldest first, so a film shown twice ends on its latest day.
+  return new Map(
+    rounds.map((round) => [
+      round.movie_id,
+      { day: round.day, title: round.title, year: round.year },
+    ]),
+  );
 };
 
 export const createReelRound = (

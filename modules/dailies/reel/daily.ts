@@ -10,12 +10,13 @@ import {
   skip,
   solved,
   solvedOn,
+  type Film,
   type ReelProgress,
   type TurnResult,
 } from "./game";
 import {
   createReelRound,
-  filmsShownSince,
+  filmsShown,
   getReelRound,
   getReelRoundById,
   openReelPlay,
@@ -42,42 +43,81 @@ export const REEL_LIVE = false;
 /** Who's playing: the same as Weave's. */
 export type ReelPlayer = WeavePlayer;
 
-/** A film doesn't come round again for this long. */
-const REPEAT_DAYS = 365;
 /** Films to try before giving up for the minute: most have five good frames. */
 const ATTEMPTS = 8;
 
-const daysBefore = (day: string, days: number): string => {
-  const [year, month, date] = day.split("-").map(Number);
-  return dayKey(new Date(year, month - 1, date - days));
+/** Where `chooseFilm` gets its films; swapped out in tests. */
+export type FilmSource = {
+  /** Every film a round has shown, with the last day it was shown. */
+  shown: () => Promise<
+    Map<number, { day: string; title: string; year: string }>
+  >;
+  page: (page: number) => Promise<Film[]>;
+  frames: (movieId: number) => Promise<string[] | null>;
+  random: () => number;
+};
+
+const TMDB_SOURCE: FilmSource = {
+  shown: filmsShown,
+  page: poolPage,
+  frames: framesFor,
+  random: Math.random,
+};
+
+/** 1 to POOL_PAGES in a random order. */
+const shuffledPages = (random: () => number): number[] => {
+  const pages = Array.from({ length: POOL_PAGES }, (_, i) => i + 1);
+  for (let i = pages.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [pages[i], pages[j]] = [pages[j], pages[i]];
+  }
+  return pages;
 };
 
 /**
- * A film for `day`: a random one from the pool, not shown in the last year,
- * with five good frames. Null if none turned up in a few tries.
+ * A film for `day` with five good frames, or null if none turned up in a few
+ * tries. A film never comes round again while the pool has one not yet shown:
+ * picking at random among those shown over a year ago would repeat within
+ * thirteen months, and by year three a quarter of days would be repeats. Once
+ * every film has been shown, the one shown longest ago goes next.
  */
 export const chooseFilm = async (
   day: string,
-  random: () => number = Math.random,
+  source: FilmSource = TMDB_SOURCE,
 ): Promise<Omit<ReelRoundRecord, "id" | "posts"> | null> => {
-  const shown = await filmsShownSince(daysBefore(day, REPEAT_DAYS));
-  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-    const page = await poolPage(1 + Math.floor(random() * POOL_PAGES));
-    const fresh = page.filter((film) => !shown.has(film.movieId));
-    if (!fresh.length) continue;
-    const film = fresh[Math.floor(random() * fresh.length)];
-    const frames = await framesFor(film.movieId);
-    if (!frames) {
-      shown.add(film.movieId);
-      continue;
+  const shown = await source.shown();
+  const round = (film: Film, frames: string[]) => ({
+    day,
+    movie_id: film.movieId,
+    title: film.title,
+    year: film.year,
+    frames,
+  });
+
+  let tries = 0;
+  for (const page of shuffledPages(source.random)) {
+    const fresh = (await source.page(page)).filter(
+      (film) => !shown.has(film.movieId),
+    );
+    while (fresh.length && tries < ATTEMPTS) {
+      const [film] = fresh.splice(
+        Math.floor(source.random() * fresh.length),
+        1,
+      );
+      tries++;
+      const frames = await source.frames(film.movieId);
+      if (frames) return round(film, frames);
     }
-    return {
-      day,
-      movie_id: film.movieId,
-      title: film.title,
-      year: film.year,
-      frames,
-    };
+    if (tries >= ATTEMPTS) return null;
+  }
+
+  // The whole pool has been shown: round again, oldest first.
+  const oldest = [...shown.entries()]
+    .sort(([, a], [, b]) => a.day.localeCompare(b.day))
+    .slice(0, ATTEMPTS);
+  for (const [movieId, { title, year }] of oldest) {
+    const frames = await source.frames(movieId);
+    if (frames) return round({ movieId, title, year }, frames);
   }
   return null;
 };
