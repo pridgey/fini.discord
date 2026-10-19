@@ -545,6 +545,32 @@ describe("finicards v2 dungeons", () => {
       expect(round.challenger.bonuses).toEqual([]);
     });
 
+    it("gives Chorus +2 for each card of its type played earlier in the leg", () => {
+      const wit = (id: string, keyword = "") =>
+        card(id, "wit", [3, 7, 5], keyword);
+      const prey = (id: string) => card(id, "heart", [1, 1, 1]);
+      const next = (state: DungeonState, enemy: string) => ({
+        ...chooseDoor(state, 0),
+        room: fightRoom(prey(enemy)),
+      });
+
+      // Slot 1: nothing played before it yet.
+      const first = playFight(
+        runIn(fightRoom(prey("e0"))),
+        wit("p", "chorus"),
+        source(),
+      );
+      expect(first.round.challenger.bonuses).toEqual([]);
+
+      let state = runIn(fightRoom(prey("e0")));
+      state = next(playFight(state, wit("a"), source()).state, "e1");
+      state = next(playFight(state, strong("b"), source()).state, "e2");
+      const third = playFight(state, wit("c", "chorus"), source());
+      expect(third.round.slot).toBe(3);
+      // One Wit card before it, the Power one doesn't count.
+      expect(third.round.challenger.bonuses).toEqual(["Chorus +2"]);
+    });
+
     it("counts legs, the next one starting once three fights are done", () => {
       expect(nextLeg(winning(0))).toBe(1);
       expect(nextLeg(winning(2))).toBe(1);
