@@ -25,6 +25,7 @@ import {
   POST_HOUR,
   POST_TIME,
   currentDay,
+  dayKey,
   previousDay,
   sendTo,
 } from "./shared";
@@ -46,6 +47,7 @@ import { buttonId as reelButtonId } from "./reel/board";
 import { REEL_LIVE, ensureTodaysReel } from "./reel/daily";
 import {
   FRAMES,
+  FRAME_PAY,
   MAX_FC as REEL_MAX_FC,
   earned as reelEarned,
   filmName,
@@ -509,6 +511,52 @@ const buildPost = async (
  */
 const GEO_GRACE_HOURS = 1;
 
+/** After a film couldn't be chosen, wait this long before trying again: each try asks Haiku about ~20 stills. */
+const REEL_RETRY_MS = 15 * 60_000;
+let reelRetryAt = 0;
+
+/** Today's Reel, chosen if need be; null if it can't be had just now. */
+const todaysReel = async (): Promise<ReelRoundRecord | null> => {
+  if (Date.now() < reelRetryAt) return getReelRound(dayKey()).catch(() => null);
+  const round = await ensureTodaysReel().catch(
+    warnAndUse(null, "choose today's Reel"),
+  );
+  if (!round) reelRetryAt = Date.now() + REEL_RETRY_MS;
+  return round;
+};
+
+/**
+ * Reel on its own, for a day whose post went up without it: what it is, what
+ * it pays, and the button. It joins the daily post the next day.
+ */
+export const reelOwnPost = (round: ReelRoundRecord) => ({
+  components: [
+    new ContainerBuilder()
+      .setAccentColor(FINISH_ACCENT.reel)
+      .addTextDisplayComponents((text) =>
+        text.setContent(
+          [
+            "## 🎬 New daily: Reel",
+            "Name the film from its frames. You start with one still, and each wrong guess or skip shows another - five in all.",
+            `Name it on the first frame for **${REEL_MAX_FC} fc**, then ${FRAME_PAY.slice(1).join(", ")} fc.`,
+            "",
+            "-# Opens privately, just for you. From tomorrow it's part of the daily post.",
+          ].join("\n"),
+        ),
+      )
+      .addActionRowComponents(
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          new ButtonBuilder()
+            .setCustomId(reelButtonId(round.id, "open"))
+            .setLabel("Play Reel")
+            .setEmoji("🎬")
+            .setStyle(ButtonStyle.Primary),
+        ),
+      ),
+  ],
+  flags: [MessageFlags.IsComponentsV2] as const,
+});
+
 /**
  * Posts today's daily in every server with a bot channel that hasn't had it.
  * Safe to run every minute: each server is posted to once, and each game's
@@ -521,10 +569,7 @@ export const postDailies = async (cl: Client): Promise<number> => {
     return 0;
   }
   const weave = WEAVE_LIVE ? await ensureTodaysWeave() : null;
-  // A film that can't be had from TMDB just now leaves Reel out of the post.
-  const reel = REEL_LIVE
-    ? await ensureTodaysReel().catch(warnAndUse(null, "choose today's Reel"))
-    : null;
+  const reel = REEL_LIVE ? await todaysReel() : null;
   if (!geo && !weave) return 0;
   const day = geo?.day ?? weave!.day;
 
@@ -534,8 +579,22 @@ export const postDailies = async (cl: Client): Promise<number> => {
       geo?.posts?.[guild.id] ||
       weave?.posts?.[guild.id] ||
       reel?.posts?.[guild.id]
-    )
+    ) {
+      // Today's post went up without Reel - its first day, or a film that
+      // couldn't be had at noon - so it's posted on its own.
+      if (reel && !reel.posts?.[guild.id]) {
+        const channelId = await getBotChannelForServer(guild.id);
+        const message =
+          channelId && (await sendTo(cl, channelId, reelOwnPost(reel)));
+        if (channelId && message) {
+          const post: DailyPost = { channelId, messageId: message.id };
+          await recordReelPost(reel.id, guild.id, post);
+          reel.posts = { ...(reel.posts ?? {}), [guild.id]: post };
+          posted++;
+        }
+      }
       continue;
+    }
     const channelId = await getBotChannelForServer(guild.id);
     if (!channelId) continue;
 
@@ -699,11 +758,16 @@ export const announceFinish = async (
     getWeaveRound(day).catch(() => null),
     getReelRound(day).catch(() => null),
   ]);
-  const post = [
-    geo?.posts?.[serverId],
-    weave?.posts?.[serverId],
-    reel?.posts?.[serverId],
-  ].find((candidate) => candidate?.combined);
+  // The finished game's own post: today's daily post, or, on a game's first
+  // day, the post it had to itself.
+  const own = { geo, weave, reel }[finish.game]?.posts?.[serverId];
+  const post =
+    own ??
+    [
+      geo?.posts?.[serverId],
+      weave?.posts?.[serverId],
+      reel?.posts?.[serverId],
+    ].find((candidate) => candidate?.combined);
   const channelId = post?.channelId ?? (await getBotChannelForServer(serverId));
   if (!channelId) return;
 
@@ -715,7 +779,9 @@ export const announceFinish = async (
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setStyle(ButtonStyle.Link)
-          .setLabel("Play today's dailies")
+          .setLabel(
+            post.combined ? "Play today's dailies" : "Play today's Reel",
+          )
           .setURL(
             `https://discord.com/channels/${serverId}/${post.channelId}/${post.messageId}`,
           ),

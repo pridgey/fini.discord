@@ -83,10 +83,12 @@ day's puzzle on demand), and boards pay nothing.
 
 ## Reel (`reel/`)
 
-Name the film from its frames. On trial since 2026-10-19: `REEL_LIVE` in
-`reel/daily.ts` is off, so it's left out of the daily post, only the bot admin
-can play it (`/daily reel` chooses the day's film on demand), and nothing is
-paid. Turning it on is all it takes to go live.
+Name the film from its frames. Live since 2026-10-19. That day's post had
+already gone up, so Reel was posted on its own; a game that's ready after the
+day's post is out always is (`reelOwnPost`), and joins the post from the next
+day. `REEL_LIVE` in `reel/daily.ts` puts it back on trial: left out of the
+post, only the bot admin can play it (`/daily reel` chooses the day's film on
+demand), and nothing is paid.
 
 - **Films.** From TMDB (`reel/tmdb.ts`, `TMDB_TOKEN` in `.env`): a random one
   of the 1,000 most-voted films of all time (`POOL_PAGES`) that hasn't been

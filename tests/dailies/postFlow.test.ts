@@ -14,6 +14,9 @@ type Round = { id: string; day: string; posts: Record<string, Post> };
 
 let geo: Round & Record<string, unknown>;
 let weave: Round & Record<string, unknown>;
+let reel: Round & Record<string, unknown>;
+/** Each collection's round. Reel's is left out until a test adds it. */
+let rounds: Record<string, Round>;
 
 /*
  * Other suites replace the Pocketbase module too, and Bun applies the latest
@@ -38,7 +41,16 @@ beforeEach(() => {
     posts: {},
   };
   weave = { ...generatePuzzle(), id: "weaveround12345", day, posts: {} };
-  const rounds: Record<string, Round> = {
+  reel = {
+    id: "reelround123456",
+    day,
+    movie_id: 157336,
+    title: "Interstellar",
+    year: "2014",
+    frames: ["/1.jpg", "/2.jpg", "/3.jpg", "/4.jpg", "/5.jpg"],
+    posts: {},
+  };
+  rounds = {
     daily_geo_round: geo,
     daily_weave_round: weave,
   };
@@ -171,5 +183,58 @@ describe("posting the daily", () => {
     expect(announcement).toContain(
       "https://discord.com/channels/serverA/bots/msg1",
     );
+  });
+
+  it("puts Reel in the post, on the days it's there at noon", async () => {
+    rounds.daily_reel_round = reel;
+    const { client, sent } = fakeClient();
+
+    expect(await postDailies(client)).toBe(2);
+    expect(sent[0]).toContain("🎬 **Reel**");
+    expect(reel.posts.serverA).toEqual({
+      channelId: "bots",
+      messageId: "msg1",
+      combined: true,
+    });
+  });
+
+  it("posts Reel on its own where today's post went up without it", async () => {
+    const { client, sent } = fakeClient();
+    await postDailies(client);
+    rounds.daily_reel_round = reel;
+
+    expect(await postDailies(client)).toBe(2);
+    expect(sent).toHaveLength(4);
+    expect(sent[2]).toContain("New daily: Reel");
+    expect(sent[2]).not.toContain("Today's dailies");
+    // Its own post, which the live line never edits.
+    expect(reel.posts.serverA).toEqual({
+      channelId: "bots",
+      messageId: "msg3",
+    });
+    expect(geo.posts.serverA?.messageId).toBe("msg1");
+
+    expect(await postDailies(client)).toBe(0);
+  });
+
+  it("links a Reel finish to Reel's own post on its first day", async () => {
+    const { client, sent } = fakeClient();
+    await postDailies(client);
+    rounds.daily_reel_round = reel;
+    await postDailies(client);
+
+    await announceFinish(client, "serverA", {
+      game: "reel",
+      name: "Aya",
+      frame: 2,
+      fc: 25,
+    });
+
+    const announcement = sent.at(-1)!;
+    expect(announcement).toContain("named today's **Reel** on frame 2");
+    expect(announcement).toContain(
+      "https://discord.com/channels/serverA/bots/msg3",
+    );
+    expect(announcement).toContain("Play today's Reel");
   });
 });

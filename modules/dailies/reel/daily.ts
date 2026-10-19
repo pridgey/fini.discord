@@ -34,11 +34,10 @@ import { POOL_PAGES, framesFor, matchGuess, poolPage } from "./tmdb";
  */
 
 /**
- * Off while Reel is being tried out: it isn't in the daily post, only the bot
- * admin can play it (`/daily reel`), and nothing is paid. Turning it on is all
- * it takes to go live.
+ * Live since 2026-10-19. Off puts it back on trial: it isn't in the daily post,
+ * only the bot admin can play it (`/daily reel`), and nothing is paid.
  */
-export const REEL_LIVE = false;
+export const REEL_LIVE = true;
 
 /** Who's playing: the same as Weave's. */
 export type ReelPlayer = WeavePlayer;
