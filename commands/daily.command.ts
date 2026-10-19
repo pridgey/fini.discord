@@ -13,6 +13,13 @@ import {
   type WeavePlayer,
 } from "../modules/dailies/weave/daily";
 import { requireAdmin } from "../utilities/discord/isAdmin";
+import {
+  REEL_LIVE,
+  ensureTodaysReel,
+  openReel,
+} from "../modules/dailies/reel/daily";
+import { getReelRound } from "../modules/dailies/reel/store";
+import { weavePlayerOf } from "../modules/dailies/weave/player";
 import { getWeaveRound } from "../modules/dailies/weave/store";
 import { POST_TIME, currentDay } from "../modules/dailies/shared";
 
@@ -36,6 +43,11 @@ export const data = new SlashCommandBuilder()
       .setDescription(
         "Today's Weave: find five hidden words in a grid of letters",
       ),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("reel")
+      .setDescription("Today's Reel: name the film from a few of its frames"),
   );
 
 export const execute: SlashCommand["execute"] = async (
@@ -50,7 +62,14 @@ export const execute: SlashCommand["execute"] = async (
     });
     return;
   }
-  const weave = interaction.options.getSubcommand() === "weave";
+  const game = interaction.options.getSubcommand();
+  const weave = game === "weave";
+  if (
+    game === "reel" &&
+    !REEL_LIVE &&
+    !(await requireAdmin(interaction, "play Reel while it's on trial"))
+  )
+    return;
   if (
     weave &&
     !WEAVE_LIVE &&
@@ -59,6 +78,28 @@ export const execute: SlashCommand["execute"] = async (
     return;
 
   await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+  if (game === "reel") {
+    // On trial nothing posts it, so the day's film is chosen on demand.
+    const round = REEL_LIVE
+      ? await getReelRound(currentDay())
+      : await ensureTodaysReel().catch(() => null);
+    if (!round) {
+      await interaction.editReply(
+        REEL_LIVE
+          ? `There's no Reel up right now. The next one posts at ${POST_TIME}.`
+          : "Couldn't pick a film just now - try again in a minute.",
+      );
+      return;
+    }
+    await interaction.editReply(
+      await openReel(
+        round,
+        weavePlayerOf(interaction, interaction.member as GuildMember | null),
+      ),
+    );
+    return;
+  }
 
   if (weave) {
     // On trial nothing posts it, so the day's puzzle is made on demand.

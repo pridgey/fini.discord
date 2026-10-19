@@ -14,6 +14,10 @@ import {
 } from "../../modules/dailies/post";
 import { generatePuzzle } from "../../modules/dailies/weave/puzzle";
 import type {
+  ReelPlayRecord,
+  ReelRoundRecord,
+} from "../../modules/dailies/reel/store";
+import type {
   WeavePlayRecord,
   WeaveRoundRecord,
 } from "../../modules/dailies/weave/store";
@@ -22,6 +26,45 @@ const seeded = (seed: number) => () => {
   seed = (seed * 1664525 + 1013904223) >>> 0;
   return seed / 4294967296;
 };
+
+const reelRound: ReelRoundRecord = {
+  id: "reelround123456",
+  day: "2026-10-18",
+  movie_id: 157336,
+  title: "Interstellar",
+  year: "2014",
+  frames: ["/1.jpg", "/2.jpg", "/3.jpg", "/4.jpg", "/5.jpg"],
+  posts: {},
+};
+
+/** A go at Reel: `misses` wrong turns, then the answer if `solved`. */
+const reelPlay = (
+  username: string,
+  misses: number,
+  solved: boolean,
+): ReelPlayRecord => ({
+  id: `reel-${username}`,
+  round: reelRound.id,
+  server_id: "server",
+  user_id: username,
+  username,
+  guesses: [
+    ...Array.from({ length: misses }, () => ({ kind: "skip" as const })),
+    ...(solved
+      ? [
+          {
+            kind: "guess" as const,
+            movieId: 157336,
+            title: "Interstellar",
+            year: "2014",
+          },
+        ]
+      : []),
+  ],
+  paid: 0,
+  solved,
+  finished: solved || misses >= 5,
+});
 
 const geoRound = {
   id: "georound1234567",
@@ -83,7 +126,7 @@ const textOf = (post: Post) =>
 /** The custom ids of a post's buttons. */
 const buttonIds = (post: Post) =>
   JSON.stringify(post.components.map((card) => card.toJSON())).match(
-    /(geodaily|weave):[^"]+/g,
+    /(geodaily|weave|reel):[^"]+/g,
   ) ?? [];
 
 describe("the daily post", () => {
@@ -213,6 +256,57 @@ describe("the daily post", () => {
     expect(buttonIds(geoOnly)).toHaveLength(1);
   });
 
+  it("shows Reel with its live line and button, fewest frames first", () => {
+    const post = dailyPost(
+      { geo: null, weave: null },
+      {
+        geo: null,
+        weave: null,
+        reel: {
+          round: reelRound,
+          plays: [
+            reelPlay("Fen", 3, true),
+            reelPlay("Aya", 1, true),
+            reelPlay("Bo", 2, false),
+            reelPlay("Idle", 0, false),
+          ],
+        },
+      },
+    );
+    const text = textOf(post);
+    expect(text).toContain("🎬 **Reel** · up to 30 fc");
+    expect(text).toContain(
+      "Solved by **Aya** (frame 2), **Fen** (4) · 3 playing",
+    );
+    expect(text).not.toContain("Interstellar");
+    expect(buttonIds(post)).toEqual([`reel:${reelRound.id}:open`]);
+  });
+
+  it("names yesterday's film with who got it", () => {
+    const lines = recapLines({
+      geo: null,
+      weave: null,
+      reel: {
+        round: reelRound,
+        plays: [
+          reelPlay("Fen", 3, true),
+          reelPlay("Aya", 0, true),
+          reelPlay("Bo", 5, false),
+        ],
+      },
+    }).join("\n");
+    expect(lines).toContain("🎬 Reel's film was **Interstellar (2014)**.");
+    expect(lines).toContain("🥇 **Aya** 30 fc · 🥈 **Fen** 10 fc");
+    expect(lines).not.toContain("Bo");
+
+    const missed = recapLines({
+      geo: null,
+      weave: null,
+      reel: { round: reelRound, plays: [reelPlay("Bo", 5, false)] },
+    }).join("\n");
+    expect(missed).toContain("Nobody got it.");
+  });
+
   it("puts Yesterday and Today in cards of their own, a blank line between games", () => {
     const games = {
       geo: { round: geoRound, guesses: [guess("Aya", 214)] },
@@ -278,6 +372,9 @@ describe("finishing a game", () => {
       }),
     ).toBe(
       "🧵 **Aya** solved today's **Weave**, thread and all, in 7 guesses and won **58 fc**!",
+    );
+    expect(finishText({ game: "reel", name: "Fen", frame: 2, fc: 25 })).toBe(
+      "🎬 **Fen** named today's **Reel** on frame 2 and won **25 fc**!",
     );
   });
 });

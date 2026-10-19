@@ -56,7 +56,13 @@ beforeEach(() => {
     if (name === "config") {
       return { getFirstListItem: async () => ({ bot_channel: "bots" }) };
     }
-    return { getFullList: async () => [] };
+    // Anything else - Reel, while it's on trial - has no rounds.
+    return {
+      getFullList: async () => [],
+      getFirstListItem: async () => {
+        throw new Error("not found");
+      },
+    };
   };
 });
 

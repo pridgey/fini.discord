@@ -11,11 +11,12 @@ bot channel are skipped. It's two cards:
 
 - **Yesterday:** each game's answer and its top three, with an empty line
   between games, over **one image** of every game's solved state side by
-  side - the map of everyone's guesses beside the solved Weave grid, scaled to
-  one short strip (`recapImage`) so the post doesn't grow tall as games are
-  added.
-- **Today:** each game, what it pays, and a live line - "Played by 4 · best
-  **Aya** 214 fc", "Solved by **Aya** (7 guesses), **Fen** (12) · 6 playing" -
+  side - the map of everyone's guesses, the solved Weave grid, Reel's last
+  frame - scaled to one short strip (`recapImage`) so the post doesn't grow
+  tall as games are added.
+- **Today:** each game, what it pays, and a live line - "Played by 4 · 🏙️
+  **Aya** found the city · closest 2 km", "Solved by **Aya** (7 guesses),
+  **Fen** (12) · 6 playing", "Solved by **Aya** (frame 2) · 5 playing" -
   which the bot keeps current by editing the post a few seconds after someone
   plays (plays close together share one edit). A button for each game opens it
   privately.
@@ -26,8 +27,8 @@ the server's post, marked `combined`; the live line only ever edits a post
 marked that way, never a game's own post from before. A new daily adds a
 recap paragraph, a picture in the strip, a today paragraph and a button.
 
-**Finishing a game** - locking in a location guess, or finding Weave's last
-word - is also announced in a small card in the same channel, with a button
+**Finishing a game** - locking in a location guess, finding Weave's last
+word, or naming Reel's film - is also announced in a small card in the same channel, with a button
 linking back to the day's post (`announceFinish`). The game handlers report
 plays through `dailyPlayed`, which updates the live line and announces.
 
@@ -79,3 +80,29 @@ day's puzzle on demand), and boards pay nothing.
 - **Words.** `words.ts` is everyday English: the 10,000 most common US words
   without swears, kept if the system dictionary has them and doesn't list them
   capitalised (dropping most names), less a short blocklist.
+
+## Reel (`reel/`)
+
+Name the film from its frames. On trial since 2026-10-19: `REEL_LIVE` in
+`reel/daily.ts` is off, so it's left out of the daily post, only the bot admin
+can play it (`/daily reel` chooses the day's film on demand), and nothing is
+paid. Turning it on is all it takes to go live.
+
+- **Films.** From TMDB (`reel/tmdb.ts`, `TMDB_TOKEN` in `.env`): a random one
+  of the 1,000 most-voted films of all time (`POOL_PAGES`), not shown in the
+  last year. TMDB asks to be credited, and every board says so.
+- **Frames.** Five of the film's text-free backdrops, at least 1280 wide,
+  spread across its 15 most-voted and shown least-voted first, so a round opens
+  on a quieter shot and ends on the famous one. A still that's the same shot
+  as one already kept - by a 64-bit difference hash - is passed over. TMDB's
+  backdrops mix real stills with promo art, which can give a film away early;
+  the hash catches recrops but not zooms of the same picture.
+- **Playing.** `/daily reel` (or the post's Reel button) shows a player the
+  frames so far, newest largest, privately. A guess is typed and matched on
+  TMDB's search, by film id, so typos in spacing and capitals, "The" and
+  alternate titles all work; a year can be added for remakes ("Dune 1984").
+  A guess that finds nothing, or only films with under 100 votes, doesn't
+  count; guessing the same film twice doesn't either. Each wrong guess or skip
+  shows the next frame.
+- **Pay.** 30, 25, 20, 10 or 5 fc for naming it on frames 1 to 5; nothing after
+  five misses. The live line ranks solvers by the frame they got it on.

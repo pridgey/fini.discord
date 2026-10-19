@@ -42,13 +42,32 @@ import {
   type WeaveRoundRecord,
 } from "./weave/store";
 import { keptFiles } from "../../utilities/discord/keptFiles";
+import { buttonId as reelButtonId } from "./reel/board";
+import { REEL_LIVE, ensureTodaysReel } from "./reel/daily";
+import {
+  FRAMES,
+  MAX_FC as REEL_MAX_FC,
+  earned as reelEarned,
+  filmName,
+  solvedOn,
+} from "./reel/game";
+import {
+  getReelRound,
+  progressOf as reelProgressOf,
+  recordReelPost,
+  reelPlaysFor,
+  type ReelPlayRecord,
+  type ReelRoundRecord,
+} from "./reel/store";
+import { frameUrl } from "./reel/tmdb";
 
 /**
  * The daily post: one message a day in each server's bot channel, however
  * many daily games there are and however many people play them. Two cards:
  *
  *   - Yesterday: each game's answer and top three, over one wide image of
- *     every game's solved state side by side (the guess map, the solved grid)
+ *     every game's solved state side by side (the guess map, the solved grid,
+ *     the film's last frame)
  *     so the post stays short however many games there are
  *   - Today: each game with a live line, which the bot keeps up to date by
  *     editing the post as people play, and a button that opens it privately
@@ -64,7 +83,20 @@ import { keptFiles } from "../../utilities/discord/keptFiles";
 /** A game's round in one server, with what its players did. */
 export type GeoDay = { round: DailyRoundRecord; guesses: DailyGuessRecord[] };
 export type WeaveDay = { round: WeaveRoundRecord; plays: WeavePlayRecord[] };
-export type Games = { geo: GeoDay | null; weave: WeaveDay | null };
+export type ReelDay = { round: ReelRoundRecord; plays: ReelPlayRecord[] };
+export type Games = {
+  geo: GeoDay | null;
+  weave: WeaveDay | null;
+  /** Absent before Reel was a daily, and while it's on trial. */
+  reel?: ReelDay | null;
+};
+
+/** Each game's round for a day, as stored. */
+type Rounds = {
+  geo: DailyRoundRecord | null;
+  weave: WeaveRoundRecord | null;
+  reel: ReelRoundRecord | null;
+};
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
@@ -110,7 +142,50 @@ export const recapLines = (yesterday: Games): string[] => {
       ].join("\n"),
     );
   }
+  if (yesterday.reel) {
+    const { round, plays } = yesterday.reel;
+    const scores = plays
+      .map((play) => ({
+        name: play.username,
+        fc: reelEarned(round.movie_id, reelProgressOf(play)),
+      }))
+      .filter((score) => score.fc > 0)
+      .sort((a, b) => b.fc - a.fc);
+    games.push(
+      [
+        `🎬 Reel's film was **${filmName(round)}**.`,
+        `-# ${scores.length ? podium(scores) : playedReels(plays).length ? "Nobody got it." : "Nobody played it."}`,
+      ].join("\n"),
+    );
+  }
   return games;
+};
+
+/** Reel goes someone actually played: a guess made or a frame skipped. */
+const playedReels = (plays: ReelPlayRecord[]) =>
+  plays.filter((play) => (play.guesses ?? []).length > 0);
+
+/** "Solved by **Aya** (frame 2), **Fen** (4) · 5 playing" */
+const reelLive = (round: ReelRoundRecord, plays: ReelPlayRecord[]): string => {
+  const playing = playedReels(plays).length;
+  // Fewest frames first: that's the race.
+  const solvers = plays
+    .map((play) => ({
+      name: play.username,
+      frame: solvedOn(round.movie_id, reelProgressOf(play)),
+    }))
+    .filter(
+      (solver): solver is { name: string; frame: number } => !!solver.frame,
+    )
+    .sort((a, b) => a.frame - b.frame)
+    .map(
+      ({ name, frame }, i) =>
+        `**${name}** (${i === 0 ? `frame ${frame}` : frame})`,
+    );
+  const who = playing ? ` · ${playing} playing` : "";
+  return solvers.length
+    ? `Solved by ${solvers.join(", ")}${who}`
+    : `Nobody's got it yet${who}.`;
 };
 
 /** The ladder's rungs, top first, as the live line names them. */
@@ -190,6 +265,14 @@ export const todayLines = (today: Games): string[] => {
       ].join("\n"),
     );
   }
+  if (today.reel) {
+    games.push(
+      [
+        `🎬 **Reel** · up to ${REEL_MAX_FC} fc`,
+        `-# ${reelLive(today.reel.round, today.reel.plays)}`,
+      ].join("\n"),
+    );
+  }
   return games;
 };
 
@@ -250,6 +333,15 @@ export const dailyPost = (
         .setStyle(ButtonStyle.Primary),
     );
   }
+  if (today.reel) {
+    buttons.push(
+      new ButtonBuilder()
+        .setCustomId(reelButtonId(today.reel.round.id, "open"))
+        .setLabel("Reel")
+        .setEmoji("🎬")
+        .setStyle(ButtonStyle.Primary),
+    );
+  }
   const todayCard = new ContainerBuilder()
     .setAccentColor(TODAY_ACCENT)
     .addTextDisplayComponents((text) =>
@@ -265,6 +357,16 @@ export const dailyPost = (
   cards.push(todayCard);
 
   return { components: cards, flags: [MessageFlags.IsComponentsV2] as const };
+};
+
+/** Reel's most telling frame, the one a round ends on. */
+const lastFrame = async (round: ReelRoundRecord): Promise<Buffer | null> => {
+  const path = round.frames[FRAMES - 1] ?? round.frames.at(-1);
+  if (!path) return null;
+  const response = await fetch(frameUrl(path, "w780"), {
+    signal: AbortSignal.timeout(10_000),
+  });
+  return response.ok ? Buffer.from(await response.arrayBuffer()) : null;
 };
 
 /** Each image is scaled to this height and laid side by side. */
@@ -290,6 +392,11 @@ export const recapImage = async (yesterday: Games): Promise<Buffer | null> => {
           progress: NO_PROGRESS,
           reveal: true,
         }).catch(warnAndUse(null, "draw yesterday's Weave"))
+      : null,
+    yesterday.reel
+      ? lastFrame(yesterday.reel.round).catch(
+          warnAndUse(null, "fetch yesterday's Reel frame"),
+        )
       : null,
   ]);
   const images = await Promise.all(
@@ -329,10 +436,7 @@ export const recapImage = async (yesterday: Games): Promise<Buffer | null> => {
 /* ------------------------------------------------------------- loading */
 
 /** The games of `day` in a server, with each player's result. */
-const gamesOn = async (
-  rounds: { geo: DailyRoundRecord | null; weave: WeaveRoundRecord | null },
-  serverId: string,
-): Promise<Games> => ({
+const gamesOn = async (rounds: Rounds, serverId: string): Promise<Games> => ({
   geo: rounds.geo
     ? {
         round: rounds.geo,
@@ -345,19 +449,27 @@ const gamesOn = async (
         plays: await weavePlaysFor(rounds.weave.id, serverId).catch(() => []),
       }
     : null,
+  reel: rounds.reel
+    ? {
+        round: rounds.reel,
+        plays: await reelPlaysFor(rounds.reel.id, serverId).catch(() => []),
+      }
+    : null,
 });
 
 /** Yesterday's games in a server: only those that were posted there. */
 const yesterdayIn = async (day: string, serverId: string): Promise<Games> => {
   const yesterday = previousDay(day);
-  const [geo, weave] = await Promise.all([
+  const [geo, weave, reel] = await Promise.all([
     getRound(yesterday).catch(() => null),
     getWeaveRound(yesterday).catch(() => null),
+    getReelRound(yesterday).catch(() => null),
   ]);
   return gamesOn(
     {
       geo: geo?.posts?.[serverId] ? geo : null,
       weave: weave?.posts?.[serverId] ? weave : null,
+      reel: reel?.posts?.[serverId] ? reel : null,
     },
     serverId,
   );
@@ -369,7 +481,7 @@ const yesterdayIn = async (day: string, serverId: string): Promise<Games> => {
  * image the message already carries (an edit, which keeps its files).
  */
 const buildPost = async (
-  rounds: { geo: DailyRoundRecord | null; weave: WeaveRoundRecord | null },
+  rounds: Rounds,
   day: string,
   serverId: string,
   mode: { image: true } | { hasImage: boolean },
@@ -409,19 +521,28 @@ export const postDailies = async (cl: Client): Promise<number> => {
     return 0;
   }
   const weave = WEAVE_LIVE ? await ensureTodaysWeave() : null;
+  // A film that can't be had from TMDB just now leaves Reel out of the post.
+  const reel = REEL_LIVE
+    ? await ensureTodaysReel().catch(warnAndUse(null, "choose today's Reel"))
+    : null;
   if (!geo && !weave) return 0;
   const day = geo?.day ?? weave!.day;
 
   let posted = 0;
   for (const guild of cl.guilds.cache.values()) {
-    if (geo?.posts?.[guild.id] || weave?.posts?.[guild.id]) continue;
+    if (
+      geo?.posts?.[guild.id] ||
+      weave?.posts?.[guild.id] ||
+      reel?.posts?.[guild.id]
+    )
+      continue;
     const channelId = await getBotChannelForServer(guild.id);
     if (!channelId) continue;
 
     const message = await sendTo(
       cl,
       channelId,
-      await buildPost({ geo, weave }, day, guild.id, { image: true }),
+      await buildPost({ geo, weave, reel }, day, guild.id, { image: true }),
     );
     if (!message) continue;
 
@@ -437,6 +558,10 @@ export const postDailies = async (cl: Client): Promise<number> => {
     if (weave) {
       await recordWeavePost(weave.id, guild.id, post);
       weave.posts = { ...(weave.posts ?? {}), [guild.id]: post };
+    }
+    if (reel) {
+      await recordReelPost(reel.id, guild.id, post);
+      reel.posts = { ...(reel.posts ?? {}), [guild.id]: post };
     }
     posted++;
   }
@@ -466,11 +591,15 @@ const refreshing = new Map<string, ReturnType<typeof setTimeout>>();
 /** Edits today's post in a server to show what's been played since. */
 export const updateDailyPost = async (cl: Client, serverId: string) => {
   const day = currentDay();
-  const [geo, weave] = await Promise.all([
+  const [geo, weave, reel] = await Promise.all([
     getRound(day).catch(() => null),
     WEAVE_LIVE ? getWeaveRound(day).catch(() => null) : Promise.resolve(null),
+    REEL_LIVE ? getReelRound(day).catch(() => null) : Promise.resolve(null),
   ]);
-  const post = geo?.posts?.[serverId] ?? weave?.posts?.[serverId];
+  const post =
+    geo?.posts?.[serverId] ??
+    weave?.posts?.[serverId] ??
+    reel?.posts?.[serverId];
   // A game's own post from before the combined one isn't ours to rewrite.
   if (!post?.combined) return;
 
@@ -486,6 +615,7 @@ export const updateDailyPost = async (cl: Client, serverId: string) => {
     geo: geo?.posts?.[serverId]?.messageId === post.messageId ? geo : null,
     weave:
       weave?.posts?.[serverId]?.messageId === post.messageId ? weave : null,
+    reel: reel?.posts?.[serverId]?.messageId === post.messageId ? reel : null,
   };
   // Name the files to keep, or the edit drops yesterday's image.
   const kept = keptFiles(message);
@@ -528,7 +658,8 @@ export type Finish =
       guesses: number;
       fc: number;
       thread: boolean;
-    };
+    }
+  | { game: "reel"; name: string; frame: number; fc: number };
 
 /** "🌍 **Aya** played today's Where in the World and won **267 fc**, right down to the city!" */
 export const finishText = (finish: Finish): string => {
@@ -539,11 +670,18 @@ export const finishText = (finish: Finish): string => {
         : "came away empty-handed.";
     return `🌍 **${finish.name}** played today's **Where in the World** and ${result}`;
   }
+  if (finish.game === "reel") {
+    return `🎬 **${finish.name}** named today's **Reel** on frame ${finish.frame} and won **${finish.fc} fc**!`;
+  }
   const guesses = `${finish.guesses} ${finish.guesses === 1 ? "guess" : "guesses"}`;
   return `🧵 **${finish.name}** solved today's **Weave**${finish.thread ? ", thread and all," : ""} in ${guesses} and won **${finish.fc} fc**!`;
 };
 
-const FINISH_ACCENT = { geo: 0x3b82f6, weave: 0x8f6fd8 } as const;
+const FINISH_ACCENT = {
+  geo: 0x3b82f6,
+  weave: 0x8f6fd8,
+  reel: 0xe0a030,
+} as const;
 
 /**
  * A small card in the bot channel when someone finishes a game, with a link to
@@ -556,13 +694,16 @@ export const announceFinish = async (
   finish: Finish,
 ): Promise<void> => {
   const day = currentDay();
-  const [geo, weave] = await Promise.all([
+  const [geo, weave, reel] = await Promise.all([
     getRound(day).catch(() => null),
     getWeaveRound(day).catch(() => null),
+    getReelRound(day).catch(() => null),
   ]);
-  const post = [geo?.posts?.[serverId], weave?.posts?.[serverId]].find(
-    (candidate) => candidate?.combined,
-  );
+  const post = [
+    geo?.posts?.[serverId],
+    weave?.posts?.[serverId],
+    reel?.posts?.[serverId],
+  ].find((candidate) => candidate?.combined);
   const channelId = post?.channelId ?? (await getBotChannelForServer(serverId));
   if (!channelId) return;
 
