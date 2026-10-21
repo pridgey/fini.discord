@@ -124,6 +124,8 @@ export type V2DeckRecord = {
   name: string;
   /** Ordered list of v2_user_card ids. */
   cards: string[];
+  /** Brought when no deck is named. At most one per player per server. */
+  active?: boolean;
   created?: string;
   updated?: string;
 };

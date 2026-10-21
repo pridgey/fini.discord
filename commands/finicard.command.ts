@@ -195,7 +195,7 @@ export const data = new SlashCommandBuilder()
       .addStringOption((option) =>
         option
           .setName("deck")
-          .setDescription("Which deck to bring (blank uses your only deck)")
+          .setDescription("Which deck to bring (blank uses your active deck)")
           .setRequired(false),
       )
       .addIntegerOption((option) =>
@@ -225,7 +225,9 @@ export const data = new SlashCommandBuilder()
       .addStringOption((option) =>
         option
           .setName("deck")
-          .setDescription("Deck for the first side (blank uses your only deck)")
+          .setDescription(
+            "Deck for the first side (blank uses your active deck)",
+          )
           .setRequired(false),
       )
       .addStringOption((option) =>
@@ -254,7 +256,7 @@ export const data = new SlashCommandBuilder()
       .addStringOption((option) =>
         option
           .setName("deck")
-          .setDescription("Which deck to bring (blank uses your only deck)")
+          .setDescription("Which deck to bring (blank uses your active deck)")
           .setRequired(false),
       ),
   )

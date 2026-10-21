@@ -3,7 +3,12 @@ import type { ChatInputCommandInteraction } from "discord.js";
 import { pickDeck } from "../../commands/finicard/pickDeck";
 import { pb } from "../../utilities/pocketbase";
 
-const deck = (name: string) => ({ id: name.toLowerCase(), name, cards: [] });
+const deck = (name: string, active = false) => ({
+  id: name.toLowerCase(),
+  name,
+  cards: [],
+  active,
+});
 let decks: ReturnType<typeof deck>[] = [];
 const realCollection = pb.collection.bind(pb);
 
@@ -59,8 +64,20 @@ describe("picking a deck for battle, practice or a dungeon", () => {
 
     expect(await pick(asking, null)).toBeNull();
     expect(asking.editReply).toHaveBeenCalledWith(
-      "You have several decks - say which one: **Aggro**, **Main**.",
+      "You have several decks - say which one: **Aggro**, **Main**. Or set one active in `/finicard deck list` and it's brought every time.",
     );
+  });
+
+  it("brings the active deck when none is named", async () => {
+    decks = [deck("Aggro"), deck("Main", true)];
+
+    expect((await pick(interaction(), null))?.deck.name).toBe("Main");
+  });
+
+  it("brings a named deck over the active one", async () => {
+    decks = [deck("Aggro"), deck("Main", true)];
+
+    expect((await pick(interaction(), "aggro"))?.deck.name).toBe("Aggro");
   });
 
   it("lists the player's decks when the named one doesn't exist", async () => {

@@ -147,6 +147,25 @@ export const deleteDeck = async (deckId: string): Promise<void> => {
   await pb.collection<V2DeckRecord>(V2_DECK).delete(deckId);
 };
 
+/** The deck a player brings when they don't name one, if they've set it. */
+export const activeDeck = (decks: V2DeckRecord[]): V2DeckRecord | null =>
+  decks.find((deck) => deck.active) ?? null;
+
+/**
+ * Makes `deck` the one its owner brings when they don't name a deck, and
+ * clears any other they'd set - one active deck per player per server.
+ */
+export const setActiveDeck = async (deck: V2DeckRecord): Promise<void> => {
+  const decks = await getDecks(deck.user_id, deck.server_id);
+  for (const other of decks) {
+    if (other.id !== deck.id && other.active)
+      await pb.collection<V2DeckRecord>(V2_DECK).update(other.id!, {
+        active: false,
+      });
+  }
+  await pb.collection<V2DeckRecord>(V2_DECK).update(deck.id!, { active: true });
+};
+
 /**
  * Adds or removes cards on an existing deck. A deck may be left short - taking
  * one card out and putting another in is two steps - and simply cannot be

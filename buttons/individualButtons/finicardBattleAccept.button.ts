@@ -79,18 +79,26 @@ export const execute: ButtonHandler["execute"] = async (
   }
 
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+  // The active deck first and lit, so the usual choice is the obvious one;
+  // the rest stay a click away, since a challenge may call for another.
+  const ordered = [...decks].sort(
+    (a, b) => Number(!!b.active) - Number(!!a.active),
+  );
 
-  for (let index = 0; index < decks.length; index += BUTTONS_PER_ROW) {
+  for (let index = 0; index < ordered.length; index += BUTTONS_PER_ROW) {
     rows.push(
       new ActionRowBuilder<ButtonBuilder>().addComponents(
-        decks.slice(index, index + BUTTONS_PER_ROW).map((deck) =>
-          new ButtonBuilder()
+        ordered.slice(index, index + BUTTONS_PER_ROW).map((deck) => {
+          const button = new ButtonBuilder()
             .setCustomId(`v2_deck_pick:${battleId}:${deck.id}`)
             .setLabel(
               `${deck.name} (${(deck.cards ?? []).length})`.slice(0, 80),
             )
-            .setStyle(ButtonStyle.Secondary),
-        ),
+            .setStyle(
+              deck.active ? ButtonStyle.Primary : ButtonStyle.Secondary,
+            );
+          return deck.active ? button.setEmoji("⭐") : button;
+        }),
       ),
     );
   }

@@ -1,10 +1,6 @@
-import {
-  ButtonStyle,
-  ChatInputCommandInteraction,
-  ContainerBuilder,
-  MessageFlags,
-} from "discord.js";
-import { compositionString, NEUTRAL_ACCENT } from "../../modules/finicards/ui";
+import { ChatInputCommandInteraction } from "discord.js";
+import { compositionString } from "../../modules/finicards/ui";
+import { deckListMessage } from "../../modules/finicards/ui/deckList";
 import { buildDeckPages } from "../../modules/finicards/cardPages";
 import {
   DECK_SIZE,
@@ -75,42 +71,7 @@ export const handleDeckSubcommand = async (
         return;
       }
 
-      // One row per deck, each with a button onto the same pages as
-      // `deck show`.
-      const container = new ContainerBuilder()
-        .setAccentColor(NEUTRAL_ACCENT)
-        .addTextDisplayComponents((text) => text.setContent("### Your decks"));
-
-      for (const deck of decks) {
-        const size = (deck.cards ?? []).length;
-        container.addSectionComponents((section) =>
-          section
-            .addTextDisplayComponents((text) =>
-              text.setContent(
-                `**${deck.name}** — ${size} cards${
-                  size < DECK_SIZE
-                    ? `\n-# ⚠️ too small to play (needs ${DECK_SIZE})`
-                    : ""
-                }`,
-              ),
-            )
-            .setButtonAccessory((button) =>
-              button
-                .setCustomId(`v2_deck_show:${deck.id}:${userId}`)
-                .setLabel("View")
-                .setStyle(ButtonStyle.Secondary),
-            ),
-        );
-      }
-
-      container.addTextDisplayComponents((text) =>
-        text.setContent("-# Bring one with `/finicard battle deck:<name>`."),
-      );
-
-      await interaction.editReply({
-        components: [container],
-        flags: [MessageFlags.IsComponentsV2],
-      });
+      await interaction.editReply(deckListMessage(decks, userId));
       return;
     }
 
