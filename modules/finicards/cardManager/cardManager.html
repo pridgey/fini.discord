@@ -74,6 +74,14 @@
   .cand.busy { opacity: .6; }
   .cand .x { position: absolute; top: 4px; right: 4px; padding: 0 6px; font-size: 12px; background: #14162acc; }
   .wiki-head { margin: 14px 0 6px; }
+  /* Search results at the size picked above them. */
+  #results .cgrid { grid-template-columns: repeat(auto-fill, minmax(min(var(--thumb-w, 130px), 100%), 1fr)); }
+  #results .cand img { height: var(--thumb-h, 100px); }
+  #thumb-size { display: inline-flex; gap: 0; margin-left: 8px; vertical-align: middle; text-transform: none; letter-spacing: 0; }
+  #thumb-size button { min-height: 0; padding: 1px 8px; font-size: 11px; border-radius: 0; }
+  #thumb-size button:first-child { border-radius: 4px 0 0 4px; }
+  #thumb-size button:last-child { border-radius: 0 4px 4px 0; }
+  #thumb-size button.on { background: #5865f2; border-color: #5865f2; color: #fff; }
   #drop { border: 1px dashed #2b3050; border-radius: 8px; padding: 10px; text-align: center; color: #9aa1c4; margin-top: 8px; }
   #drop.over { border-color: #5865f2; color: #e8e9f1; }
 
@@ -222,7 +230,7 @@
       <div class="cgrid" id="candidates"></div>
       <div id="drop"><span class="desk-only">Drop an image here, paste one (Ctrl+V), or </span><label style="color:#7fc8ff;cursor:pointer">choose a file<input type="file" id="file" accept="image/*" hidden></label></div>
 
-      <h3>Find images</h3>
+      <h3>Find images <span id="thumb-size" title="Size of the images found"><button data-size="s">S</button><button data-size="m">M</button><button data-size="l">L</button><button data-size="xl">XL</button></span></h3>
       <div class="bar">
         <button class="primary" id="find">Find images for this character</button>
         <span class="dim">Searches the best Fandom wikis, then Danbooru and Magic card art — both free of AI art, with artists named.</span>
@@ -387,7 +395,7 @@ const startEditor = async (state) => {
   }
   say(ed.id ? "" : "Not saved yet. Nothing is in the pool until you press Save.");
   drawHead();
-  ed.candidates = await api("api/candidates?key=" + ed.key);
+  ed.candidates = await api(candidatesPath());
   drawCandidates();
   markAdded();
   refreshArt();
@@ -486,7 +494,7 @@ const drawRarityChips = () => {
     } else {
       chip.className = "chip new"; chip.textContent = "+ " + code; chip.title = "Start a " + rarity.replace("_", " ") + " of " + name;
       chip.onclick = () => guard(async () => {
-        // Asked before the server copies this card's candidates under the new key.
+        // Asked before leaving: the new rarity opens unsaved.
         if (!leaveOk()) return;
         const key = newKey();
         const fields = await api("api/new-rarity", { basedOn: ed.id, rarity, key });
@@ -586,6 +594,11 @@ $("clear-trim").onclick = () => {
   refreshArt(); changed();
 };
 
+// A character's rarities share one pool of candidates, found by its name: the
+// saved name, so a rename in progress does not borrow another character's.
+const poolName = () => (ed.saved ? ed.saved.card_name : readFields().card_name) || "";
+const candidatesPath = () => "api/candidates?key=" + ed.key + "&name=" + encodeURIComponent(poolName());
+
 const drawCandidates = () => {
   const frame = rules.artWindow[readFields().rarity];
   $("cand-count").textContent = "(" + ed.candidates.length + ")";
@@ -605,7 +618,7 @@ const drawCandidates = () => {
     tile.querySelector("span").textContent = candidate.width + "×" + candidate.height + (soft ? " · low-res" : "") + (candidate.artist ? " · " + candidate.artist : "");
     tile.onclick = () => choose(candidate.file);
     tile.querySelector(".x").onclick = (event) => { event.stopPropagation(); guard(async () => {
-      await api("api/remove", { key: ed.key, file: candidate.file });
+      await api("api/remove", { key: ed.key, file: candidate.file, name: poolName() });
       ed.candidates = ed.candidates.filter((other) => other.file !== candidate.file);
       if (ed.candidate === candidate.file) choose(null); else drawCandidates();
     }); };
@@ -636,7 +649,7 @@ const choose = (file) => {
 };
 
 const added = async (file) => {
-  ed.candidates = await api("api/candidates?key=" + ed.key);
+  ed.candidates = await api(candidatesPath());
   choose(file);
 };
 const addFrom = async (url, tile, artist) => {
@@ -702,6 +715,21 @@ const searchInto = async (wiki, label, query) => {
     head.querySelector("small").textContent = error.message;
   }
 };
+
+// How big the found images are drawn, remembered on this browser.
+const THUMB_SIZES = { s: [100, 80], m: [130, 100], l: [200, 160], xl: [300, 240] };
+const sizeThumbs = (size) => {
+  if (!THUMB_SIZES[size]) size = "m";
+  const [w, h] = THUMB_SIZES[size];
+  $("results").style.setProperty("--thumb-w", w + "px");
+  $("results").style.setProperty("--thumb-h", h + "px");
+  for (const button of $("thumb-size").querySelectorAll("button")) button.classList.toggle("on", button.dataset.size === size);
+  try { localStorage.setItem("thumb-size", size); } catch {}
+};
+for (const button of $("thumb-size").querySelectorAll("button")) button.onclick = () => sizeThumbs(button.dataset.size);
+let savedSize = "m";
+try { savedSize = localStorage.getItem("thumb-size") || "m"; } catch {}
+sizeThumbs(savedSize);
 
 // Remembered on this browser; the page works the same if it cannot be.
 try { $("danbooru-safe").checked = localStorage.getItem("danbooru-safe") !== "0"; } catch {}

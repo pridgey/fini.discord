@@ -98,8 +98,27 @@ const rarityOf = (kind: unknown): CardRarity =>
       : "common";
 const kindOf = (row: { rarity: CardRarity; secret_art?: boolean }): Kind =>
   row.secret_art ? "secret_art" : row.rarity;
-/** The set a card made here goes into unless told otherwise. */
+/** The set a card made here goes into when no set is being built. */
 const DEFAULT_SET = 4;
+
+/**
+ * The set a new card goes into: the latest set with no active card in it,
+ * which is the one being built. With none, the next set after the last.
+ */
+const defaultSetOf = (
+  rows: Pick<V2CardDefinitionRecord, "set" | "active">[],
+): number => {
+  const sets = new Map<number, boolean>();
+  for (const row of rows) {
+    if (!row.set) continue;
+    sets.set(row.set, (sets.get(row.set) ?? false) || !!row.active);
+  }
+  if (sets.size === 0) return DEFAULT_SET;
+  const building = [...sets].filter(([, active]) => !active).map(([set]) => set);
+  return building.length > 0
+    ? Math.max(...building)
+    : Math.max(...sets.keys()) + 1;
+};
 /** v1's colour attribute, which rode along as a tag and is not wanted on new cards. */
 const COLOUR_TAGS = new Set([
   "red",
@@ -155,9 +174,62 @@ const candidatePath = (key: string, file: string): string | null => {
   return folder && SAFE_FILE.test(file) ? path.join(folder, file) : null;
 };
 
-const listCandidates = async (key: string) => {
+/**
+ * The candidate folders of the character's other rarities. A character's
+ * rarities share one pool of candidates, kept as a copy in each folder.
+ */
+const siblingFolders = async (key: string, name: string): Promise<string[]> => {
+  if (!name.trim()) return [];
+  const rows = await collection().getFullList({
+    filter: pb.filter("card_name = {:name}", { name }),
+    fields: "id",
+  });
+  return rows
+    .filter((row) => row.id && row.id !== key)
+    .map((row) => folderOf(row.id!))
+    .filter((folder): folder is string => !!folder);
+};
+
+/** Brings into a card's folder any candidate its other rarities have and it lacks. */
+const gatherPool = async (key: string, name: string) => {
+  const folder = folderOf(key);
+  if (!folder) return;
+  const have = new Set(await readdir(folder).catch(() => [] as string[]));
+  const sourcesFile = path.join(folder, "sources.json");
+  const artistsFile = path.join(folder, "artists.json");
+  const sources = await readJson<Record<string, string>>(sourcesFile, {});
+  const artists = await readJson<Record<string, string>>(artistsFile, {});
+  let brought = 0;
+  for (const other of await siblingFolders(key, name)) {
+    const files = await readdir(other).catch(() => [] as string[]);
+    const missing = files.filter((file) => SAFE_FILE.test(file) && !have.has(file));
+    if (missing.length === 0) continue;
+    const theirSources = await readJson<Record<string, string>>(
+      path.join(other, "sources.json"),
+      {},
+    );
+    const theirArtists = await readJson<Record<string, string>>(
+      path.join(other, "artists.json"),
+      {},
+    );
+    await mkdir(folder, { recursive: true });
+    for (const file of missing) {
+      await copyFile(path.join(other, file), path.join(folder, file));
+      have.add(file);
+      if (theirSources[file]) sources[file] = theirSources[file];
+      if (theirArtists[file] !== undefined) artists[file] = theirArtists[file];
+      brought += 1;
+    }
+  }
+  if (brought === 0) return;
+  await writeFile(sourcesFile, JSON.stringify(sources, null, 2));
+  await writeFile(artistsFile, JSON.stringify(artists, null, 2));
+};
+
+const listCandidates = async (key: string, name = "") => {
   const folder = folderOf(key);
   if (!folder) return [];
+  await gatherPool(key, name);
   let files: string[] = [];
   try {
     files = (await readdir(folder))
@@ -1389,7 +1461,7 @@ export const handleCardManager = async (
             secret_art: RULES.spikeCeiling.full_art,
           },
           population: { ...POPULATION, secret_art: SECRET_ART_POPULATION },
-          defaultSet: DEFAULT_SET,
+          defaultSet: defaultSetOf(rows),
           artWindow: { ...artWindow, secret_art: artWindow.full_art },
         },
       });
@@ -1523,33 +1595,20 @@ export const handleCardManager = async (
             tag !== slug(base.series) &&
             !(index === 1 && COLOUR_TAGS.has(tag)),
         ),
-        set: DEFAULT_SET,
+        set: defaultSetOf(
+          await collection().getFullList({ fields: "set,active" }),
+        ),
         population: secret ? SECRET_ART_POPULATION : POPULATION[rarity],
         active: false,
         flavour: "",
         artist: "",
       };
-      // The images gathered for the character come along, so they need not be
-      // found again. Copied, not shared: removing one here leaves the other's.
-      const from = folderOf(base.id ?? "");
-      const to = folderOf(String(body.key ?? ""));
-      const carried =
-        from && to && from !== to ? await readdir(from).catch(() => []) : [];
-      if (carried.length > 0) await mkdir(to!, { recursive: true });
-      for (const name of carried) {
-        if (
-          !SAFE_FILE.test(name) &&
-          name !== "sources.json" &&
-          name !== "artists.json"
-        )
-          continue;
-        await copyFile(path.join(from!, name), path.join(to!, name));
-      }
+      // The character's candidates come along when the editor lists them.
       return json(fields);
     }
 
     if (route === "api/candidates") {
-      return json(await listCandidates(param("key")));
+      return json(await listCandidates(param("key"), param("name")));
     }
 
     if (route === "candidate") {
@@ -1595,6 +1654,13 @@ export const handleCardManager = async (
       const file = candidatePath(String(body.key), String(body.file));
       if (!file) return fail("Unknown candidate", 404);
       await rm(file, { force: true });
+      // Gone from every rarity, or the next one opened would bring it back.
+      for (const other of await siblingFolders(
+        String(body.key),
+        String(body.name ?? ""),
+      )) {
+        await rm(path.join(other, path.basename(file)), { force: true });
+      }
       return json({ ok: true });
     }
 
