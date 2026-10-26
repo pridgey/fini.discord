@@ -39,7 +39,11 @@ Rounds and plays live in Pocketbase; their migrations are in `pb_migrations/`.
 
 ## Where in the world (`geo/`)
 
-Street photos from Mapillary (Panoramax without `MAPILLARY_TOKEN`); players
+Street photos from Mapillary (Panoramax without `MAPILLARY_TOKEN`). A
+Mapillary round shows the town, not one street: the answer's photo and two
+more from anywhere inside the same town's boundary, at least 500 m apart
+and each with a sign or two of its own (`spreadAcross` in `imagery.ts`). A
+town with none to give falls back to the answer's nearest neighbours. Players
 type a place or coordinates, check it on a map, and lock in one guess. Paid on
 a ladder of checks - hemispheres, continent, country, province, town - up to
 150 fc, more for rounds with fewer photos. `judge.ts` has the

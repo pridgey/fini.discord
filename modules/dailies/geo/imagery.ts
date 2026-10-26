@@ -1,6 +1,6 @@
 import sharp, { type Sharp } from "sharp";
 import { clueScore, MIN_CLUES } from "./clues";
-import { USER_AGENT } from "./geocode";
+import { USER_AGENT, townOf, type Box } from "./geocode";
 import { PLACES } from "./places";
 import { distanceKm, type LatLon } from "./score";
 
@@ -14,7 +14,10 @@ import { distanceKm, type LatLon } from "./score";
  *
  * Mapillary's photos are also checked for how much they give away
  * (`clues.ts`), and a spot with nothing to go on - a footpath beside a wall -
- * is passed over.
+ * is passed over. A Mapillary round shows its town, not one street: the
+ * answer's photo, and two more from elsewhere inside the same town
+ * (`spreadAcross`). Only where the town has none to give does it fall back to
+ * the answer's nearest neighbours.
  *
  * Photos are downloaded and re-encoded before anyone sees them. A source's
  * link, or the GPS tags inside the original file, would give the answer away;
@@ -280,9 +283,130 @@ const photosFor = async (
   return views;
 };
 
+/** How far from the answer a town's other photos are looked for, in km: a city's box can reach out to islands. */
+const SPREAD_KM = 8;
+/** A town's photos are at least this far from each other, in km. */
+const MIN_APART_KM = 0.5;
+/** Spots tried for each of a town's other photos. */
+const SPOTS_PER_PHOTO = 10;
+/** Photos one spot is scored on before moving on. */
+const SCORED_PER_SPOT = 3;
+/**
+ * The least one photo of a town round must give away by itself: a sign or
+ * two. Three photos at this clear MIN_CLUES with room to spare.
+ */
+export const MIN_PHOTO_CLUES = 2;
+/** A town round's photos: the answer's and two more. */
+const SPREAD_PHOTOS = 2;
+
+/** `box` cut down to SPREAD_KM around `centre`. */
+export const spreadBox = (centre: LatLon, box?: Box): Box => {
+  const dLat = SPREAD_KM / 111;
+  const dLon = SPREAD_KM / (111 * Math.cos((centre.lat * Math.PI) / 180));
+  return {
+    south: Math.max(box?.south ?? -90, centre.lat - dLat),
+    north: Math.min(box?.north ?? 90, centre.lat + dLat),
+    west: Math.max(box?.west ?? -180, centre.lon - dLon),
+    east: Math.min(box?.east ?? 180, centre.lon + dLon),
+  };
+};
+
+/** One view per photo: a flat photo whole, a panorama's first view. */
+const firstViews = async (photos: Candidate[]): Promise<Buffer[]> => {
+  const views: Buffer[] = [];
+  for (const photo of photos) {
+    const image = await download(photo.imageUrl);
+    const [view] = image ? await viewsOf(image) : [];
+    if (view) views.push(view);
+  }
+  return views;
+};
+
+/**
+ * Two more photos from inside the chosen photo's town, each at least
+ * MIN_APART_KM from the others and with clues of its own, or null if the town
+ * has none to give in a few tries. Spots are picked anywhere in the town's
+ * box, and a photo counts only if Nominatim puts it in the same town: a box
+ * holds bits of its neighbours too.
+ */
+const spreadAcross = async (
+  chosen: Candidate,
+  token: string,
+  random: () => number,
+): Promise<{ spread: Candidate[]; found: string[] } | null> => {
+  const town = await townOf(chosen).catch(() => null);
+  const city = town?.place.city;
+  if (!city) return null;
+  const box = spreadBox(chosen, town.box);
+  const picked: Candidate[] = [chosen];
+  const found: string[] = [];
+  for (let photo = 0; photo < SPREAD_PHOTOS; photo++) {
+    let added = false;
+    for (let spot = 0; spot < SPOTS_PER_PHOTO && !added; spot++) {
+      const near = (
+        await mapillaryNear(
+          {
+            lat: box.south + random() * (box.north - box.south),
+            lon: box.west + random() * (box.east - box.west),
+          },
+          token,
+        )
+      ).filter((candidate) =>
+        picked.every((other) => distanceKm(candidate, other) >= MIN_APART_KM),
+      );
+      let best: {
+        candidate: Candidate;
+        found: string[];
+        score: number;
+      } | null = null;
+      for (const candidate of [...near]
+        .sort(() => random() - 0.5)
+        .slice(0, SCORED_PER_SPOT)) {
+        if (!candidate.id) continue;
+        const seen = await mapillaryDetections([candidate.id], token);
+        const score = clueScore(seen);
+        if (!best || score > best.score)
+          best = { candidate, found: seen, score };
+      }
+      if (!best || best.score < MIN_PHOTO_CLUES) continue;
+      const there = await townOf(best.candidate).catch(() => null);
+      if (there?.place.city !== city) continue;
+      picked.push(best.candidate);
+      found.push(...best.found);
+      added = true;
+    }
+    if (!added) return null;
+  }
+  return { spread: picked.slice(1), found };
+};
+
+/**
+ * A round of the chosen photo and two more from its town, if the chosen photo
+ * has clues enough of its own and the town has photos to give.
+ */
+const spreadRound = async (
+  chosen: Candidate,
+  token: string,
+  random: () => number,
+): Promise<Omit<Pick, "candidates" | "near"> | null> => {
+  if (!chosen.id) return null;
+  const own = await mapillaryDetections([chosen.id], token);
+  if (clueScore(own) < MIN_PHOTO_CLUES) return null;
+  const town = await spreadAcross(chosen, token, random);
+  if (!town) return null;
+  const found = [...own, ...town.found];
+  return {
+    chosen,
+    spread: town.spread,
+    clues: { score: clueScore(found), found },
+  };
+};
+
 type Pick = {
   chosen: Candidate;
   candidates: Candidate[];
+  /** Photos from elsewhere in the town, shown after the chosen one. */
+  spread?: Candidate[];
   near: string;
   clues?: GeoRound["clues"];
 };
@@ -300,13 +424,18 @@ export const findRound = async (
   let best: Pick | null = null;
 
   const roundFrom = async (pick: Pick): Promise<GeoRound | null> => {
-    const photos = await photosFor(pick.chosen, pick.candidates);
+    const photos = pick.spread
+      ? await firstViews([pick.chosen, ...pick.spread])
+      : await photosFor(pick.chosen, pick.candidates);
     if (photos.length === 0) return null;
+    const credits = [
+      ...new Set([pick.chosen, ...(pick.spread ?? [])].map((c) => c.credit)),
+    ];
     return {
       answer: { lat: pick.chosen.lat, lon: pick.chosen.lon },
       near: pick.near,
       photos,
-      credit: pick.chosen.credit,
+      credit: credits.join(", "),
       license: pick.chosen.license,
       source,
       clues: pick.clues,
@@ -335,6 +464,15 @@ export const findRound = async (
       .sort(() => random() - 0.5)
       .slice(0, TRIES_PER_SPOT);
     for (const chosen of tries) {
+      const spread = await spreadRound(chosen, token, random);
+      if (spread) {
+        const round = await roundFrom({
+          ...spread,
+          candidates,
+          near: place.name,
+        });
+        if (round) return round;
+      }
       const shown = shownWith(chosen, candidates).flatMap(
         (candidate) => candidate.id ?? [],
       );

@@ -131,18 +131,34 @@ type NominatimPlace = {
   error?: string;
 };
 
-/** The places a point is in, down to its town. Null out at sea, or anywhere nameless. */
-export const describePlace = async (
-  point: LatLon,
-): Promise<PlaceInfo | null> => {
-  const found = await nominatim<NominatimPlace>("reverse", {
-    lat: String(point.lat),
-    lon: String(point.lon),
-    // Town level: a street or house tells the round nothing more.
-    zoom: "10",
-  });
-  return found.error || !found.address ? null : placeFromAddress(found.address);
+/** A box on the map, in degrees. */
+export type Box = { south: number; north: number; west: number; east: number };
+
+/** The town a point is in, and the box around the town's boundary. */
+export type Town = { place: PlaceInfo; box?: Box };
+
+/** The town a point is in, with its box. Null out at sea, or anywhere nameless. */
+export const townOf = async (point: LatLon): Promise<Town | null> => {
+  const found = await nominatim<NominatimPlace & { boundingbox?: string[] }>(
+    "reverse",
+    {
+      lat: String(point.lat),
+      lon: String(point.lon),
+      // Town level: a street or house tells the round nothing more.
+      zoom: "10",
+    },
+  );
+  if (found.error || !found.address) return null;
+  const [south, north, west, east] = (found.boundingbox ?? []).map(Number);
+  const box = [south, north, west, east].every(Number.isFinite)
+    ? { south, north, west, east }
+    : undefined;
+  return { place: placeFromAddress(found.address), box };
 };
+
+/** The places a point is in, down to its town. Null out at sea, or anywhere nameless. */
+export const describePlace = async (point: LatLon): Promise<PlaceInfo | null> =>
+  (await townOf(point))?.place ?? null;
 
 /**
  * The places a found guess is in. A guess that names a town or smaller is in

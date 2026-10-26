@@ -18,6 +18,7 @@ import {
 import {
   mapillaryNear,
   neighboursOf,
+  spreadBox,
   panoramaxNear,
   viewsOf,
   type Candidate,
@@ -269,6 +270,27 @@ describe("photo spacing", () => {
       at("e", 48.851, 2.35),
     ];
     expect(neighboursOf(chosen, others).map((c) => c.id)).toEqual(["d", "e"]);
+  });
+
+  it("looks for a town's other photos inside its box, and not far beyond the answer", () => {
+    // Seyssinet-Pariset: small, so its own box is the limit.
+    const seyssinet = {
+      south: 45.1535,
+      north: 45.1907,
+      west: 5.6386,
+      east: 5.7015,
+    };
+    expect(spreadBox({ lat: 45.185, lon: 5.6946 }, seyssinet)).toEqual(
+      seyssinet,
+    );
+    // Tokyo's box reaches the Ogasawara islands, 1,000 km south.
+    const tokyo = spreadBox(
+      { lat: 35.68, lon: 139.76 },
+      { south: 20.2, north: 35.9, west: 136.0, east: 154.0 },
+    );
+    expect(tokyo.south).toBeCloseTo(35.68 - 8 / 111, 5);
+    expect(tokyo.north).toBeCloseTo(35.68 + 8 / 111, 5);
+    expect(tokyo.east - tokyo.west).toBeLessThan(0.2);
   });
 });
 
