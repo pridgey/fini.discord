@@ -527,16 +527,15 @@ describe("finicards v2 dungeons", () => {
     it("says a Chorus played first has nothing to count yet", () => {
       const chorus = wit("c", "chorus");
       expect(linesFor(runIn(fightRoom(prey("e"))), [chorus])).toEqual([
-        expect.stringContaining("**Chorus** · Card c"),
-        "-# ↳ **In Dungeon:** No bonus this fight: you haven't played anything else this leg yet.",
+        "-# **Chorus** · Card c — No bonus this fight: you haven't played anything else this leg yet.",
       ]);
     });
 
     it("gives a Chorus the bonus it will fight with, and why", () => {
       const chorus = wit("c", "chorus");
-      const [, line] = linesFor(after([wit("a"), strong("b")]), [chorus]);
+      const [line] = linesFor(after([wit("a"), strong("b")]), [chorus]);
       expect(line).toBe(
-        "-# ↳ **In Dungeon:** **+2** this fight: your lineup is what you've played this leg, and this: Card a (Wit), Card b (Power), Card c (Wit).",
+        "-# **Chorus** · Card c — **+2** this fight: your lineup is what you've played this leg, and this: Card a (Wit), Card b (Power), Card c (Wit).",
       );
     });
 
@@ -545,19 +544,16 @@ describe("finicards v2 dungeons", () => {
         wit("w", "chorus"),
         card("h", "heart", [3, 5, 7], "chorus"),
       ]);
-      expect(lines.slice(1)).toEqual([
-        expect.stringMatching(
-          /^-# ↳ \*\*In Dungeon\*\* · Card w: \*\*\+2\*\* this fight/,
-        ),
-        expect.stringMatching(
-          /^-# ↳ \*\*In Dungeon\*\* · Card h: No bonus this fight/,
-        ),
+      expect(lines).toEqual([
+        "-# **Chorus** · Card w, Card h",
+        expect.stringMatching(/^-# ↳ Card w: \*\*\+2\*\* this fight/),
+        expect.stringMatching(/^-# ↳ Card h: No bonus this fight/),
       ]);
     });
 
     it("says the tiebreak abilities never fire here", () => {
-      expect(linesFor(runIn(fightRoom(prey("e"))), [wit("g", "grit")])[1]).toBe(
-        "-# ↳ **In Dungeon:** Does nothing in a dungeon: each fight is one round, so there is no tiebreaker.",
+      expect(linesFor(runIn(fightRoom(prey("e"))), [wit("g", "grit")])[0]).toBe(
+        "-# **Grit** · Card g — Does nothing in a dungeon: each fight is one round, so there is no tiebreaker.",
       );
     });
 
@@ -567,19 +563,19 @@ describe("finicards v2 dungeons", () => {
         wit("m", "mimic"),
       ]);
       expect(lines).toContain(
-        "-# ↳ **In Dungeon:** Switches off Card e's Bulwark.",
+        "-# **Silence** · Card s — Switches off Card e's Bulwark.",
       );
       expect(lines).toContain(
-        "-# ↳ **In Dungeon:** Fights with Card e's Bulwark this fight.",
+        "-# **Mimic** · Card m — Fights with Card e's Bulwark this fight.",
       );
     });
 
     it("says when the enemy's Silence switches every ability off", () => {
-      const [, line] = linesFor(runIn(fightRoom(prey("e", "silence"))), [
+      const [line] = linesFor(runIn(fightRoom(prey("e", "silence"))), [
         wit("v", "vanguard"),
       ]);
       expect(line).toBe(
-        "-# ↳ **In Dungeon:** Switched off this fight: Card e's Silence.",
+        "-# **Vanguard** · Card v — Switched off this fight: Card e's Silence.",
       );
     });
 
@@ -587,7 +583,9 @@ describe("finicards v2 dungeons", () => {
       const chorus = wit("c", "chorus");
       expect(
         handAbilityLines(runIn(fightRoom(prey("e"))), [chorus], []),
-      ).toEqual([expect.stringContaining("**Chorus** · Card c")]);
+      ).toEqual([
+        expect.stringMatching(/^-# \*\*Chorus\*\* · Card c — .{20,}/),
+      ]);
     });
 
     it("leaves abilities the battle wording already covers alone", () => {

@@ -303,9 +303,11 @@ fight room says which slot it is. Keywords that read "your lineup" (`Trinity`,
 played - for the enemy, that is the enemies fought so far this leg, including
 itself again after a stalemate.
 
-None of that is visible from a keyword's description, so the fight room adds an
-**In Dungeon:** line under the enemy's (`ui/enemyAbility.ts`): whether its ability is
-live this fight and why, in dungeon terms. Where the bonus depends only on the
+None of that is visible from a keyword's description, so in a fight room the
+enemy's ability says what it does in this fight in place of its description
+(`ui/enemyAbility.ts`): whether it is live this fight and why, in dungeon terms.
+Showing both read as a wall of text, and the fight-specific line is the one a
+player acts on. Where the bonus depends only on the
 enemy's side it runs the keyword's own hook against the leg, so the number shown
 is the one it will fight with; where it depends on the card you choose, it says
 what to look for. Tiebreak keywords are called out as doing nothing, since a
@@ -317,8 +319,10 @@ ready card's ability says what it will do in this fight. The number comes from
 `previewRound` - the real fight, run with the ability and without it, on a copy
 of the run - so a Chorus played first plainly shows "No bonus this fight" rather
 than looking broken. Abilities the battle wording already describes exactly
-(`Bulwark`, `Pierce`, `Guard`, ...) get no line, and a test keeps every keyword
-either explained or on that list.
+(`Bulwark`, `Pierce`, `Guard`, ...) keep their description instead, as does a
+resting card's ability, and a test keeps every keyword either explained or on
+that list. When one ability does different things on different cards, its name
+gets a line and each card a `↳` line under it.
 
 **Progress lives in the row, not the button ids** - the opposite of the lineup
 picker, deliberately. `v2_dungeon_run.progress` holds the whole `DungeonState`:

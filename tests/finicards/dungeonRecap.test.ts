@@ -153,7 +153,7 @@ describe("enemy ability lines", () => {
 
   it("says what a card-reading keyword needs from yours", () => {
     expect(enemyAbilityLines(runAt([]), robin)).toEqual([
-      "-# ↳ **In Dungeon:** +3 if your card's type stat, buffs included, is higher than its Wit 6.",
+      "-# **Giant Slayer** · Sudden Nico Robin — +3 if your card's type stat, buffs included, is higher than its Wit 6.",
     ]);
   });
 

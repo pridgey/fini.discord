@@ -610,7 +610,6 @@ export const composeDungeonMessage = (
                     `👀 **A sneak peek** — ${room.enemy.name.replace(/^Sudden /, "")} is from ${room.enemy.set ? `Set ${room.enemy.set}` : "a set"}, which isn't out yet.`,
                   ]
                 : []),
-              ...keywordLegend([room.enemy]),
               ...enemyAbilityLines(progress, weakenedEnemy(room.enemy, mods)),
             ],
             [

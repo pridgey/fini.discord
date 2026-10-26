@@ -200,7 +200,7 @@ const switchedOff = (round: RoundResult, leg: Leg): string | null => {
   return null;
 };
 
-/** The In Dungeon line for one ready card, or null when there's nothing to add. */
+/** What one ready card's ability does this fight, or null when there's nothing to add. */
 const explain = (
   state: DungeonState,
   card: BattleCard,
@@ -229,7 +229,7 @@ const explain = (
 
 /**
  * The hand's ability legend for a fight room: each ability once, with what it
- * does in this fight under it. `ready` are the cards that can be played; a
+ * does in this fight in place of its description. `ready` are the cards that can be played; a
  * resting card's ability is listed but not explained, since it can't fight.
  */
 export const handAbilityLines = (
@@ -263,18 +263,19 @@ export const handAbilityLines = (
         (entry): entry is { card: BattleCard; line: string } =>
           entry.line !== null,
       );
+    const heading = `-# **${keyword.name}** · ${cards.map((card) => card.name).join(", ")}`;
+    // What it does this fight stands in for the description, which says the
+    // same at greater length. An ability with nothing to explain - the same
+    // as in a battle, or only on resting cards - keeps its description.
+    if (explained.length === 0) return [`${heading} — ${keyword.description}`];
     // One line when every card would be told the same, else one per card.
-    const same = new Set(explained.map(({ line }) => line)).size <= 1;
-    return [
-      `-# **${keyword.name}** · ${cards.map((card) => card.name).join(", ")} — ${keyword.description}`,
-      ...(same
-        ? explained
-            .slice(0, 1)
-            .map(({ line }) => `-# ↳ **In Dungeon:** ${line}`)
-        : explained.map(
-            ({ card, line }) => `-# ↳ **In Dungeon** · ${card.name}: ${line}`,
-          )),
-    ];
+    const same = new Set(explained.map(({ line }) => line)).size === 1;
+    return same
+      ? [`${heading} — ${explained[0].line}`]
+      : [
+          heading,
+          ...explained.map(({ card, line }) => `-# ↳ ${card.name}: ${line}`),
+        ];
   });
 };
 

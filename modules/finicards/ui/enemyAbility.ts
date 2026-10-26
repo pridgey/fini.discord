@@ -269,9 +269,9 @@ const carriedLines = (leg: Leg): string[] => {
 };
 
 /**
- * Lines for the fight room, under the enemy's keyword legend: what its ability
- * does in this fight, and anything earlier fights in the leg handed on. Empty
- * for an enemy without an ability and with nothing carried in.
+ * Lines for the fight room: the enemy's ability and what it does in this
+ * fight, and anything earlier fights in the leg handed on. Empty for an enemy
+ * without an ability and with nothing carried in.
  */
 export const enemyAbilityLines = (
   state: DungeonState,
@@ -291,7 +291,11 @@ export const enemyAbilityLines = (
         })()
       : (handOnReason(keyword.slug, leg) ??
         yourCardReason(keyword.slug, enemy));
-    if (explained) lines.push(`-# ↳ **In Dungeon:** ${explained}`);
+    // What it does this fight stands in for the description; an ability with
+    // nothing to explain keeps its description.
+    lines.push(
+      `-# **${keyword.name}** · ${enemy.name} — ${explained ?? keyword.description}`,
+    );
   }
 
   return [...lines, ...carriedLines(leg)];
