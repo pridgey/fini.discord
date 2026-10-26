@@ -20,6 +20,7 @@ import {
   framesShown,
   payNow,
   solvedOn,
+  type Film,
   type ReelProgress,
 } from "./game";
 import type { ReelRoundRecord } from "./store";
@@ -44,6 +45,8 @@ export type ReelBoardInput = {
   progress: ReelProgress;
   /** What the last turn did, in a card of its own under the board. */
   note?: string;
+  /** Films an unclear guess might mean, offered as buttons under the note. */
+  choices?: Film[];
   /** Reel isn't live yet: say that nothing is paid. */
   trial?: boolean;
 };
@@ -88,6 +91,11 @@ export const reelBoardText = ({
   ].join("\n");
 };
 
+/** Discord's longest button label. */
+const LABEL_MAX = 80;
+const clip = (label: string) =>
+  label.length <= LABEL_MAX ? label : `${label.slice(0, LABEL_MAX - 1)}…`;
+
 /** The board: the frames, the guesses, and its buttons while the round is on. */
 export const buildReelBoard = async (input: ReelBoardInput) => {
   const { round, progress } = input;
@@ -123,8 +131,20 @@ export const buildReelBoard = async (input: ReelBoardInput) => {
       ),
     );
   }
+  const note = input.note && noteCard(input.note);
+  if (note && input.choices?.length && !finished(round.movie_id, progress))
+    note.addActionRowComponents(
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        ...input.choices.map((film) =>
+          new ButtonBuilder()
+            .setCustomId(buttonId(round.id, `pick:${film.movieId}`))
+            .setLabel(clip(filmName(film)))
+            .setStyle(ButtonStyle.Primary),
+        ),
+      ),
+    );
   return {
-    components: input.note ? [container, noteCard(input.note)] : [container],
+    components: note ? [container, note] : [container],
     flags: [MessageFlags.IsComponentsV2] as const,
   };
 };

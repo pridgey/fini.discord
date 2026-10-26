@@ -129,34 +129,59 @@ describe("Reel's frames and guesses", () => {
     expect(parseGuess("  Heat ")).toEqual({ title: "Heat" });
   });
 
-  it("matches a shared title to the answer, and otherwise takes the top result", () => {
-    const results = [
-      {
-        id: 438631,
-        title: "Dune",
-        release_date: "2021-09-15",
-        vote_count: 15744,
-      },
-      { id: 841, title: "Dune", release_date: "1984-12-14", vote_count: 3579 },
-    ];
-    expect(pickMatch(results, "dune", 841)?.movieId).toBe(841);
-    expect(pickMatch(results, "dune", 999)?.movieId).toBe(438631);
-    expect(pickMatch(results, "dun", 841)?.movieId).toBe(438631);
-    expect(pickMatch([], "dune", 841)).toBeNull();
+  const DUNES = [
+    {
+      id: 438631,
+      title: "Dune",
+      release_date: "2021-09-15",
+      vote_count: 15744,
+    },
+    { id: 841, title: "Dune", release_date: "1984-12-14", vote_count: 3579 },
+  ];
+  const idOf = (match: ReturnType<typeof pickMatch>) =>
+    match && "film" in match ? match.film.movieId : null;
+  const choicesOf = (match: ReturnType<typeof pickMatch>) =>
+    match && "choices" in match
+      ? match.choices.map((film) => film.movieId)
+      : null;
+
+  // Whichever film is today's, so being asked gives nothing away.
+  it("asks which film a shared title means", () => {
+    expect(choicesOf(pickMatch(DUNES, "dune"))).toEqual([438631, 841]);
+    expect(pickMatch([], "dune")).toBeNull();
   });
 
   it("holds a typed year to that film", () => {
+    expect(idOf(pickMatch(DUNES, "dune", "2021"))).toBe(438631);
+    expect(idOf(pickMatch(DUNES, "dune", "1984"))).toBe(841);
+  });
+
+  it("takes the one film with the title typed, however popular its sequels", () => {
     const results = [
       {
-        id: 438631,
-        title: "Dune",
-        release_date: "2021-09-15",
-        vote_count: 15744,
+        id: 1234821,
+        title: "Jurassic World Rebirth",
+        release_date: "2025-07-01",
+        vote_count: 3885,
       },
-      { id: 841, title: "Dune", release_date: "1984-12-14", vote_count: 3579 },
+      {
+        id: 135397,
+        title: "Jurassic World",
+        release_date: "2015-06-06",
+        vote_count: 22059,
+      },
+      {
+        id: 351286,
+        title: "Jurassic World: Fallen Kingdom",
+        release_date: "2018-06-06",
+        vote_count: 13115,
+      },
     ];
-    expect(pickMatch(results, "dune", 841, "2021")?.movieId).toBe(438631);
-    expect(pickMatch(results, "dune", 841, "1984")?.movieId).toBe(841);
+    expect(idOf(pickMatch(results, "jurassic world"))).toBe(135397);
+    // No exact title: offered, nearest title first.
+    expect(choicesOf(pickMatch(results, "jurassic"))).toEqual([
+      135397, 1234821, 351286,
+    ]);
   });
 
   it("knows the answer by any of its names, held to a typed year", () => {
@@ -188,7 +213,7 @@ describe("Reel's frames and guesses", () => {
         vote_count: 15,
       },
     ];
-    expect(pickMatch(results, "interstelar", 157336)).toBeNull();
+    expect(pickMatch(results, "interstelar")).toBeNull();
   });
 });
 

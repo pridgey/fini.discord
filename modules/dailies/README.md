@@ -109,7 +109,12 @@ demand), and nothing is paid.
   TMDB's search, by film id, so typos in spacing and capitals, "The" and
   alternate titles all work; a year can be added for remakes ("Dune 1984").
   Any of the answer's own names on TMDB counts first - "Seven" for Se7en,
-  which search alone would read as Scream 7.
+  which search alone would read as Scream 7. Otherwise a guess counts straight
+  away only when exactly one well-known film has the title typed; anything
+  less clear - "Jurassic", or "Dune", which two films share - offers up to
+  four films as buttons, nearest title first, and nothing counts until one is
+  picked. The choices never favour the answer, so being asked gives nothing
+  away.
   A guess that finds nothing, or only films with under 100 votes, doesn't
   count; guessing the same film twice doesn't either. Each wrong guess or skip
   shows the next frame.

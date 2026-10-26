@@ -25,7 +25,7 @@ import {
   type ReelPlayRecord,
   type ReelRoundRecord,
 } from "./store";
-import { POOL_PAGES, framesFor, matchGuess, poolPage } from "./tmdb";
+import { POOL_PAGES, filmById, framesFor, matchGuess, poolPage } from "./tmdb";
 
 /**
  * Reel, the daily guess-the-film game. At noon a film goes up in the daily post
@@ -160,7 +160,8 @@ const boardFor = (
   round: ReelRoundRecord,
   progress: ReelProgress,
   note?: string,
-) => buildReelBoard({ round, progress, note, trial: !REEL_LIVE });
+  choices?: Film[],
+) => buildReelBoard({ round, progress, note, choices, trial: !REEL_LIVE });
 
 /** A player's go as it stands, made the first time they open it. */
 export const openReel = async (round: ReelRoundRecord, player: ReelPlayer) =>
@@ -222,7 +223,9 @@ const noteFor = (round: ReelRoundRecord, result: TurnResult): string => {
 const takeTurn = async (
   round: ReelRoundRecord,
   player: ReelPlayer,
-  turn: (progress: ReelProgress) => Promise<TurnResult | string>,
+  turn: (
+    progress: ReelProgress,
+  ) => Promise<TurnResult | string | { note: string; choices: Film[] }>,
 ): Promise<{
   board: Awaited<ReturnType<typeof boardFor>>;
   solve: ReelSolve | null;
@@ -236,6 +239,11 @@ const takeTurn = async (
     const result = await turn(before);
     if (typeof result === "string")
       return { board: await boardFor(round, before, result), solve: null };
+    if ("choices" in result)
+      return {
+        board: await boardFor(round, before, result.note, result.choices),
+        solve: null,
+      };
     if (
       result.kind === "right" ||
       result.kind === "wrong" ||
@@ -269,7 +277,11 @@ const takeTurn = async (
   }
 };
 
-/** A typed guess: matched to a film on TMDB, then judged. */
+/**
+ * A typed guess: matched to a film on TMDB, then judged. A guess that could
+ * mean more than one film isn't a turn yet: the board offers the films it
+ * might be, and the one picked is judged (`pickReel`).
+ */
 export const guessReel = (
   round: ReelRoundRecord,
   player: ReelPlayer,
@@ -277,11 +289,32 @@ export const guessReel = (
 ) =>
   takeTurn(round, player, async (progress) => {
     if (finished(round.movie_id, progress)) return { kind: "over" };
-    const film = await matchGuess(typed, round.movie_id).catch(() => undefined);
-    if (film === undefined)
+    const match = await matchGuess(typed, round.movie_id).catch(
+      () => undefined,
+    );
+    if (match === undefined)
       return "Couldn't reach the film database just now. Try that guess again in a moment - it didn't count.";
-    if (!film)
+    if (!match)
       return `I couldn't find a film called **${typed.trim()}**. Check the spelling - that didn't count as a guess.`;
+    if ("choices" in match)
+      return {
+        note: `Which film did you mean by **${typed.trim()}**? Pick one below - nothing's counted yet. Not there? Guess again.`,
+        choices: match.choices,
+      };
+    return guess(round.movie_id, progress, match.film);
+  });
+
+/** One of the films a guess was offered as, picked: judged as that guess. */
+export const pickReel = (
+  round: ReelRoundRecord,
+  player: ReelPlayer,
+  movieId: number,
+) =>
+  takeTurn(round, player, async (progress) => {
+    if (finished(round.movie_id, progress)) return { kind: "over" };
+    const film = await filmById(movieId).catch(() => null);
+    if (!film)
+      return "Couldn't reach the film database just now. Pick it again in a moment - it didn't count.";
     return guess(round.movie_id, progress, film);
   });
 
