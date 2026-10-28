@@ -573,5 +573,40 @@ describe("blackjack command", () => {
         wager: 250,
       });
     });
+
+    it("reads a decimal wager back whole, so a 2.5 bet settles as 2.5", async () => {
+      mockGetUserBalance.mockResolvedValueOnce(1000);
+      mockInteraction.options.get = mock(() => ({ value: 2.5 }));
+      deal(["7", "K"], ["4", "9"]);
+
+      await execute(mockInteraction, mockLogCommand);
+
+      expect(stateFrom(mockInteraction.editReply.mock.calls[0][0]).wager).toBe(
+        2.5,
+      );
+    });
+  });
+
+  describe("Win messages name the winnings, not the bet as well", () => {
+    it("says a natural won half as much again as the bet", async () => {
+      mockGetUserBalance.mockResolvedValueOnce(1000);
+      mockInteraction.options.get = mock(() => ({ value: 0.3 }));
+      deal(["2", "3"], ["A", "J"]);
+
+      await execute(mockInteraction, mockLogCommand);
+
+      // 0.3 × 1.5 is 0.44999... in floating point; the message rounds it.
+      expect(bodyOf(mockInteraction.editReply.mock.calls[0][0])).toContain(
+        "you've won 0.45 finicoin!",
+      );
+      expect(mockAddCoin).toHaveBeenCalledWith(
+        "user123",
+        "guild456",
+        0.75,
+        "testuser",
+        "Test Guild",
+        "Reserve",
+      );
+    });
   });
 });

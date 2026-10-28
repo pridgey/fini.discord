@@ -39,7 +39,8 @@ export const getStateFromText = (text: string): BlackJackState => {
   const dealerCards = extractCards(dealerLine);
   const playerCards = extractCards(playerLine);
 
-  const wager = parseInt(wagerLine.replace("_Wager_: ", "").trim());
+  // parseFloat, not parseInt: a 2.5 bet must settle as 2.5.
+  const wager = parseFloat(wagerLine.replace("_Wager_: ", "").trim());
 
   return { dealerCards, playerCards, wager };
 };

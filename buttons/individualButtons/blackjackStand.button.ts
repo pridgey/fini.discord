@@ -43,7 +43,8 @@ export const execute: ButtonHandler["execute"] = async (
 
     // Check if dealer busted
     if (dealerScore > 21) {
-      // Dealer busts, player wins
+      // Dealer busts, player wins: the bet back, and as much again.
+      // The message names the winnings only, as a natural's does.
       const reward = wager + wager;
 
       await addCoin(
@@ -61,7 +62,7 @@ export const execute: ButtonHandler["execute"] = async (
         wager,
         showBalance: true,
         showDealerHand: true,
-        additionalMessage: `Dealer busts. Congratulations, you've won ${reward} finicoin.`,
+        additionalMessage: `Dealer busts. Congratulations, you've won ${wager} finicoin.`,
         interaction,
       });
 
@@ -102,7 +103,7 @@ export const execute: ButtonHandler["execute"] = async (
     }
 
     if (playerTotal > dealerScore) {
-      // Player wins, good job to the player
+      // Player wins: the bet back, and as much again
       const reward = wager + wager;
 
       await addCoin(
@@ -120,7 +121,7 @@ export const execute: ButtonHandler["execute"] = async (
         wager,
         showBalance: true,
         showDealerHand: true,
-        additionalMessage: `Congratulations, you've beat the dealer and won ${reward} finicoin!`,
+        additionalMessage: `Congratulations, you've beat the dealer and won ${wager} finicoin!`,
         interaction,
       });
 

@@ -42,9 +42,12 @@ export const execute: SlashCommand["execute"] = async (
     const guildId = interaction.guildId ?? "unknown guild id";
     const interactionUsername = interaction.user.username;
     const guildName = interaction.guild?.name ?? "unknown guild name";
-    const bet = Math.abs(
-      parseFloat(interaction?.options?.get("bet")?.value?.toString() || "") ||
-        0,
+    // Whole cents, as the bank keeps it, so what's shown is what's moved.
+    const bet = parseFloat(
+      Math.abs(
+        parseFloat(interaction?.options?.get("bet")?.value?.toString() || "") ||
+          0,
+      ).toFixed(2),
     );
 
     // Ensure bet is enough
@@ -138,8 +141,9 @@ export const execute: SlashCommand["execute"] = async (
     if (checkIfBlackjack(players[interactionUserId].Cards)) {
       // Player has blackjack and wins
 
-      // Calculate natural jackpot win
-      const reward = bet + bet * 1.5;
+      // A natural pays 3:2: the bet back, plus half again on top of a win.
+      const profit = parseFloat((bet * 1.5).toFixed(2));
+      const reward = bet + profit;
 
       await addCoin(
         interactionUserId,
@@ -157,9 +161,7 @@ export const execute: SlashCommand["execute"] = async (
         wager: bet,
         showBalance: true,
         showDealerHand: true,
-        additionalMessage: `Natural Blackjack. Congratulations! You've gained: ${
-          bet * 1.5
-        } finicoin.`,
+        additionalMessage: `Natural Blackjack. Congratulations, you've won ${profit} finicoin!`,
         interaction,
       });
       await interaction.editReply(playerBlackjack);
