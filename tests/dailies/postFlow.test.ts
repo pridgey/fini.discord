@@ -28,7 +28,7 @@ const fakePb = {
   collection: (_name: string): unknown => ({}),
 };
 mock.module("../../utilities/pocketbase", () => ({ pb: fakePb }));
-const { announceFinish, postDailies, updateDailyPost } =
+const { announceFinish, postDailies, repostDaily, updateDailyPost } =
   await import("../../modules/dailies/post");
 
 beforeEach(() => {
@@ -236,5 +236,33 @@ describe("posting the daily", () => {
       "https://discord.com/channels/serverA/bots/msg3",
     );
     expect(announcement).toContain("Play today's Reel");
+  });
+});
+
+describe("reposting the daily", () => {
+  it("does nothing before today's post is out", async () => {
+    const { client, sent } = fakeClient();
+    expect(await repostDaily(client, "serverA")).toBe("nothing");
+    expect(sent).toHaveLength(0);
+  });
+
+  it("posts it again and makes the new one the post that updates", async () => {
+    const { client, sent, edited } = fakeClient();
+    await postDailies(client);
+
+    expect(await repostDaily(client, "serverA")).toBe("reposted");
+    expect(sent).toHaveLength(3);
+    expect(sent[2]).toContain("Today's dailies");
+    expect(geo.posts.serverA).toEqual({
+      channelId: "bots",
+      messageId: "msg3",
+      combined: true,
+    });
+    expect(weave.posts.serverA?.messageId).toBe("msg3");
+    // The other server keeps its own post.
+    expect(geo.posts.serverB?.messageId).toBe("msg2");
+
+    await updateDailyPost(client, "serverA");
+    expect(edited.map(({ id }) => id)).toEqual(["msg3"]);
   });
 });

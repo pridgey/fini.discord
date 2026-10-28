@@ -627,6 +627,48 @@ export const postDailies = async (cl: Client): Promise<number> => {
   return posted;
 };
 
+/**
+ * Sends today's post in a server again, at the bottom of its bot channel, for
+ * when the first has scrolled out of sight. Every game posted there today is
+ * in it - a Reel posted on its own too - and it becomes the post the live line
+ * edits and finishes link to. The old one stays, as it last read.
+ *
+ * @returns "reposted", "nothing" when nothing's out there yet today, or
+ *   "failed" when there's no bot channel or the send didn't go through
+ */
+export const repostDaily = async (
+  cl: Client,
+  serverId: string,
+): Promise<"reposted" | "nothing" | "failed"> => {
+  const day = currentDay();
+  const [geo, weave, reel] = await Promise.all([
+    getRound(day).catch(() => null),
+    WEAVE_LIVE ? getWeaveRound(day).catch(() => null) : Promise.resolve(null),
+    REEL_LIVE ? getReelRound(day).catch(() => null) : Promise.resolve(null),
+  ]);
+  const rounds: Rounds = {
+    geo: geo?.posts?.[serverId] ? geo : null,
+    weave: weave?.posts?.[serverId] ? weave : null,
+    reel: reel?.posts?.[serverId] ? reel : null,
+  };
+  if (!rounds.geo && !rounds.weave && !rounds.reel) return "nothing";
+
+  const channelId = await getBotChannelForServer(serverId);
+  if (!channelId) return "failed";
+  const message = await sendTo(
+    cl,
+    channelId,
+    await buildPost(rounds, day, serverId, { image: true }),
+  );
+  if (!message) return "failed";
+
+  const post: DailyPost = { channelId, messageId: message.id, combined: true };
+  if (rounds.geo) await recordPost(rounds.geo.id, serverId, post);
+  if (rounds.weave) await recordWeavePost(rounds.weave.id, serverId, post);
+  if (rounds.reel) await recordReelPost(rounds.reel.id, serverId, post);
+  return "reposted";
+};
+
 let running = false;
 
 /** The polling loop's hook: from POST_HOUR on, make sure today's post is out. */

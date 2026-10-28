@@ -4,6 +4,7 @@ import {
   ChatInputCommandInteraction,
   GuildMember,
   MessageFlags,
+  PermissionFlagsBits,
 } from "discord.js";
 import { todaysRoundFor } from "../modules/dailies/geo/daily";
 import {
@@ -12,7 +13,8 @@ import {
   openWeave,
   type WeavePlayer,
 } from "../modules/dailies/weave/daily";
-import { requireAdmin } from "../utilities/discord/isAdmin";
+import { isAdmin, requireAdmin } from "../utilities/discord/isAdmin";
+import { repostDaily } from "../modules/dailies/post";
 import {
   REEL_LIVE,
   ensureTodaysReel,
@@ -48,6 +50,13 @@ export const data = new SlashCommandBuilder()
     sub
       .setName("reel")
       .setDescription("Today's Reel: name the film from a few of its frames"),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("repost")
+      .setDescription(
+        "Admins only: post today's daily again, at the bottom of the bot channel",
+      ),
   );
 
 export const execute: SlashCommand["execute"] = async (
@@ -63,6 +72,29 @@ export const execute: SlashCommand["execute"] = async (
     return;
   }
   const game = interaction.options.getSubcommand();
+  if (game === "repost") {
+    // The bot admin anywhere, or a server's own admins in their server.
+    if (
+      !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) &&
+      !isAdmin(interaction.user.id)
+    ) {
+      await interaction.reply({
+        content: "❌ Only a server admin can repost the daily.",
+        flags: [MessageFlags.Ephemeral],
+      });
+      return;
+    }
+    await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+    const result = await repostDaily(interaction.client, interaction.guildId);
+    await interaction.editReply(
+      result === "reposted"
+        ? "Reposted today's daily in the bot channel. It's the one that updates now."
+        : result === "nothing"
+          ? `Today's daily isn't out in this server yet. It posts at ${POST_TIME}.`
+          : "Couldn't repost: check the bot channel is set (`/config bot_channel`) and I can post there.",
+    );
+    return;
+  }
   const weave = game === "weave";
   if (
     game === "reel" &&

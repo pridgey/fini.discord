@@ -6,7 +6,6 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { requireAdmin } from "../utilities/discord/isAdmin";
-import { postDailies } from "../modules/dailies/post";
 import { geocodeGuess } from "../modules/dailies/geo/geocode";
 import {
   guessMessage,
@@ -26,13 +25,6 @@ export const data = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addSubcommand((sub) =>
     sub.setName("new").setDescription("Start a private test round"),
-  )
-  .addSubcommand((sub) =>
-    sub
-      .setName("post-daily")
-      .setDescription(
-        "Post today's daily rounds now, without waiting for noon",
-      ),
   )
   .addSubcommand((sub) =>
     sub
@@ -56,16 +48,6 @@ export const execute: SlashCommand["execute"] = async (
   logCommand();
 
   await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
-
-  if (interaction.options.getSubcommand() === "post-daily") {
-    const posted = await postDailies(interaction.client);
-    await interaction.editReply(
-      posted
-        ? `Posted today's daily in ${posted} server${posted === 1 ? "" : "s"}.`
-        : "Nothing new to post: today's daily is already out everywhere with a bot channel, or no server has one set (`/config bot_channel`).",
-    );
-    return;
-  }
 
   if (interaction.options.getSubcommand() === "new") {
     const round = await startRound(interaction.user.id);

@@ -32,8 +32,10 @@ word, or naming Reel's film - is also announced in a small card in the same chan
 linking back to the day's post (`announceFinish`). The game handlers report
 plays through `dailyPlayed`, which updates the live line and announces.
 
-`/daily <game>` opens a game for anyone who'd rather type, and `/geo-test
-post-daily` (bot admin) sends the day's post early.
+`/daily <game>` opens a game for anyone who'd rather type, and `/daily
+repost` (the bot admin, or a server admin) sends today's post again at the bottom of the bot
+channel, for when it's scrolled out of sight. The new one takes over as the
+post the live line edits; the old one stays as it last read.
 
 Rounds and plays live in Pocketbase; their migrations are in `pb_migrations/`.
 
