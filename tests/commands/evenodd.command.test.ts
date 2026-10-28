@@ -12,6 +12,10 @@ mock.module("../../modules/finicoin", () => ({
     userBalance: balance,
     rewardWager: mockRewardWager,
   }),
+  // Every export a command imports: Bun applies the latest mock of a module
+  // to every file, and /help imports them all.
+  addCoin: async () => {},
+  getUserBalance: async () => 0,
 }));
 const mockGrabGif = mock(async () => "https://example.org/result.gif");
 mock.module("../../utilities/gif", () => ({ grabGif: mockGrabGif }));

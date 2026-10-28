@@ -7,7 +7,11 @@ const mockGetUserBalance = mock((): Promise<number | null | undefined> =>
   Promise.resolve(1000),
 );
 mock.module("../../modules/finicoin", () => ({
+  // Every export a command imports: Bun applies the latest mock of a module
+  // to every file, and /help imports them all.
   getUserBalance: mockGetUserBalance,
+  addCoin: async () => {},
+  runGame: async () => ({}),
 }));
 
 // Mock pocketbase

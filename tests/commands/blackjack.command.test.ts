@@ -10,8 +10,11 @@ mock.module("../../utilities/randomNumber", () => ({
 const mockAddCoin = mock(() => Promise.resolve());
 const mockGetUserBalance = mock(() => Promise.resolve(1000));
 mock.module("../../modules/finicoin", () => ({
+  // Every export a command imports: Bun applies the latest mock of a module
+  // to every file, and /help imports them all.
   addCoin: mockAddCoin,
   getUserBalance: mockGetUserBalance,
+  runGame: async () => ({}),
 }));
 
 // Import after mocking
