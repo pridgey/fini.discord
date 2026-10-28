@@ -157,6 +157,13 @@ describe("enemy ability lines", () => {
     ]);
   });
 
+  it("says what an always-on keyword does, not just that it is on", () => {
+    const wall = card("Stone Wall", "power", [7, 4, 4], "bulwark");
+    expect(enemyAbilityLines(runAt([]), wall)).toEqual([
+      "-# **Bulwark** · Stone Wall — +2 to its defence, whatever you play.",
+    ]);
+  });
+
   it("works out slot keywords from the leg", () => {
     const vanguard = card("Guard Dog", "power", [7, 4, 4], "vanguard");
     expect(enemyAbilityLines(runAt([]), vanguard)[0]).toContain(

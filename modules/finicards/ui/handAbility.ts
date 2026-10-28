@@ -4,7 +4,11 @@ import {
   type DungeonConfig,
   type DungeonState,
 } from "../dungeon";
-import { createSideState, type KeywordDefinition } from "../keywords";
+import {
+  THRIFTY_COST_CAP,
+  createSideState,
+  type KeywordDefinition,
+} from "../keywords";
 import type { BattleCard, RoundResult } from "../types";
 import { legOf, type Leg } from "./enemyAbility";
 import { TYPE_NAME, activeKeyword } from "./theme";
@@ -29,9 +33,10 @@ const signed = (amount: number): string =>
 /** What a lineup names beside each card: what the keyword reads of it. */
 type Shown = "type" | "series" | "name";
 
-/** "Anya Forger (Wit), Jiji (Heart)" - the leg's cards so far, then this one. */
-const lineupOf = (leg: Leg, card: BattleCard, show: Shown) =>
-  [...leg.rounds.map(({ challenger }) => challenger.card), card]
+/** "Anya Forger (Wit), Jiji (Heart)" - the cards played so far this leg. */
+const playedOf = (leg: Leg, show: Shown) =>
+  leg.rounds
+    .map(({ challenger }) => challenger.card)
     .map((each) =>
       show === "type"
         ? `${each.name} (${TYPE_NAME[each.type]})`
@@ -49,54 +54,78 @@ const statReason = (
   leg: Leg,
 ): string | null => {
   const enemy = round.defender.card;
-  const fight = `this is slot ${leg.slot} of ${leg.length}`;
+  const fight = `this is fight ${leg.slot} of ${leg.length}`;
   const first = leg.slot === 1;
-  const lineup = (show: Shown) =>
+  // A lineup keyword's rule, then what it has to work with so far.
+  const lineup = (rule: string, show: Shown) =>
     first
-      ? "you haven't played anything else this leg yet"
-      : `your lineup is what you've played this leg, and this: ${lineupOf(leg, card, show)}`;
+      ? `${rule}, and you haven't played anything else this leg yet`
+      : `${rule} - so far: ${playedOf(leg, show)}`;
   const last = leg.rounds.at(-1);
 
   switch (slug) {
     case "vanguard":
+      return `+3 on the first fight of a leg, and ${fight}`;
     case "last_stand":
+      return `+3 on the last fight of a leg, and ${fight}`;
     case "anchor":
+      return `+3 on a middle fight of a leg, and ${fight}`;
     case "gambit":
-      return fight;
+      return `+5 on the first fight of a leg, −2 on the others, and ${fight}`;
     case "momentum":
       return `+1 for each fight you've won this leg (${leg.player.roundsWon})`;
     case "grudge":
       return `+2 for each fight you've lost this leg (${leg.player.roundsLost})`;
     case "avenge":
       return first
-        ? "fires when you lost the fight before it in the same leg, and this is the first fight of a leg"
-        : `fires when you lost the fight before it in the same leg - you ${leg.player.lastRoundWasLoss ? "did" : "didn't"}`;
+        ? "+3 when you lost the fight before it in the same leg, and this is the first fight of a leg"
+        : `+3 when you lost the fight before it in the same leg - you ${leg.player.lastRoundWasLoss ? "did" : "didn't"}`;
     case "closer":
       return first
-        ? "fires from the second fight of a leg when the leg is level, and this is the first"
-        : `fires when the leg is level - you've won ${leg.player.roundsWon}, the dungeon ${leg.dungeon.roundsWon}`;
+        ? "+3 from the second fight of a leg when the leg is level, and this is the first"
+        : `+3 when the leg is level - you've won ${leg.player.roundsWon}, the dungeon ${leg.dungeon.roundsWon}`;
     case "second_wind":
       return first
-        ? "fires after a stalemate in the same leg, and this is the first fight of a leg"
-        : `fires after a stalemate - the last fight this leg ${last?.winner === "draw" ? "was one" : "wasn't"}`;
+        ? "+3 after a stalemate in the same leg, and this is the first fight of a leg"
+        : `+3 after a stalemate - the last fight this leg ${last?.winner === "draw" ? "was one" : "wasn't"}`;
     case "echo":
       return last
-        ? `borrows ${last.challenger.card.name}'s final ${TYPE_NAME[last.challenger.printedType]} (${last.challenger.attackStat}) if that is higher`
-        : "borrows your last card's final stat, and this is the first fight of a leg";
+        ? `uses ${last.challenger.card.name}'s final ${TYPE_NAME[last.challenger.printedType]} (${last.challenger.attackStat}) in place of its own if that is higher`
+        : "uses your last card's final stat if that is higher, and this is the first fight of a leg";
     case "chorus":
+      return lineup(
+        `+2 for each other ${TYPE_NAME[card.type]} card you've played this leg`,
+        "type",
+      );
     case "lone_wolf":
+      return lineup(
+        `+3 if no other card you've played this leg is ${TYPE_NAME[card.type]}`,
+        "type",
+      );
     case "trinity":
-      return lineup("type");
+      return lineup(
+        "+3 if this and the cards you've played this leg cover all three types",
+        "type",
+      );
     case "kinship":
-      return lineup("series");
+      return lineup(
+        `+2 for each other card from ${card.series} you've played this leg`,
+        "series",
+      );
     case "synergy":
-      return lineup("name");
+      return lineup(
+        "+1 for each other card you've played this leg that shares a tag with it",
+        "name",
+      );
     case "thrifty": {
       const cost = [
         ...leg.rounds.map(({ challenger }) => challenger.card),
         card,
       ].reduce((sum, each) => sum + each.cost, 0);
-      return `${lineup("type")} - costing ${cost} in all`;
+      const rule = `+3 if this and the cards you've played this leg cost ${THRIFTY_COST_CAP} or less in all`;
+      return first
+        ? `${rule} - it costs ${cost} on its own`
+        : `${rule} - together they cost ${cost}`;
     }
     case "versatile":
       return "+1 for each of its other two stats at 5 or more";
@@ -135,11 +164,11 @@ const otherReason = (
     case "brace":
       return round.defender.multiplier > 1
         ? `**+3** defence this fight: ${enemy.name} has the type advantage.`
-        : `No bonus this fight: ${enemy.name} doesn't have the type advantage.`;
+        : `No bonus this fight: +3 defence when the enemy has the type advantage, and ${enemy.name} doesn't.`;
     case "adapt":
       return round.challenger.multiplier > 1
-        ? `Gets the ×${round.challenger.multiplier} against ${enemy.name} this fight.`
-        : `No multiplier against ${enemy.name} this fight${theirs?.slug === "guard" ? ": its Guard blocks it" : ""}.`;
+        ? `Gets the ×${round.challenger.multiplier} type multiplier against ${enemy.name} this fight.`
+        : `No type multiplier against ${enemy.name} this fight${theirs?.slug === "guard" ? ": its Guard blocks it" : ""}.`;
     case "silence":
       return theirs
         ? `Switches off ${enemy.name}'s ${theirs.name}.`
@@ -152,15 +181,15 @@ const otherReason = (
       return handOn("If it wins, your next card this leg gets +2");
     case "martyr":
       return handOn(
-        "If it loses and a ward holds, your next card this leg gets +3",
+        "If it loses and a ward charm saves the run, your next card this leg gets +3",
       );
     case "parting_shot":
       return handOn(
-        "If it loses and a ward holds, the next enemy this leg gets −2",
+        "If it loses and a ward charm saves the run, the next enemy this leg gets −2",
       );
     case "spoiler":
       return handOn(
-        "If it loses and a ward holds, the next enemy this leg has its ability switched off",
+        "If it loses and a ward charm saves the run, the next enemy this leg has its ability switched off",
       );
     case "first_strike":
       return "If it would lose by 2 or less, the fight is a stalemate instead and you play another card.";

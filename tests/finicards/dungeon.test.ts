@@ -527,7 +527,7 @@ describe("finicards v2 dungeons", () => {
     it("says a Chorus played first has nothing to count yet", () => {
       const chorus = wit("c", "chorus");
       expect(linesFor(runIn(fightRoom(prey("e"))), [chorus])).toEqual([
-        "-# **Chorus** · Card c — No bonus this fight: you haven't played anything else this leg yet.",
+        "-# **Chorus** · Card c — No bonus this fight: +2 for each other Wit card you've played this leg, and you haven't played anything else this leg yet.",
       ]);
     });
 
@@ -535,7 +535,7 @@ describe("finicards v2 dungeons", () => {
       const chorus = wit("c", "chorus");
       const [line] = linesFor(after([wit("a"), strong("b")]), [chorus]);
       expect(line).toBe(
-        "-# **Chorus** · Card c — **+2** this fight: your lineup is what you've played this leg, and this: Card a (Wit), Card b (Power), Card c (Wit).",
+        "-# **Chorus** · Card c — **+2** this fight: +2 for each other Wit card you've played this leg - so far: Card a (Wit), Card b (Power).",
       );
     });
 
@@ -549,6 +549,13 @@ describe("finicards v2 dungeons", () => {
         expect.stringMatching(/^-# ↳ Card w: \*\*\+2\*\* this fight/),
         expect.stringMatching(/^-# ↳ Card h: No bonus this fight/),
       ]);
+    });
+
+    it("says which fight a slot ability needs, not only which this is", () => {
+      const [line] = linesFor(after([wit("a")]), [wit("v", "vanguard")]);
+      expect(line).toBe(
+        "-# **Vanguard** · Card v — No bonus this fight: +3 on the first fight of a leg, and this is fight 2 of 3.",
+      );
     });
 
     it("says the tiebreak abilities never fire here", () => {
