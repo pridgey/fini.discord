@@ -61,12 +61,22 @@ const OLD_PICKER = path.join(FINICARDS_WORK_DIR, "art-candidates");
 const USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) finicards-card-manager/1.0";
 /**
  * Danbooru asks for an honest client name and turns away anything that claims
- * to be a browser without being one.
+ * to be a browser without being one. Its API also gets the account's key, when
+ * there is one, since Cloudflare challenges requests that come without it.
  */
-const agentFor = (url: string | URL): string =>
-  /(^|\.)donmai\.us$/.test(new URL(url).hostname)
-    ? "finicards-card-manager/1.0"
-    : USER_AGENT;
+const headersFor = (url: string | URL): Record<string, string> => {
+  const host = new URL(url).hostname;
+  if (!/(^|\.)donmai\.us$/.test(host)) return { "User-Agent": USER_AGENT };
+  const headers: Record<string, string> = {
+    "User-Agent": "finicards-card-manager/1.0",
+  };
+  const login = process.env.DANBOORU_LOGIN;
+  const key = process.env.DANBOORU_API_KEY;
+  if (host === "danbooru.donmai.us" && login && key) {
+    headers.Authorization = `Basic ${Buffer.from(`${login}:${key}`).toString("base64")}`;
+  }
+  return headers;
+};
 /** Largest image accepted as a candidate. */
 const MAX_BYTES = 40 * 1024 * 1024;
 /** Candidates are stored no larger than this on their long side. */
@@ -114,7 +124,9 @@ const defaultSetOf = (
     sets.set(row.set, (sets.get(row.set) ?? false) || !!row.active);
   }
   if (sets.size === 0) return DEFAULT_SET;
-  const building = [...sets].filter(([, active]) => !active).map(([set]) => set);
+  const building = [...sets]
+    .filter(([, active]) => !active)
+    .map(([set]) => set);
   return building.length > 0
     ? Math.max(...building)
     : Math.max(...sets.keys()) + 1;
@@ -202,7 +214,9 @@ const gatherPool = async (key: string, name: string) => {
   let brought = 0;
   for (const other of await siblingFolders(key, name)) {
     const files = await readdir(other).catch(() => [] as string[]);
-    const missing = files.filter((file) => SAFE_FILE.test(file) && !have.has(file));
+    const missing = files.filter(
+      (file) => SAFE_FILE.test(file) && !have.has(file),
+    );
     if (missing.length === 0) continue;
     const theirSources = await readJson<Record<string, string>>(
       path.join(other, "sources.json"),
@@ -267,7 +281,7 @@ const artistFromSource = async (source: string): Promise<string | null> => {
     const lookup = async <T>(address: string): Promise<T | null> => {
       const response = await fetch(address, {
         headers: {
-          "User-Agent": agentFor(address),
+          ...headersFor(address),
           Accept: "application/json",
         },
         signal: AbortSignal.timeout(20000),
@@ -394,7 +408,7 @@ const downloadCandidate = async (
   if (target.protocol !== "https:") throw new Error("Only https image links");
 
   const response = await fetch(target, {
-    headers: { "User-Agent": agentFor(target) },
+    headers: headersFor(target),
     signal: AbortSignal.timeout(60000),
   });
   if (!response.ok) throw new Error(`Download failed (${response.status})`);
@@ -723,7 +737,7 @@ const NAME_FILLER = new Set([
 
 const fetchJson = async <T>(url: string): Promise<T | null> => {
   const response = await fetch(url, {
-    headers: { "User-Agent": agentFor(url), Accept: "application/json" },
+    headers: { ...headersFor(url), Accept: "application/json" },
     signal: AbortSignal.timeout(30000),
   });
   // Both of these answer "nothing found" with a 404 and a body saying so.
@@ -1676,7 +1690,7 @@ export const handleCardManager = async (
       if (target.protocol !== "https:" || target.hostname !== "cdn.donmai.us")
         return fail("Not a thumbnail this serves");
       const image = await fetch(target, {
-        headers: { "User-Agent": agentFor(target) },
+        headers: headersFor(target),
         signal: AbortSignal.timeout(30000),
       });
       if (!image.ok) return fail(`Thumbnail failed (${image.status})`, 502);
