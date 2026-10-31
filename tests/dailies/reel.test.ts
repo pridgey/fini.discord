@@ -156,7 +156,65 @@ describe("Reel's frames and guesses", () => {
     expect(idOf(pickMatch(DUNES, "dune", "1984"))).toBe(841);
   });
 
-  it("takes the one film with the title typed, however popular its sequels", () => {
+  it("takes the one film with the title typed when nothing else carries it on", () => {
+    const results = [
+      {
+        id: 27205,
+        title: "Inception",
+        release_date: "2010-07-15",
+        vote_count: 38000,
+      },
+      {
+        id: 1,
+        title: "Inceptionism",
+        release_date: "2019-01-01",
+        vote_count: 150,
+      },
+    ];
+    expect(idOf(pickMatch(results, "inception"))).toBe(27205);
+  });
+
+  it("offers a series' films when its name is typed: the exact title, then the rest in order", () => {
+    const results = [
+      {
+        id: 698687,
+        title: "Transformers One",
+        release_date: "2024-09-11",
+        vote_count: 1842,
+      },
+      {
+        id: 1857,
+        title: "The Transformers: The Movie",
+        release_date: "1986-08-08",
+        vote_count: 656,
+      },
+      {
+        id: 1858,
+        title: "Transformers",
+        release_date: "2007-06-27",
+        vote_count: 12694,
+      },
+      {
+        id: 335988,
+        title: "Transformers: The Last Knight",
+        release_date: "2017-06-16",
+        vote_count: 6963,
+      },
+      {
+        id: 436056,
+        title: "Transformers: Zone",
+        release_date: "1990-07-21",
+        vote_count: 12,
+      },
+    ];
+    expect(choicesOf(pickMatch(results, "transformers"))).toEqual([
+      1858, 335988, 698687,
+    ]);
+    // A year typed settles which one.
+    expect(idOf(pickMatch(results, "transformers", "2007"))).toBe(1858);
+  });
+
+  it("offers the films that carry a typed title on, however popular", () => {
     const results = [
       {
         id: 1234821,
@@ -177,7 +235,9 @@ describe("Reel's frames and guesses", () => {
         vote_count: 13115,
       },
     ];
-    expect(idOf(pickMatch(results, "jurassic world"))).toBe(135397);
+    expect(choicesOf(pickMatch(results, "jurassic world"))).toEqual([
+      135397, 351286, 1234821,
+    ]);
     // No exact title: offered, nearest title first.
     expect(choicesOf(pickMatch(results, "jurassic"))).toEqual([
       135397, 1234821, 351286,

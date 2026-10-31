@@ -133,16 +133,18 @@ export const buildReelBoard = async (input: ReelBoardInput) => {
   }
   const note = input.note && noteCard(input.note);
   if (note && input.choices?.length && !finished(round.movie_id, progress))
-    note.addActionRowComponents(
-      new ActionRowBuilder<ButtonBuilder>().addComponents(
-        ...input.choices.map((film) =>
-          new ButtonBuilder()
-            .setCustomId(buttonId(round.id, `pick:${film.movieId}`))
-            .setLabel(clip(filmName(film)))
-            .setStyle(ButtonStyle.Primary),
+    // Discord fits five buttons to a row.
+    for (let i = 0; i < input.choices.length; i += 5)
+      note.addActionRowComponents(
+        new ActionRowBuilder<ButtonBuilder>().addComponents(
+          ...input.choices.slice(i, i + 5).map((film) =>
+            new ButtonBuilder()
+              .setCustomId(buttonId(round.id, `pick:${film.movieId}`))
+              .setLabel(clip(filmName(film)))
+              .setStyle(ButtonStyle.Primary),
+          ),
         ),
-      ),
-    );
+      );
   return {
     components: note ? [container, note] : [container],
     flags: [MessageFlags.IsComponentsV2] as const,

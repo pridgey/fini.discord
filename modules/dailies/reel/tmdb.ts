@@ -208,8 +208,8 @@ export const answerByName = (
  */
 export type Match = { film: Film } | { choices: Film[] } | null;
 
-/** The most films offered when a guess is unclear: one row of buttons. */
-export const MAX_CHOICES = 4;
+/** The most films offered when a guess is unclear: two rows of buttons, enough for most series. */
+export const MAX_CHOICES = 10;
 
 /** Two titles that differ only in capitals, accents and punctuation. */
 const sameName = (a: string, b: string) => normalise(a) === normalise(b);
@@ -217,17 +217,21 @@ const sameName = (a: string, b: string) => normalise(a) === normalise(b);
 /**
  * The film a typed guess means, or the films it might mean.
  *
- * Any of the answer's own names - an alternative or original-language title -
- * counts as naming it. Otherwise it's TMDB's search: a guess is taken as
- * meant only when exactly one well-known film has the title typed (and the
- * year, if one was). Anything less clear - no exact title, or a title two
- * films share, like "Dune" - is offered back as choices, so a guess only costs
- * a frame once the player has seen which film it is.
+ * It's TMDB's search: a guess is taken as meant only when exactly one
+ * well-known film has the title typed and no other carries it further - a
+ * franchise's name, like "Transformers", is a list of its films, not the first
+ * one. A year typed settles it: "Transformers 2007" is the one film. Anything
+ * less clear - no exact title, a title two films share like "Dune", or a
+ * series - is offered back as choices, so a guess only costs a frame once the
+ * player has seen which film it is.
  *
- * Nothing here favours the answer: the choices are the same whatever today's
- * film is, so being asked to choose gives nothing away. A trailing year
- * narrows the search, unless nothing comes back - then it was part of the
- * title.
+ * Any of the answer's own names - an alternative or original-language title -
+ * also counts as naming it, unless the search would have asked: then the
+ * answer is among the choices like any other film. Being asked to choose gives
+ * nothing away, since the choices are the same whatever today's film is.
+ *
+ * A trailing year narrows the search, unless nothing comes back - then it was
+ * part of the title.
  */
 export const matchGuess = async (
   typed: string,
@@ -235,26 +239,48 @@ export const matchGuess = async (
 ): Promise<Match> => {
   const { title, year } = parseGuess(typed);
   if (!title) return null;
-  const answer = await namesOf(answerId).catch(() => null);
-  if (answer) {
-    const named =
-      answerByName(answer, title, year) ?? answerByName(answer, typed.trim());
-    if (named) return { film: named };
-  }
+  const [answer, match] = await Promise.all([
+    namesOf(answerId).catch(() => null),
+    searchMatch(typed, title, year),
+  ]);
+  const named =
+    answer &&
+    (answerByName(answer, title, year) ?? answerByName(answer, typed.trim()));
+  const offered =
+    match &&
+    "choices" in match &&
+    match.choices.some((film) => film.movieId === named?.movieId);
+  return named && !offered ? { film: named } : match;
+};
+
+const searchMatch = async (
+  typed: string,
+  title: string,
+  year?: string,
+): Promise<Match> => {
   const search = async (query: string, year?: string) => {
     const params = new URLSearchParams({ query, include_adult: "false" });
     if (year) params.set("year", year);
     return (await tmdb<{ results: TmdbFilm[] }>(`/search/movie?${params}`))
       .results;
   };
-  const withYear = await search(title, year);
-  const match = pickMatch(withYear, title, year);
+  const match = pickMatch(await search(title, year), title, year);
   if (match || !year) return match;
   // A number at the end can be the title's own: "Blade Runner 2049".
   return pickMatch(await search(typed.trim()), typed.trim());
 };
 
 const words = (title: string) => normalise(title).split(" ").filter(Boolean);
+
+/** A title that goes on from the one typed: "Transformers: The Last Knight" from "Transformers". */
+const carriesOn = (film: TmdbFilm, wanted: string): boolean =>
+  [film.title, film.original_title ?? ""].some((name) => {
+    const have = words(name);
+    const want = words(wanted);
+    return (
+      have.length > want.length && want.every((word, i) => have[i] === word)
+    );
+  });
 
 /**
  * How far a film's title is from the one typed, for ordering choices: exact
@@ -291,19 +317,28 @@ export const pickMatch = (
       sameName(name, wanted),
     ),
   );
-  if (exact.length === 1) return { film: filmOf(exact[0]) };
-  const ranked = (exact.length ? exact : known)
-    .map((film, rank) => ({ film, rank, far: distance(film, wanted) }))
-    // Search's own order breaks ties, then the better-known film.
-    .sort(
-      (a, b) =>
-        a.far - b.far ||
-        (b.film.vote_count ?? 0) - (a.film.vote_count ?? 0) ||
-        a.rank - b.rank,
-    );
-  return {
-    choices: ranked.slice(0, MAX_CHOICES).map(({ film }) => filmOf(film)),
-  };
+  // The rest of a series named by the title typed, unless a year picked one.
+  const series = year
+    ? []
+    : known.filter((film) => !exact.includes(film) && carriesOn(film, wanted));
+  if (exact.length === 1 && !series.length) return { film: filmOf(exact[0]) };
+  const ranked = (films: TmdbFilm[]) =>
+    films
+      .map((film, rank) => ({ film, rank, far: distance(film, wanted) }))
+      // Search's own order breaks ties, then the better-known film.
+      .sort(
+        (a, b) =>
+          a.far - b.far ||
+          (b.film.vote_count ?? 0) - (a.film.vote_count ?? 0) ||
+          a.rank - b.rank,
+      )
+      .map(({ film }) => film);
+  // A series reads best in the order it came out.
+  const inOrder = [...series].sort((a, b) =>
+    (a.release_date || "9999").localeCompare(b.release_date || "9999"),
+  );
+  const choices = exact.length ? [...ranked(exact), ...inOrder] : ranked(known);
+  return { choices: choices.slice(0, MAX_CHOICES).map(filmOf) };
 };
 
 /** A film by its TMDB id, for a choice picked from `matchGuess`'s. */
