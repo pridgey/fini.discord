@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, mock, spyOn } from "bun:test";
 import { MessageFlags } from "discord.js";
+
+const createLog = mock(async (_record: unknown) => undefined);
+mock.module("../../modules/logger/logger", () => ({ createLog }));
 import {
   buttonHandlers,
   handleButtonInteraction,
@@ -15,6 +18,10 @@ const pressed = (
 ) => ({
   customId,
   ...state,
+  guildId: "guild1",
+  channelId: "channel1",
+  user: { id: "user1" },
+  fetchReply: mock(async () => ({ content: "Bought 5 shares!" })),
   reply: mock(async (_reply: unknown) => undefined),
   followUp: mock(async (_reply: unknown) => undefined),
 });
@@ -28,6 +35,7 @@ const failure = (what: string) => ({
 beforeEach(() => {
   buttonHandlers.clear();
   modalHandlers.clear();
+  createLog.mockClear();
   spyOn(console, "error").mockImplementation(() => {});
   spyOn(console, "warn").mockImplementation(() => {});
 });
@@ -116,5 +124,50 @@ describe("form routing", () => {
     await handleModalInteraction(form as never);
 
     expect(form.followUp).toHaveBeenCalledWith(failure("modal"));
+  });
+});
+
+describe("form logging", () => {
+  it("logs a submitted form with its fields, channel and reply", async () => {
+    modalHandlers.set("anistock_buy_modal", {
+      namespace: "anistock_buy_modal",
+      execute: async () => undefined,
+    });
+    const form = {
+      ...pressed("anistock_buy_modal:anime1:29.75"),
+      fields: {
+        fields: new Map([["quantity", { customId: "quantity", value: "5" }]]),
+      },
+    };
+
+    await handleModalInteraction(form as never);
+
+    expect(createLog).toHaveBeenCalledWith({
+      command: "modal:anistock_buy_modal",
+      input: "customId: anistock_buy_modal:anime1:29.75,\nquantity: 5",
+      output: "Bought 5 shares!",
+      server_id: "guild1",
+      channel_id: "channel1",
+      user_id: "user1",
+    });
+  });
+
+  it("still logs a form whose handler failed", async () => {
+    modalHandlers.set("boom", {
+      namespace: "boom",
+      execute: async () => {
+        throw new Error("broken");
+      },
+    });
+
+    await handleModalInteraction(pressed("boom") as never);
+
+    expect(createLog).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not log a form nobody handles", async () => {
+    await handleModalInteraction(pressed("gone:1") as never);
+
+    expect(createLog).not.toHaveBeenCalled();
   });
 });
