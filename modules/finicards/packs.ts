@@ -18,6 +18,7 @@ import {
   rollLegendaryTier,
   type LegendaryTier,
 } from "./legendary";
+import { getGodPackState, godPackChance, recordPackOpen } from "./godPacks";
 import type { OwnedCard } from "./types";
 
 /**
@@ -66,14 +67,6 @@ export const FOIL_CHANCE = 0.03;
  * out of the full-art slot.
  */
 export const SECRET_ART_CHANCE = 0.01;
-
-/**
- * Chance a pack is a god pack: every card full-art. About one per server every
- * four months at a hundred packs a month - between a tier 3 and a tier 4
- * Legendary. Rolled only while the pool has a full-art copy for every slot, so
- * a god pack never falls back to lesser cards.
- */
-export const GOD_PACK_CHANCE = 0.0025;
 
 /** What a pack drawn from every set costs, and one drawn from a single set. */
 export const PACK_COST = 25;
@@ -235,7 +228,10 @@ export type OpenPackInput = {
   set?: number;
   /** Chance this pack holds a Legendary, by tier. Defaults to `LEGENDARY_ODDS`. */
   legendaryOdds?: Record<LegendaryTier, number>;
-  /** Chance this pack is all full-arts. Defaults to `GOD_PACK_CHANCE`. */
+  /**
+   * Chance this pack is all full-arts. Absent, the server's own odds from
+   * `godPacks.ts`, and the pack counts toward them; given, it doesn't.
+   */
   godPackChance?: number;
   random?: Random;
 };
@@ -269,9 +265,19 @@ export const openPack = async (
   const held = await ownedDefinitionIds(input.userId, input.serverId);
   // A god pack replaces the rarity rolls, not the Secret Art or Legendary
   // ones below - those can still take a slot, which only makes it better.
+  const countsTowardGodPacks = input.godPackChance === undefined;
+  const godPackOdds = countsTowardGodPacks
+    ? await getGodPackState(input.serverId)
+        .then((state) => godPackChance(state, new Date()))
+        // Odds that can't be read are none - the pack opens regardless.
+        .catch((error) => {
+          console.error("Error reading god pack odds:", error);
+          return 0;
+        })
+    : (input.godPackChance ?? 0);
   const godPack =
     size > 0 &&
-    random() < (input.godPackChance ?? GOD_PACK_CHANCE) &&
+    random() < godPackOdds &&
     canFillGodPack(definitions, counts, size);
   const rarities: CardRarity[] = godPack
     ? Array.from({ length: size }, () => "full_art")
@@ -351,6 +357,15 @@ export const openPack = async (
     const isNew = !held.has(definitionId);
     held.add(definitionId);
     pulls.push({ ...record, definition, isNew });
+  }
+
+  if (countsTowardGodPacks) {
+    // The cards are already given; a lost note only nudges the odds.
+    await recordPackOpen({
+      serverId: input.serverId,
+      userId: input.userId,
+      godPack,
+    }).catch((error) => console.error("Error noting a pack opened:", error));
   }
 
   return { pulls, shortfall, godPack };

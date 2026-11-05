@@ -79,6 +79,19 @@ export type V2CardDefinitionRecord = {
 };
 
 /** A copy of a card owned by a user. */
+/**
+ * One pack opened that could have been a god pack. A server's latest god pack
+ * and the packs since set its god pack odds.
+ */
+export type V2PackOpenRecord = {
+  id?: string;
+  server_id: string;
+  user_id: string;
+  god_pack: boolean;
+  created?: string;
+  updated?: string;
+};
+
 export type V2UserCardRecord = {
   id?: string;
   user_id: string;
