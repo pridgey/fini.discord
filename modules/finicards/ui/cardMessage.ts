@@ -100,24 +100,72 @@ export type PackMessageInput = {
   again?: string;
   /** Who opened it - a pack bought from a button is posted by Fini, so it says. */
   opener?: string;
+  /** How many packs these cards came out of, when more than one was opened at once. */
+  packs?: number;
+};
+
+/** Discord's most images in one gallery, and files on one message. */
+export const MAX_GALLERY = 10;
+/**
+ * Room for the summary's card list. A message holds 4000 characters of text
+ * in all; the rest is the heading and the footer.
+ */
+const LIST_BUDGET = 3200;
+
+/**
+ * One line per card, while they fit. Past that - a big bulk pull - the
+ * rarest are kept and the rest are counted, since `/finicard collection`
+ * lists every one of them anyway.
+ */
+const cardList = (cards: BattleCard[], line: (card: BattleCard) => string) => {
+  const lines = cards.map(line);
+  if (lines.join("\n").length <= LIST_BUDGET) return lines.join("\n");
+
+  // `cards` come rarest last, so the list is built from the end.
+  const kept: string[] = [];
+  let length = 0;
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (length + lines[index].length + 1 > LIST_BUDGET - 120) break;
+    kept.unshift(lines[index]);
+    length += lines[index].length + 1;
+  }
+  const rest = cards.slice(0, cards.length - kept.length);
+  const tally = (["common", "uncommon", "full_art"] as const)
+    .map((rarity) => {
+      const count = rest.filter((card) => card.rarity === rarity).length;
+      return count ? `${count} ${rarity.replace("_", "-")}` : "";
+    })
+    .filter(Boolean)
+    .join(", ");
+  return [
+    `-# …and ${rest.length} more (${tally}) - see them all in \`/finicard collection\``,
+    ...kept,
+  ].join("\n");
 };
 
 /** "**Aya**'s pack", or "Pack" when nobody is named. */
-const packOf = (opener?: string) => (opener ? `**${opener}**'s pack` : "Pack");
+const packOf = (opener?: string, many = false) => {
+  const pack = many ? "packs" : "pack";
+  return opener
+    ? `**${opener}**'s ${pack}`
+    : pack[0].toUpperCase() + pack.slice(1);
+};
 
 /** A pack pull: one block, one gallery, one line per card with its id. */
 export const buildPackMessage = async (
   input: PackMessageInput,
 ): Promise<BuiltCardMessage> => {
-  const images = await renderCardMediaList(input.cards, {
+  // A gallery holds ten: a bigger pull shows its rarest ten, which come last.
+  const images = await renderCardMediaList(input.cards.slice(-MAX_GALLERY), {
     reveal: input.reveal,
   });
+  const packs = input.packs && input.packs > 1 ? input.packs : 0;
 
   const container = new ContainerBuilder()
     .setAccentColor(NEUTRAL_ACCENT)
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `## ${CARD_EMOJI} ${input.opener ? `${input.opener}'s pack` : "Pack opened"} — ${input.cards.length} card${input.cards.length === 1 ? "" : "s"} ${compositionOf(input.cards)}`,
+        `## ${CARD_EMOJI} ${input.opener ? `${input.opener}'s ${packs ? `${packs} packs` : "pack"}` : packs ? `${packs} packs opened` : "Pack opened"} — ${input.cards.length} card${input.cards.length === 1 ? "" : "s"} ${compositionOf(input.cards)}`,
       ),
     );
 
@@ -138,12 +186,11 @@ export const buildPackMessage = async (
     .addSeparatorComponents((separator) => separator)
     .addTextDisplayComponents((text) =>
       text.setContent(
-        input.cards
-          .map(
-            (card) =>
-              `${cardLine(card)}${specialMark(card)}${card.isNew ? " · 🆕 **New**" : ""} · \`${card.instanceId}\``,
-          )
-          .join("\n") || "_Nothing left in the pool._",
+        cardList(
+          input.cards,
+          (card) =>
+            `${cardLine(card)}${specialMark(card)}${card.isNew ? " · 🆕 **New**" : ""} · \`${card.instanceId}\``,
+        ) || "_Nothing left in the pool._",
       ),
     )
     .addTextDisplayComponents((text) =>
@@ -202,26 +249,30 @@ export const buildPackCoverMessage = async (input: {
   cost: number;
   note?: string;
   opener?: string;
+  packs?: number;
 }): Promise<BuiltCardMessage> => {
+  const packs = input.packs && input.packs > 1 ? input.packs : 0;
   const container = new ContainerBuilder()
     .setAccentColor(NEUTRAL_ACCENT)
     .addMediaGalleryComponents((gallery) =>
       gallery.addItems((item) =>
         item
           .setURL(`attachment://${PACK_COVER_NAME}`)
-          .setDescription("A sealed booster pack"),
+          .setDescription(
+            packs ? `${packs} sealed booster packs` : "A sealed booster pack",
+          ),
       ),
     )
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `-# ${packOf(input.opener)} · ${input.note ?? `${input.cost} fc`} · ${input.size} cards inside`,
+        `-# ${packOf(input.opener, !!packs)} · ${input.note ?? `${input.cost} fc`} · ${input.size} cards inside`,
       ),
     )
     .addActionRowComponents(() =>
       new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId(PACK_BUTTON.open)
-          .setLabel("Open pack")
+          .setLabel(packs ? `Open ${packs} packs` : "Open pack")
           .setStyle(ButtonStyle.Primary),
       ),
     );

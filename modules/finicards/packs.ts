@@ -50,6 +50,13 @@ export const SET_PACK_ODDS: PackOdds = {
 
 export const PACK_SIZE = 5;
 
+/**
+ * Most packs one `/finicard pack` can open at once. Each is rolled on its own,
+ * exactly as if bought one by one - a bulk buy changes how many packs, never
+ * what is in them.
+ */
+export const MAX_PACKS_AT_ONCE = 10;
+
 /** Chance any single card in a pack comes back foil. */
 export const FOIL_CHANCE = 0.03;
 

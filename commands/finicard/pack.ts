@@ -5,7 +5,6 @@ import {
 } from "discord.js";
 import {
   getCardDefinitions,
-  getPopulationCounts,
   toBattleCard,
 } from "../../modules/finicards/cardStore";
 import {
@@ -18,16 +17,17 @@ import {
   type LegendaryTier,
 } from "../../modules/finicards/legendary";
 import {
-  availableSecretArts,
+  MAX_PACKS_AT_ONCE,
   openPack,
   PACK_COST,
   PACK_SIZE,
   SET_PACK_COST,
 } from "../../modules/finicards/packs";
+import type { OwnedCard } from "../../modules/finicards/types";
 import { presentPack } from "../../modules/finicards/packFlow";
 import { createLog } from "../../modules/logger/logger";
 import { addCoin, getUserBalance } from "../../modules/finicoin";
-import { ADMIN_ID, isAdmin } from "../../utilities/discord/isAdmin";
+import { ADMIN_ID } from "../../utilities/discord/isAdmin";
 
 const NO_LEGENDARY: Record<LegendaryTier, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
 
@@ -53,7 +53,7 @@ const certainTier = (tier: LegendaryTier): Record<LegendaryTier, number> => ({
  */
 const logAgainPack = async (
   press: ButtonInteraction,
-  set: number | null,
+  { set, count }: PackOptions,
 ): Promise<void> => {
   try {
     const output = await press
@@ -66,7 +66,7 @@ const logAgainPack = async (
       input: `Command options:\n${[
         "subcommand: pack",
         `set: ${set ?? undefined}`,
-        "test: undefined",
+        `count: ${count ?? undefined}`,
         "via: another pack button",
       ].join(",\n")}`,
       output,
@@ -78,9 +78,19 @@ const logAgainPack = async (
   }
 };
 
+export type PackOptions = {
+  set: number | null;
+  /** How many packs to open at once. Absent, one. */
+  count: number | null;
+};
+
 /**
- * Buys - or, for a free pack, hands over - one pack and presents it on the
- * reply `interaction` has already deferred.
+ * Buys - or, for free packs, hands over - `count` packs and presents them, as
+ * one run of cards, on the reply `interaction` has already deferred.
+ *
+ * Every pack is its own `openPack`: its own rarity per card, its own Secret
+ * Art and Legendary roll, the server's population read fresh. So ten packs at
+ * once hold exactly what ten packs one at a time would.
  *
  * Shared by `/finicard pack` and by the button at the end of a pack that buys
  * another of the same kind, which is why it takes its options rather than
@@ -88,42 +98,36 @@ const logAgainPack = async (
  */
 export const openPackFor = async (
   interaction: ChatInputCommandInteraction | ButtonInteraction,
-  { set, test }: { set: number | null; test: string | null },
+  { set, count }: PackOptions,
 ): Promise<void> => {
   const serverId = interaction.guildId ?? "unknown guild id";
   const serverName = interaction.guild?.name ?? "unknown guild name";
   const identifier = `${interaction.user.username}-${serverName}`;
+  const packCount = Math.min(
+    Math.max(Math.trunc(count ?? 1), 1),
+    MAX_PACKS_AT_ONCE,
+  );
 
-  // A forced pull is a test, not a purchase: it costs nothing - which is
-  // why only the bot admin may ask for one.
-  if (test && !isAdmin(interaction.user.id)) {
-    await interaction.editReply(
-      "The `test` option is for the bot admin. Leave it off to open a pack.",
-    );
-    return;
-  }
-
-  // A free pack the player is owed is opened before one they pay for.
-  // It is a pack of every set, so asking for one set buys a pack instead.
-  const freePacks =
-    test || set
-      ? []
-      : await getUnopenedFreePacks(interaction.user.id, serverId).catch(
-          () => [],
-        );
-  const freePack = freePacks[0] ?? null;
+  // Free packs the player is owed are opened before any they pay for.
+  // They are packs of every set, so asking for one set buys packs instead.
+  const freePacks = set
+    ? []
+    : await getUnopenedFreePacks(interaction.user.id, serverId).catch(() => []);
+  const freeToOpen = freePacks.slice(0, packCount);
+  const paidCount = packCount - freeToOpen.length;
 
   const price = set ? SET_PACK_COST : PACK_COST;
-  const cost = test || freePack ? 0 : price;
-  const forcedTier = test?.startsWith("legendary_")
-    ? (Number(test.slice(-1)) as LegendaryTier)
-    : null;
+  const cost = paidCount * price;
 
   const balance = (await getUserBalance(interaction.user.id, serverId)) || 0;
 
   if (balance < cost) {
+    const what = `${paidCount === 1 ? "A" : paidCount}${set ? ` Set ${set}` : ""} pack${paidCount === 1 ? "" : "s"}`;
+    const free = freeToOpen.length
+      ? ` (after your ${freeToOpen.length} free pack${freeToOpen.length === 1 ? "" : "s"})`
+      : "";
     await interaction.editReply(
-      `${set ? `A Set ${set} pack` : "A pack"} costs ${price} fc and you have ${balance}.`,
+      `${what}${free} cost${paidCount === 1 ? "s" : ""} ${cost} fc and you have ${balance}.`,
     );
     return;
   }
@@ -131,19 +135,6 @@ export const openPackFor = async (
   const definitions = (await getCardDefinitions()).filter(
     (definition) => !set || definition.set === set,
   );
-  // Asked for, and impossible: say so rather than hand over a plain pack.
-  if (
-    test === "secret_art" &&
-    availableSecretArts(definitions, await getPopulationCounts(serverId))
-      .length === 0
-  ) {
-    await interaction.editReply(
-      definitions.some((definition) => definition.secret_art)
-        ? "Every active Secret Art is already at its 3 copies on this server."
-        : `No Secret Art is active${set ? ` in set ${set}` : ""}, so a pack has none to find. Mark one active in the card manager and try again.`,
-    );
-    return;
-  }
   if (set && definitions.length === 0) {
     await interaction.editReply(`Set ${set} isn't out yet - soon!`);
     return;
@@ -166,61 +157,86 @@ export const openPackFor = async (
     );
   }
 
-  const { pulls, shortfall } = await openPack({
-    userId: interaction.user.id,
-    serverId,
-    identifier,
-    ...(set ? { set } : {}),
-    ...(test === "secret_art" ? { secretArtChance: 1 } : {}),
-    ...(forcedTier ? { legendaryOdds: certainTier(forcedTier) } : {}),
-    // A free pack holds what was placed in it and rolls nothing special
-    // by chance: each server's batch has exactly one of each.
-    ...(freePack
-      ? {
-          secretArtChance: freePack.special === "secret_art" ? 1 : 0,
-          legendaryOdds:
-            freePack.special === "legendary"
-              ? certainTier(rollGuaranteedTier(Math.random()))
-              : NO_LEGENDARY,
-        }
-      : {}),
-  });
+  const pulls: OwnedCard[] = [];
+  let shortfall = 0;
+  let reimbursement = 0;
 
-  if (freePack) {
-    await markFreePackOpened(freePack.id ?? "");
-    // Placed but not there to give - no Secret Art left on the server,
-    // say. Another unopened free pack takes it, so the server still
-    // gets its one.
-    const delivered =
-      freePack.special === "secret_art"
-        ? pulls.some((pull) => pull.definition.secret_art)
-        : freePack.special === "legendary"
-          ? pulls.some((pull) => !!pull.legendary)
-          : true;
-    if (!delivered && freePack.special) {
-      await passOnSpecial(serverId, freePack.special, ADMIN_ID || undefined);
+  // One after another, never together: each pack reads the population the
+  // last one left, so no card is handed out past its copies.
+  for (let index = 0; index < packCount; index += 1) {
+    const freePack = freeToOpen[index] ?? null;
+    const opened = await openPack({
+      userId: interaction.user.id,
+      serverId,
+      identifier,
+      ...(set ? { set } : {}),
+      // A free pack holds what was placed in it and rolls nothing special
+      // by chance: each server's batch has exactly one of each.
+      ...(freePack
+        ? {
+            secretArtChance: freePack.special === "secret_art" ? 1 : 0,
+            legendaryOdds:
+              freePack.special === "legendary"
+                ? certainTier(rollGuaranteedTier(Math.random()))
+                : NO_LEGENDARY,
+          }
+        : {}),
+    });
+
+    // Each pack reads the collection afresh, so a card an earlier pack in
+    // this run gave is already not new.
+    pulls.push(...opened.pulls);
+    shortfall += opened.shortfall;
+    // Refund at the per-card rate, the way /booster-pack does - for a pack
+    // that was paid for.
+    if (!freePack && opened.shortfall > 0)
+      reimbursement += Math.round((price / PACK_SIZE) * opened.shortfall);
+
+    if (freePack) {
+      await markFreePackOpened(freePack.id ?? "");
+      // Placed but not there to give - no Secret Art left on the server,
+      // say. Another unopened free pack takes it, so the server still
+      // gets its one.
+      const delivered =
+        freePack.special === "secret_art"
+          ? opened.pulls.some((pull) => pull.definition.secret_art)
+          : freePack.special === "legendary"
+            ? opened.pulls.some((pull) => !!pull.legendary)
+            : true;
+      if (!delivered && freePack.special) {
+        await passOnSpecial(serverId, freePack.special, ADMIN_ID || undefined);
+      }
     }
   }
 
-  if (shortfall > 0 && cost > 0) {
-    // Refund at the per-card rate, the way /booster-pack does.
+  if (reimbursement > 0) {
     await addCoin(
       interaction.user.id,
       serverId,
-      Math.round((cost / PACK_SIZE) * shortfall),
+      reimbursement,
       interaction.user.username,
       serverName,
       "Reserve",
     );
   }
 
-  const reimbursement =
-    shortfall > 0 ? Math.round((cost / PACK_SIZE) * shortfall) : 0;
-
   const cards = pulls.map((owned) => ({
     ...toBattleCard(owned),
     isNew: owned.isNew,
   }));
+  const freeLeft = freePacks.length - freeToOpen.length;
+  const packs = packCount === 1 ? "" : `${packCount} packs · `;
+  const note = freeToOpen.length
+    ? `${packs}${
+        paidCount > 0
+          ? `${freeToOpen.length} free + ${paidCount} bought · ${cost} fc`
+          : "Free pack"
+      } · ${freeLeft} more free to open`
+    : set
+      ? `${packs}Set ${set} · ${cost} fc`
+      : packCount > 1
+        ? `${packs}${cost} fc`
+        : undefined;
   const pack = {
     cards,
     opener:
@@ -229,34 +245,25 @@ export const openPackFor = async (
     cost,
     shortfall,
     reimbursement,
-    ...(freePack
-      ? {
-          note: `Free pack · ${freePacks.length - 1} more to open`,
-        }
-      : set
-        ? {
-            note: `Set ${set} pack · ${cost > 0 ? `${cost} fc` : "test, free"}`,
-          }
-        : {}),
+    packs: packCount,
+    ...(note ? { note } : {}),
   };
 
-  // The sealed pack first, then its cards one at a time. A test pack was not
-  // bought, so it does not offer to buy another.
-  await presentPack(
-    interaction,
-    pack,
-    test
-      ? undefined
-      : {
-          label: set
-            ? `Buy another Set ${set} pack · ${SET_PACK_COST} fc`
-            : freePacks.length > 1
-              ? "Open another free pack"
-              : `Buy another pack · ${PACK_COST} fc`,
-          buy: (press) =>
-            openPackFor(press, { set, test: null }).finally(() =>
-              logAgainPack(press, set),
-            ),
-        },
-  );
+  // The sealed pack first, then its cards one at a time.
+  const many = packCount > 1 ? `${packCount} ` : "";
+  const plural = packCount > 1 ? "s" : "";
+  await presentPack(interaction, pack, {
+    label:
+      freeLeft >= packCount
+        ? `Open ${many || "another "}free pack${plural}`
+        : freeLeft > 0
+          ? `Open ${many || "another "}pack${plural} · ${freeLeft} free`
+          : set
+            ? `Buy ${many || "another "}Set ${set} pack${plural} · ${SET_PACK_COST * packCount} fc`
+            : `Buy ${many || "another "}pack${plural} · ${PACK_COST * packCount} fc`,
+    buy: (press) =>
+      openPackFor(press, { set, count }).finally(() =>
+        logAgainPack(press, { set, count }),
+      ),
+  });
 };

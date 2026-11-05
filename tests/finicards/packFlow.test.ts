@@ -3,8 +3,10 @@ import { packShowOrder } from "../../modules/finicards/packFlow";
 import { CARD_EMOJI } from "../../modules/finicards/rules";
 import type { BattleCard } from "../../modules/finicards/types";
 import {
+  MAX_GALLERY,
   PACK_BUTTON,
   buildPackCardMessage,
+  buildPackCoverMessage,
   buildPackMessage,
 } from "../../modules/finicards/ui/cardMessage";
 
@@ -148,6 +150,71 @@ describe("finicards pack flow", () => {
     expect(JSON.stringify(again.components[0].toJSON())).toContain(
       "Buy another pack · 50 fc",
     );
+  });
+});
+
+describe("several packs opened at once", () => {
+  // Ten packs of five: more than a gallery, a message's files or its text can hold.
+  const pull = packShowOrder(
+    Array.from({ length: 50 }, (_, index) =>
+      card({
+        instanceId: `inst${String(index).padStart(3, "0")}`,
+        name: `Card number ${index}`,
+        rarity:
+          index % 10 === 0 ? "full_art" : index % 3 ? "common" : "uncommon",
+      }),
+    ),
+  );
+
+  it("sums them up within Discord's limits, keeping the rarest", async () => {
+    const summary = await buildPackMessage({
+      cards: pull,
+      cost: 250,
+      shortfall: 0,
+      reimbursement: 0,
+      opener: "Aya",
+      packs: 10,
+    });
+    const json = JSON.stringify(summary.components[0].toJSON());
+
+    expect(summary.files.length).toBeLessThanOrEqual(MAX_GALLERY);
+    expect(json).toContain("Aya's 10 packs");
+    expect(json).toContain("50 cards");
+    // Every full-art is named; the commons that do not fit are counted.
+    for (const full of pull.filter((entry) => entry.rarity === "full_art"))
+      expect(json).toContain(full.name);
+    expect(json).toContain("more (");
+    const text = summary.components[0]
+      .toJSON()
+      .components.filter((component) => "content" in component)
+      .map((component) => (component as { content: string }).content)
+      .join("");
+    expect(text.length).toBeLessThanOrEqual(4000);
+  });
+
+  it("lists every card when they fit, as a single pack does", async () => {
+    const summary = await buildPackMessage({
+      cards: pull.slice(0, 5),
+      cost: 25,
+      shortfall: 0,
+      reimbursement: 0,
+    });
+    expect(JSON.stringify(summary.components[0].toJSON())).not.toContain(
+      "more (",
+    );
+  });
+
+  it("names how many packs are sealed inside", async () => {
+    const cover = await buildPackCoverMessage({
+      size: 15,
+      cost: 75,
+      opener: "Aya",
+      packs: 3,
+    });
+    const json = JSON.stringify(cover.components[0].toJSON());
+    expect(json).toContain("Open 3 packs");
+    expect(json).toContain("**Aya**'s packs");
+    expect(json).toContain("15 cards inside");
   });
 });
 

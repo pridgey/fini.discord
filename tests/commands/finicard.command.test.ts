@@ -97,14 +97,14 @@ describe("/finicard", () => {
     },
   );
 
-  it("opens a pack with its set and test options", async () => {
+  it("opens a pack with its set and count options", async () => {
     const interaction = interactionFor("pack");
 
     await run(interaction);
 
     expect(handlers.openPackFor).toHaveBeenCalledWith(interaction, {
       set: null,
-      test: null,
+      count: null,
     });
   });
 

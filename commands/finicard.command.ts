@@ -18,6 +18,7 @@ import {
 import { DUNGEON } from "../modules/finicards/dungeon";
 import {
   BOOSTER_SETS,
+  MAX_PACKS_AT_ONCE,
   PACK_COST,
   SET_PACK_COST,
 } from "../modules/finicards/packs";
@@ -74,19 +75,14 @@ export const data = new SlashCommandBuilder()
             ...BOOSTER_SETS.map((set) => ({ name: `Set ${set}`, value: set })),
           ),
       )
-      .addStringOption((opt) =>
+      .addIntegerOption((opt) =>
         opt
-          .setName("test")
+          .setName("count")
           .setDescription(
-            "[Bot admin] Testing: force a special pull into this pack, free of charge",
+            `How many packs to open at once, up to ${MAX_PACKS_AT_ONCE}. Each is rolled like its own pack.`,
           )
-          .addChoices(
-            { name: "Secret Art", value: "secret_art" },
-            { name: "Legendary tier 1", value: "legendary_1" },
-            { name: "Legendary tier 2", value: "legendary_2" },
-            { name: "Legendary tier 3", value: "legendary_3" },
-            { name: "Legendary tier 4", value: "legendary_4" },
-          ),
+          .setMinValue(1)
+          .setMaxValue(MAX_PACKS_AT_ONCE),
       ),
   )
   .addSubcommand((sub) =>
@@ -507,7 +503,7 @@ export const execute: SlashCommand["execute"] = async (
       case "pack":
         return await openPackFor(interaction, {
           set: interaction.options.getInteger("set"),
-          test: interaction.options.getString("test"),
+          count: interaction.options.getInteger("count"),
         });
       case "collection":
         return await showCollection(interaction, context);

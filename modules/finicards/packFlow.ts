@@ -14,6 +14,7 @@ import {
 } from "./cardArt";
 import type { BattleCard } from "./types";
 import {
+  MAX_GALLERY,
   PACK_BUTTON,
   buildPackCardMessage,
   buildPackCoverMessage,
@@ -117,11 +118,21 @@ export const presentPack = async (
   for (const pending of [...stills, ...reveals])
     pending?.catch(warnAndUse(undefined, "draw a pack card"));
 
+  // Which card each still shows, once drawn - so when a message runs out of
+  // room for files, the ones still to come are the ones it keeps.
+  const cardOfFile = new Map<string, number>();
+  stills.forEach((still, index) =>
+    still
+      .then((media) => media && cardOfFile.set(media.name, index))
+      .catch(() => undefined),
+  );
+
   const cover = await buildPackCoverMessage({
     size: cards.length,
     cost: input.cost,
     note: input.note,
     opener: input.opener,
+    packs: input.packs,
   });
   const message = await interaction.editReply(cover);
 
@@ -137,6 +148,24 @@ export const presentPack = async (
   };
   hold(message);
 
+  /**
+   * The held files an edit can carry on beside `missing`, within Discord's ten
+   * a message. A five-card pack never runs short; a bulk pull does, and keeps
+   * what this screen shows, then the cards still to come, soonest first.
+   */
+  const keep = (built: Built, missing: AttachmentBuilder[]): KeptFile[] => {
+    const all = [...held.values()];
+    const room = MAX_GALLERY - missing.length;
+    if (all.length <= room) return all;
+    const here = new Set(built.files.map((file) => file.name ?? ""));
+    const rank = (file: KeptFile) => {
+      if (here.has(file.filename)) return -1;
+      const index = cardOfFile.get(file.filename);
+      return index !== undefined && index > shown ? index : Infinity;
+    };
+    return all.sort((a, b) => rank(a) - rank(b)).slice(0, Math.max(room, 0));
+  };
+
   const put = async (surface: Surface, built: Built): Promise<void> => {
     const layout = { components: built.components, flags: built.flags };
     const missing = built.files.filter((file) => !held.has(file.name ?? ""));
@@ -151,7 +180,7 @@ export const presentPack = async (
         await surface.editReply({
           ...layout,
           files: missing,
-          attachments: [...held.values()],
+          attachments: keep(built, missing),
         }),
       );
     } catch (error) {
@@ -174,13 +203,16 @@ export const presentPack = async (
     const opening = await buildPackOpeningMessage();
     // A Legendary's GIFs are large and slow to draw; they are not waited on
     // here, and go up when its turn comes.
+    // As many as fit beside the opening, in the order they will be shown.
     const drawn = (
       await Promise.all(
         stills.map((still, index) =>
           cards[index].legendary ? null : still.catch(() => null),
         ),
       )
-    ).filter((media): media is CardMedia => !!media);
+    )
+      .filter((media): media is CardMedia => !!media)
+      .slice(0, Math.max(MAX_GALLERY - opening.files.length - held.size, 0));
     hold(
       await interaction.editReply({
         components: cover.components,
