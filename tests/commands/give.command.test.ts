@@ -158,6 +158,20 @@ describe("give command", () => {
     });
   });
 
+  describe("Giving to yourself", () => {
+    it("should refuse and move no coin", async () => {
+      mockRecipient.id = "user123";
+
+      await execute(mockInteraction, mockLogCommand);
+
+      expect(mockAddCoin).not.toHaveBeenCalled();
+      expect(mockInteraction.reply).toHaveBeenCalledWith(
+        "You can't give Finicoin to yourself.",
+      );
+      expect(mockLogCommand).toHaveBeenCalled();
+    });
+  });
+
   describe("Input validation", () => {
     it("should handle negative amounts as absolute value", async () => {
       mockInteraction.options.get = mock((name: string) => {

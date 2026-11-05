@@ -59,6 +59,12 @@ export const addCoin = async (
   fromUserID: string,
 ) => {
   try {
+    // Sender and recipient would be two stale copies of one record: the
+    // recipient write would undo the debit and mint `amount` from nothing.
+    if (userID === fromUserID) {
+      throw new Error(`Cannot transfer finicoin from ${userID} to itself`);
+    }
+
     // Check if record exists
     const bankResponse = await pb.collection<BankRecord>("bank").getFullList({
       filter: pb.filter("user_id = {:user_id} && server_id = {:server_id}", {

@@ -37,6 +37,12 @@ export const execute: SlashCommand["execute"] = async (
     const guildId = interaction.guildId ?? "unknown server id";
     const guildname = interaction.guild?.name ?? "unknown server name";
 
+    if (luckyFuck?.id === userId) {
+      await interaction.reply("You can't give Finicoin to yourself.");
+      logCommand();
+      return;
+    }
+
     const currentUserBalance = (await getUserBalance(userId, guildId)) || 0;
 
     if (currentUserBalance < amount) {
