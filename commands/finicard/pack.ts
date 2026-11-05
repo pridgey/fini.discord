@@ -160,6 +160,7 @@ export const openPackFor = async (
   const pulls: OwnedCard[] = [];
   let shortfall = 0;
   let reimbursement = 0;
+  let godPacks = 0;
 
   // One after another, never together: each pack reads the population the
   // last one left, so no card is handed out past its copies.
@@ -171,10 +172,12 @@ export const openPackFor = async (
       identifier,
       ...(set ? { set } : {}),
       // A free pack holds what was placed in it and rolls nothing special
-      // by chance: each server's batch has exactly one of each.
+      // by chance - no god pack either: each server's batch has exactly one
+      // of each.
       ...(freePack
         ? {
             secretArtChance: freePack.special === "secret_art" ? 1 : 0,
+            godPackChance: 0,
             legendaryOdds:
               freePack.special === "legendary"
                 ? certainTier(rollGuaranteedTier(Math.random()))
@@ -187,6 +190,7 @@ export const openPackFor = async (
     // this run gave is already not new.
     pulls.push(...opened.pulls);
     shortfall += opened.shortfall;
+    if (opened.godPack) godPacks += 1;
     // Refund at the per-card rate, the way /booster-pack does - for a pack
     // that was paid for.
     if (!freePack && opened.shortfall > 0)
@@ -246,6 +250,7 @@ export const openPackFor = async (
     shortfall,
     reimbursement,
     packs: packCount,
+    ...(godPacks ? { godPacks } : {}),
     ...(note ? { note } : {}),
   };
 

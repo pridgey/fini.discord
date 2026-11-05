@@ -67,6 +67,14 @@ export const FOIL_CHANCE = 0.03;
  */
 export const SECRET_ART_CHANCE = 0.01;
 
+/**
+ * Chance a pack is a god pack: every card full-art. About one per server every
+ * four months at a hundred packs a month - between a tier 3 and a tier 4
+ * Legendary. Rolled only while the pool has a full-art copy for every slot, so
+ * a god pack never falls back to lesser cards.
+ */
+export const GOD_PACK_CHANCE = 0.0025;
+
 /** What a pack drawn from every set costs, and one drawn from a single set. */
 export const PACK_COST = 25;
 export const SET_PACK_COST = 40;
@@ -141,6 +149,24 @@ export const selectCard = (
   return null;
 };
 
+/**
+ * Whether the server has a full-art copy left for each of `size` cards - a
+ * card with no population limit counts as endless.
+ */
+export const canFillGodPack = (
+  definitions: V2CardDefinitionRecord[],
+  counts: Map<string, number>,
+  size: number,
+): boolean => {
+  let copies = 0;
+  for (const definition of availableOfRarity(definitions, counts, "full_art")) {
+    if (definition.population <= 0) return true;
+    copies += definition.population - (counts.get(definition.id ?? "") ?? 0);
+    if (copies >= size) return true;
+  }
+  return copies >= size;
+};
+
 /** Secret Arts with room left in the server population. */
 export const availableSecretArts = (
   definitions: V2CardDefinitionRecord[],
@@ -209,6 +235,8 @@ export type OpenPackInput = {
   set?: number;
   /** Chance this pack holds a Legendary, by tier. Defaults to `LEGENDARY_ODDS`. */
   legendaryOdds?: Record<LegendaryTier, number>;
+  /** Chance this pack is all full-arts. Defaults to `GOD_PACK_CHANCE`. */
+  godPackChance?: number;
   random?: Random;
 };
 
@@ -216,6 +244,8 @@ export type OpenPackResult = {
   pulls: OwnedCard[];
   /** Cards the pack wanted to hand out but could not, because the pool is dry. */
   shortfall: number;
+  /** Whether this was a god pack: every card full-art. */
+  godPack: boolean;
 };
 
 /** Rolls a pack and writes the pulls to the user's v2 collection. */
@@ -231,17 +261,25 @@ export const openPack = async (
     ? everything.filter((definition) => definition.set === input.set)
     : everything;
   if (definitions.length === 0) {
-    return { pulls: [], shortfall: size };
+    return { pulls: [], shortfall: size, godPack: false };
   }
 
   const counts = await getPopulationCounts(input.serverId);
   // What the player held before this pack, so its pulls can say they're new.
   const held = await ownedDefinitionIds(input.userId, input.serverId);
-  const rarities = rollPackRarities(
-    size,
-    input.odds ?? (input.set ? SET_PACK_ODDS : PACK_ODDS),
-    random,
-  );
+  // A god pack replaces the rarity rolls, not the Secret Art or Legendary
+  // ones below - those can still take a slot, which only makes it better.
+  const godPack =
+    size > 0 &&
+    random() < (input.godPackChance ?? GOD_PACK_CHANCE) &&
+    canFillGodPack(definitions, counts, size);
+  const rarities: CardRarity[] = godPack
+    ? Array.from({ length: size }, () => "full_art")
+    : rollPackRarities(
+        size,
+        input.odds ?? (input.set ? SET_PACK_ODDS : PACK_ODDS),
+        random,
+      );
 
   const pulls: OwnedCard[] = [];
   let shortfall = 0;
@@ -315,5 +353,5 @@ export const openPack = async (
     pulls.push({ ...record, definition, isNew });
   }
 
-  return { pulls, shortfall };
+  return { pulls, shortfall, godPack };
 };

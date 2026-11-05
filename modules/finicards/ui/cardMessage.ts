@@ -102,6 +102,8 @@ export type PackMessageInput = {
   opener?: string;
   /** How many packs these cards came out of, when more than one was opened at once. */
   packs?: number;
+  /** How many of those packs were god packs: every card full-art. */
+  godPacks?: number;
 };
 
 /** Discord's most images in one gallery, and files on one message. */
@@ -151,6 +153,14 @@ const packOf = (opener?: string, many = false) => {
     : pack[0].toUpperCase() + pack.slice(1);
 };
 
+/** The heading's shout for a god pack, or two of them in one bulk pull. */
+const godPackBanner = (godPacks = 0) =>
+  godPacks > 1
+    ? `\n### ✨ ${godPacks} God packs! ✨`
+    : godPacks === 1
+      ? "\n### ✨ God pack! ✨"
+      : "";
+
 /** A pack pull: one block, one gallery, one line per card with its id. */
 export const buildPackMessage = async (
   input: PackMessageInput,
@@ -165,7 +175,7 @@ export const buildPackMessage = async (
     .setAccentColor(NEUTRAL_ACCENT)
     .addTextDisplayComponents((text) =>
       text.setContent(
-        `## ${CARD_EMOJI} ${input.opener ? `${input.opener}'s ${packs ? `${packs} packs` : "pack"}` : packs ? `${packs} packs opened` : "Pack opened"} — ${input.cards.length} card${input.cards.length === 1 ? "" : "s"} ${compositionOf(input.cards)}`,
+        `## ${CARD_EMOJI} ${input.opener ? `${input.opener}'s ${packs ? `${packs} packs` : "pack"}` : packs ? `${packs} packs opened` : "Pack opened"} — ${input.cards.length} card${input.cards.length === 1 ? "" : "s"} ${compositionOf(input.cards)}${godPackBanner(input.godPacks)}`,
       ),
     );
 

@@ -23,6 +23,8 @@ export const grantCards = async (
     serverId,
     identifier: `${target.username}-${serverName}`,
     size: count,
+    // A grant is cards handed out, not a pack opened.
+    godPackChance: 0,
   });
 
   await interaction.editReply(
