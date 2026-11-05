@@ -58,9 +58,13 @@
   #stat-note { font-size: 12px; margin: -4px 0 10px; }
   .good { color: #7fd6a0; } .bad { color: #ff7a7a; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { flex: 1 1 70px; text-align: center; font-size: 12px; padding: 5px 0; }
+  .chip { flex: 1 1 70px; text-align: center; font-size: 12px; padding: 4px 4px 5px; }
   .chip.has { background: #2b3050; } .chip.here { border-color: #5865f2; background: #262b55; cursor: default; }
   .chip.new { border-style: dashed; color: #9aa1c4; }
+  .chip-art { display: block; width: 100%; height: 64px; object-fit: cover; border-radius: 4px; margin-bottom: 4px; background: #0f1122; }
+  .chip.new .chip-art { display: none; }
+  .chip.same { border-color: #ff7a7a; color: #ff7a7a; }
+  .cand.worn span { color: #ff7a7a; }
   #source { position: relative; cursor: crosshair; display: inline-block; max-width: 100%; }
   #source img { display: block; max-width: 100%; max-height: 380px; border-radius: 8px; }
   #source i { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border: 2px solid #fff; border-radius: 50%; background: #ff3d7f; box-shadow: 0 0 0 2px #000; pointer-events: none; }
@@ -74,6 +78,8 @@
   .cand.busy { opacity: .6; }
   .cand .x { position: absolute; top: 4px; right: 4px; padding: 0 6px; font-size: 12px; background: #14162acc; }
   .wiki-head { margin: 14px 0 6px; }
+  #finder { grid-column: 1 / -1; border-top: 1px solid #2b3050; }
+  #finder > h3:first-child { margin-top: 16px; }
   /* Search results at the size picked above them. */
   #results .cgrid { grid-template-columns: repeat(auto-fill, minmax(min(var(--thumb-w, 130px), 100%), 1fr)); }
   #results .cand img { height: var(--thumb-h, 100px); }
@@ -218,6 +224,7 @@
 
       <h3>Rarities of this character</h3>
       <div class="chips" id="rarity-chips"></div>
+      <div id="rarity-warn" class="bad" style="font-size:12px;margin-top:6px"></div>
     </div>
 
     <div>
@@ -230,6 +237,10 @@
       <div class="cgrid" id="candidates"></div>
       <div id="drop"><span class="desk-only">Drop an image here, paste one (Ctrl+V), or </span><label style="color:#7fc8ff;cursor:pointer">choose a file<input type="file" id="file" accept="image/*" hidden></label></div>
 
+    </div>
+
+    <!-- Across every column: found images want all the width they can get. -->
+    <div id="finder">
       <h3>Find images <span id="thumb-size" title="Size of the images found"><button data-size="s">S</button><button data-size="m">M</button><button data-size="l">L</button><button data-size="xl">XL</button></span></h3>
       <div class="bar">
         <button class="primary" id="find">Find images for this character</button>
@@ -265,6 +276,10 @@ const api = async (path, body) => {
   return data;
 };
 const RARITY_CODE = { common: "C", uncommon: "U", full_art: "FA", secret_art: "SA" };
+const RARITY_ORDER = Object.keys(RARITY_CODE);
+const byRarity = (a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity);
+// A character is a name in a series: a namesake from another series is someone else.
+const characterOf = (card) => card.card_name + "\u0000" + card.series;
 // A Secret Art is a full-art with its own artwork: same frame, same stat rules, no foil frame.
 const fullFrame = (rarity) => rarity === "full_art" || rarity === "secret_art";
 const say = (text, bad) => { $("ed-status").textContent = text || ""; $("ed-status").style.color = bad ? "#ff7a7a" : "#f0c060"; };
@@ -292,8 +307,8 @@ const loadCatalogue = async () => {
 const drawGrid = () => {
   const query = $("q").value.trim().toLowerCase();
   const set = $("f-set-filter").value, rarity = $("f-rarity-filter").value, type = $("f-type-filter").value, state = $("f-state-filter").value;
-  const perName = {};
-  for (const card of cards) perName[card.card_name] = (perName[card.card_name] || 0) + 1;
+  const perCharacter = {};
+  for (const card of cards) perCharacter[characterOf(card)] = (perCharacter[characterOf(card)] || 0) + 1;
 
   shown = cards.filter((card) =>
     (!query || card.card_name.toLowerCase().includes(query) || card.series.toLowerCase().includes(query) || card.tags.some((tag) => tag.includes(query))) &&
@@ -303,14 +318,16 @@ const drawGrid = () => {
     (state === "" ||
       (state === "active" && card.active) || (state === "inactive" && !card.active) ||
       (state === "noart" && card.art === "none") || (state === "v2" && card.origin === "V2") ||
-      (state === "single" && perName[card.card_name] === 1)));
+      (state === "single" && perCharacter[characterOf(card)] === 1)));
 
+  // A character's rarities sit together, in the order C, U, FA, SA.
   const sort = $("sort").value;
+  const byCharacter = (a, b) => a.card_name.localeCompare(b.card_name) || a.series.localeCompare(b.series) || byRarity(a, b);
   shown.sort((a, b) =>
-    sort === "series" ? a.series.localeCompare(b.series) || a.card_name.localeCompare(b.card_name)
-    : sort === "set" ? a.set - b.set || a.card_name.localeCompare(b.card_name)
+    sort === "series" ? a.series.localeCompare(b.series) || byCharacter(a, b)
+    : sort === "set" ? a.set - b.set || byCharacter(a, b)
     : sort === "updated" ? b.updated.localeCompare(a.updated)
-    : a.card_name.localeCompare(b.card_name) || a.rarity.localeCompare(b.rarity));
+    : byCharacter(a, b));
 
   $("count").textContent = shown.length + " of " + cards.length + " cards";
   const filtering = [set, rarity, type, state].filter(Boolean).length;
@@ -387,11 +404,11 @@ const startEditor = async (state) => {
   writeFields(ed.fields);
   ed.clean = JSON.stringify(readFields());
   $("editor").hidden = false;
-  if (resultsFor !== ed.fields.card_name) {
+  if (resultsFor !== characterOf(ed.fields)) {
     $("results").replaceChildren();
     $("wiki").value = "";
     $("query").value = ed.fields.card_name;
-    resultsFor = ed.fields.card_name;
+    resultsFor = characterOf(ed.fields);
   }
   say(ed.id ? "" : "Not saved yet. Nothing is in the pool until you press Save.");
   drawHead();
@@ -477,18 +494,42 @@ $("balance").onclick = () => guard(async () => {
   changed();
 });
 
+// The character's other rarities, by the candidate their art was saved from.
+const siblingsOf = (fields) => cards.filter((card) => fields.card_name && characterOf(card) === characterOf(fields) && card.id !== ed.id);
+const usedBy = (origin) => origin ? siblingsOf(readFields()).filter((card) => card.art_origin === origin) : [];
+// The image this card would wear if saved now: a candidate picked, or what it has.
+const originNow = () => ed.candidate || (ed.saved ? ed.saved.art_origin : "");
+
+// A chip's small picture of its rarity's art, or a blank where it has none.
+const chipArt = (chip, src) => {
+  const art = document.createElement(src ? "img" : "div");
+  art.className = "chip-art";
+  if (src) { art.src = src; art.alt = ""; art.onerror = () => art.replaceWith(Object.assign(document.createElement("div"), { className: "chip-art" })); }
+  chip.prepend(art);
+};
+const codesOf = (list) => list.map((card) => RARITY_CODE[card.rarity]).join(", ");
+
 // The same character at other rarities: jump to one, or start one that is missing.
+// Each shows its art, so one image is not set on two rarities by mistake.
 const drawRarityChips = () => {
-  const name = readFields().card_name;
-  const siblings = cards.filter((card) => card.card_name === name && name);
+  const fields = readFields();
+  const name = fields.card_name;
+  const siblings = cards.filter((card) => name && characterOf(card) === characterOf(fields));
+  const clash = usedBy(originNow());
+  $("rarity-warn").textContent = clash.length ? "This card's art is the same image as " + codesOf(clash) + "." : "";
   $("rarity-chips").replaceChildren(...Object.entries(RARITY_CODE).map(([rarity, code]) => {
     const chip = document.createElement("button");
     const sibling = siblings.find((card) => card.rarity === rarity);
     if (sibling && ed.id === sibling.id) {
-      chip.className = "chip here"; chip.textContent = code + " · this card";
+      chip.className = "chip here" + (clash.length ? " same" : ""); chip.textContent = code + " · this card";
+      const src = ed.candidate ? "/cards/candidate?key=" + ed.key + "&file=" + ed.candidate + "&w=220"
+        : sibling.art !== "none" ? "/cards/art-thumb?id=" + sibling.id + "&v=" + encodeURIComponent(sibling.updated) : "";
+      chipArt(chip, src);
     } else if (sibling) {
-      chip.className = "chip has"; chip.textContent = code + " · S" + sibling.set; chip.title = "Open it";
+      const same = !!sibling.art_origin && sibling.art_origin === originNow();
+      chip.className = "chip has" + (same ? " same" : ""); chip.textContent = code + " · S" + sibling.set + (same ? " · same art" : ""); chip.title = "Open it";
       chip.onclick = () => openCard(sibling.id);
+      chipArt(chip, sibling.art !== "none" ? "/cards/art-thumb?id=" + sibling.id + "&v=" + encodeURIComponent(sibling.updated) : "");
     } else if (!ed.id) {
       chip.className = "chip new"; chip.textContent = code + " · none"; chip.disabled = true;
     } else {
@@ -594,10 +635,11 @@ $("clear-trim").onclick = () => {
   refreshArt(); changed();
 };
 
-// A character's rarities share one pool of candidates, found by its name: the
-// saved name, so a rename in progress does not borrow another character's.
+// A character's rarities share one pool of candidates, found by its name and
+// series: the saved ones, so a rename in progress does not borrow another's.
 const poolName = () => (ed.saved ? ed.saved.card_name : readFields().card_name) || "";
-const candidatesPath = () => "api/candidates?key=" + ed.key + "&name=" + encodeURIComponent(poolName());
+const poolSeries = () => (ed.saved ? ed.saved.series : readFields().series) || "";
+const candidatesPath = () => "api/candidates?key=" + ed.key + "&name=" + encodeURIComponent(poolName()) + "&series=" + encodeURIComponent(poolSeries());
 
 const drawCandidates = () => {
   const frame = rules.artWindow[readFields().rarity];
@@ -615,10 +657,12 @@ const drawCandidates = () => {
     tile.className = "cand" + (ed.candidate === candidate.file ? " on" : "") + (soft ? " soft" : "");
     tile.innerHTML = '<img loading="lazy" alt=""><span></span><button class="x" title="Remove this candidate">×</button>';
     tile.querySelector("img").src = "/cards/candidate?key=" + ed.key + "&file=" + candidate.file;
-    tile.querySelector("span").textContent = candidate.width + "×" + candidate.height + (soft ? " · low-res" : "") + (candidate.artist ? " · " + candidate.artist : "");
+    const wornBy = usedBy(candidate.file);
+    if (wornBy.length) { tile.classList.add("worn"); tile.title = "Already the art of " + codesOf(wornBy); }
+    tile.querySelector("span").textContent = (wornBy.length ? "on " + codesOf(wornBy) + " · " : "") + candidate.width + "×" + candidate.height + (soft ? " · low-res" : "") + (candidate.artist ? " · " + candidate.artist : "");
     tile.onclick = () => choose(candidate.file);
     tile.querySelector(".x").onclick = (event) => { event.stopPropagation(); guard(async () => {
-      await api("api/remove", { key: ed.key, file: candidate.file, name: poolName() });
+      await api("api/remove", { key: ed.key, file: candidate.file, name: poolName(), series: poolSeries() });
       ed.candidates = ed.candidates.filter((other) => other.file !== candidate.file);
       if (ed.candidate === candidate.file) choose(null); else drawCandidates();
     }); };
@@ -830,7 +874,7 @@ $("stats-open").onclick = () => {
     const share = (type) => list.length ? Math.round((count((card) => card.card_type === type) / list.length) * 100) + "%" : "–";
     return "<tr><td>" + label + "</td><td>" + list.length + "</td><td>" + count((card) => card.rarity === "common") + "</td><td>" + count((card) => card.rarity === "uncommon") +
       "</td><td>" + count((card) => fullFrame(card.rarity)) + "</td><td>" + count((card) => card.active) + "</td><td>" + share("power") + "</td><td>" + share("wit") + "</td><td>" + share("heart") +
-      "</td><td>" + new Set(list.map((card) => card.card_name)).size + "</td><td>" + count((card) => card.art === "none") + "</td></tr>";
+      "</td><td>" + new Set(list.map(characterOf)).size + "</td><td>" + count((card) => card.art === "none") + "</td></tr>";
   };
   $("stats-body").innerHTML = "<table><tr><th>Set</th><th>Cards</th><th>C</th><th>U</th><th>FA</th><th>Active</th><th>Power</th><th>Wit</th><th>Heart</th><th>Characters</th><th>No art</th></tr>" +
     sets.map((set) => row(set ? "Set " + set : "No set", cards.filter((card) => card.set === set))).join("") + row("<b>All</b>", cards) + "</table>";

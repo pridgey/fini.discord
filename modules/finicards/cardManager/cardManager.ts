@@ -188,12 +188,20 @@ const candidatePath = (key: string, file: string): string | null => {
 
 /**
  * The candidate folders of the character's other rarities. A character's
- * rarities share one pool of candidates, kept as a copy in each folder.
+ * rarities share one pool of candidates, kept as a copy in each folder. A
+ * character is a name in a series: a namesake from another series is not one.
  */
-const siblingFolders = async (key: string, name: string): Promise<string[]> => {
+const siblingFolders = async (
+  key: string,
+  name: string,
+  series: string,
+): Promise<string[]> => {
   if (!name.trim()) return [];
   const rows = await collection().getFullList({
-    filter: pb.filter("card_name = {:name}", { name }),
+    filter: pb.filter("card_name = {:name} && series = {:series}", {
+      name,
+      series,
+    }),
     fields: "id",
   });
   return rows
@@ -203,7 +211,7 @@ const siblingFolders = async (key: string, name: string): Promise<string[]> => {
 };
 
 /** Brings into a card's folder any candidate its other rarities have and it lacks. */
-const gatherPool = async (key: string, name: string) => {
+const gatherPool = async (key: string, name: string, series: string) => {
   const folder = folderOf(key);
   if (!folder) return;
   const have = new Set(await readdir(folder).catch(() => [] as string[]));
@@ -212,7 +220,7 @@ const gatherPool = async (key: string, name: string) => {
   const sources = await readJson<Record<string, string>>(sourcesFile, {});
   const artists = await readJson<Record<string, string>>(artistsFile, {});
   let brought = 0;
-  for (const other of await siblingFolders(key, name)) {
+  for (const other of await siblingFolders(key, name, series)) {
     const files = await readdir(other).catch(() => [] as string[]);
     const missing = files.filter(
       (file) => SAFE_FILE.test(file) && !have.has(file),
@@ -240,10 +248,10 @@ const gatherPool = async (key: string, name: string) => {
   await writeFile(artistsFile, JSON.stringify(artists, null, 2));
 };
 
-const listCandidates = async (key: string, name = "") => {
+const listCandidates = async (key: string, name = "", series = "") => {
   const folder = folderOf(key);
   if (!folder) return [];
-  await gatherPool(key, name);
+  await gatherPool(key, name, series);
   let files: string[] = [];
   try {
     files = (await readdir(folder))
@@ -1154,7 +1162,9 @@ const renderView = async (
 };
 
 /** The artwork a state would use, cut the way the renderer will see it. */
-const artOf = async (state: EditorState): Promise<Buffer | null> => {
+const artOf = async (
+  state: Pick<EditorState, "id" | "key" | "candidate">,
+): Promise<Buffer | null> => {
   const file = state.candidate
     ? candidatePath(state.key, state.candidate)
     : null;
@@ -1200,6 +1210,15 @@ const describe = (row: V2CardDefinitionRecord, copies: number) => ({
   /** Where its picture comes from: its own file, the v1 card, a link, or nowhere. */
   art: row.art ? "own" : row.legacy_card ? "v1" : row.art_url ? "link" : "none",
   origin: row.legacy_card ? "V1" : "V2",
+  /**
+   * The candidate its own art was saved from. Pocketbase keeps the uploaded
+   * name and adds `_` and ten characters; candidates are copied between a
+   * character's rarities under one name, so two rarities with the same
+   * origin are wearing the same image.
+   */
+  art_origin: row.art
+    ? row.art.replace(/_[a-z0-9]{10}(\.[a-z0-9]+)$/i, "$1")
+    : "",
   copies,
   updated: row.updated ?? "",
 });
@@ -1519,6 +1538,21 @@ export const handleCardManager = async (
       });
     }
 
+    if (route === "art-thumb") {
+      // A card's saved artwork, small: the rarity chips show each one, so the
+      // same image is not set on two rarities by mistake.
+      const id = param("id");
+      if (!SAFE_KEY.test(id)) return fail("Bad id");
+      const image = await artOf({ id, key: id });
+      if (!image) return fail("This card has no artwork", 404);
+      return jpegResponse(
+        await sharp(image)
+          .resize({ width: 220, height: 160, fit: "cover" })
+          .toBuffer(),
+        "max-age=31536000, immutable",
+      );
+    }
+
     if (route === "render" && posted) {
       const body = await request.json();
       const view = VIEWS.find((name) => name === body.view) ?? "plain";
@@ -1622,7 +1656,9 @@ export const handleCardManager = async (
     }
 
     if (route === "api/candidates") {
-      return json(await listCandidates(param("key"), param("name")));
+      return json(
+        await listCandidates(param("key"), param("name"), param("series")),
+      );
     }
 
     if (route === "candidate") {
@@ -1672,6 +1708,7 @@ export const handleCardManager = async (
       for (const other of await siblingFolders(
         String(body.key),
         String(body.name ?? ""),
+        String(body.series ?? ""),
       )) {
         await rm(path.join(other, path.basename(file)), { force: true });
       }
