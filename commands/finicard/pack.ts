@@ -71,6 +71,7 @@ const logAgainPack = async (
       ].join(",\n")}`,
       output,
       server_id: press.guild?.id || "unknown",
+      channel_id: press.channelId ?? "unknown",
       user_id: press.user.id,
     });
   } catch (error) {

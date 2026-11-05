@@ -300,6 +300,7 @@ client.on("interactionCreate", async (interaction) => {
             input: `Command options:\n${describeOptions(interaction, commandToRun).join(",\n")}`,
             output,
             server_id: interaction.guild?.id || "unknown",
+            channel_id: interaction.channelId ?? "unknown",
             user_id: interaction.user.id,
           });
         } catch (logErr) {

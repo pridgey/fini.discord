@@ -62,6 +62,7 @@ export const rollJackpot = async (
       input: message.content || "Content not found",
       output: `Jackpot award: ${jackpotBalance} finicoin`,
       server_id: guildId,
+      channel_id: message.channelId,
       user_id: authorId,
     });
   }

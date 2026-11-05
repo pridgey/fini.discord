@@ -31,6 +31,8 @@ export type LogRecord = {
   id?: string;
   user_id: string;
   server_id: string;
+  /** The Discord channel the command ran in. */
+  channel_id: string;
   command: string;
   input: string;
   output: string;

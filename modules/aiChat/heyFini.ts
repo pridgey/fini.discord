@@ -69,6 +69,7 @@ export const answerHeyFini = async (message: Message): Promise<void> => {
     await createLog({
       user_id: message.author.id,
       server_id: message.guild?.id || "unknown",
+      channel_id: message.channelId,
       command: HEY_FINI,
       input: message.content,
       output: response,
