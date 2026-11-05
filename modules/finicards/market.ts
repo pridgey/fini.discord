@@ -116,6 +116,9 @@ export const handOver = async (
     user_id: toUserId,
     identifier,
     acquired_from: "trade",
+    // Marks are the old owner's, not the card's.
+    favorite: false,
+    to_sell: false,
   });
 };
 

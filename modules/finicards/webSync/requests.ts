@@ -1,6 +1,9 @@
-import type { V2DeckRecord } from "../../../types/PocketbaseTablesV2";
+import type {
+  V2DeckRecord,
+  V2UserCardRecord,
+} from "../../../types/PocketbaseTablesV2";
 import { pb } from "../../../utilities/pocketbase";
-import { getUserCollection } from "../cardStore";
+import { getUserCollection, V2_USER_CARD } from "../cardStore";
 import {
   deleteDeck,
   getDecks,
@@ -19,10 +22,10 @@ import { remote } from "./remote";
  * database as if the request were a slash command typed by a stranger -
  * because the mailbox is public, and it may be exactly that.
  *
- * Decks can be asked for, and a card can be shown in Discord. Packs, selling
- * and trades stay in Discord, so the worst a bad request can do is rearrange a
- * deck - or post one of the player's own cards in the Finicards channel, at most
- * once a minute.
+ * Decks can be asked for, a card can be shown in Discord, and a card can be
+ * marked a favorite or to sell. Packs, selling and trades stay in Discord, so
+ * the worst a bad request can do is rearrange a deck, mark a card - or post
+ * one of the player's own cards in the Finicards channel, at most once a minute.
  */
 
 export type WebRequestRecord = {
@@ -30,7 +33,7 @@ export type WebRequestRecord = {
   /** The mailbox's user id - not a Discord id. */
   user: string;
   server_id: string;
-  kind: "deck_save" | "deck_delete" | "card_show";
+  kind: "deck_save" | "deck_delete" | "card_show" | "card_mark";
   payload: unknown;
   status: "pending" | "applied" | "rejected";
   created: string;
@@ -169,6 +172,47 @@ export const decideCardShow = (
   return { ok: true, cardId: card };
 };
 
+export type CardMarks = { favorite: boolean; to_sell: boolean };
+
+/**
+ * Decides a request to mark a card. Pure: the card must be one the player
+ * holds, and a mark must be true or false. A card is never both a favorite
+ * and to sell, so setting one clears the other.
+ *
+ * @param owned Each copy the player holds, by id, with its marks now
+ */
+export const decideCardMark = (
+  payload: unknown,
+  owned: Map<string, CardMarks>,
+):
+  | { ok: false; reason: string }
+  | ({ ok: true; cardId: string } & CardMarks) => {
+  const unreadable = {
+    ok: false as const,
+    reason: "That request could not be read.",
+  };
+  if (!payload || typeof payload !== "object" || Array.isArray(payload))
+    return unreadable;
+  const { card, favorite, to_sell } = payload as Record<string, unknown>;
+  if (typeof card !== "string" || !card) return unreadable;
+  if (favorite === undefined && to_sell === undefined) return unreadable;
+  if (favorite !== undefined && typeof favorite !== "boolean")
+    return unreadable;
+  if (to_sell !== undefined && typeof to_sell !== "boolean") return unreadable;
+  if (favorite && to_sell)
+    return { ok: false, reason: "A favorite can't be up for sale." };
+  const now = owned.get(card);
+  if (!now)
+    return { ok: false, reason: "That card is no longer in your collection." };
+
+  const marks = { ...now };
+  if (favorite !== undefined) marks.favorite = favorite;
+  if (to_sell !== undefined) marks.to_sell = to_sell;
+  if (favorite) marks.to_sell = false;
+  if (to_sell) marks.favorite = false;
+  return { ok: true, cardId: card, ...marks };
+};
+
 /**
  * The Discord id behind a mailbox user, as Pocketbase recorded it at sign-in.
  * Read from the mailbox's own table - never from anything the request says.
@@ -234,6 +278,33 @@ export const resolveRequest = async (
     return {
       status: "applied",
       message: "Posted in the server's Finicards channel.",
+    };
+  }
+
+  if (request.kind === "card_mark") {
+    const decision = decideCardMark(
+      request.payload,
+      new Map(
+        collection.map((card) => [
+          card.id ?? "",
+          { favorite: !!card.favorite, to_sell: !!card.to_sell },
+        ]),
+      ),
+    );
+    if (!decision.ok) return reject(decision.reason);
+    await pb
+      .collection<V2UserCardRecord>(V2_USER_CARD)
+      .update(decision.cardId, {
+        favorite: decision.favorite,
+        to_sell: decision.to_sell,
+      });
+    return {
+      status: "applied",
+      message: decision.favorite
+        ? "Marked a favorite."
+        : decision.to_sell
+          ? "Marked to sell."
+          : "Unmarked.",
     };
   }
 

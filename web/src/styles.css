@@ -691,6 +691,29 @@ code { padding: 2px 6px; border-radius: 6px; background: var(--panel-2); }
 .card-badges [data-badge="secret_art"] { background: var(--wheel); color: #0b0c16; }
 .card-badges [data-badge="legendary"] { background: var(--gold); color: #2a1d00; }
 
+/* A favorite or to-sell mark, at the card's bottom right where nothing is printed over the art. */
+.card-mark {
+  position: absolute;
+  right: 5cqw;
+  bottom: 5cqw;
+  z-index: 7;
+  padding: 1.2cqw 3.6cqw;
+  border-radius: 999px;
+  font-size: 6cqw;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  box-shadow: 0 3px 10px -3px #000;
+}
+.card-mark[data-mark="favorite"] { background: var(--gold); color: #2a1d00; }
+.card-mark[data-mark="to_sell"] { background: rgba(6, 7, 13, 0.85); color: #ff9a8a; box-shadow: 0 0 0 1px rgba(255, 154, 138, 0.55), 0 3px 10px -3px #000; }
+
+/* Favorite and To sell in a card's details: on, they fill. */
+.modal-marks { display: flex; gap: 8px; margin-top: 18px; }
+.modal-marks .button[aria-pressed="true"][data-mark="favorite"] { background: var(--gold); color: #2a1d00; border-color: var(--gold); }
+.modal-marks .button[aria-pressed="true"][data-mark="to_sell"] { background: rgba(255, 154, 138, 0.16); color: #ff9a8a; border-color: rgba(255, 154, 138, 0.6); }
+
 /* The binder view: a set in number order, with a blank for each card missing. */
 .binder + .binder { margin-top: 34px; }
 .binder-head {

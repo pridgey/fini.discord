@@ -118,6 +118,10 @@ export type V2UserCardRecord = {
   serial?: number;
   /** How it was obtained: "pack" | "grant" | "convert" | "trade" ... */
   acquired_from: string;
+  /** Marked a favorite on the site. Never also `to_sell`. */
+  favorite?: boolean;
+  /** Marked on the site for a bulk sell. Never also `favorite`. */
+  to_sell?: boolean;
   created?: string;
   updated?: string;
   expand?: {

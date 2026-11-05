@@ -101,6 +101,11 @@ export const CardView = memo(function CardView({
           {card.foil && <span className="card-holo" />}
           {tier === "legendary" && <span className="card-aura" />}
           <span className="card-glare" />
+          {size === "full" && (card.favorite || card.to_sell) && (
+            <span className="card-mark" data-mark={card.favorite ? "favorite" : "to_sell"}>
+              {card.favorite ? "★" : "Sell"}
+            </span>
+          )}
           {size === "full" && (card.foil || tier === "secret_art" || tier === "legendary") && (
             // At grid size the printed code is too small to pick out.
             <span className="card-badges">
@@ -133,6 +138,11 @@ export const CardView = memo(function CardView({
         {card.foil && <span className="card-holo" />}
         {tier === "legendary" && <span className="card-aura" />}
         <span className="card-glare" />
+        {size === "full" && (card.favorite || card.to_sell) && (
+          <span className="card-mark" data-mark={card.favorite ? "favorite" : "to_sell"}>
+            {card.favorite ? "★" : "Sell"}
+          </span>
+        )}
 
         <span className="card-top">
           <span className="card-lead">

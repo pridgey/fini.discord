@@ -102,6 +102,10 @@ export type Filters = {
   keyword: boolean;
   /** Only cards held more than once: every copy of each. */
   duplicates: boolean;
+  /** Only copies marked a favorite. */
+  favorite: boolean;
+  /** Only copies marked to sell. */
+  toSell: boolean;
   sort: SortKey;
 };
 
@@ -113,6 +117,8 @@ export const NO_FILTERS: Filters = {
   foil: false,
   keyword: false,
   duplicates: false,
+  favorite: false,
+  toSell: false,
   sort: "newest",
 };
 
@@ -123,7 +129,9 @@ export const filtersActive = (filters: Filters): boolean =>
   filters.set !== 0 ||
   filters.foil ||
   filters.keyword ||
-  filters.duplicates;
+  filters.duplicates ||
+  filters.favorite ||
+  filters.toSell;
 
 const matchesSearch = (card: Card, meta: Meta, needle: string): boolean =>
   [
@@ -173,6 +181,8 @@ export const applyFilters = (cards: Card[], filters: Filters, meta: Meta): Card[
         (!filters.set || card.def.set === filters.set) &&
         (!filters.foil || card.foil) &&
         (!filters.keyword || !!card.keyword) &&
+        (!filters.favorite || card.favorite) &&
+        (!filters.toSell || card.to_sell) &&
         (!counts || (counts.get(card.def.id) ?? 0) > 1),
     )
     .sort((a, b) => sorter(a, b, meta) || byName(a, b) || a.id.localeCompare(b.id));
@@ -236,7 +246,9 @@ export const narrowing = (filters: Filters): boolean =>
   filters.tiers.length > 0 ||
   filters.foil ||
   filters.keyword ||
-  filters.duplicates;
+  filters.duplicates ||
+  filters.favorite ||
+  filters.toSell;
 
 /**
  * Blanks only mean something when the grid is a set in number order with

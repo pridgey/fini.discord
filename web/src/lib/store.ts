@@ -86,7 +86,9 @@ export type DeckRequest =
   | { kind: "deck_save"; payload: { deckId?: string; name: string; cards: string[] } }
   | { kind: "deck_delete"; payload: { deckId: string } }
   /** Fini posts the card in the server's Finicards channel, as the View button does. */
-  | { kind: "card_show"; payload: { card: string } };
+  | { kind: "card_show"; payload: { card: string } }
+  /** A favorite or to-sell mark. Setting one clears the other. */
+  | { kind: "card_mark"; payload: { card: string; favorite?: boolean; to_sell?: boolean } };
 
 const ANSWER_EVERY_MS = 600;
 const ANSWER_WITHIN_MS = 25_000;

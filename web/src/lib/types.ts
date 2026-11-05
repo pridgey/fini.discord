@@ -45,6 +45,10 @@ export type CardRow = {
   serial: number;
   acquired_from: string;
   acquired: string;
+  /** Marked a favorite. Never also `to_sell`. */
+  favorite: boolean;
+  /** Marked to sell. Never also `favorite`. */
+  to_sell: boolean;
 };
 
 /** An owned copy joined to the card it is a copy of. */

@@ -39,6 +39,8 @@ const card = (def: Partial<Definition> = {}, copy: Partial<Card> = {}): Card => 
     serial: 0,
     acquired_from: "pack",
     acquired: `2026-10-${String(next).padStart(2, "0")}`,
+    favorite: false,
+    to_sell: false,
     ...copy,
     def: {
       id: `def${next}`,
@@ -254,5 +256,22 @@ describe("collection layout", () => {
     expect(run[0][0]).toBeNull();
     expect(run[0][1]).toContain("shiny+plain");
     expect(layoutCollection([], bySet, meta, { gaps: true, piles: true })).toEqual([]);
+  });
+});
+
+describe("favorite and to-sell filters", () => {
+  const kept = card({}, { favorite: true });
+  const selling = card({}, { to_sell: true });
+  const plain = card();
+  const all = [kept, selling, plain];
+
+  test("each shows only its own marked copies", () => {
+    expect(applyFilters(all, { ...NO_FILTERS, favorite: true }, meta)).toEqual([kept]);
+    expect(applyFilters(all, { ...NO_FILTERS, toSell: true }, meta)).toEqual([selling]);
+  });
+
+  test("count as filters, so Clear clears them", () => {
+    expect(filtersActive({ ...NO_FILTERS, favorite: true })).toBe(true);
+    expect(filtersActive({ ...NO_FILTERS, toSell: true })).toBe(true);
   });
 });

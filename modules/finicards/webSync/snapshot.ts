@@ -51,6 +51,8 @@ export const WEB_FIELDS: Record<WebCollection, string[]> = {
     "serial",
     "acquired_from",
     "acquired",
+    "favorite",
+    "to_sell",
   ],
   web_deck: ["owner", "server_id", "name", "cards"],
   web_player: ["owner", "server_id", "server_name", "identifier", "cards"],
@@ -184,6 +186,8 @@ export const toWebCard = (card: V2UserCardRecord): WebRow => ({
   serial: card.legendary ? 1 : (card.serial ?? 0),
   acquired_from: card.acquired_from ?? "",
   acquired: card.created ?? "",
+  favorite: !!card.favorite,
+  to_sell: !!card.to_sell,
 });
 
 export const toWebDeck = (deck: V2DeckRecord): WebRow => ({

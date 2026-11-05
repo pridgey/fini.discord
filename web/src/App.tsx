@@ -90,7 +90,7 @@ const Signed = ({ who }: { who: Viewer }) => {
       </Empty>
     );
   } else if (route.page === "collection") {
-    page = <CollectionPage key={serverId} cards={cards} decks={decks} meta={data.meta} />;
+    page = <CollectionPage key={serverId} cards={cards} decks={decks} meta={data.meta} onMarked={reload} />;
   } else if (route.page === "decks") {
     page = <DecksPage cards={cards} decks={decks} meta={data.meta} />;
   } else {

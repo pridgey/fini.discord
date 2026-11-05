@@ -112,6 +112,12 @@ export const FilterBar = ({ filters, onChange, sets, tiers, shown, total, compac
           >
             Duplicates
           </Chip>
+          <Chip active={filters.favorite} onClick={() => set({ favorite: !filters.favorite })}>
+            ★ Favorites
+          </Chip>
+          <Chip active={filters.toSell} onClick={() => set({ toSell: !filters.toSell })}>
+            To sell
+          </Chip>
         </div>
         {extra && <div className="chip-group">{extra}</div>}
         <div className="filters-count">

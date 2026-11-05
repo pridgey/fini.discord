@@ -18,7 +18,18 @@ import { CardModal } from "./CardModal";
 import { CardView } from "./CardView";
 import { FilterBar } from "./FilterBar";
 
-export const CollectionPage = ({ cards, decks, meta }: { cards: Card[]; decks: Deck[]; meta: Meta }) => {
+export const CollectionPage = ({
+  cards,
+  decks,
+  meta,
+  onMarked,
+}: {
+  cards: Card[];
+  decks: Deck[];
+  meta: Meta;
+  /** Loads the collection again, after Fini has marked a card. */
+  onMarked?: () => Promise<void>;
+}) => {
   // A collection opens as a binder: every set in number order.
   const [filters, setFilters] = useState<Filters>({ ...NO_FILTERS, sort: "set" });
   const [open, setOpen] = useState<{ card: Card; copies: Card[] } | null>(null);
@@ -39,6 +50,7 @@ export const CollectionPage = ({ cards, decks, meta }: { cards: Card[]; decks: D
     return TIERS.filter((tier) => tiers.has(tier));
   }, [cards]);
 
+  const byId = useMemo(() => new Map(cards.map((card) => [card.id, card])), [cards]);
   const foils = cards.filter((card) => card.foil).length;
   const specials = cards.filter((card) => card.legendary || card.def.secret_art).length;
   const canGap = gapsApply(filters);
@@ -179,12 +191,14 @@ export const CollectionPage = ({ cards, decks, meta }: { cards: Card[]; decks: D
 
       {open && (
         <CardModal
-          card={open.card}
-          copies={open.copies}
+          // The card as last loaded, so a mark shows once Fini has made it.
+          card={byId.get(open.card.id) ?? open.card}
+          copies={open.copies.map((copy) => byId.get(copy.id) ?? copy)}
           meta={meta}
           decks={decks}
           onPick={(card) => setOpen({ card, copies: open.copies })}
           onClose={() => setOpen(null)}
+          onMarked={onMarked}
         />
       )}
     </>

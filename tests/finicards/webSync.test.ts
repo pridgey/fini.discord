@@ -6,6 +6,7 @@ import type {
 } from "../../types/PocketbaseTablesV2";
 import { DECK_SIZE, MAX_DECKS_PER_USER } from "../../modules/finicards/decks";
 import {
+  decideCardMark,
   decideCardShow,
   decideDeckRequest,
 } from "../../modules/finicards/webSync/requests";
@@ -385,5 +386,67 @@ describe("showing a card in Discord from the site", () => {
     ]) {
       expect(decideCardShow(payload, owned).ok).toBe(false);
     }
+  });
+});
+
+describe("card mark requests", () => {
+  const owned = new Map([
+    ["fav", { favorite: true, to_sell: false }],
+    ["sell", { favorite: false, to_sell: true }],
+    ["plain", { favorite: false, to_sell: false }],
+  ]);
+
+  test("setting one mark clears the other", () => {
+    expect(decideCardMark({ card: "sell", favorite: true }, owned)).toEqual({
+      ok: true,
+      cardId: "sell",
+      favorite: true,
+      to_sell: false,
+    });
+    expect(decideCardMark({ card: "fav", to_sell: true }, owned)).toEqual({
+      ok: true,
+      cardId: "fav",
+      favorite: false,
+      to_sell: true,
+    });
+  });
+
+  test("clearing a mark leaves the other alone", () => {
+    expect(decideCardMark({ card: "fav", favorite: false }, owned)).toEqual({
+      ok: true,
+      cardId: "fav",
+      favorite: false,
+      to_sell: false,
+    });
+  });
+
+  test("only the player's own cards, and only true or false", () => {
+    expect(decideCardMark({ card: "theirs", favorite: true }, owned).ok).toBe(
+      false,
+    );
+    expect(decideCardMark({ card: "plain", favorite: "yes" }, owned).ok).toBe(
+      false,
+    );
+    expect(decideCardMark({ card: "plain" }, owned).ok).toBe(false);
+    expect(
+      decideCardMark({ card: "plain", favorite: true, to_sell: true }, owned)
+        .ok,
+    ).toBe(false);
+    expect(decideCardMark(null, owned).ok).toBe(false);
+  });
+
+  test("marks are sent to the site with the copy", () => {
+    expect(
+      toWebCard({
+        id: "c",
+        user_id: "u",
+        server_id: "s",
+        identifier: "",
+        card: "d",
+        foil: false,
+        acquired_from: "pack",
+        favorite: true,
+      }),
+    ).toMatchObject({ favorite: true, to_sell: false });
   });
 });

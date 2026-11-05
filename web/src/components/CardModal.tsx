@@ -36,6 +36,7 @@ export const CardModal = ({
   decks,
   onPick,
   onClose,
+  onMarked,
 }: {
   card: Card;
   /** Every copy in the pile the card was opened from, this one included. */
@@ -45,6 +46,8 @@ export const CardModal = ({
   /** Called to show another copy from the pile. */
   onPick?: (card: Card) => void;
   onClose: () => void;
+  /** Called once Fini has marked a card, to load the change. */
+  onMarked?: () => Promise<void>;
 }) => {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
@@ -71,6 +74,16 @@ export const CardModal = ({
     setShowing({ busy: true });
     const result = await ask(card.server_id, { kind: "card_show", payload: { card: card.id } });
     setShowing({ busy: false, message: result.message, ok: result.ok });
+  };
+
+  // Favorite and To sell: asked of Fini, which makes the change and sends it back.
+  const [marking, setMarking] = useState<{ busy: boolean; message?: string; ok?: boolean }>({ busy: false });
+  useEffect(() => setMarking({ busy: false }), [card.id]);
+  const mark = async (change: { favorite?: boolean; to_sell?: boolean }) => {
+    setMarking({ busy: true });
+    const result = await ask(card.server_id, { kind: "card_mark", payload: { card: card.id, ...change } });
+    if (result.ok) await onMarked?.();
+    setMarking({ busy: false, message: result.ok ? undefined : result.message, ok: result.ok });
   };
 
   return (
@@ -189,6 +202,36 @@ export const CardModal = ({
             <dt>Copy</dt>
             <dd className="mono">{card.id}</dd>
           </dl>
+
+          <div className="modal-marks" role="group" aria-label="Marks">
+            <button
+              type="button"
+              className="button"
+              data-mark="favorite"
+              aria-pressed={card.favorite}
+              disabled={marking.busy}
+              onClick={() => void mark({ favorite: !card.favorite })}
+              title="A favorite is kept out of selling"
+            >
+              {card.favorite ? "★ Favorite" : "☆ Favorite"}
+            </button>
+            <button
+              type="button"
+              className="button"
+              data-mark="to_sell"
+              aria-pressed={card.to_sell}
+              disabled={marking.busy}
+              onClick={() => void mark({ to_sell: !card.to_sell })}
+              title="Set aside to sell to Fini"
+            >
+              {card.to_sell ? "✓ To sell" : "To sell"}
+            </button>
+          </div>
+          {marking.message && (
+            <p className="modal-answer" data-ok={marking.ok} role="status">
+              {marking.message}
+            </p>
+          )}
 
           <div className="modal-actions">
             <button type="button" className="button discord" disabled={showing.busy} onClick={showInDiscord}>
