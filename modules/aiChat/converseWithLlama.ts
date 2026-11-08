@@ -97,7 +97,7 @@ const SAMPLING = {
  * repeated sequences is a poor fit for answers that must repeat a term
  * exactly ("Eb7 ... Eb7"). It gets ordinary settings instead.
  */
-const SAMPLING_FOR: Record<LlamaBackend["name"], Record<string, number>> = {
+export const SAMPLING_FOR: Record<LlamaBackend["name"], Record<string, number>> = {
   light: SAMPLING,
   heavy: { temperature: 0.7, top_p: 0.8, top_k: 20 },
 };
