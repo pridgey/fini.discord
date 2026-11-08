@@ -12,8 +12,36 @@ import { buildSystemPrompt } from "./systemPrompt";
 import { formatReplyContext } from "./formatReplyContext";
 import { CHAT_TYPE_ANTHROPIC } from "./chatTypes";
 
-const MAX_CHAT_TOKENS = 2000;
+/**
+ * Sonnet 5.5 thinks before it answers, and that thinking is billed against
+ * this same limit. At the old 2000 the thinking left a few hundred tokens for
+ * the reply, and answers stopped mid-sentence. 16000 is the most a
+ * non-streaming request can ask for without risking an HTTP timeout.
+ */
+const MAX_CHAT_TOKENS = 16000;
 const CURRENT_MODEL: Model = "claude-sonnet-5-5";
+
+/**
+ * How hard the model thinks. The default ("high") is tuned for coding and
+ * agent work; chat with the odd web search reads just as well at "medium" and
+ * spends far less of the budget before it starts answering.
+ */
+const CHAT_EFFORT = "medium";
+
+/**
+ * A web search can run long enough that the API hands the turn back with
+ * `pause_turn` before the answer is written. Resending lets it finish; this
+ * caps how many times we do that.
+ */
+const MAX_CONTINUATIONS = 3;
+
+/** Sent when the model's safety checks decline to answer. */
+const REFUSAL_REPLY =
+  "I can't help with that one. Try rephrasing, or ask me something else.";
+
+/** Tacked onto an answer that ran out of room, so it doesn't just stop. */
+const TRUNCATED_NOTE =
+  '\n\n(I ran out of room there. Say "hey fini continue" and I\'ll pick up where I left off.)';
 
 export const converseWithClaude = async ({
   userID,
@@ -142,11 +170,15 @@ export const converseWithClaude = async ({
     }
 
     console.log("Submitting to Anthropic for response", { finalMessage });
-    const anthropicMessageResponse = await anthropic.beta.messages.create({
+
+    const request: Omit<
+      Beta.Messages.MessageCreateParamsNonStreaming,
+      "messages"
+    > = {
       model: CURRENT_MODEL,
       max_tokens: MAX_CHAT_TOKENS,
-      messages: formattedHistory,
       ...(systemPrompt.length ? { system: systemPrompt.join("\n\n") } : {}),
+      output_config: { effort: CHAT_EFFORT },
       betas: ["files-api-2025-04-14"],
       tools: [
         {
@@ -155,13 +187,69 @@ export const converseWithClaude = async ({
           max_uses: 5,
         },
       ],
+    };
+
+    let anthropicMessageResponse = await anthropic.beta.messages.create({
+      ...request,
+      messages: formattedHistory,
     });
 
-    const anthropicResponseText =
-      anthropicMessageResponse.content
-        .filter((block): block is Beta.BetaTextBlock => block.type === "text")
-        ?.map((block) => block.text)
-        .join("") || "";
+    // The text so far is kept across continuations: a paused turn may already
+    // have written part of the answer before it searched again.
+    const textParts: string[] = [];
+    const collectText = (response: Beta.BetaMessage) =>
+      textParts.push(
+        ...response.content
+          .filter((block): block is Beta.BetaTextBlock => block.type === "text")
+          .map((block) => block.text),
+      );
+    collectText(anthropicMessageResponse);
+
+    // A paused turn is resumed by sending its content back as the assistant
+    // turn, unchanged - thinking and search blocks included.
+    const continued: BetaMessageParam[] = [...formattedHistory];
+    for (
+      let attempt = 0;
+      anthropicMessageResponse.stop_reason === "pause_turn" &&
+      attempt < MAX_CONTINUATIONS;
+      attempt++
+    ) {
+      continued.push({
+        role: "assistant",
+        content: anthropicMessageResponse.content,
+      });
+      anthropicMessageResponse = await anthropic.beta.messages.create({
+        ...request,
+        messages: continued,
+      });
+      collectText(anthropicMessageResponse);
+    }
+
+    const stopReason = anthropicMessageResponse.stop_reason;
+    console.log("Anthropic finished", {
+      stopReason,
+      usage: anthropicMessageResponse.usage,
+    });
+
+    if (stopReason === "refusal") {
+      // Nothing is saved: a refused exchange in history makes the next
+      // message more likely to be refused too.
+      console.groupEnd();
+      return REFUSAL_REPLY;
+    }
+
+    let anthropicResponseText = textParts.join("").trim();
+
+    if (!anthropicResponseText) {
+      throw new Error(`Claude returned no text (stop_reason: ${stopReason})`);
+    }
+
+    // The note goes to discord only; history keeps the answer as written so
+    // "continue" picks up from its real last word.
+    const replyText =
+      stopReason === "max_tokens" || stopReason === "pause_turn"
+        ? anthropicResponseText + TRUNCATED_NOTE
+        : anthropicResponseText;
 
     // Save the user message to history
     if (!options.skipSave) {
@@ -192,7 +280,7 @@ export const converseWithClaude = async ({
 
     console.log("Completed converseWithClaude()");
     console.groupEnd();
-    return anthropicResponseText;
+    return replyText;
   } catch (err) {
     console.error("Error in converseWithClaude:", err);
     console.groupEnd();
