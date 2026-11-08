@@ -19,7 +19,7 @@ export const execute: SlashCommand["execute"] = async (
       "One daily post for every daily game",
       "Item cards that unlock Exodia, Shenron and Super Sonic",
       "Sorting and filtering in /finicard collection",
-      "More of Fini's AI running on local models",
+      "~~More of Fini's AI running on local models~~",
     ];
 
     await interaction.reply(
