@@ -7,7 +7,11 @@ import {
   type LlamaToolCall,
   type LlamaToolDefinition,
 } from "./llamaTools";
-import { determinePersonality } from "./determinePersonality";
+import {
+  NEUTRAL_PERSONALITY,
+  getActivePersonality,
+} from "./determinePersonality";
+import { PersonalitiesRecord } from "../../types/PocketbaseTables";
 import { getChatHistory } from "./getChatHistory";
 import { saveChatMessage } from "./saveChatMessage";
 import { formatReplyContext } from "./formatReplyContext";
@@ -15,6 +19,7 @@ import {
   NO_FURTHER_RETRIEVAL,
   RETRIEVAL_SKIP,
   STYLE_REMINDER,
+  buildPersonaRewritePrompt,
   buildRetrievalPrompt,
   buildSystemPrompt,
 } from "./systemPrompt";
@@ -28,8 +33,10 @@ import { AIConverseProps } from "./types";
  *
  *   1. Retrieval - a short, persona-free pass whose only output is a tool call
  *      or {@link RETRIEVAL_SKIP}. Nothing it writes reaches the user.
- *   2. Answer - the user-visible generation, carrying the persona and the style
- *      rules, with any tool results already in context and no tools attached.
+ *   2. Answer - the generation that decides what to say, with the style rules
+ *      and any tool results in context, no tools attached, and no persona.
+ *   3. Persona - only when the user has a personality on: the finished answer
+ *      is rewritten in that voice. See {@link rewriteInPersona}.
  *
  * The split exists because the persona was changing what the bot *did*, not
  * just how it sounded. See {@link buildRetrievalPrompt} for the measurements.
@@ -451,6 +458,61 @@ const runRetrieval = async (
 };
 
 /**
+ * Rewrites a finished answer in the user's chosen personality.
+ *
+ * The answer pass runs with no persona so the voice can't change what Fini
+ * says - only how it says it. This pass sees only the user's message and the
+ * answer, not the history: it is restyling, not answering, and the shorter
+ * prompt keeps the extra time down.
+ *
+ * Never throws. If the rewrite fails or comes back empty, the plain answer is
+ * still a good reply.
+ * @param personality The user's active personality
+ * @param userMessage What the user asked, so the voice can address it
+ * @param answer The finished plain answer
+ * @returns The answer in the persona's voice, or the plain answer on failure
+ */
+const rewriteInPersona = async (
+  personality: PersonalitiesRecord,
+  userMessage: string,
+  answer: string,
+): Promise<string> => {
+  try {
+    const choice = await requestCompletion({
+      messages: [
+        // Only the bare persona here. The fuller prompt used elsewhere ends
+        // with "provide helpful and accurate information", which on this pass
+        // nudges the model towards copying the answer out unchanged.
+        {
+          role: "system",
+          content: `You are ${personality.personality_name} with the personality of ${personality.prompt}.`,
+        },
+        { role: "user", content: userMessage },
+        {
+          role: "system",
+          content: buildPersonaRewritePrompt(
+            personality.personality_name,
+            personality.prompt,
+            answer,
+          ),
+        },
+      ],
+      maxTokens: MAX_CHAT_TOKENS,
+      timeoutMs: REQUEST_TIMEOUT_MS,
+    });
+
+    const rewritten = choice?.message?.content?.trim();
+    if (rewritten) return rewritten;
+
+    console.warn("Persona rewrite came back empty, sending the plain answer");
+  } catch (err) {
+    console.error("Persona rewrite failed, sending the plain answer:", err);
+  }
+
+  return answer;
+};
+
+/**
  * Holds a conversation with the local model and returns its reply.
  * @param props The user, server, message, and any attachment or reply context
  * @returns The text to send back to discord
@@ -554,18 +616,27 @@ export const converseWithLlama = async ({
       });
     }
 
-    // Identity and grounding go in the system turn, and only on this pass.
+    // Identity and grounding go in the system turn. Without an identity here
+    // Gemma answered "who are you?" with "I am a large language model, trained
+    // by Google" 3 times out of 3; with one, it answered as Fini.
     //
-    // The Claude path prepends the personality to the user's message instead,
-    // and Claude is strong enough to follow it there. Gemma is not: with the
-    // persona in the user turn it answered "who are you?" with "I am a large
-    // language model, trained by Google" 3 times out of 3, and with the same
-    // text moved here it answered as Fini 3 times out of 3. An instruction
-    // buried in the user's question reads as part of the question.
+    // The identity is always plain Fini, even when the user has a personality
+    // on. The personality is applied afterwards by rewriteInPersona, so it
+    // changes how the answer sounds without changing what it says.
     const systemPrompt: string[] = [];
 
+    const personality = options.skipPersonality
+      ? undefined
+      : await getActivePersonality(userID, server).catch((err) => {
+          console.error(
+            "Could not look up personality, answering plainly:",
+            err,
+          );
+          return undefined;
+        });
+
     if (!options.skipPersonality) {
-      systemPrompt.push(await determinePersonality(userID, server));
+      systemPrompt.push(NEUTRAL_PERSONALITY);
     }
 
     if (!options.skipHistory) {
@@ -623,6 +694,16 @@ export const converseWithLlama = async ({
       );
     }
 
+    /*
+     * History keeps the plain answer, not the persona's version. The answer
+     * pass imitates its own past turns far more than it follows instructions,
+     * so storing the persona's wording would feed the voice straight back into
+     * the step that is meant to be free of it.
+     */
+    const replyText = personality
+      ? await rewriteInPersona(personality, finalMessage, responseText)
+      : responseText;
+
     // Save both sides of the exchange. No anthropic client is passed because
     // this backend never uploads files, so there's nothing remote to clean up.
     if (!options.skipSave) {
@@ -645,7 +726,7 @@ export const converseWithLlama = async ({
 
     console.log("Completed converseWithLlama()");
     console.groupEnd();
-    return responseText;
+    return replyText;
   } catch (err) {
     console.error("Error in converseWithLlama:", err);
     console.groupEnd();

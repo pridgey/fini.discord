@@ -3,6 +3,7 @@ import {
   NO_FURTHER_RETRIEVAL,
   RETRIEVAL_SKIP,
   STYLE_REMINDER,
+  buildPersonaRewritePrompt,
   buildRetrievalPrompt,
   buildSystemPrompt,
 } from "../../modules/aiChat/systemPrompt";
@@ -166,5 +167,33 @@ describe("buildRetrievalPrompt capability routing", () => {
 
     expect(prompt).toContain("fini_capabilities");
     expect(prompt).toContain("slash command");
+  });
+});
+
+describe("buildPersonaRewritePrompt", () => {
+  const prompt = buildPersonaRewritePrompt(
+    "Coach",
+    "explains everything in basketball terms",
+    "C Dorian is C D Eb F G A Bb.",
+  );
+
+  it("carries the finished answer, last, so the model rewrites rather than re-answers", () => {
+    expect(prompt).toEndWith("ANSWER:\nC Dorian is C D Eb F G A Bb.");
+  });
+
+  it("names the persona and carries its description", () => {
+    expect(prompt).toContain("in the voice of Coach");
+    expect(prompt).toContain("explains everything in basketball terms");
+  });
+
+  // Without this the model copies the answer out untouched.
+  it("says an unchanged answer is a failure", () => {
+    expect(prompt).toContain("is a failure");
+  });
+
+  // The whole point of the separate pass: the voice may not change the content.
+  it("tells the model to keep every fact and add none", () => {
+    expect(prompt).toContain("Every fact, number, name and step");
+    expect(prompt).toContain("must not add new facts");
   });
 });

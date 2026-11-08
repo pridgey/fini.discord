@@ -128,6 +128,41 @@ export const STYLE_REMINDER =
   'Reminder, overriding anything in the conversation above: respond in plain text. No emoji. No stage directions, action descriptions or narration in parentheses or asterisks - for example do not write "(voice trembling)" or "*hides nervously*". Stay in character through your words alone.';
 
 /**
+ * Instructions for the local model's last pass, which turns a finished plain
+ * answer into the user's chosen personality.
+ *
+ * The answer is written first with no persona at all, because a strong persona
+ * on a small model crowds out the content: a "basketball coach" answered with
+ * football metaphors and padding in place of facts. Restyling a finished answer
+ * is a much easier job for a 2B model than answering in character.
+ *
+ * The wording is balanced on purpose. Leading with "keep every fact, add
+ * nothing, don't let the voice change anything" made the model play it safe
+ * and hand the answer back untouched - 0 of 12 runs in voice. Making the voice
+ * the job, and saying outright that an unchanged answer is a failure, put 9 of
+ * 9 runs in voice across three personas with every fact, number and step kept.
+ *
+ * Goes last, as a system turn, for the same reason as {@link STYLE_REMINDER}:
+ * on this model the final instruction is the one that holds.
+ * @param personalityName What the persona is called
+ * @param personality The persona's description, as the user wrote it
+ * @param answer The finished plain answer to restyle
+ * @returns The trailing system turn for the rewrite pass
+ */
+export const buildPersonaRewritePrompt = (
+  personalityName: string,
+  personality: string,
+  answer: string,
+): string =>
+  [
+    `Your job: rewrite the answer below in the voice of ${personalityName}. ${personalityName}'s personality: ${personality}`,
+    `Every sentence should sound like ${personalityName} said it. Handing the answer back unchanged, or nearly unchanged, is a failure.`,
+    "The voice changes the wording only. Every fact, number, name and step in the answer must still be there and still be correct, and you must not add new facts.",
+    'Plain text. No emoji, and no stage directions or narration in parentheses or asterisks such as "(voice trembling)" or "*hides nervously*". Output only the rewritten answer.',
+    `ANSWER:\n${answer}`,
+  ].join("\n\n");
+
+/**
  * Appended to the trailing reminder so the answer doesn't offer to go looking.
  *
  * Searching already happened, or was already declined, by the time this pass
