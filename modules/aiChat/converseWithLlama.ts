@@ -1,6 +1,17 @@
 import { ChatRecord } from "../../types/PocketbaseTables";
 import { CHAT_TYPE_LLAMA } from "./chatTypes";
-import { LLAMA_API_URL, LLAMA_MODEL } from "./llamaConfig";
+import {
+  HEAVY_BACKEND,
+  LIGHT_BACKEND,
+  LLAMA_API_URL,
+  type LlamaBackend,
+} from "./llamaConfig";
+import {
+  isHeavyAvailable,
+  rememberTier,
+  routeMessage,
+  type PreviousExchange,
+} from "./routeModel";
 import {
   executeToolCall,
   getAvailableTools,
@@ -38,6 +49,10 @@ import { AIConverseProps } from "./types";
  *   3. Persona - only when the user has a personality on: the finished answer
  *      is rewritten in that voice. See {@link rewriteInPersona}.
  *
+ * Before any of that, the message is routed: everyday chat stays on Gemma and
+ * questions that need real knowledge go to a bigger model, when it's free. All
+ * three passes then run on the chosen model. See routeModel.ts.
+ *
  * The split exists because the persona was changing what the bot *did*, not
  * just how it sounded. See {@link buildRetrievalPrompt} for the measurements.
  * It costs one extra short generation per message; the retrieval pass is capped
@@ -74,6 +89,17 @@ const SAMPLING = {
   dry_allowed_length: 2,
   repeat_penalty: 1.05,
   repeat_last_n: 256,
+};
+
+/**
+ * Sampling for each backend. The settings above exist to pull Gemma out of
+ * stutter loops; the bigger model doesn't fall into them, and a penalty on
+ * repeated sequences is a poor fit for answers that must repeat a term
+ * exactly ("Eb7 ... Eb7"). It gets ordinary settings instead.
+ */
+const SAMPLING_FOR: Record<LlamaBackend["name"], Record<string, number>> = {
+  light: SAMPLING,
+  heavy: { temperature: 0.7, top_p: 0.8, top_k: 20 },
 };
 
 /**
@@ -185,6 +211,8 @@ type LlamaChatResponse = {
 };
 
 type CompletionRequest = {
+  /** Which server answers. */
+  backend: LlamaBackend;
   messages: LlamaMessage[];
   /** Omitted from the body when empty; an empty array still switches the chat
    * template into tool mode, wasting tokens on a preamble the model can't use. */
@@ -233,27 +261,62 @@ const attachmentToDataUrl = async (url: string): Promise<string> => {
 };
 
 /**
+ * Moves system turns that come after the conversation into the opening system
+ * message, for models whose chat template can't place them there. See
+ * `trailingSystemTurns` on {@link LlamaBackend}.
+ *
+ * Exported for testing.
+ * @param messages The request as Fini builds it
+ * @returns The same request with every system turn at the front
+ */
+export const foldSystemTurns = (messages: LlamaMessage[]): LlamaMessage[] => {
+  const textOf = (turn: LlamaMessage) =>
+    typeof turn.content === "string"
+      ? turn.content
+      : turn.content
+          .map((part) => (part.type === "text" ? part.text : ""))
+          .join("");
+
+  const leading = messages[0]?.role === "system" ? [textOf(messages[0])] : [];
+  const rest = leading.length ? messages.slice(1) : messages;
+  const later = rest.filter((turn) => turn.role === "system").map(textOf);
+
+  if (!later.length) return messages;
+
+  return [
+    { role: "system", content: [...leading, ...later].join("\n\n") },
+    ...rest.filter((turn) => turn.role !== "system"),
+  ];
+};
+
+/**
  * One round trip to the model.
  * @param request What to send and how long to wait for it
  * @returns The first choice, or undefined if the server returned none
  */
 const requestCompletion = async ({
+  backend,
   messages,
   tools = [],
   toolChoice,
   maxTokens,
   timeoutMs,
 }: CompletionRequest): Promise<LlamaChatChoice | undefined> => {
-  const response = await fetch(`${LLAMA_API_URL}/v1/chat/completions`, {
+  const response = await fetch(`${backend.url}/v1/chat/completions`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(backend.apiKey ? { Authorization: `Bearer ${backend.apiKey}` } : {}),
+    },
     body: JSON.stringify({
-      model: LLAMA_MODEL,
-      messages,
+      model: backend.model,
+      messages: backend.trailingSystemTurns
+        ? messages
+        : foldSystemTurns(messages),
       max_tokens: maxTokens,
       stream: false,
       chat_template_kwargs: DISABLE_THINKING,
-      ...SAMPLING,
+      ...SAMPLING_FOR[backend.name],
       ...(tools.length ? { tools } : {}),
       ...(tools.length && toolChoice ? { tool_choice: toolChoice } : {}),
     }),
@@ -354,11 +417,13 @@ const trimToolResult = (turn: LlamaMessage): LlamaMessage => {
  * degrade to an unsourced answer rather than losing the reply entirely.
  * @param conversation History plus the current user message, with no persona
  * @param tools The tools llama.cpp is currently exposing
+ * @param backend Which model makes the decision
  * @returns Assistant and tool turns to append before answering, possibly empty
  */
 const runRetrieval = async (
   conversation: LlamaMessage[],
   tools: LlamaToolDefinition[],
+  backend: LlamaBackend,
 ): Promise<LlamaMessage[]> => {
   const turns: LlamaMessage[] = [];
 
@@ -383,6 +448,7 @@ const runRetrieval = async (
       ];
 
       const decision = await requestCompletion({
+        backend,
         messages,
         tools,
         maxTokens: RETRIEVAL_MAX_TOKENS,
@@ -413,6 +479,7 @@ const runRetrieval = async (
           "Retrieval wrote prose instead of deciding; forcing a tool call",
         );
         const forced = await requestCompletion({
+          backend,
           messages,
           tools,
           toolChoice: "required",
@@ -470,15 +537,18 @@ const runRetrieval = async (
  * @param personality The user's active personality
  * @param userMessage What the user asked, so the voice can address it
  * @param answer The finished plain answer
+ * @param backend Which model does the rewrite - the one that wrote the answer
  * @returns The answer in the persona's voice, or the plain answer on failure
  */
 const rewriteInPersona = async (
   personality: PersonalitiesRecord,
   userMessage: string,
   answer: string,
+  backend: LlamaBackend,
 ): Promise<string> => {
   try {
     const choice = await requestCompletion({
+      backend,
       messages: [
         // Only the bare persona here. The fuller prompt used elsewhere ends
         // with "provide helpful and accurate information", which on this pass
@@ -513,6 +583,50 @@ const rewriteInPersona = async (
 };
 
 /**
+ * Picks the server for this message: the router's choice, unless that's the
+ * big model and it's busy or down, in which case Gemma answers.
+ * @param message What the user just said
+ * @param conversationKey Identifies the conversation, for the follow-up check
+ * @param previous The last exchange, so a follow-up stays with its topic
+ * @param hasImage Whether an image is attached
+ */
+const chooseBackend = async (
+  message: string,
+  conversationKey: string,
+  previous: PreviousExchange | undefined,
+  hasImage: boolean,
+): Promise<LlamaBackend> => {
+  const started = Date.now();
+  const decision = await routeMessage(
+    message,
+    conversationKey,
+    previous,
+    hasImage,
+  );
+
+  let backend = LIGHT_BACKEND;
+  let note = decision.reason;
+
+  if (decision.tier === "heavy") {
+    if (await isHeavyAvailable()) {
+      backend = HEAVY_BACKEND;
+    } else {
+      note = `${decision.reason}, but it is busy or down`;
+    }
+  }
+
+  console.log("Routed message", {
+    backend: backend.name,
+    reason: note,
+    pHeavy: decision.pHeavy?.toFixed(2),
+    pFollowUp: decision.pFollowUp?.toFixed(2),
+    ms: Date.now() - started,
+  });
+
+  return backend;
+};
+
+/**
  * Holds a conversation with the local model and returns its reply.
  * @param props The user, server, message, and any attachment or reply context
  * @returns The text to send back to discord
@@ -543,6 +657,8 @@ export const converseWithLlama = async ({
      * split - retrieval gets a neutral one, the answer gets the persona.
      */
     const conversation: LlamaMessage[] = [];
+    let previous: PreviousExchange | undefined;
+    const conversationKey = `${server}:${userID}`;
 
     if (!options.skipHistory) {
       const userHistory: ChatRecord[] = await getChatHistory(
@@ -557,6 +673,12 @@ export const converseWithLlama = async ({
           role: record.author === "bot" ? "assistant" : "user",
           content: record.message,
         });
+      }
+
+      // History is saved in user/bot pairs, so the last two are the last exchange.
+      const [asked, answered] = userHistory.slice(-2);
+      if (asked?.author === "user" && answered?.author === "bot") {
+        previous = { asked: asked.message, answered: answered.message };
       }
     }
 
@@ -595,7 +717,10 @@ export const converseWithLlama = async ({
      * battle). Those want one pass at a creative prompt, not an agent that may
      * wander off to search, so they opt out.
      */
-    const availableTools = options.skipHistory ? [] : await getAvailableTools();
+    const [availableTools, backend] = await Promise.all([
+      options.skipHistory ? [] : getAvailableTools(),
+      chooseBackend(finalMessage, conversationKey, previous, !!imageDataUrl),
+    ]);
 
     console.log("Submitting to llama.cpp for response", {
       finalMessage,
@@ -606,7 +731,14 @@ export const converseWithLlama = async ({
 
     const retrievalStart = Date.now();
     const toolTurns = availableTools.length
-      ? await runRetrieval(forRetrieval(conversation), availableTools)
+      ? // Always on the light model. Deciding whether to search is a short
+        // job Gemma got right 5 times out of 5 in testing, in 4-7 seconds;
+        // on the bigger model the same step took 7-16.
+        await runRetrieval(
+          forRetrieval(conversation),
+          availableTools,
+          LIGHT_BACKEND,
+        )
       : [];
 
     if (availableTools.length) {
@@ -673,10 +805,34 @@ export const converseWithLlama = async ({
     // No tools on this pass. Retrieval is over, and attaching them here would
     // both invite another search the user never sees and break the style rules
     // above - see the invariant on STYLE_REMINDER.
-    const choice = await requestCompletion({
-      messages: answerMessages,
-      maxTokens: MAX_CHAT_TOKENS,
-      timeoutMs: REQUEST_TIMEOUT_MS,
+    let answeredBy = backend;
+    const answer = (with_: LlamaBackend) =>
+      requestCompletion({
+        backend: with_,
+        messages: answerMessages,
+        maxTokens: MAX_CHAT_TOKENS,
+        timeoutMs: REQUEST_TIMEOUT_MS,
+      });
+
+    const answerStart = Date.now();
+    let choice: LlamaChatChoice | undefined;
+    try {
+      choice = await answer(backend);
+    } catch (err) {
+      // The big model is a shared server that can go away mid-request. Gemma
+      // can still give an answer, which beats an error message.
+      if (backend === LIGHT_BACKEND) throw err;
+      console.error(
+        "The heavy model failed, answering with the light one:",
+        err,
+      );
+      answeredBy = LIGHT_BACKEND;
+      choice = await answer(LIGHT_BACKEND);
+    }
+
+    console.log("Answered", {
+      backend: answeredBy.name,
+      ms: Date.now() - answerStart,
     });
 
     let responseText = choice?.message?.content?.trim() || "";
@@ -700,9 +856,21 @@ export const converseWithLlama = async ({
      * so storing the persona's wording would feed the voice straight back into
      * the step that is meant to be free of it.
      */
+    const rewriteStart = Date.now();
     const replyText = personality
-      ? await rewriteInPersona(personality, finalMessage, responseText)
+      ? await rewriteInPersona(
+          personality,
+          finalMessage,
+          responseText,
+          answeredBy,
+        )
       : responseText;
+
+    if (personality) {
+      console.log("Rewrote in persona", { ms: Date.now() - rewriteStart });
+    }
+
+    rememberTier(conversationKey, answeredBy.name);
 
     // Save both sides of the exchange. No anthropic client is passed because
     // this backend never uploads files, so there's nothing remote to clean up.

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "bun:test";
-import { forRetrieval, isSkip } from "../../modules/aiChat/converseWithLlama";
+import {
+  foldSystemTurns,
+  forRetrieval,
+  isSkip,
+} from "../../modules/aiChat/converseWithLlama";
 
 describe("isSkip", () => {
   // The retrieval pass is asked for one exact word, and a 2B model will not
@@ -98,5 +102,61 @@ describe("forRetrieval", () => {
       "assistant",
       "user",
     ]);
+  });
+});
+
+// Qwen's chat template turns a system turn after the conversation into a user
+// message, which the model then answers as if the user had said it.
+describe("foldSystemTurns", () => {
+  it("moves a closing reminder into the opening system message", () => {
+    const folded = foldSystemTurns([
+      { role: "system", content: "You are Fini." },
+      { role: "user", content: "continue" },
+      { role: "system", content: "Plain text only." },
+    ]);
+
+    expect(folded).toEqual([
+      { role: "system", content: "You are Fini.\n\nPlain text only." },
+      { role: "user", content: "continue" },
+    ]);
+  });
+
+  it("creates an opening system message when there wasn't one", () => {
+    const folded = foldSystemTurns([
+      { role: "user", content: "what is chatplats.com?" },
+      { role: "system", content: "Decide whether to search." },
+    ]);
+
+    expect(folded[0]).toEqual({
+      role: "system",
+      content: "Decide whether to search.",
+    });
+    expect(folded).toHaveLength(2);
+  });
+
+  it("keeps the conversation in order", () => {
+    const folded = foldSystemTurns([
+      { role: "system", content: "a" },
+      { role: "user", content: "1" },
+      { role: "assistant", content: "2" },
+      { role: "user", content: "3" },
+      { role: "system", content: "b" },
+    ]);
+
+    expect(folded.map((turn) => turn.content)).toEqual([
+      "a\n\nb",
+      "1",
+      "2",
+      "3",
+    ]);
+  });
+
+  it("leaves a request with no later system turns untouched", () => {
+    const messages = [
+      { role: "system" as const, content: "a" },
+      { role: "user" as const, content: "1" },
+    ];
+
+    expect(foldSystemTurns(messages)).toBe(messages);
   });
 });
