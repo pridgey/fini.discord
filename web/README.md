@@ -116,18 +116,18 @@ A local mailbox stands in for Pockethost, and a made-up sign-in for Discord.
 # 1. a local mailbox, on its own port
 ./pocketbase migrate up --dir web/pocketbase/pb_data --migrationsDir web/pocketbase/pb_migrations
 ./pocketbase superuser upsert dev@fini.local a-long-password --dir web/pocketbase/pb_data
-./pocketbase serve --http 127.0.0.1:8092 --dir web/pocketbase/pb_data \
+./pocketbase serve --http 127.0.0.1:8093 --dir web/pocketbase/pb_data \
   --migrationsDir web/pocketbase/pb_migrations
 
 # 2. Fini's half, pointed at it (reads Fini's real database; a deck saved
 #    on the local site is saved for real)
-export FINI_WEB_POCKETBASE_URL=http://127.0.0.1:8092
+export FINI_WEB_POCKETBASE_URL=http://127.0.0.1:8093
 export FINI_WEB_POCKETBASE_EMAIL=dev@fini.local
 export FINI_WEB_POCKETBASE_PASSWORD=a-long-password
 bun --env-file=.env run scripts/finicards/web-sync.ts --watch
 
 # 3. the site
-cd web && bun install && VITE_POCKETBASE_URL=http://127.0.0.1:8092 bun run dev
+cd web && bun install && VITE_POCKETBASE_URL=http://127.0.0.1:8093 bun run dev
 
 # 4. a link that signs in as you (ADMIN_ID), or as any Discord id given
 bun --env-file=.env run scripts/finicards/web-dev-login.ts
