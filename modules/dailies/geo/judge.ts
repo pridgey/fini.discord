@@ -165,11 +165,15 @@ export const judgeGuess = (
 
   const sameTown =
     sameName(answer.place.city, guess.place.city) || km <= SAME_TOWN_KM;
+  // Where the spot has no town of its own, the finest place it's in stands
+  // for the town: Kuala Lumpur is a territory to OpenStreetMap, with no city
+  // inside it, so "Kuala Lumpur" names it as closely as it can be named.
+  // Distance alone judges the rung then.
   rung(
     "city",
     answer.place.city ?? "The town",
     sameTown,
-    "city",
+    answer.place.city ? "city" : null,
     guess.place.city ? `you said ${guess.place.city}` : undefined,
   );
 

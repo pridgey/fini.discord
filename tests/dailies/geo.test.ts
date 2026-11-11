@@ -520,6 +520,22 @@ describe("judging a guess", () => {
     expect(verdict.checks[5]).toMatchObject({ outcome: "locked" });
   });
 
+  it("lets a territory stand for the town where the spot has none", () => {
+    // Kuala Lumpur is a federal territory to OpenStreetMap, with no town in it.
+    const kualaLumpur: PlaceInfo = {
+      countryCode: "MY",
+      country: "Malaysia",
+      provinceCode: "MY-14",
+      province: "Kuala Lumpur",
+    };
+    const spot = { lat: 3.13, lon: 101.6818, place: kualaLumpur };
+    const named = guess(3.1517, 101.6942, kualaLumpur, "province");
+    expect(judgeGuess(named, spot).total).toBe(MAX_PAY);
+    // Still only within 10 km.
+    const farOff = guess(3.3, 101.6942, kualaLumpur, "province");
+    expect(judgeGuess(farOff, spot).checks.at(-1)?.outcome).toBe("missed");
+  });
+
   it("pays more when a round has fewer photos", () => {
     expect([3, 4, 2, 1].map(photoMultiplier)).toEqual([1, 1, 1.5, 2]);
   });
