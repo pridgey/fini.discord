@@ -32,6 +32,13 @@ import { formatBytes } from "./uploadLimit";
 export const GIF_FPS = 15;
 export const GIF_MAX_WIDTH = 480;
 
+/**
+ * How far short of a trim's start the container seek stops; see
+ * `buildConvertArgs`. Longer than any keyframe gap a stream uses (2-4 s), and
+ * short enough that decoding it costs about a second.
+ */
+export const SEEK_PREROLL_SECONDS = 10;
+
 export type ConvertRequest = {
   /** Absolute path to the source file. */
   input: string;
@@ -158,17 +165,21 @@ export const buildConvertArgs = (
     "file,crypto,data",
   ];
 
-  // `-ss` goes before `-i` so ffmpeg seeks the container instead of decoding
-  // and discarding everything up to the mark - the difference between instant
-  // and minutes on a long source. The length is then given as `-t` after the
-  // input rather than `-to`, because `-to` combined with an input seek is
-  // measured from different origins depending on ffmpeg version, and a trim
-  // that silently means something else is worse than a slower one.
-  if (request.trim?.startSeconds) {
-    args.push("-ss", String(request.trim.startSeconds));
-  }
+  // The seek is split in two. An `-ss` before `-i` seeks the container, which
+  // is instant, but some containers (MPEG-TS, what streams and HLS downloads
+  // come in) land between keyframes: the frames up to the next one can't be
+  // decoded, and the clip opens on a frozen frame and starts late. So the
+  // container seek stops SEEK_PREROLL_SECONDS short, and an `-ss` after `-i`
+  // decodes the rest of the way, which is exact. The length is then given as
+  // `-t` rather than `-to`, because `-to` combined with an input seek is
+  // measured from different origins depending on ffmpeg version.
+  const start = request.trim?.startSeconds ?? 0;
+  const preroll = Math.min(start, SEEK_PREROLL_SECONDS);
+  if (start - preroll > 0) args.push("-ss", String(start - preroll));
 
   args.push("-i", input);
+
+  if (preroll > 0) args.push("-ss", String(preroll));
 
   if (request.trim?.endSeconds !== undefined) {
     args.push(

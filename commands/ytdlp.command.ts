@@ -23,6 +23,7 @@ import {
   probeUrl,
   rangeDurationSeconds,
   safeFileBase,
+  sectionRecut,
   tooLargeMessage,
   tryAcquireMediaSlot,
   uploadLimitBytes,
@@ -290,10 +291,16 @@ export const execute: SlashCommand["execute"] = async (
     let bytes = await fileSize(downloaded);
     let squeezedTo: string | undefined;
 
+    // A section comes down cut on keyframes, a little wide of what was asked
+    // for; this is the exact cut to re-encode it to. See `sectionRecut`.
+    const recut = sectionRecut(trim, probe.durationSeconds);
+
     // yt-dlp already produced the requested container by merging streams, so
-    // as long as it fits there is nothing for ffmpeg to do - and re-encoding
-    // a file that is already fine would only cost quality and minutes.
-    const alreadyDone = format.nativeContainer && format.kind === "video";
+    // as long as it fits (and needs no exact cut) there is nothing for ffmpeg
+    // to do - and re-encoding a file that is already fine would only cost
+    // quality and minutes.
+    const alreadyDone =
+      format.nativeContainer && format.kind === "video" && !recut;
 
     /**
      * The file is already the requested container and already too big. If it
@@ -323,8 +330,13 @@ export const execute: SlashCommand["execute"] = async (
     }
 
     if (!alreadyDone || bytes > limitBytes) {
+      // A native video here is only being cut or squeezed, not converted.
+      const cutting =
+        recut && format.nativeContainer && format.kind === "video";
       await interaction.editReply(
-        `Converting **${title}** to ${format.value}${
+        `${cutting ? "Cutting" : "Converting"} **${title}**${
+          cutting ? ` to ${span}` : ` to ${format.value}`
+        }${
           bytes > limitBytes
             ? ` and squeezing it under ${formatBytes(limitBytes)}`
             : ""
@@ -338,6 +350,7 @@ export const execute: SlashCommand["execute"] = async (
           outputBase,
           format,
           probe,
+          trim: recut ?? undefined,
           timeoutMs: deadline.budget(CONVERT_TIMEOUT_MS),
         },
         limitBytes,

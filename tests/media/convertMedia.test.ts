@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   GIF_FPS,
   GIF_MAX_WIDTH,
+  SEEK_PREROLL_SECONDS,
   buildConvertArgs,
   buildVideoFilterChain,
   planFitAttempts,
@@ -178,19 +179,35 @@ describe("buildConvertArgs", () => {
     expect(args).toContain("-y");
   });
 
-  // `-ss` before `-i` seeks the container; after `-i` it decodes and discards
-  // everything up to the mark, which on a long source is minutes of work.
-  it("seeks before the input, and takes the length after it", () => {
+  // `-ss` before `-i` seeks the container, which is instant but can land
+  // between keyframes; the `-ss` after it decodes the last stretch exactly.
+  it("seeks the container to just short of the start, then decodes to it", () => {
     const { args } = buildConvertArgs(
       request("mp4", { trim: { startSeconds: 80, endSeconds: 165 } }),
     );
+    const input = args.indexOf("-i");
+    const [first, second] = args
+      .map((arg, i) => (arg === "-ss" ? i : -1))
+      .filter((i) => i >= 0);
 
-    expect(args.indexOf("-ss")).toBeLessThan(args.indexOf("-i"));
-    expect(args[args.indexOf("-ss") + 1]).toBe("80");
+    expect(first).toBeLessThan(input);
+    expect(args[first + 1]).toBe(String(80 - SEEK_PREROLL_SECONDS));
+    expect(second).toBeGreaterThan(input);
+    expect(args[second + 1]).toBe(String(SEEK_PREROLL_SECONDS));
     // A duration, not an end timestamp: `-to` alongside an input seek is
     // measured from a different origin depending on ffmpeg version.
-    expect(args.indexOf("-t")).toBeGreaterThan(args.indexOf("-i"));
+    expect(args.indexOf("-t")).toBeGreaterThan(input);
     expect(args[args.indexOf("-t") + 1]).toBe("85");
+  });
+
+  it("decodes the whole way to a start nearer than the preroll", () => {
+    const { args } = buildConvertArgs(
+      request("mp4", { trim: { startSeconds: 4 } }),
+    );
+
+    expect(args.filter((arg) => arg === "-ss")).toHaveLength(1);
+    expect(args.indexOf("-ss")).toBeGreaterThan(args.indexOf("-i"));
+    expect(args[args.indexOf("-ss") + 1]).toBe("4");
   });
 
   it("handles either end of the trim on its own", () => {

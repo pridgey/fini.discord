@@ -6,7 +6,9 @@ import {
   formatDuration,
   hasTimeRange,
   parseTimestamp,
+  EXACT_CUT_MAX_SECONDS,
   rangeDurationSeconds,
+  sectionRecut,
 } from "../../modules/media/timeRange";
 
 describe("parseTimestamp", () => {
@@ -158,5 +160,31 @@ describe("describeTimeRange", () => {
     );
     expect(describeTimeRange({ startSeconds: 80 })).toBe("from 1:20");
     expect(describeTimeRange({ endSeconds: 165 })).toBe("up to 2:45");
+  });
+});
+
+describe("sectionRecut", () => {
+  it("cuts a section to its length, measured from the download's start", () => {
+    expect(sectionRecut({ startSeconds: 80, endSeconds: 95 }, 17)).toEqual({
+      endSeconds: 15,
+    });
+    expect(sectionRecut({ endSeconds: 30 }, 31)).toEqual({ endSeconds: 30 });
+  });
+
+  it("still re-encodes an open-ended section, to drop the keyframe lead-in", () => {
+    expect(sectionRecut({ startSeconds: 80 }, 40)).toEqual({});
+  });
+
+  it("leaves whole downloads and very long sections alone", () => {
+    expect(sectionRecut(undefined, 40)).toBeNull();
+    expect(sectionRecut({}, 40)).toBeNull();
+    expect(
+      sectionRecut(
+        { startSeconds: 0, endSeconds: 600 },
+        EXACT_CUT_MAX_SECONDS + 1,
+      ),
+    ).toBeNull();
+    // An unknown length could be anything.
+    expect(sectionRecut({ startSeconds: 80 }, 0)).toBeNull();
   });
 });

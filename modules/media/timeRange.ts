@@ -189,3 +189,37 @@ export const describeTimeRange = (range: TimeRange): string => {
 
   return "the whole thing";
 };
+
+/**
+ * Longest section download that gets re-cut exactly; see `sectionRecut`.
+ * Past this a second or two of slack at the edges is lost in the length, and
+ * a re-encode starts to race the interaction token.
+ */
+export const EXACT_CUT_MAX_SECONDS = 5 * 60;
+
+/**
+ * How to cut a section download exactly, or null to send it as it came.
+ *
+ * yt-dlp copies a section rather than re-encoding it, and a copy can only
+ * begin on a keyframe - up to a few seconds before the start that was asked
+ * for. The file carries an edit list saying to skip that lead-in, but players
+ * don't all honour it (Discord's often doesn't), and the end overshoots the
+ * same way. Re-encoding the file honours the edit list, which pins the start;
+ * the range returned here pins the end. Its times are measured from the
+ * download's own start, which is the requested start.
+ * @param trim What was asked for
+ * @param downloadedSeconds How long the download actually runs
+ * @returns The range to re-encode to, or null when no exact cut is needed
+ */
+export const sectionRecut = (
+  trim: TimeRange | undefined,
+  downloadedSeconds: number,
+): TimeRange | null => {
+  if (!hasTimeRange(trim)) return null;
+  if (!downloadedSeconds || downloadedSeconds > EXACT_CUT_MAX_SECONDS)
+    return null;
+
+  return trim!.endSeconds === undefined
+    ? {}
+    : { endSeconds: trim!.endSeconds - (trim!.startSeconds ?? 0) };
+};

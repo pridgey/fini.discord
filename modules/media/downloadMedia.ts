@@ -219,11 +219,10 @@ export const buildDownloadArgs = (request: DownloadRequest): string[] => {
   }
 
   if (hasTimeRange(trim)) {
-    // Not `--force-keyframes-at-cuts`: that is exact, but it re-encodes the
-    // whole span during the download, which on this box turns a fast fetch
-    // into something that races the interaction token. Snapping to the
-    // nearest keyframe costs a second or two of slack at the edges, which is
-    // the right trade for a clip going into a Discord message.
+    // Not `--force-keyframes-at-cuts`: it re-encodes during the download,
+    // which is slow over the network. The section comes down cut on
+    // keyframes, a little wide at both ends, and `/ytdlp` re-encodes it to
+    // the exact range afterwards - see `sectionRecut`.
     args.push("--download-sections", downloadSectionArg(trim!));
   }
 
