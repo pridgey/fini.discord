@@ -6,7 +6,7 @@
  * google-10000-english-usa-no-swears.txt), keeping those in the system
  * dictionary (/usr/share/dict/american-english) that are not also listed
  * capitalised - which drops most names - and not on a short blocklist of
- * shorthand and words unwelcome in a daily puzzle. 2920 words.
+ * shorthand and words unwelcome in a daily puzzle. 2909 words.
  *
  * To change the list, edit the text below; one word per space.
  */
@@ -17,7 +17,7 @@ adults advert advice advise adware aerial affair affect afford afraid after agai
 agenda agent agents ages aging agree agreed agrees ahead aids aimed aims alarm album albums
 alert alerts alias alien align alike alive allied allow allows alloy almost alone along alpha
 also alter alto alumni always amend amino among amount analog anchor angels anger angle angry
-animal anime annex annual answer anti anyone anyway apart appeal appear apply approx apps aqua
+animal anime annex annual answer anti anyone anyway apart appeal appear apply apps aqua
 arbor arcade arch area areas arena argue argued arise armed armor arms army around array arrest
 arrive arrow artist arts aside asked asking asks aspect assess asset assets assign assist
 assume assure asthma asylum atom atomic attach attack attend audio audit author auto autos
@@ -36,11 +36,11 @@ briefs bring brings broad broke broken broker bronze brook browse brush brutal b
 budget buffer bugs build builds built bulk bull bullet bumper bunch bundle bunny burden bureau
 buried burn burner burst buses busy butter button butts buyer buyers buying buys buzz byte
 bytes cabin cable cables cache cached cake cakes call called calls calm came camera camp camps
-campus cams canal cancel candle cant canvas canyon cape caps carbon card cards care career
+campus cams canal cancel candle canvas canyon cape caps carbon card cards care career
 cargo caring carpet carry cars cart cases cast castle casual catch cats cattle caught cause
 caused causes cave cedar cell cells cement census cent center cents chain chains chair chairs
 change chaos chapel char charge charm charms chart charts chat cheap cheat cheats check checks
-cheers cheese chef chem chess chest chick chicks chief child chip chips choice choir choose
+cheers cheese chef chess chest chick chicks chief child chip chips choice choir choose
 chorus chose chosen chrome chubby cinema circle circus cite cited cities city civic civil claim
 claims clan class clause clean clear clerk click clicks client climb clinic clip clips clock
 clocks clone close closed closer closes cloth cloud clouds cloudy club clubs coach coal coast
@@ -53,8 +53,8 @@ cube cubic cult cups cure cursor curve curves custom cute cuts cycle cycles dadd
 damage dame dance danger dark dash data date dated dates dating days deadly deaf deal dealer
 deals dealt dear deaths debate debt debug debut decade decent decide deck decor deemed deep
 deeper deeply deer defeat defend define degree delay delays delete deluxe demand demo denial
-denied dense dental deny depend depot dept depth deputy desert design desire desk detail detect
-device devil dialog diary dice died dies diet diff differ diffs digest digit dining dinner
+denied dense dental deny depend depot depth deputy desert design desire desk detail detect
+device devil dialog diary dice died dies diet differ digest digit dining dinner
 direct dirt dirty disc disco discs dish dishes disk disks dive divide divine diving dock docs
 does dogs doing doll dollar dolls domain dome donate done donor donors doom door doors dosage
 dose double doubt down dozen dozens draft drag dragon drain drama draw drawn draws dream dreams
@@ -114,10 +114,10 @@ mask master match mate math mating matrix mats matter mature maybe mayor meal me
 meant meat medal median medium meet meets member memo memory mental mentor menu menus mercy
 mere merely merge merger merit merry mesh mess meta metal metals meter meters method metric
 metro mice middle might mighty mild mile milk mime mind minds mine mines mini mining minor mint
-minus minute mirror misc missed mixed mixer mixing mode model models modem modems modern modes
+minus minute mirror missed mixed mixer mixing mode model models modem modems modern modes
 modify mods module mold moment moms money monkey mono month months mood moral most mostly motel
 motels mother motion motor motors mounts mouse mouth move moved movers moves movie movies
-moving much multi muscle museum music must mutual myself myth nail nails name named namely
+moving much muscle museum music must mutual myself myth nail nails name named namely
 names narrow nasty native nature naval navy near nearby nearly neck need needed needle needs
 neon nerve nest nested neural never newbie newer newest newly news next nickel night nights
 nine nobody node nodes noise none noon norm nose note noted notes notice notify notion novel
@@ -179,7 +179,7 @@ tales talk talked talks tall tank tanks tape tapes tariff task tasks taste tatto
 taxi teach team teams tear tears tech techno teeth tells temp tenant tend tender tennis tent
 term terms test tested tests text texts than thank thanks that thee theft their them theme
 themes then theory there these thesis theta they thick thin thing things think thinks third
-thirty this those thou though thread threat three throat throw thrown throws thru thumb thumbs
+thirty this those thou though thread threat three throat throw thrown throws thumb thumbs
 thus ticket tied tier ties tiger tigers tight tile tiles till timber time timely timer times
 timing tiny tips tire tired tires tissue titans title titled titles today toilet token told
 toll tomato tone toner tones tongue tons took tool tools tooth topic topics tops total totals
@@ -192,11 +192,11 @@ twin twins twist type types typing ugly ultra unable uncle under undo unique uni
 unity unless unlike unlock until unto unwrap update upload upon upper upset urge urgent usage
 used useful user users uses using usual vacuum valid valley value valued values valve valves
 varied varies vary vast vault vector velvet vendor venue venues verbal verify verse versus
-vertex very vessel vice video videos view viewed viewer views viii vinyl violin viral virgin
+vertex very vessel vice video videos view viewed viewer views vinyl violin viral virgin
 virtue virus vision visit visits vista visual vital vocal vocals voice voices void volt volume
 vote voted voters votes voting wage wages wagon wait waiver walk walked walks wallet walnut
 want wanted wants warm warned wars washer waste watch water wave waves ways weak wealth wear
-webcam weed week weekly weight weird well went were whale what whats wheat wheel wheels when
+webcam weed week weekly weight weird well went were whale what wheat wheel wheels when
 where which while whilst whole whom whose wicked wide widely wider width wife wiki wild willow
 wind window winds wing wings winner wins winter wire wired wires wiring wisdom wish wishes
 witch with within wives wizard woman women wooden wool word words work worked worker works
