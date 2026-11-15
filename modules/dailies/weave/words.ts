@@ -6,7 +6,7 @@
  * google-10000-english-usa-no-swears.txt), keeping those in the system
  * dictionary (/usr/share/dict/american-english) that are not also listed
  * capitalised - which drops most names - and not on a short blocklist of
- * shorthand and words unwelcome in a daily puzzle. 2909 words.
+ * shorthand and words unwelcome in a daily puzzle. 2902 words.
  *
  * To change the list, edit the text below; one word per space.
  */
@@ -17,7 +17,7 @@ adults advert advice advise adware aerial affair affect afford afraid after agai
 agenda agent agents ages aging agree agreed agrees ahead aids aimed aims alarm album albums
 alert alerts alias alien align alike alive allied allow allows alloy almost alone along alpha
 also alter alto alumni always amend amino among amount analog anchor angels anger angle angry
-animal anime annex annual answer anti anyone anyway apart appeal appear apply apps aqua
+animal anime annex annual answer anyone anyway apart appeal appear apply apps aqua
 arbor arcade arch area areas arena argue argued arise armed armor arms army around array arrest
 arrive arrow artist arts aside asked asking asks aspect assess asset assets assign assist
 assume assure asthma asylum atom atomic attach attack attend audio audit author auto autos
@@ -78,7 +78,7 @@ folks follow font fonts food foods fool foot force forced forces forge forget fo
 formal format formed former forms fort forth forty forum forums fossil fought foul found four
 fourth frame framed frames fraud free freely freeze fresh fridge friend frog from front frozen
 fruit fruits fuel full fully fund funded funds funk funky funny fusion future fuzzy gain gained
-gains galaxy game games gaming gamma gang gaps garage garden garlic gate gather gauge gave gays
+gains galaxy game games gaming gamma gang gaps garage garden garlic gate gather gauge gave
 gear geek gender genes genius genome genre genres gentle gently gets ghost giant giants gift
 gifts girl girls give given gives giving glad glance global globe glory gloves glow gnome goal
 goals goat gods goes going gold golf gone goods gossip gotten grab grad grade grades grain
@@ -94,10 +94,10 @@ hook hoped hopes hoping horror horse horses hose host hosted hostel hosts hotel 
 hourly hours houses huge human humans humor hunger hungry hurt hybrid icon icons idea ideal
 ideas idle idol ignore image images immune impact import impose inbox inch inches income indeed
 index indoor infant info inform injury inline inner inns input inputs insert inside intake
-intend intent inter into intro invest invite iron island isle issue issued issues italic item
+intend intent into intro invest invite iron island isle issue issued issues italic item
 items itself jacket jade jail jazz jeans jets join joined joins joint joke jokes judge judges
 juice jump jungle junk jury just karma keen keep keeps kept kernel keys kick kidney kids kind
-kinda kinds kings kiss kits knee knew knife knit knives knock know known knows label labels
+kinds kings kiss kits knee knew knife knit knives knock know known knows label labels
 labor labs lace lack ladder laden ladies lady laid lake lakes lambda lamp lamps lands lanes
 laptop large larger laser last late lately later latest latex latter laugh launch lawn laws
 lawyer layer layers layout lazy lead leader leads leaf league learn lease least leave leaves
@@ -154,7 +154,7 @@ safer safety sage said sail saint saints sake salad salary sale sales salmon sal
 same sample sans satin sauce save saved saver saves saving saying says scale scales scan scared
 scary scene scenes scenic schema scheme school scoop scope score scored scores screen screw
 script scroll scuba seal sealed search seas season seat seats second secret sector secure seed
-seeds seeing seek seeker seeks seem seemed seems seen sees select self sell seller sells semi
+seeds seeing seek seeker seeks seem seemed seems seen sees select self sell seller sells
 send sender sends sense sensor sent serial series serum serve served server serves sets settle
 setup seven severe sewing shade shades shadow shaft shake shall shame shape shaped shapes share
 shared shares shark shaved shed sheep sheer sheet sheets shelf shield shift shine ship ships
@@ -184,11 +184,11 @@ thus ticket tied tier ties tiger tigers tight tile tiles till timber time timely
 timing tiny tips tire tired tires tissue titans title titled titles today toilet token told
 toll tomato tone toner tones tongue tons took tool tools tooth topic topics tops total totals
 touch tough tour tours toward tower towers town towns toxic toys trace track tracks tract trade
-trader trades trail trails train trains trance trans trap trash trauma travel tray treat treaty
+trader trades trail trails train trains trance trap trash trauma travel tray treat treaty
 tree trees trek trend trends trial trials tribal tribe tribes trick tricks tried tries trim
 trio trip triple trips trivia troops trout truck trucks true truly trunk trust trusts trying
 tube tubes tumor tune tuner tunes tuning tunnel turn turned turns turtle twelve twenty twice
-twin twins twist type types typing ugly ultra unable uncle under undo unique unit united units
+twin twins twist type types typing ugly unable uncle under undo unique unit united units
 unity unless unlike unlock until unto unwrap update upload upon upper upset urge urgent usage
 used useful user users uses using usual vacuum valid valley value valued values valve valves
 varied varies vary vast vault vector velvet vendor venue venues verbal verify verse versus
