@@ -35,6 +35,8 @@ export type BattleCard = {
   secretArt?: boolean;
   /** Display only: a pack's pull that is the first copy of its card in the collection. */
   isNew?: boolean;
+  /** Display only: a pull that came out of a god pack. */
+  fromGodPack?: boolean;
   /** Most copies of this card a server can hold. 0 or absent = no limit. */
   population?: number;
   /** This copy's number among its card's copies on its server, from 1. */
@@ -125,4 +127,6 @@ export type OwnedCard = V2UserCardRecord & {
   definition: V2CardDefinitionRecord;
   /** Set on a pack's pulls: the first copy of this card in the player's collection on the server. */
   isNew?: boolean;
+  /** Set on a pack's pulls: the pack was a god pack. */
+  fromGodPack?: boolean;
 };

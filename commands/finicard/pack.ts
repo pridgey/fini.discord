@@ -228,6 +228,7 @@ export const openPackFor = async (
   const cards = pulls.map((owned) => ({
     ...toBattleCard(owned),
     isNew: owned.isNew,
+    fromGodPack: owned.fromGodPack,
   }));
   const freeLeft = freePacks.length - freeToOpen.length;
   const packs = packCount === 1 ? "" : `${packCount} packs · `;

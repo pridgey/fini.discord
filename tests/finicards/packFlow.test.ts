@@ -231,3 +231,69 @@ describe("collector buttons and the button router", () => {
     expect(isCollectorButton("booster_pack_open:1:2")).toBe(false);
   });
 });
+
+describe("a god pack among several", () => {
+  const god = card({
+    instanceId: "god1",
+    name: "Godly",
+    rarity: "full_art",
+    fromGodPack: true,
+  });
+  const plain = card({
+    instanceId: "plain1",
+    name: "Plain",
+    rarity: "full_art",
+  });
+  // The line of the card list that names `name`.
+  const lineOf = (
+    message: Awaited<ReturnType<typeof buildPackMessage>>,
+    name: string,
+  ) =>
+    message.components[0]
+      .toJSON()
+      .components.flatMap((component) =>
+        "content" in component
+          ? (component as { content: string }).content.split("\n")
+          : [],
+      )
+      .find((line) => line.includes(`**${name}**`)) ?? "";
+
+  it("marks the god pack's cards in a bulk pull's list, and only those", async () => {
+    const summary = await buildPackMessage({
+      cards: [plain, god],
+      cost: 50,
+      shortfall: 0,
+      reimbursement: 0,
+      packs: 2,
+      godPacks: 1,
+    });
+    expect(lineOf(summary, "Godly")).toContain("✨ God pack");
+    expect(lineOf(summary, "Plain")).not.toContain("✨ God pack");
+  });
+
+  it("leaves a single god pack's list to its banner", async () => {
+    const summary = await buildPackMessage({
+      cards: [god],
+      cost: 25,
+      shortfall: 0,
+      reimbursement: 0,
+      godPacks: 1,
+    });
+    expect(lineOf(summary, "Godly")).not.toContain("✨ God pack");
+  });
+
+  it("says so on the card's own screen", () => {
+    const media = { name: "card.png", buffer: Buffer.from("") };
+    const screen = (entry: BattleCard) =>
+      JSON.stringify(
+        buildPackCardMessage({
+          card: entry,
+          media,
+          index: 0,
+          total: 2,
+        }).components[0].toJSON(),
+      );
+    expect(screen(god)).toContain("From a god pack");
+    expect(screen(plain)).not.toContain("From a god pack");
+  });
+});

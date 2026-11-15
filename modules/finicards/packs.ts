@@ -350,13 +350,16 @@ export const openPack = async (
       // with different keywords.
       keyword: rollCopyKeyword(definition.rarity, random),
       legendary,
-      acquiredFrom: "pack",
+      // Kept on the card, so it can say where it came from long after the
+      // pull - in a bulk pull above all, where a god pack's cards are mixed
+      // in with the rest.
+      acquiredFrom: godPack ? "god_pack" : "pack",
     });
 
     // The first copy of a card is new; a second of it in the same pack isn't.
     const isNew = !held.has(definitionId);
     held.add(definitionId);
-    pulls.push({ ...record, definition, isNew });
+    pulls.push({ ...record, definition, isNew, fromGodPack: godPack });
   }
 
   if (countsTowardGodPacks) {

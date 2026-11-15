@@ -15,6 +15,7 @@ import { CardView } from "./CardView";
 
 const SOURCE: Record<string, string> = {
   pack: "a pack",
+  god_pack: "a god pack",
   convert: "your v1 collection",
   grant: "a gift from Fini",
   trade: "a trade",

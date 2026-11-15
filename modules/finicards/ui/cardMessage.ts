@@ -199,7 +199,11 @@ export const buildPackMessage = async (
         cardList(
           input.cards,
           (card) =>
-            `${cardLine(card)}${specialMark(card)}${card.isNew ? " · 🆕 **New**" : ""} · \`${card.instanceId}\``,
+            `${cardLine(card)}${specialMark(card)}${card.isNew ? " · 🆕 **New**" : ""}${
+              // In a bulk pull the banner can't say which cards were the god
+              // pack's, so each says so itself.
+              packs && card.fromGodPack ? " · ✨ God pack" : ""
+            } · \`${card.instanceId}\``,
         ) || "_Nothing left in the pool._",
       ),
     )
@@ -374,6 +378,7 @@ export const buildPackCardMessage = (input: {
     .addTextDisplayComponents((text) =>
       text.setContent(
         [
+          ...(card.fromGodPack ? ["✨ **From a god pack!**"] : []),
           ...(card.isNew ? ["🆕 **New to your collection!**"] : []),
           `**${card.name}**${card.foil ? " ✨ foil" : ""} · ${rarityLabel(card)} · ${TYPE_NAME[card.type]} ${card.stats[card.type]}${
             card.legendary ? " · 👑" : card.secretArt ? " · 🌟" : ""
