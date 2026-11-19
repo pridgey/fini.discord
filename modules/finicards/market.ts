@@ -128,3 +128,39 @@ export const sellToFini = async (copy: OwnedCard): Promise<void> => {
   await removeFromDecks(copy.user_id, copy.server_id, copy.id ?? "");
   await pb.collection<V2UserCardRecord>(V2_USER_CARD).delete(copy.id ?? "");
 };
+
+/**
+ * Where a copy is in play, if anywhere: a dungeon run still going, or a
+ * battle not yet decided - dealt into a hand either way. Changing its ability
+ * there would let a player fit it to a fight already in front of them, so a
+ * card boon that does that waits until it's over.
+ */
+export const cardInPlay = async (
+  userId: string,
+  serverId: string,
+  copyId: string,
+): Promise<"dungeon" | "battle" | null> => {
+  const [run, battle] = await Promise.all([
+    pb
+      .collection("v2_dungeon_run")
+      .getFirstListItem(
+        pb.filter(
+          "user_id = {:userId} && server_id = {:serverId} && state = 'active' && hand ~ {:copyId}",
+          { userId, serverId, copyId },
+        ),
+        { requestKey: null },
+      )
+      .catch(() => null),
+    pb
+      .collection("v2_battle")
+      .getFirstListItem(
+        pb.filter(
+          "server_id = {:serverId} && (state = 'awaiting_defender' || state = 'awaiting_lineups') && ((challenger_id = {:userId} && challenger_hand ~ {:copyId}) || (defender_id = {:userId} && defender_hand ~ {:copyId}))",
+          { userId, serverId, copyId },
+        ),
+        { requestKey: null },
+      )
+      .catch(() => null),
+  ]);
+  return run ? "dungeon" : battle ? "battle" : null;
+};

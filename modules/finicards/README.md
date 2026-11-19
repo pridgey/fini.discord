@@ -1173,7 +1173,10 @@ one row each (`itemStore.ts`); the catalogue is `items.ts`.
   boon), **card boons** used on one copy with `/finicard use item: card:` - a
   Name Tag (a nickname that replaces the card's name everywhere it's shown;
   `cardName` keeps the real one), a Reroll Token (always a new ability), an
-  Ability Scroll (pick one of three) and a Foil Kit (`cardBoons.ts`) - and a
+  Ability Scroll (pick one of three) and a Foil Kit (`cardBoons.ts`). The
+  reroll and scroll refuse a card in a live dungeon run or an undecided battle
+  (`cardInPlay`), so an ability can't be fitted to a fight already in view; the
+  item isn't spent. Also a
   **Mystery Box** that opens into another item. Pack boons include a Collector's
   Seal (no cards you own), a Set Compass (a set pack at standard odds; it waits
   for one) and a Lure for each of the biggest series.

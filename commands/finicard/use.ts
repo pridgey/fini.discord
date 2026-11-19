@@ -15,7 +15,7 @@ import {
   toBattleCard,
   updateCopy,
 } from "../../modules/finicards/cardStore";
-import { findSellable } from "../../modules/finicards/market";
+import { cardInPlay, findSellable } from "../../modules/finicards/market";
 import {
   cleanNickname,
   rerolledKeyword,
@@ -100,6 +100,18 @@ export const useItem = async (
 /** How long an Ability Scroll's choice stays open. */
 const SCROLL_MS = 120_000;
 
+/** Why an ability can't change right now, and that nothing was spent. */
+export const inPlayText = (
+  name: string,
+  where: "dungeon" | "battle",
+  item: ItemDefinition,
+): string =>
+  `**${name}** is in ${
+    where === "dungeon" ? "your dungeon run" : "a battle that isn't over"
+  } right now, so its ability can't change mid-fight. Use the **${item.name}** once ${
+    where === "dungeon" ? "the run" : "the battle"
+  } is over - it hasn't been spent.`;
+
 /** "**Edge** - Wins its round if the round would be a draw" */
 const keywordLine = (slug: string): string => {
   const keyword = findKeyword(slug);
@@ -171,6 +183,16 @@ const useOnCard = async (
     return;
   }
 
+  // An ability fitted to a fight already in front of the player would be a
+  // cheat, so a card in play keeps its ability until the fight is over.
+  if (item.key === "card_reroll" || item.key === "card_scroll") {
+    const busy = await cardInPlay(interaction.user.id, serverId, copy.id);
+    if (busy) {
+      await interaction.editReply(inPlayText(card.name, busy, item));
+      return;
+    }
+  }
+
   if (item.key === "card_reroll") {
     const keyword = rerolledKeyword(card.rarity, copy.keyword ?? "");
     const updated = await updateCopy(copy.id, { keyword });
@@ -229,6 +251,15 @@ const useOnCard = async (
   if (!still || !(await stillHoldsItem(interaction.user.id, row.id ?? ""))) {
     await press.update({
       content: "That card or the scroll is no longer yours, so nothing changed.",
+      components: [],
+    });
+    return;
+  }
+  // It may have been dealt into a fight while the choice was open.
+  const busy = await cardInPlay(interaction.user.id, serverId, copy.id);
+  if (busy) {
+    await press.update({
+      content: inPlayText(card.name, busy, item),
       components: [],
     });
     return;

@@ -321,3 +321,17 @@ describe("a piece found", () => {
     expect(pieceFoundLine("aya", "boon_lucky", 1)).toBeNull();
   });
 });
+
+describe("a card in a fight", () => {
+  it("keeps its ability, and says the boon wasn't spent", async () => {
+    const { inPlayText } = await import("../../commands/finicard/use");
+    const { itemByKey } = await import("../../modules/finicards/items");
+    const scroll = itemByKey("card_scroll")!;
+    expect(inPlayText("Goku", "dungeon", scroll)).toBe(
+      "**Goku** is in your dungeon run right now, so its ability can't change mid-fight. Use the **Ability Scroll** once the run is over - it hasn't been spent.",
+    );
+    expect(inPlayText("Goku", "battle", scroll)).toContain(
+      "a battle that isn't over",
+    );
+  });
+});
