@@ -70,6 +70,7 @@ export const COMMAND_CATEGORIES: Record<string, string> = {
   blackjack: "Games & Gambling",
   evenodd: "Games & Gambling",
   horsey: "Games & Gambling",
+  mahjong: "Games & Gambling",
   roll: "Games & Gambling",
   deathbattle: "Games & Gambling",
   "geo-test": "Games & Gambling",

@@ -38,6 +38,7 @@ import { startWebSync } from "./modules/finicards/webSync";
 import { makeCardPoster } from "./modules/finicards/webSync/showCard";
 import { startCardManager } from "./modules/finicards/cardManagerServer";
 import type { SlashCommand } from "./types/handlers";
+import { resumeMahjong } from "./modules/games/mahjong/table";
 
 /**
  * Recorded as a command's output when its reply cannot be read back - the
@@ -130,6 +131,11 @@ client.once("clientReady", async (cl) => {
       runPollTasks(cl);
     }, 60_000);
   }
+
+  // Mahjong tables mid-game pick their clocks back up.
+  resumeMahjong(cl).catch((error) =>
+    console.error("Mahjong: resuming tables failed", error),
+  );
 
   // A daily that is due goes out now rather than at the first poll a minute on.
   runDailies(cl).catch((error) =>
