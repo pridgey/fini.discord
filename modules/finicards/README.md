@@ -1149,6 +1149,35 @@ Nothing is played, stored or paid.
 
 ---
 
+## Dungeon items
+
+Issue #8 has the decisions in full. Items are their own inventory, `v2_item`,
+one row each (`itemStore.ts`); the catalogue is `items.ts`.
+
+- **Collection pieces** - seven Dragon Balls, five pieces of Exodia, seven
+  Chaos Emeralds. **One of each per server**, enforced by a unique index:
+  a piece only drops while nobody there holds or carries it, and a summon, a
+  fall or a sale puts it back. A completed set summons its card with
+  `/finicard use`: one per server, granted before the pieces are spent, with an
+  animation (`cardArt/summonAnimation.ts`) and a notice in the bot channel.
+- **Summoned (`SU`)** is the fourth rarity those three cards have: 18 stat
+  points (others 15), one stat up to 14, never in packs, boss drops or the
+  enemy pool. They animate like Legendaries in their set's effect - Shenron
+  Cosmos, Exodia Ghost, Super Sonic Storm (`COLLECTIONS[...].effect`) - but
+  aren't Legendaries: they print SU and count toward the population.
+- **Boons** are single-use. Switch one on with `/finicard use`, one of each
+  kind at a time: a pack boon is spent by the next pack (the first, on a bulk
+  open), a dungeon boon by the next run, which starts with it. What each does
+  is `boons.ts`; pack boons only move the common / uncommon / full-art odds.
+- **Drops** (`dungeon.ts`, `DUNGEON.items`): nothing before room 15, full
+  strength by room 35, higher tiers deeper. A boss may drop one beside its
+  card, an event may offer one as its reward, a shop may stock one at a
+  premium. Carried, not banked: granted on a walk-out, lost on a fall.
+  `simulate.ts --dungeon` reports them by depth.
+- `/finicard items` is the satchel: what's switched on, each set's progress and
+  who holds the pieces you're missing, and the boons in reserve. The bot admin
+  can grant items with `/finicard grant item:<key>` or `item:set:<set>`.
+
 ## Deliberately not built
 
 - **Keyword-aware deck building.** `deck build` still ranks by stats alone and

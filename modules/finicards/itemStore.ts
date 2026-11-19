@@ -111,3 +111,41 @@ export const summonedHolders = async (
   }
   return holders;
 };
+
+/** The boon of `kind` a player has switched on, waiting for its next pack or run. */
+export const activeBoon = (
+  userId: string,
+  serverId: string,
+  kind: "pack_boon" | "dungeon_boon",
+): Promise<V2ItemRecord | null> =>
+  pb
+    .collection<V2ItemRecord>(V2_ITEM)
+    .getFirstListItem(
+      pb.filter(
+        "user_id = {:userId} && server_id = {:serverId} && kind = {:kind} && active = true",
+        { userId, serverId, kind },
+      ),
+    )
+    .catch(() => null);
+
+/** Switches a boon on for the player's next pack or run. */
+export const activateItem = (id: string): Promise<V2ItemRecord> =>
+  pb.collection<V2ItemRecord>(V2_ITEM).update(id, { active: true });
+
+/** Uses an item up. */
+export const spendItem = (id: string): Promise<boolean> =>
+  pb.collection(V2_ITEM).delete(id);
+
+/**
+ * Spends one of each of a set's pieces from a player, for a summon. The
+ * pieces are free to drop again once they're gone - one of each per server.
+ */
+export const spendPieces = async (
+  items: V2ItemRecord[],
+  keys: string[],
+): Promise<void> => {
+  for (const key of keys) {
+    const row = items.find((item) => item.item === key);
+    if (row?.id) await spendItem(row.id);
+  }
+};

@@ -130,3 +130,25 @@ describe("the Summoned rarity", () => {
     expect(layoutFor("full_art", false).rarityCode).toBe("FA");
   });
 });
+
+describe("the satchel's switched-on boons", () => {
+  it("shows them on their own, first, and counts only the rest below", () => {
+    const text = textOf(
+      buildItemsMessage({
+        playerName: "Aya",
+        holders: {},
+        pieceHolders: new Map(),
+        userId: "me",
+        held: ["boon_lucky", "boon_lucky", "boon_purse"],
+        active: ["boon_lucky", "boon_purse"],
+      }),
+    );
+    expect(text).toContain("Switched on");
+    expect(text).toContain("Four-Leaf Clover** · your next pack spends it");
+    expect(text).toContain("Heavy Purse** · your next dungeon run starts with it");
+    expect(text.indexOf("Switched on")).toBeLessThan(text.indexOf("Collections"));
+    // One clover left in reserve, no purse.
+    expect(text).toContain("Four-Leaf Clover** · Better odds");
+    expect(text).not.toContain("Heavy Purse** · Start");
+  });
+});

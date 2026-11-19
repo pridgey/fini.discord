@@ -432,6 +432,8 @@ export type DungeonState = {
    * granted on a walk-out and lost on a fall. Absent on older runs.
    */
   items?: string[];
+  /** The dungeon boon the run started with, by catalogue key. */
+  boon?: string;
   /**
    * Hand cards waiting to go back into the deck, by id. The engine has no deck,
    * so it only marks them; the store deals their replacements and clears this.

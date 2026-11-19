@@ -24,6 +24,7 @@ export const showItems = async (
       holders,
       pieceHolders: pieces,
       userId: interaction.user.id,
+      active: items.filter((item) => item.active).map((item) => item.item),
     }),
   );
 };

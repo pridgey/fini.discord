@@ -27,6 +27,8 @@ export type ItemsMessageInput = {
   pieceHolders: Map<string, string>;
   /** The player looking, so their own pieces aren't listed as someone else's. */
   userId: string;
+  /** Boons switched on, waiting for the next pack or run, by catalogue key. */
+  active?: string[];
 };
 
 const setBlock = (
@@ -55,7 +57,9 @@ const setBlock = (
       `-# ${set.summons} has been summoned on this server by <@${holder}>. These pieces are keepsakes now.`,
     );
   } else if (complete) {
-    lines.push(`-# ✅ The set is complete.`);
+    lines.push(
+      `-# ✅ The set is complete. Summon ${set.summons} with \`/finicard use\`.`,
+    );
   } else if (have.length > 0) {
     // One of each piece per server: a missing piece is either still out in
     // the dungeon or in someone's satchel, ready to trade for.
@@ -71,10 +75,17 @@ const setBlock = (
   return lines.join("\n");
 };
 
-const boonLines = (kind: ItemKind, held: string[]): string[] => {
+const boonLines = (
+  kind: ItemKind,
+  held: string[],
+  active: string[],
+): string[] => {
+  // A boon that's switched on shows in its own section; these are the rest.
   const lines = ITEMS.filter((item) => item.kind === kind).flatMap((item) => {
-    const count = held.filter((key) => key === item.key).length;
-    return count
+    const count =
+      held.filter((key) => key === item.key).length -
+      active.filter((key) => key === item.key).length;
+    return count > 0
       ? [
           `${item.emoji} **${item.name}**${count > 1 ? ` ×${count}` : ""} · ${item.blurb}`,
         ]
@@ -89,6 +100,7 @@ export const buildItemsMessage = ({
   holders,
   pieceHolders,
   userId,
+  active = [],
 }: ItemsMessageInput) => {
   const elsewhere = (piece: string) => {
     const who = pieceHolders.get(piece);
@@ -96,6 +108,18 @@ export const buildItemsMessage = ({
   };
   // An item the catalogue no longer has is left out rather than shown blank.
   const known = held.filter((key) => itemByKey(key));
+  const switchedOn = active.flatMap((key) => {
+    const item = itemByKey(key);
+    return item
+      ? [
+          `${item.emoji} **${item.name}** · ${
+            item.kind === "pack_boon"
+              ? "your next pack spends it"
+              : "your next dungeon run starts with it"
+          }`,
+        ]
+      : [];
+  });
   const card = new ContainerBuilder()
     .setAccentColor(ACCENT)
     .addTextDisplayComponents((text) =>
@@ -106,7 +130,19 @@ export const buildItemsMessage = ({
         ].join("\n"),
       ),
     )
-    .addSeparatorComponents((separator) => separator)
+    .addSeparatorComponents((separator) => separator);
+
+  // What's switched on comes first: it's what the player's next pack or run
+  // will be spending.
+  if (switchedOn.length > 0) {
+    card
+      .addTextDisplayComponents((text) =>
+        text.setContent(["### ✨ Switched on", ...switchedOn].join("\n")),
+      )
+      .addSeparatorComponents((separator) => separator);
+  }
+
+  card
     .addTextDisplayComponents((text) =>
       text.setContent(
         [
@@ -122,10 +158,12 @@ export const buildItemsMessage = ({
       text.setContent(
         [
           "### Pack boons",
-          ...boonLines("pack_boon", known),
+          ...boonLines("pack_boon", known, active),
           "",
           "### Dungeon boons",
-          ...boonLines("dungeon_boon", known),
+          ...boonLines("dungeon_boon", known, active),
+          "",
+          "-# Switch a boon on with `/finicard use`: your next pack or dungeon run spends it. One of each kind at a time.",
         ].join("\n"),
       ),
     );

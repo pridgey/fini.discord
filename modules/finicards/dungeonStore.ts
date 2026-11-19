@@ -26,7 +26,8 @@ import {
   type RoomSource,
 } from "./dungeon";
 import type { BattleCard } from "./types";
-import { pieceHolders } from "./itemStore";
+import { activeBoon, pieceHolders, spendItem } from "./itemStore";
+import { withDungeonBoon } from "./boons";
 
 /**
  * Dungeon run lifecycle.
@@ -241,15 +242,19 @@ export const startRun = async (
     };
   }
 
-  const progress = createRun(await roomSource());
+  const created = createRun(await roomSource());
 
-  if (!progress) {
+  if (!created) {
     return {
       ok: false,
       reason:
         "The card pool is empty, so there is nothing to put in the rooms.",
     };
   }
+
+  // A dungeon boon the player switched on starts this run, and is spent.
+  const boon = await activeBoon(input.userId, input.serverId, "dungeon_boon");
+  const progress = boon ? withDungeonBoon(created, boon.item) : created;
 
   const run = await pb.collection<V2DungeonRunRecord>(V2_DUNGEON_RUN).create({
     user_id: input.userId,
@@ -263,6 +268,7 @@ export const startRun = async (
     entry_fee: DUNGEON.entryFee,
     reward: null,
   });
+  if (boon?.id) await spendItem(boon.id);
 
   return { ok: true, run };
 };

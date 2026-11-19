@@ -107,6 +107,19 @@ export const rollPackRarities = (
   random: Random = Math.random,
 ): CardRarity[] => Array.from({ length: size }, () => rollRarity(odds, random));
 
+/**
+ * A pack of all commons, under a boon that promised better: one of them turns
+ * uncommon. Changes the rolls in place.
+ */
+export const withUncommonFloor = (
+  rarities: CardRarity[],
+  random: Random = Math.random,
+): CardRarity[] => {
+  if (rarities.length > 0 && !rarities.some((rarity) => rarity !== "common"))
+    rarities[Math.floor(random() * rarities.length)] = "uncommon";
+  return rarities;
+};
+
 /** Definitions of a rarity that still have room left in the server population. */
 const availableOfRarity = (
   definitions: V2CardDefinitionRecord[],
@@ -236,6 +249,8 @@ export type OpenPackInput = {
    * `godPacks.ts`, and the pack counts toward them; given, it doesn't.
    */
   godPackChance?: number;
+  /** At least one card uncommon or better: a pack boon (`boons.ts`). */
+  uncommonFloor?: boolean;
   random?: Random;
 };
 
@@ -289,6 +304,7 @@ export const openPack = async (
         input.odds ?? (input.set ? SET_PACK_ODDS : PACK_ODDS),
         random,
       );
+  if (input.uncommonFloor) withUncommonFloor(rarities, random);
 
   const pulls: OwnedCard[] = [];
   let shortfall = 0;

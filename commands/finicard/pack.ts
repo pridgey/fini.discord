@@ -20,9 +20,13 @@ import {
   MAX_PACKS_AT_ONCE,
   openPack,
   PACK_COST,
+  PACK_ODDS,
   PACK_SIZE,
   SET_PACK_COST,
+  SET_PACK_ODDS,
 } from "../../modules/finicards/packs";
+import { PACK_BOONS, boonLabel } from "../../modules/finicards/boons";
+import { activeBoon, spendItem } from "../../modules/finicards/itemStore";
 import type { OwnedCard } from "../../modules/finicards/types";
 import { presentPack } from "../../modules/finicards/packFlow";
 import { createLog } from "../../modules/logger/logger";
@@ -163,6 +167,20 @@ export const openPackFor = async (
   let reimbursement = 0;
   let godPacks = 0;
 
+  // A pack boon the player switched on goes on the first pack, and is spent.
+  const boon = await activeBoon(interaction.user.id, serverId, "pack_boon");
+  const boost = boon ? PACK_BOONS[boon.item] : undefined;
+  const boosted = boost
+    ? {
+        ...(boost.size ? { size: boost.size } : {}),
+        ...(boost.foilChance ? { foilChance: boost.foilChance } : {}),
+        ...(boost.uncommonFloor ? { uncommonFloor: true } : {}),
+        ...(boost.odds
+          ? { odds: boost.odds(set ? SET_PACK_ODDS : PACK_ODDS) }
+          : {}),
+      }
+    : {};
+
   // One after another, never together: each pack reads the population the
   // last one left, so no card is handed out past its copies.
   for (let index = 0; index < packCount; index += 1) {
@@ -185,7 +203,9 @@ export const openPackFor = async (
                 : NO_LEGENDARY,
           }
         : {}),
+      ...(index === 0 ? boosted : {}),
     });
+    if (index === 0 && boon?.id) await spendItem(boon.id);
 
     // Each pack reads the collection afresh, so a card an earlier pack in
     // this run gave is already not new.
@@ -243,6 +263,9 @@ export const openPackFor = async (
       : packCount > 1
         ? `${packs}${cost} fc`
         : undefined;
+  const boonNote = boon
+    ? `${boonLabel(boon.item)} spent on ${packCount === 1 ? "this pack" : "the first pack"}`
+    : undefined;
   const pack = {
     cards,
     opener:
@@ -253,7 +276,9 @@ export const openPackFor = async (
     reimbursement,
     packs: packCount,
     ...(godPacks ? { godPacks } : {}),
-    ...(note ? { note } : {}),
+    ...(note || boonNote
+      ? { note: [note, boonNote].filter(Boolean).join(" · ") }
+      : {}),
   };
 
   // The sealed pack first, then its cards one at a time.

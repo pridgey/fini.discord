@@ -6,6 +6,7 @@ import sharp, { type Blend, type Sharp } from "sharp";
 import type { ArtAdjust } from "../../../types/PocketbaseTablesV2";
 import type { LegendaryTier } from "../legendary";
 import type { BattleCard } from "../types";
+import { COLLECTIONS } from "../items";
 import {
   buildCardSvg,
   cardImageName,
@@ -992,6 +993,13 @@ export const renderLegendaryGif = (
   );
 };
 
+/** The effect a Summoned card always plays: its set's (`items.ts`). */
+const summonedEffect = (card: BattleCard): string | undefined =>
+  card.rarity === "summoned"
+    ? Object.values(COLLECTIONS).find((set) => set.summons === card.name)
+        ?.effect
+    : undefined;
+
 /** One at a time: a render is heavy, and the beat it keeps is module state. */
 const queued = (render: () => Promise<Buffer>): Promise<Buffer> => {
   const next = queue.then(render);
@@ -1011,16 +1019,26 @@ export const legendaryGif = async (
   card: BattleCard,
   options: { reveal?: boolean } = {},
 ): Promise<Buffer | null> => {
-  // A Legendary in its effect; a Secret Art only as its reveal.
-  const effect = card.legendary
-    ? EFFECTS[card.legendary]
+  // A Legendary in its effect, a Summoned card in its set's; a Secret Art
+  // only as its reveal.
+  const slug = card.legendary || summonedEffect(card);
+  const effect = slug
+    ? EFFECTS[slug]
     : options.reveal && card.secretArt
       ? STILL
       : undefined;
   if (!effect) return null;
 
   const key = createHash("sha1")
-    .update(JSON.stringify({ card, reveal: !!options.reveal, width: WIDTH }))
+    // The effect too: a Summoned card's comes from its set, not the card.
+    .update(
+      JSON.stringify({
+        card,
+        effect: slug ?? "",
+        reveal: !!options.reveal,
+        width: WIDTH,
+      }),
+    )
     .digest("hex");
   const file = path.join(CACHE_DIR, `${key}.gif`);
   try {
@@ -1037,9 +1055,11 @@ export const legendaryGif = async (
         art_adjust: null,
       }),
     );
+    // A Summoned card keeps its own code (SU): drawn in the effect, not as a
+    // Legendary of it.
     const gif = card.legendary
       ? await renderLegendaryGif(card, art, card.legendary, options)
-      : await queued(() => renderGif(card, art, STILL, options));
+      : await queued(() => renderGif(card, art, effect, options));
     // A card that has art and came out without it hit a passing failure -
     // shown this once, but not kept, or it would be served that way for good.
     if (art || !(card.artUrl || card.legacyCard)) {

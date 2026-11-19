@@ -3,7 +3,11 @@ import {
   SlashCommandBuilder,
   SlashCommandStringOption,
 } from "@discordjs/builders";
-import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
+import {
+  AutocompleteInteraction,
+  ChatInputCommandInteraction,
+  MessageFlags,
+} from "discord.js";
 import {
   SORT_LABEL as COLLECTION_SORT_LABEL,
   TIER_LABEL as COLLECTION_TIER_LABEL,
@@ -31,6 +35,9 @@ import { showPending, startBattle, startPractice } from "./finicard/battle";
 import { enterDungeon, showDungeonTutorial } from "./finicard/dungeon";
 import { grantCards } from "./finicard/grant";
 import { showItems } from "./finicard/items";
+import { useItem } from "./finicard/use";
+import { getItems, summonedHolders } from "../modules/finicards/itemStore";
+import { useChoices } from "../modules/finicards/useItem";
 import { openPackFor } from "./finicard/pack";
 import { handleDeckSubcommand } from "./finicard/deck";
 
@@ -277,6 +284,20 @@ export const data = new SlashCommandBuilder()
         "Your satchel: collection pieces and boons found deep in the dungeon",
       ),
   )
+  .addSubcommand((sub) =>
+    sub
+      .setName("use")
+      .setDescription(
+        "Switch a boon on for your next pack or run, or summon a completed set's card",
+      )
+      .addStringOption((option) =>
+        option
+          .setName("item")
+          .setDescription("A boon, or a set to summon from")
+          .setRequired(true)
+          .setAutocomplete(true),
+      ),
+  )
   .addSubcommandGroup((group) =>
     group
       .setName("deck")
@@ -486,6 +507,25 @@ export const data = new SlashCommandBuilder()
       ),
   );
 
+/**
+ * Suggestions for `/finicard use`, from the player's own satchel: a set ready
+ * to summon first, then their boons, then sets in progress.
+ */
+export const autocomplete = async (interaction: AutocompleteInteraction) => {
+  if (interaction.options.getSubcommand(false) !== "use") {
+    await interaction.respond([]);
+    return;
+  }
+  const serverId = interaction.guildId ?? "unknown guild id";
+  const [items, holders] = await Promise.all([
+    getItems(interaction.user.id, serverId),
+    summonedHolders(serverId),
+  ]);
+  await interaction.respond(
+    useChoices(items, holders, String(interaction.options.getFocused() ?? "")),
+  );
+};
+
 export const execute: SlashCommand["execute"] = async (
   interaction: ChatInputCommandInteraction,
   logCommand: () => void,
@@ -540,6 +580,8 @@ export const execute: SlashCommand["execute"] = async (
         return await showRecord(interaction, context);
       case "items":
         return await showItems(interaction, context);
+      case "use":
+        return await useItem(interaction, context);
       case "abilities":
         await interaction.editReply(buildAbilitiesMessage());
         return;

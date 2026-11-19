@@ -42,6 +42,12 @@ export type CollectionSet = {
   emoji: string;
   /** "Gather all seven to summon Shenron." */
   line: string;
+  /**
+   * The Legendary animation the Summoned card always plays, by effect slug
+   * (`cardArt/legendaryGif.ts`). It isn't a Legendary - it isn't counted as
+   * one, and prints SU - it just moves like one.
+   */
+  effect: string;
 };
 
 export const COLLECTIONS: Record<CollectionKey, CollectionSet> = {
@@ -51,6 +57,7 @@ export const COLLECTIONS: Record<CollectionKey, CollectionSet> = {
     summons: "Shenron",
     emoji: "🐉",
     line: "Gather all seven to summon Shenron.",
+    effect: "cosmos",
   },
   exodia: {
     key: "exodia",
@@ -58,6 +65,7 @@ export const COLLECTIONS: Record<CollectionKey, CollectionSet> = {
     summons: "Exodia",
     emoji: "🃏",
     line: "Assemble all five pieces to call Exodia, the Forbidden One.",
+    effect: "ghost",
   },
   chaos_emeralds: {
     key: "chaos_emeralds",
@@ -65,6 +73,7 @@ export const COLLECTIONS: Record<CollectionKey, CollectionSet> = {
     summons: "Super Sonic",
     emoji: "💎",
     line: "Hold all seven to go Super.",
+    effect: "storm",
   },
 };
 
