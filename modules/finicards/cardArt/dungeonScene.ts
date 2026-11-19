@@ -306,16 +306,23 @@ const effectIcon = (effect: Effect, x: number, y: number): string => {
       return effectIcon({ kind: "recover" }, x, y);
     case "many":
       return effect.effects[0] ? effectIcon(effect.effects[0], x, y) : "";
+    case "item":
+      // A drawstring pouch, in the colour of something rare.
+      return `<path d="M${x - 5} ${y - 9} q5 3 10 0 l-2 4 c7 2 10 7 9 12 a4 4 0 0 1 -4 4 h-16 a4 4 0 0 1 -4 -4 c-1 -5 2 -10 9 -12 z" fill="${EVENT_PURPLE}"></path><path d="M${x - 4} ${y - 5} q4 2 8 0" fill="none" stroke="#2a1840" stroke-width="1.4" stroke-linecap="round"></path><circle cx="${x}" cy="${y + 5}" r="2.2" fill="#ffffff" fill-opacity="0.7"></circle>`;
   }
 };
 
 const shopScene = (room: ShopRoom, depth: number): string => {
   /* A fourth ware - a shop's occasional hand-redraw - narrows every tile, and
-     the name moves under the icon to keep its width. */
+     the name moves under the icon to keep its width. A fifth - a dungeon item
+     on the shelf as well - narrows them again. */
   const compact = room.offers.length > 3;
-  const TILE = compact
-    ? { width: 86, height: 98, y: 56, gap: 6 }
-    : { width: 112, height: 98, y: 56, gap: 8 };
+  const TILE =
+    room.offers.length > 4
+      ? { width: 70, height: 98, y: 56, gap: 4 }
+      : compact
+        ? { width: 86, height: 98, y: 56, gap: 6 }
+        : { width: 112, height: 98, y: 56, gap: 8 };
   const total =
     room.offers.length * TILE.width + (room.offers.length - 1) * TILE.gap;
   const left = (SCENE.width - total) / 2;

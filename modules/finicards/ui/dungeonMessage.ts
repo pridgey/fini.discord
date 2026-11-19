@@ -42,6 +42,7 @@ import {
   type Room,
 } from "../dungeon";
 import { cardLabel } from "../lineupPicker";
+import { itemByKey } from "../items";
 import { CARD_EMOJI, TYPE_EMOJI } from "../rules";
 import type { BattleCard, Side } from "../types";
 import { enemyAbilityLines } from "./enemyAbility";
@@ -236,6 +237,25 @@ const lootLine = (progress: DungeonState): string | null => {
     ...(uncommons > 0 ? [`${uncommons} uncommon`] : []),
     ...(fullArts > 0 ? [`${fullArts} full-art`] : []),
   ].join(" + ")} banked`;
+};
+
+/** "**4-Star Dragon Ball**, **Four-Leaf Clover**" */
+const itemNames = (keys: string[]): string =>
+  keys.map((key) => `**${itemByKey(key)?.name ?? key}**`).join(", ");
+
+/** What the run carries, while it goes on: kept only on a walk out. */
+const carriedLine = (progress: DungeonState): string | null =>
+  progress.items?.length
+    ? `🎒 Carrying ${itemNames(progress.items)}: yours only if you walk out`
+    : null;
+
+/** "Walk out with 6 fc and an item", "Walk out with 2 items", "Walk out with nothing". */
+const walkOutLabel = (coin: number, items: number): string => {
+  const parts = [
+    ...(coin > 0 ? [`${coin} fc`] : []),
+    ...(items > 0 ? [items === 1 ? "an item" : `${items} items`] : []),
+  ];
+  return `Walk out with ${parts.length ? parts.join(" and ") : "nothing"}`;
 };
 
 const rewardLine = (
@@ -461,6 +481,9 @@ export const composeDungeonMessage = (
         [
           headline,
           [`<@${input.userId}>`, ...status].join(" · "),
+          ...(state === "active" && carriedLine(progress)
+            ? [carriedLine(progress)!]
+            : []),
           ...(charges ? [charges] : []),
           ...buffs,
         ].join("\n"),
@@ -515,6 +538,14 @@ export const composeDungeonMessage = (
               (card) =>
                 `${CARD_EMOJI} **Boss drop:** ${cardLine(card)} · \`${card.instanceId}\``,
             ),
+            ...(input.reward?.items?.length
+              ? [
+                  `🎒 Into your satchel: ${itemNames(input.reward.items)} · see \`/finicard items\``,
+                ]
+              : []),
+            ...(input.reward?.lostItems?.length
+              ? [`🎒 Lost with the fall: ${itemNames(input.reward.lostItems)}`]
+              : []),
           ].join("\n"),
         ),
       );
@@ -719,7 +750,9 @@ export const composeDungeonMessage = (
       );
       scene.addTextDisplayComponents((text) =>
         text.setContent(
-          `-# Geld only spends here, and what you buy lasts for this run. You have 🪙 **${progress.geld}**.`,
+          room.offers.some((offer) => offer.effect.kind === "item")
+            ? `-# Geld only spends here. Wares last for this run; an item is yours to keep if you walk out. You have 🪙 **${progress.geld}**.`
+            : `-# Geld only spends here, and what you buy lasts for this run. You have 🪙 **${progress.geld}**.`,
         ),
       );
       buttonRows(scene, [
@@ -836,9 +869,7 @@ export const composeDungeonMessage = (
     new ButtonBuilder()
       .setCustomId(id("retreat"))
       .setLabel(
-        leaveWith > 0
-          ? `Walk out with ${leaveWith} fc`
-          : "Walk out with nothing",
+        walkOutLabel(leaveWith, progress.items?.length ?? 0),
       )
       .setStyle(ButtonStyle.Danger)
       .setDisabled(off("retreat")),

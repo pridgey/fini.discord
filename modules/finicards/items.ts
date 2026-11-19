@@ -203,8 +203,8 @@ export const ITEMS: ItemDefinition[] = [
     blurb: "No fog for your whole next run.",
   },
   {
-    key: "boon_whetstone",
-    name: "Whetstone",
+    key: "boon_grindstone",
+    name: "Grindstone",
     kind: "dungeon_boon",
     tier: 3,
     emoji: "🪨",
@@ -245,4 +245,80 @@ export const setProgress = (
     (item) => !held.includes(item.key),
   );
   return { have, missing, complete: missing.length === 0 };
+};
+
+/* -------------------------------------------------------------- dropping -- */
+
+/** How likely each kind of item is, when one drops. Weights, not percent. */
+export const KIND_WEIGHTS: Record<ItemKind, number> = {
+  piece: 50,
+  pack_boon: 25,
+  dungeon_boon: 25,
+};
+
+/**
+ * How likely each tier is at `depth`. Weights, not percent. From room 15 only
+ * tier 1 turns up; tier 2 comes in after room 20 and tier 3 after room 28,
+ * each growing until room 35, where it's 40 / 40 / 20.
+ */
+export const tierWeights = (depth: number): Record<ItemTier, number> => {
+  const grow = (from: number, to: number) =>
+    Math.min(1, Math.max(0, (depth - from) / (to - from)));
+  const two = 40 * grow(20, 35);
+  const three = 20 * grow(28, 35);
+  return { 1: 100 - two - three, 2: two, 3: three };
+};
+
+const weighted = <T extends string | number>(
+  weights: Record<T, number>,
+  random: () => number,
+): T => {
+  const entries = Object.entries(weights) as [T, number][];
+  let roll = random() * entries.reduce((sum, [, weight]) => sum + weight, 0);
+  for (const [value, weight] of entries) {
+    if ((roll -= weight) < 0) return value;
+  }
+  return entries[0][0];
+};
+
+/**
+ * Rolls an item for a drop at `depth`: a kind, then a tier, then one of that
+ * kind and tier. A piece someone holds or carries (`blocked`) can't drop -
+ * there's one of each per server - so a tier with none left looks lower, and
+ * with no pieces left at all the drop becomes a boon of the tier it rolled.
+ */
+export const rollItem = (
+  depth: number,
+  blocked: ReadonlySet<string>,
+  random: () => number,
+): string => {
+  const kind = weighted(KIND_WEIGHTS, random);
+  const rolled = Number(weighted(tierWeights(depth), random)) as ItemTier;
+  const open = (of: ItemKind, tier: ItemTier) =>
+    ITEMS.filter(
+      (item) =>
+        item.kind === of &&
+        item.tier === tier &&
+        !(item.kind === "piece" && blocked.has(item.key)),
+    );
+
+  for (let tier = rolled; tier >= 1; tier--) {
+    const choices = open(kind, tier as ItemTier);
+    if (choices.length) return choices[Math.floor(random() * choices.length)].key;
+  }
+  // Every piece is spoken for: a boon of the rolled tier instead.
+  const boons = [
+    ...open("pack_boon", rolled),
+    ...open("dungeon_boon", rolled),
+  ];
+  return boons[Math.floor(random() * boons.length)].key;
+};
+
+/** A boon of the same tier as `key`, for a piece that was taken before it could be granted. */
+export const standInFor = (key: string, random: () => number): string => {
+  const tier = itemByKey(key)?.tier ?? 1;
+  const boons = ITEMS.filter(
+    (item) => item.kind !== "piece" && item.tier === tier,
+  );
+  return boons[Math.floor(random() * boons.length)].key;
 };

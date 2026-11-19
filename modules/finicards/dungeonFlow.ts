@@ -13,6 +13,8 @@ import { payoutFor, type DungeonReward } from "./dungeon";
 import { FOIL_CHANCE, selectCard } from "./packs";
 import type { BattleCard } from "./types";
 import { loadHand, recordReward, stateOf } from "./dungeonStore";
+import { grantItems } from "./itemStore";
+import { standInFor } from "./items";
 import {
   buildDungeonMessage,
   type BuiltDungeonMessage,
@@ -29,6 +31,9 @@ import { refundWager, stakeWager, type WagerParty } from "./wagers";
  *
  * Bosses drop cards. Those are banked on the run and granted here when it
  * ends - on a walk out or a fall alike - so a card is only ever granted once.
+ *
+ * Dungeon items are carried, not banked: granted here on a walk out, lost on
+ * a fall.
  */
 
 /** Moves the entry fee into the Reserve. */
@@ -73,6 +78,25 @@ const grantLoot = async (
 };
 
 /**
+ * Grants the items a run walked out with. A collection piece someone else
+ * claimed while this run carried it - one of each per server - becomes a boon
+ * of the same tier, so walking out with it is never for nothing.
+ */
+const grantCarried = async (
+  run: V2DungeonRunRecord,
+  carried: string[],
+): Promise<string[]> => {
+  if (carried.length === 0) return [];
+  const from = { source: "dungeon", run: run.id };
+  const first = await grantItems(run.user_id, run.server_id, carried, from);
+  const standIns = first.taken.map((key) => standInFor(key, Math.random));
+  const second = standIns.length
+    ? await grantItems(run.user_id, run.server_id, standIns, from)
+    : { granted: [] };
+  return [...first.granted, ...second.granted].map((row) => row.item);
+};
+
+/**
  * Pays out a finished run and records what it paid.
  *
  * A run that already carries a reward is returned as it stands rather than paid
@@ -89,10 +113,18 @@ export const settleRun = async (
   const progress = stateOf(run);
   const payout = payoutFor(progress?.geld ?? 0, run.state === "failed");
   const cards = await grantLoot(run, party, progress?.loot ?? []);
+  const carried = progress?.items ?? [];
+  const fell = run.state === "failed";
+  const items = fell ? [] : await grantCarried(run, carried);
+  const kept = {
+    cards,
+    ...(items.length ? { items } : {}),
+    ...(fell && carried.length ? { lostItems: carried } : {}),
+  };
   const reward: DungeonReward =
     payout.coin > 0
-      ? { kind: "coin", amount: payout.coin, ...payout, cards }
-      : { kind: "none", cards };
+      ? { kind: "coin", amount: payout.coin, ...payout, ...kept }
+      : { kind: "none", ...kept };
 
   if (reward.kind === "coin") await refundWager(party, reward.amount);
   await recordReward(run, reward);

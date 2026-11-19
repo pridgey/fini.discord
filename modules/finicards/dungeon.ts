@@ -13,6 +13,7 @@ import {
 } from "./keywords";
 import { CARD_EMOJI, RULES, TYPE_PRIORITY, type BattleRules } from "./rules";
 import type { BattleCard, RoundResult, Side } from "./types";
+import { itemByKey, rollItem, type ItemTier } from "./items";
 
 /**
  * Dungeons: one player, one room at a time, for as long as they can keep going.
@@ -109,6 +110,20 @@ export type DungeonConfig = {
    * They are a third of that tier, and without this a third of bosses were.
    */
   secretArtEnemyChance: number;
+  /**
+   * Dungeon items (issue #8, `items.ts`). None before room `from`; from there
+   * the chance of each source climbs to its full value at room `full`. A boss
+   * may drop one beside its card, an event may offer one as its reward, and a
+   * shop may stock one at `price` by tier, inflated like any ware.
+   */
+  items: {
+    from: number;
+    full: number;
+    boss: number;
+    event: number;
+    shop: number;
+    price: Record<ItemTier, number>;
+  };
 };
 
 /**
@@ -139,6 +154,26 @@ export const DUNGEON: DungeonConfig = {
   specialChance: 0.6,
   shopInflation: 0.1,
   secretArtEnemyChance: 0.04,
+  items: {
+    from: 15,
+    full: 35,
+    boss: 0.5,
+    event: 0.15,
+    shop: 0.15,
+    price: { 1: 15, 2: 25, 3: 40 },
+  },
+};
+
+/**
+ * How far the item drops have grown at `depth`, 0 to 1: nothing before
+ * `items.from`, a sliver at it, everything by `items.full`.
+ */
+export const itemChance = (
+  depth: number,
+  config: DungeonConfig = DUNGEON,
+): number => {
+  const { from, full } = config.items;
+  return Math.min(1, Math.max(0, (depth - from + 1) / (full - from + 1)));
 };
 
 /** The player attacks as the challenger; the dungeon answers as the defender. */
@@ -239,7 +274,9 @@ export type Effect =
   /** A loaded die: the next failed event is rolled again. */
   | { kind: "reroll" }
   /** A strong coffee: wakes one resting card, whenever the player likes. */
-  | { kind: "coffee" };
+  | { kind: "coffee" }
+  /** A dungeon item, carried and kept only on a walk-out (`items.ts`). */
+  | { kind: "item"; item: string };
 
 export const modsOf = (state: Pick<DungeonState, "buffs">): Mods => {
   const total = { ...NO_MODS };
@@ -391,6 +428,11 @@ export type DungeonState = {
   /** Strong coffees held. Each one wakes a resting card. */
   coffee?: number;
   /**
+   * Dungeon items found on this run, by catalogue key. Carried, not banked:
+   * granted on a walk-out and lost on a fall. Absent on older runs.
+   */
+  items?: string[];
+  /**
    * Hand cards waiting to go back into the deck, by id. The engine has no deck,
    * so it only marks them; the store deals their replacements and clears this.
    */
@@ -407,7 +449,19 @@ export type RoomSource = {
   preview?: BattleCard[];
   hand?: BattleCard[];
   random?: Random;
+  /**
+   * Collection pieces that can't drop: someone on the server holds them, or
+   * another live run is carrying them. There's one of each per server.
+   */
+  blockedPieces?: ReadonlySet<string>;
 };
+
+/** Pieces this run can't find: the source's, and any it already carries. */
+const blockedFor = (
+  state: Pick<DungeonState, "items">,
+  source: RoomSource,
+): Set<string> =>
+  new Set([...(source.blockedPieces ?? []), ...(state.items ?? [])]);
 
 /**
  * The cards a dungeon may preview: those of the lowest-numbered set with no
@@ -1053,6 +1107,75 @@ export const eventChance = (
   return Math.min(1, Math.max(0, passing / config.event.die));
 };
 
+/* ------------------------------------------------------------------ items -- */
+
+type ItemRoll = {
+  state: Pick<DungeonState, "items">;
+  source: RoomSource;
+  depth: number;
+  config: DungeonConfig;
+};
+
+/** An item for a room at `depth`, if its source's chance comes up. */
+const maybeItem = (
+  { state, source, depth, config }: ItemRoll,
+  share: number,
+): string | null => {
+  const chance = itemChance(depth, config) * share;
+  const random = source.random ?? Math.random;
+  if (chance <= 0 || random() >= chance) return null;
+  return rollItem(depth, blockedFor(state, source), random);
+};
+
+/** Now and then a shop deep in the dungeon has an item on its shelf, at a premium. */
+const withShopItem = (
+  shop: ShopRoom,
+  state: ItemRoll["state"],
+  source: RoomSource,
+  depth: number,
+  config: DungeonConfig,
+): ShopRoom => {
+  const key = maybeItem({ state, source, depth, config }, config.items.shop);
+  const item = key ? itemByKey(key) : undefined;
+  if (!key || !item) return shop;
+  return {
+    ...shop,
+    offers: [
+      ...shop.offers,
+      {
+        name: item.name,
+        // Short, for a narrow shelf tile: what kind of thing it is, and the
+        // catch. The satchel has the full description.
+        blurb:
+          item.kind === "piece"
+            ? "Keep it only if you walk out"
+            : `${item.kind === "pack_boon" ? "Pack" : "Dungeon"} boon, kept if you walk out`,
+        price: shopPrice(config.items.price[item.tier], depth, config),
+        effect: { kind: "item", item: key },
+        sold: false,
+      },
+    ],
+  };
+};
+
+/** Now and then an event deep in the dungeon offers an item in place of its reward. */
+const withEventItem = (
+  event: EventRoom,
+  state: ItemRoll["state"],
+  source: RoomSource,
+  depth: number,
+  config: DungeonConfig,
+): EventRoom => {
+  const key = maybeItem({ state, source, depth, config }, config.items.event);
+  const item = key ? itemByKey(key) : undefined;
+  if (!key || !item) return event;
+  return {
+    ...event,
+    reward: { kind: "item", item: key },
+    passText: `${event.passText} Tucked behind it: **${item.name}**.`,
+  };
+};
+
 /* ------------------------------------------------------------------ doors -- */
 
 /**
@@ -1065,6 +1188,7 @@ export const eventChance = (
 export const generateDoors = (
   state: Pick<DungeonState, "depth" | "room" | "buffs"> & {
     sinceShop?: number;
+    items?: string[];
   },
   source: RoomSource,
   restricted = false,
@@ -1106,9 +1230,21 @@ export const generateDoors = (
   let roll = random() * (odds.fight + odds.elite + odds.shop + odds.event);
   const second: Room =
     owed || (roll -= odds.shop) < 0
-      ? generateShop(state.buffs, random, config, depth)
+      ? withShopItem(
+          generateShop(state.buffs, random, config, depth),
+          state,
+          source,
+          depth,
+          config,
+        )
       : (roll -= odds.event) < 0
-        ? generateEvent(depth, random, config)
+        ? withEventItem(
+            generateEvent(depth, random, config),
+            state,
+            source,
+            depth,
+            config,
+          )
         : (roll -= odds.elite) < 0
           ? fight("elite", [first.enemy.type])
           : fight("normal", [first.enemy.type]);
@@ -1305,6 +1441,11 @@ const applyEffect = (
     case "coffee":
       state.coffee = (state.coffee ?? 0) + 1;
       return [];
+    case "item":
+      state.items = [...(state.items ?? []), effect.item];
+      return [
+        `🎒 **${itemByKey(effect.item)?.name ?? "An item"}** goes in your pack. It's yours if you walk out.`,
+      ];
   }
 };
 
@@ -1347,6 +1488,10 @@ export const describeEffect = (effect: Effect): string => {
       return "a loaded die (your next failed event is rolled again)";
     case "coffee":
       return "a strong coffee (wake any resting card, whenever you like)";
+    case "item": {
+      const item = itemByKey(effect.item);
+      return item ? `${item.emoji} ${item.name}` : "a dungeon item";
+    }
   }
 };
 
@@ -1520,6 +1665,17 @@ export const playFight = (
       lines.push(
         `${CARD_EMOJI} The boss drops ${rarity === "full_art" ? "a **full-art** card" : "an **uncommon** card"}, banked: it's yours when the run ends, however it ends.`,
       );
+
+      // Rolled only from the depth items can drop at, so shallower runs
+      // draw exactly the dice they always did.
+      const chance = itemChance(next.depth, config) * config.items.boss;
+      if (chance > 0 && random() < chance) {
+        const item = rollItem(next.depth, blockedFor(next, source), random);
+        next.items = [...(next.items ?? []), item];
+        lines.push(
+          `🎒 It drops **${itemByKey(item)?.name}** too, carried: it's yours only if you walk out.`,
+        );
+      }
     }
     openDoors(next, source, false, config);
   } else if (round.winner === "draw") {
@@ -1826,4 +1982,8 @@ export type DungeonReward = (
 ) & {
   /** Boss drops, already in the player's collection. */
   cards?: BattleCard[];
+  /** Dungeon items granted on a walk-out, by catalogue key. */
+  items?: string[];
+  /** Dungeon items the run was carrying when it fell, and lost. */
+  lostItems?: string[];
 };

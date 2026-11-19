@@ -28,6 +28,7 @@
  *   4. Matches feel decisive - how often a match ends level on rounds.
  */
 
+import { itemByKey } from "../../modules/finicards/items";
 import { resolveMatch } from "../../modules/finicards/battleEngine";
 import { buildDeckCards } from "../../modules/finicards/decks";
 import { HAND_SIZE, dealHand } from "../../modules/finicards/draw";
@@ -525,6 +526,8 @@ const gradeDungeon = () => {
     cards: number;
     fullArts: number;
     firstShop?: FirstShop;
+    items: string[];
+    fell: boolean;
   } => {
     let firstShop: FirstShop | undefined;
     let hand = dealHand(deck, DUNGEON.handSize, random);
@@ -655,6 +658,9 @@ const gradeDungeon = () => {
       cards: state.loot.length,
       fullArts: state.loot.filter((rarity) => rarity === "full_art").length,
       firstShop,
+      // Kept only on a walk out: a run that fell found them and lost them.
+      items: state.items ?? [],
+      fell,
     };
   };
 
@@ -682,6 +688,8 @@ const gradeDungeon = () => {
   );
 
   const shopRows: string[] = [];
+  const itemRows: string[] = [];
+  const allRuns: { depth: number; items: string[]; fell: boolean }[] = [];
 
   for (const [label, build] of players) {
     for (const policy of ["careful", "gut"] as Policy[]) {
@@ -710,6 +718,17 @@ const gradeDungeon = () => {
           .padStart(
             10,
           )}${share((shop) => shop.buyable === 0).padStart(7)}${share((shop) => shop.buyable === 1).padStart(7)}${share((shop) => shop.buyable >= 2).padStart(7)}`,
+      );
+      allRuns.push(...runs);
+      const found = runs.map((result) => result.items.length);
+      itemRows.push(
+        `${label.padEnd(24)}${policy.padEnd(9)}${(found.reduce((a, b) => a + b, 0) / MATCHES).toFixed(2).padStart(8)}${`${((runs.filter((result) => result.items.length > 0).length / MATCHES) * 100).toFixed(1)}%`.padStart(10)}${(
+          runs
+            .filter((result) => !result.fell)
+            .reduce((sum, result) => sum + result.items.length, 0) / MATCHES
+        )
+          .toFixed(2)
+          .padStart(8)}`,
       );
       const depths = runs.map((result) => result.depth).sort((a, b) => a - b);
       const at = (share: number) => depths[Math.floor((MATCHES - 1) * share)];
@@ -742,6 +761,36 @@ const gradeDungeon = () => {
     `${"deck".padEnd(24)}${"player".padEnd(9)}${"reached".padStart(8)}${"room".padStart(7)}${"geld".padStart(7)}${"cheapest".padStart(10)}${"0 buys".padStart(7)}${"1 buy".padStart(7)}${"2+".padStart(7)}`,
   );
   for (const row of shopRows) console.log(row);
+
+  console.log(
+    `\nDungeon items (issue #8): found per run, runs that found one, and kept (found on runs that walked out)`,
+  );
+  console.log(
+    `${"deck".padEnd(24)}${"player".padEnd(9)}${"found".padStart(8)}${"any".padStart(10)}${"kept".padStart(8)}`,
+  );
+  for (const row of itemRows) console.log(row);
+
+  console.log("\nItems by how deep the run got, every row above together");
+  console.log(
+    `${"reached".padEnd(12)}${"runs".padStart(8)}${"items/run".padStart(11)}${"tier 1".padStart(8)}${"tier 2".padStart(8)}${"tier 3".padStart(8)}${"pieces".padStart(8)}`,
+  );
+  for (const [from, to] of [
+    [1, 14],
+    [15, 24],
+    [25, 34],
+    [35, 44],
+    [45, 999],
+  ]) {
+    const band = allRuns.filter((r) => r.depth >= from && r.depth <= to);
+    const items = band.flatMap((r) => r.items).map((key) => itemByKey(key));
+    const share = (test: (item: ReturnType<typeof itemByKey>) => boolean) =>
+      items.length
+        ? `${((items.filter(test).length / items.length) * 100).toFixed(0)}%`
+        : "-";
+    console.log(
+      `${(to > 900 ? `${from}+` : `${from}-${to}`).padEnd(12)}${String(band.length).padStart(8)}${(band.length ? items.length / band.length : 0).toFixed(3).padStart(11)}${share((i) => i?.tier === 1).padStart(8)}${share((i) => i?.tier === 2).padStart(8)}${share((i) => i?.tier === 3).padStart(8)}${share((i) => i?.kind === "piece").padStart(8)}`,
+    );
+  }
 };
 
 if (DUNGEON_MODE) {
