@@ -134,7 +134,7 @@ const statReason = (
     case "giant_slayer":
       return `+3 when the enemy's ${TYPE_NAME[enemy.type]} is higher than this card's ${TYPE_NAME[card.type]} - ${enemy.stats[enemy.type]} against ${round.challenger.card.stats[card.type]}`;
     case "underdog":
-      return `+3 against a rarer card, and ${enemy.name} is ${enemy.rarity === "full_art" ? "a full-art" : enemy.rarity === "uncommon" ? "an uncommon" : "a common"}`;
+      return `+3 against a rarer card, and ${enemy.name} is ${enemy.rarity === "summoned" ? "a Summoned card" : enemy.rarity === "full_art" ? "a full-art" : enemy.rarity === "uncommon" ? "an uncommon" : "a common"}`;
     case "purist": {
       const theirs = activeKeyword(enemy);
       return theirs

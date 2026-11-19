@@ -10,7 +10,7 @@
 export type CardType = "power" | "wit" | "heart";
 
 /** v2 rarities. Note these are words, not the v1 single-letter codes. */
-export type CardRarity = "common" | "uncommon" | "full_art";
+export type CardRarity = "common" | "uncommon" | "full_art" | "summoned";
 
 /**
  * Corrections to how a card's artwork is cropped. Fractions throughout, so
@@ -90,6 +90,24 @@ export type V2PackOpenRecord = {
   god_pack: boolean;
   created?: string;
   updated?: string;
+};
+
+/** A dungeon item a player holds (issue #8). One row per item. */
+export type V2ItemRecord = {
+  id?: string;
+  user_id: string;
+  server_id: string;
+  /** Catalogue key from `modules/finicards/items.ts`. */
+  item: string;
+  /** The item's kind, copied from the catalogue. Pieces are one per server. */
+  kind: "piece" | "pack_boon" | "dungeon_boon";
+  /** Where it came from: "dungeon", "trade", "grant"... */
+  source?: string;
+  /** The dungeon run that found it, if one did. */
+  run?: string;
+  /** A pack boon switched on for the player's next pack. */
+  active?: boolean;
+  created?: string;
 };
 
 export type V2UserCardRecord = {

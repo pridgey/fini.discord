@@ -238,7 +238,7 @@ const yourCardReason = (slug: string, enemy: BattleCard): string | null => {
       return `+3 if your card's type stat, buffs included, is higher than its ${type} ${stat}.`;
     case "underdog":
       return enemy.rarity === "full_art"
-        ? "Never fires here: nothing outranks a full-art."
+        ? "+3 only if you play a Summoned card: nothing else outranks a full-art."
         : `+3 if you play a card rarer than ${enemy.rarity === "common" ? "a common" : "an uncommon"}.`;
     case "purist":
       return "+3 if your card has no ability, or has it switched off.";

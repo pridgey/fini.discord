@@ -132,7 +132,7 @@ const cardList = (cards: BattleCard[], line: (card: BattleCard) => string) => {
     length += lines[index].length + 1;
   }
   const rest = cards.slice(0, cards.length - kept.length);
-  const tally = (["common", "uncommon", "full_art"] as const)
+  const tally = (["common", "uncommon", "full_art", "summoned"] as const)
     .map((rarity) => {
       const count = rest.filter((card) => card.rarity === rarity).length;
       return count ? `${count} ${rarity.replace("_", "-")}` : "";

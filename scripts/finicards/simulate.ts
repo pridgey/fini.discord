@@ -123,6 +123,11 @@ const SHAPES: Record<CardRarity, number[][]> = {
     [10, 4, 1],
     [12, 1, 2],
   ],
+  // Not in the synthetic pool (`buildPool` lists its rarities): one per server.
+  summoned: [
+    [14, 3, 1],
+    [12, 4, 2],
+  ],
 };
 
 const SERIES_COUNT = 12;

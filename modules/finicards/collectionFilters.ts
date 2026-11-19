@@ -16,7 +16,12 @@ export type CollectionSort =
   "newest" | "set" | "name" | "rarest" | "power" | "wit" | "heart";
 
 export type CollectionTier =
-  "common" | "uncommon" | "full_art" | "secret_art" | "legendary";
+  | "common"
+  | "uncommon"
+  | "full_art"
+  | "summoned"
+  | "secret_art"
+  | "legendary";
 
 export type CollectionOptions = {
   sort?: CollectionSort | null;
@@ -62,6 +67,7 @@ const TIERS: Record<CollectionTier, string> = {
   uncommon: 'card.rarity = "uncommon"',
   full_art:
     'card.rarity = "full_art" && card.secret_art != true && legendary = ""',
+  summoned: 'card.rarity = "summoned"',
   secret_art: 'card.secret_art = true && legendary = ""',
   legendary: 'legendary != ""',
 };

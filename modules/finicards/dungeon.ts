@@ -505,6 +505,8 @@ const tierWeights = (depth: number): Record<CardRarity, number> => ({
   common: Math.max(10, 70 - depth * 6),
   uncommon: 30,
   full_art: Math.max(0, (depth - 3) * 5),
+  // Summoned cards are earned from the dungeon, never fought in it.
+  summoned: 0,
 });
 
 const rollTier = (depth: number, random: Random): CardRarity => {

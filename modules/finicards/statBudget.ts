@@ -1,6 +1,6 @@
 import type { CardRarity, CardType } from "../../types/PocketbaseTablesV2";
 import type { BattleRules } from "./rules";
-import { RULES, TYPE_PRIORITY } from "./rules";
+import { RULES, TYPE_PRIORITY, statTotalFor } from "./rules";
 import type { SpreadValidation, StatSpread } from "./types";
 
 /**
@@ -41,7 +41,7 @@ export const normalizeSpread = (
   rarity: CardRarity,
   rules: BattleRules = RULES,
 ): StatSpread => {
-  const total = rules.statTotal;
+  const total = statTotalFor(rarity, rules);
   const floor = rules.statFloor;
   const ceiling = rules.spikeCeiling[rarity];
 
@@ -131,8 +131,9 @@ export const validateSpread = (
   const ceiling = rules.spikeCeiling[rarity];
   const total = spreadTotal(spread);
 
-  if (total !== rules.statTotal) {
-    issues.push(`Stats total ${total}, expected ${rules.statTotal}`);
+  const expected = statTotalFor(rarity, rules);
+  if (total !== expected) {
+    issues.push(`Stats total ${total}, expected ${expected}`);
   }
 
   for (const type of TYPE_PRIORITY) {

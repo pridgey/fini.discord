@@ -158,7 +158,7 @@
     <button id="filters-toggle" class="mobile-only">Filters</button>
     <span class="filters">
     <select id="f-set-filter"><option value="">All sets</option></select>
-    <select id="f-rarity-filter"><option value="">All rarities</option><option value="common">Common</option><option value="uncommon">Uncommon</option><option value="full_art">Full-art</option><option value="secret_art">Secret Art</option></select>
+    <select id="f-rarity-filter"><option value="">All rarities</option><option value="common">Common</option><option value="uncommon">Uncommon</option><option value="full_art">Full-art</option><option value="secret_art">Secret Art</option><option value="summoned">Summoned</option></select>
     <select id="f-type-filter"><option value="">All types</option><option value="power">Power</option><option value="wit">Wit</option><option value="heart">Heart</option></select>
     <select id="f-state-filter">
       <option value="">Any state</option><option value="active">Active</option><option value="inactive">Inactive</option>
@@ -205,7 +205,7 @@
       <label class="field"><span>Series (printed in the header)</span><input id="e-series" list="series-list"></label>
       <datalist id="series-list"></datalist>
       <div class="bar" style="margin-bottom:10px">
-        <label class="field" style="flex:2;margin:0"><span>Rarity</span><select id="e-rarity"><option value="common">Common</option><option value="uncommon">Uncommon</option><option value="full_art">Full-art</option><option value="secret_art">Secret Art</option></select></label>
+        <label class="field" style="flex:2;margin:0"><span>Rarity</span><select id="e-rarity"><option value="common">Common</option><option value="uncommon">Uncommon</option><option value="full_art">Full-art</option><option value="secret_art">Secret Art</option><option value="summoned">Summoned</option></select></label>
         <label class="field" style="flex:1;margin:0"><span>Set</span><input id="e-set" type="number" min="0"></label>
         <label class="field" style="flex:1;margin:0"><span>Max copies</span><input id="e-population" type="number" min="0" title="Per server. 0 means no limit."></label>
       </div>
@@ -275,13 +275,13 @@ const api = async (path, body) => {
   if (!response.ok) throw new Error(data.error || response.status);
   return data;
 };
-const RARITY_CODE = { common: "C", uncommon: "U", full_art: "FA", secret_art: "SA" };
+const RARITY_CODE = { common: "C", uncommon: "U", full_art: "FA", secret_art: "SA", summoned: "SU" };
 const RARITY_ORDER = Object.keys(RARITY_CODE);
 const byRarity = (a, b) => RARITY_ORDER.indexOf(a.rarity) - RARITY_ORDER.indexOf(b.rarity);
 // A character is a name in a series: a namesake from another series is someone else.
 const characterOf = (card) => card.card_name + "\u0000" + card.series;
 // A Secret Art is a full-art with its own artwork: same frame, same stat rules, no foil frame.
-const fullFrame = (rarity) => rarity === "full_art" || rarity === "secret_art";
+const fullFrame = (rarity) => rarity === "full_art" || rarity === "secret_art" || rarity === "summoned";
 const say = (text, bad) => { $("ed-status").textContent = text || ""; $("ed-status").style.color = bad ? "#ff7a7a" : "#f0c060"; };
 const guard = async (work) => { try { return await work(); } catch (error) { say(error.message, true); } };
 
@@ -478,7 +478,8 @@ const drawStatNote = () => {
   const total = values.reduce((sum, value) => sum + value, 0);
   const ceiling = rules.ceiling[fields.rarity];
   const problems = [];
-  if (total !== rules.total) problems.push("total is " + total + ", needs " + rules.total);
+  const needed = (rules.totals || {})[fields.rarity] || rules.total;
+  if (total !== needed) problems.push("total is " + total + ", needs " + needed);
   if (values.some((value) => value < rules.floor)) problems.push("every stat needs at least " + rules.floor);
   if (values.some((value) => value > ceiling)) problems.push("a " + fields.rarity.replace("_", " ") + " tops out at " + ceiling);
   const lead = ["Power", "Wit", "Heart"][values.indexOf(Math.max(...values))];

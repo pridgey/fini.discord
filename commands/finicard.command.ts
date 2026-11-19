@@ -30,6 +30,7 @@ import { showCard, showCollection, showRecord } from "./finicard/collection";
 import { showPending, startBattle, startPractice } from "./finicard/battle";
 import { enterDungeon, showDungeonTutorial } from "./finicard/dungeon";
 import { grantCards } from "./finicard/grant";
+import { showItems } from "./finicard/items";
 import { openPackFor } from "./finicard/pack";
 import { handleDeckSubcommand } from "./finicard/deck";
 
@@ -269,6 +270,13 @@ export const data = new SlashCommandBuilder()
   .addSubcommand((sub) =>
     sub.setName("record").setDescription("Your battle record"),
   )
+  .addSubcommand((sub) =>
+    sub
+      .setName("items")
+      .setDescription(
+        "Your satchel: collection pieces and boons found deep in the dungeon",
+      ),
+  )
   .addSubcommandGroup((group) =>
     group
       .setName("deck")
@@ -306,6 +314,7 @@ export const data = new SlashCommandBuilder()
                 { name: "common", value: "common" },
                 { name: "uncommon", value: "uncommon" },
                 { name: "full art", value: "full_art" },
+                { name: "summoned", value: "summoned" },
               ),
           )
           .addStringOption((option) =>
@@ -466,6 +475,14 @@ export const data = new SlashCommandBuilder()
           .setMinValue(1)
           .setMaxValue(25)
           .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("item")
+          .setDescription(
+            "A dungeon item instead of cards: its key (dragon_ball_4), or set:<key> for a whole set",
+          )
+          .setRequired(false),
       ),
   );
 
@@ -521,6 +538,8 @@ export const execute: SlashCommand["execute"] = async (
         return await showPending(interaction, context);
       case "record":
         return await showRecord(interaction, context);
+      case "items":
+        return await showItems(interaction, context);
       case "abilities":
         await interaction.editReply(buildAbilitiesMessage());
         return;

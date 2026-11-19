@@ -482,6 +482,9 @@ export const layoutFor = (
   foil: boolean,
 ): TemplateLayout => {
   if (rarity === "full_art") return LAYOUTS.special;
+  // Summoned cards borrow the full-art frame, printed SU, until they have
+  // a template of their own.
+  if (rarity === "summoned") return { ...LAYOUTS.special, rarityCode: "SU" };
   if (rarity === "uncommon")
     return foil ? LAYOUTS.double_rare : LAYOUTS.uncommon;
   return foil ? LAYOUTS.rare : LAYOUTS.common;

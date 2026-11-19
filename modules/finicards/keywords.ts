@@ -205,6 +205,7 @@ const RARITY_RANK: Record<CardRarity, number> = {
   common: 0,
   uncommon: 1,
   full_art: 2,
+  summoned: 3,
 };
 
 /** Bonus every "+3 to type stat" keyword uses. One dial, not eleven. */
@@ -923,6 +924,8 @@ export const KEYWORD_ODDS: Record<CardRarity, Record<KeywordGrade, number>> = {
   common: { minor: 0.1, standard: 0.5, strong: 0.35, mythic: 0.005 },
   uncommon: { minor: 0.3, standard: 0.3, strong: 0.1, mythic: 0.005 },
   full_art: { minor: 0.25, standard: 0.1, strong: 0.02, mythic: 0.005 },
+  // Stronger than a full-art on stats, so no better on keywords.
+  summoned: { minor: 0.25, standard: 0.1, strong: 0.02, mythic: 0.005 },
 };
 
 /**

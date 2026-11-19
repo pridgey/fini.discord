@@ -23,6 +23,7 @@ export const FINI_BUYBACK = {
   common: 2,
   uncommon: 5,
   full_art: 10,
+  summoned: 50,
   secret_art: 25,
   legendary: 50,
 } as const;

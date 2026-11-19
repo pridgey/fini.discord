@@ -17,6 +17,12 @@ export type BattleRules = {
   neutralMultiplier: number;
   /** Points every card's stat spread must total. */
   statTotal: number;
+  /**
+   * A rarity whose cards total more than `statTotal`. Summoned cards - one of
+   * each per server, earned by completing a set of dungeon items - are the
+   * only ones.
+   */
+  statTotalByRarity: Partial<Record<CardRarity, number>>;
   /** Minimum value any single stat may hold. */
   statFloor: number;
   /** Max single stat per rarity - governs the spike, not the total. */
@@ -35,11 +41,13 @@ export const RULES: BattleRules = {
   typeMultiplier: 1.5,
   neutralMultiplier: 1.0,
   statTotal: 15,
+  statTotalByRarity: { summoned: 18 },
   statFloor: 1,
   spikeCeiling: {
     common: 7,
     uncommon: 9,
     full_art: 12,
+    summoned: 14,
   },
   rounds: 3,
   keywordsEnabled: true,
@@ -103,6 +111,7 @@ export const RARITY_LABEL: Record<CardRarity, string> = {
   common: "Common",
   uncommon: "Uncommon",
   full_art: "Full Art",
+  summoned: "Summoned",
 };
 
 /** Default deck cost by rarity. Populated now so Phase 3 has data to read. */
@@ -110,7 +119,14 @@ export const RARITY_COST: Record<CardRarity, number> = {
   common: 2,
   uncommon: 3,
   full_art: 5,
+  summoned: 8,
 };
+
+/** What a card of `rarity` totals: 15, or more for a rarity that's allowed it. */
+export const statTotalFor = (
+  rarity: CardRarity,
+  rules: Pick<BattleRules, "statTotal" | "statTotalByRarity"> = RULES,
+): number => rules.statTotalByRarity?.[rarity] ?? rules.statTotal;
 
 /** Does `attacker` beat `defender` on the type wheel? */
 export const beatsType = (attacker: CardType, defender: CardType): boolean =>

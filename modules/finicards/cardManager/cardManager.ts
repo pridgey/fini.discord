@@ -82,7 +82,7 @@ const MAX_BYTES = 40 * 1024 * 1024;
 /** Candidates are stored no larger than this on their long side. */
 const MAX_SIDE = 2400;
 
-const RARITIES: CardRarity[] = ["common", "uncommon", "full_art"];
+const RARITIES: CardRarity[] = ["common", "uncommon", "full_art", "summoned"];
 /**
  * Copies allowed per server for a new card, by rarity. 0 is no limit: cards are
  * unlimited since 2026-10-16, so that every set can be completed. A card can
@@ -92,6 +92,8 @@ const POPULATION: Record<CardRarity, number> = {
   common: 0,
   uncommon: 0,
   full_art: 0,
+  // One of each per server: the first to complete its set summons it.
+  summoned: 1,
 };
 /**
  * What the page calls a rarity. A Secret Art is a full-art with a flag on it,
@@ -1488,6 +1490,8 @@ export const handleCardManager = async (
         cards: rows.map((row) => describe(row, copies.get(row.id ?? "") ?? 0)),
         rules: {
           total: RULES.statTotal,
+          // Rarities that total more than \`total\`: Summoned.
+          totals: RULES.statTotalByRarity,
           floor: RULES.statFloor,
           ceiling: {
             ...RULES.spikeCeiling,

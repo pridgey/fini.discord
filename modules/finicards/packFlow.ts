@@ -55,7 +55,7 @@ const SHOW_ORDER = (card: BattleCard): number =>
     ? 4
     : card.secretArt
       ? 3
-      : { common: 0, uncommon: 1, full_art: 2 }[card.rarity];
+      : { common: 0, uncommon: 1, full_art: 2, summoned: 5 }[card.rarity];
 
 /** The order a pack's cards are turned over in. */
 export const packShowOrder = (cards: BattleCard[]): BattleCard[] =>

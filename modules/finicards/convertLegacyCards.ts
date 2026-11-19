@@ -72,6 +72,8 @@ export const SPIKE_GAMMA: Record<CardRarity, number> = {
   common: 1.0,
   uncommon: 3.5,
   full_art: 7.5,
+  // No v1 card converts to one; here so the table covers every rarity.
+  summoned: 7.5,
 };
 
 /**

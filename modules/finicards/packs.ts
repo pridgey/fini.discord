@@ -36,6 +36,8 @@ export const PACK_ODDS: PackOdds = {
   common: 70,
   uncommon: 25,
   full_art: 5,
+  // Never in a pack: summoned from a completed set of dungeon items.
+  summoned: 0,
 };
 
 /**
@@ -47,6 +49,7 @@ export const SET_PACK_ODDS: PackOdds = {
   common: 75,
   uncommon: 22,
   full_art: 3,
+  summoned: 0,
 };
 
 export const PACK_SIZE = 5;

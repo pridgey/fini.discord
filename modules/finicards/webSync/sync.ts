@@ -108,7 +108,11 @@ export const buildMeta = (): Record<string, unknown> => ({
     maxDecks: MAX_DECKS_PER_USER,
     maxDeckName: MAX_DECK_NAME_LENGTH,
   },
-  rules: { statTotal: RULES.statTotal, typeBeats: TYPE_BEATS },
+  rules: {
+    statTotal: RULES.statTotal,
+    statTotalByRarity: RULES.statTotalByRarity,
+    typeBeats: TYPE_BEATS,
+  },
   keywords: Object.fromEntries(
     KEYWORDS.map((keyword) => [
       keyword.slug,

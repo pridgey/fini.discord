@@ -32,6 +32,7 @@ const RARITY_ORDER: Record<CardRarity, number> = {
   common: 0,
   uncommon: 1,
   full_art: 2,
+  summoned: 3,
 };
 
 type Numbered = Pick<
