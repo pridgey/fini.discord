@@ -1,3 +1,4 @@
+import { announcePiecesFound } from "../../modules/finicards/pieceNotice";
 import type { ButtonHandler } from "../../types/handlers";
 import { ButtonInteraction, MessageFlags } from "discord.js";
 import {
@@ -108,6 +109,13 @@ export const execute: ButtonHandler["execute"] = async (
         servername: interaction.guild?.name ?? "unknown guild name",
       });
       current = { ...current, reward };
+      // A piece walked out with is news on the server.
+      void announcePiecesFound(
+        interaction.client,
+        current.server_id,
+        current.user_id,
+        reward.items ?? [],
+      );
     }
 
     await interaction.editReply(await buildRunMessage(current));

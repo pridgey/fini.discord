@@ -996,8 +996,9 @@ export const renderLegendaryGif = (
 /** The effect a Summoned card always plays: its set's (`items.ts`). */
 const summonedEffect = (card: BattleCard): string | undefined =>
   card.rarity === "summoned"
-    ? Object.values(COLLECTIONS).find((set) => set.summons === card.name)
-        ?.effect
+    ? Object.values(COLLECTIONS).find(
+        (set) => set.summons === (card.cardName ?? card.name),
+      )?.effect
     : undefined;
 
 /** One at a time: a render is heavy, and the beat it keeps is module state. */

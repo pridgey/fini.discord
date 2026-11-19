@@ -26,8 +26,8 @@ import {
   type RoomSource,
 } from "./dungeon";
 import type { BattleCard } from "./types";
-import { activeBoon, pieceHolders, spendItem } from "./itemStore";
-import { withDungeonBoon } from "./boons";
+import { activeBoon, piecesTaken, spendItem } from "./itemStore";
+import { withDungeonBoon, withDungeonKey } from "./boons";
 
 /**
  * Dungeon run lifecycle.
@@ -127,7 +127,8 @@ const roomSource = async (run?: V2DungeonRunRecord): Promise<RoomSource> => {
   const [definitions, hand, blockedPieces] = await Promise.all([
     getCardDefinitions({ includeInactive: true }),
     run ? loadHand(run) : Promise.resolve([]),
-    run ? piecesSpokenFor(run) : Promise.resolve(new Set<string>()),
+    // The run's own carried pieces are in here too; the engine adds them anyway.
+    run ? piecesTaken(run.server_id) : Promise.resolve(new Set<string>()),
   ]);
   return {
     pool: definitions.filter((definition) => definition.active).map(enemyCard),
@@ -137,32 +138,6 @@ const roomSource = async (run?: V2DungeonRunRecord): Promise<RoomSource> => {
   };
 };
 
-/**
- * Collection pieces that can't drop in `run`: one of each exists per server,
- * so not one someone holds, nor one another live run there is carrying. A
- * piece carried by a run that falls is free again.
- */
-const piecesSpokenFor = async (
-  run: V2DungeonRunRecord,
-): Promise<Set<string>> => {
-  const [held, live] = await Promise.all([
-    pieceHolders(run.server_id).catch(() => new Map<string, string>()),
-    pb
-      .collection<V2DungeonRunRecord>(V2_DUNGEON_RUN)
-      .getFullList({
-        filter: pb.filter(
-          "server_id = {:serverId} && state = 'active' && id != {:runId}",
-          { serverId: run.server_id, runId: run.id ?? "" },
-        ),
-        fields: "progress",
-      })
-      .catch(() => []),
-  ]);
-  const carried = live.flatMap(
-    (other) => (other.progress as { items?: string[] } | null)?.items ?? [],
-  );
-  return new Set([...held.keys(), ...carried]);
-};
 
 /** Resolves a pending redraw: deals from the run's deck and says who swapped. */
 const applyRedraw = async (
@@ -252,9 +227,14 @@ export const startRun = async (
     };
   }
 
-  // A dungeon boon the player switched on starts this run, and is spent.
-  const boon = await activeBoon(input.userId, input.serverId, "dungeon_boon");
-  const progress = boon ? withDungeonBoon(created, boon.item) : created;
+  // A dungeon boon the player switched on starts this run, and is spent;
+  // so is a key, which lets them in for free.
+  const [boon, key] = await Promise.all([
+    activeBoon(input.userId, input.serverId, "dungeon_boon"),
+    activeBoon(input.userId, input.serverId, "dungeon_key"),
+  ]);
+  const boosted = boon ? withDungeonBoon(created, boon.item) : created;
+  const progress = key ? withDungeonKey(boosted) : boosted;
 
   const run = await pb.collection<V2DungeonRunRecord>(V2_DUNGEON_RUN).create({
     user_id: input.userId,
@@ -265,10 +245,11 @@ export const startRun = async (
     hand: dealHandFromDeck(contents.cards, DUNGEON.handSize),
     progress,
     state: "active",
-    entry_fee: DUNGEON.entryFee,
+    entry_fee: key ? 0 : DUNGEON.entryFee,
     reward: null,
   });
   if (boon?.id) await spendItem(boon.id);
+  if (key?.id) await spendItem(key.id);
 
   return { ok: true, run };
 };

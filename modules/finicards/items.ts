@@ -2,11 +2,14 @@
  * Dungeon items: what they are. Plain data and pure helpers - storing them is
  * `itemStore.ts`, dropping them is the dungeon's job.
  *
- * Three kinds (issue #8):
+ * The kinds (issue #8):
  *   - **Collection pieces** - a completed set summons a held-back card of the
  *     Summoned rarity. Pieces stay after a claim as keepsakes to sell.
- *   - **Pack boons** - activated, then spent by the player's next pack.
- *   - **Dungeon boons** - one chosen when entering a run.
+ *   - **Pack boons** - switched on, then spent by the player's next pack.
+ *   - **Dungeon boons** - switched on, then spent by their next run.
+ *   - **Dungeon keys** - a free entry, switched on beside a dungeon boon.
+ *   - **Card boons** - used on one copy: a new keyword, foil, a nickname.
+ *   - **Mystery boxes** - open into another item.
  *
  * Every item has a tier, 1 to 3. Drops are gated by depth: tier 1 can turn up
  * from room 15, and the higher tiers grow likelier the deeper a run goes. A
@@ -15,7 +18,27 @@
  */
 
 export type ItemTier = 1 | 2 | 3;
-export type ItemKind = "piece" | "pack_boon" | "dungeon_boon";
+export type ItemKind =
+  | "piece"
+  | "pack_boon"
+  | "dungeon_boon"
+  | "dungeon_key"
+  | "card_boon"
+  | "box";
+
+/** The kinds that are switched on and spent by the next pack or run. */
+export const SWITCHED_KINDS = ["pack_boon", "dungeon_boon", "dungeon_key"] as const;
+export type SwitchedKind = (typeof SWITCHED_KINDS)[number];
+
+/** What to call a kind, in a list. */
+export const KIND_LABEL: Record<ItemKind, string> = {
+  piece: "collection piece",
+  pack_boon: "pack boon",
+  dungeon_boon: "dungeon boon",
+  dungeon_key: "dungeon key",
+  card_boon: "card boon",
+  box: "mystery box",
+};
 
 export type ItemDefinition = {
   /** Stored on `v2_item.item`; never renamed once items exist. */
@@ -30,7 +53,22 @@ export type ItemDefinition = {
   set?: CollectionKey;
   /** For a piece: how it's named within its set - "4★", "Right Leg", "Green". */
   short?: string;
+  /** For a series boon: the series its pack leans toward, by `series`. */
+  series?: string;
 };
+
+/**
+ * The biggest series in the pool, each with a boon that leans a pack toward
+ * it. A series needs enough cards for a lean to mean something.
+ */
+const LEAN_SERIES: [key: string, series: string, emoji: string][] = [
+  ["avatar", "Avatar The Last Airbender", "🌊"],
+  ["chainsaw_man", "Chainsaw Man", "🪚"],
+  ["dragon_ball_z", "Dragon Ball Z", "🐉"],
+  ["teen_titans", "Teen Titans", "🦸"],
+  ["sonic", "Sonic the Hedgehog", "💨"],
+  ["kpop_demon_hunters", "KPop Demon Hunters", "🎤"],
+];
 
 export type CollectionKey = "dragon_balls" | "exodia" | "chaos_emeralds";
 
@@ -177,6 +215,35 @@ export const ITEMS: ItemDefinition[] = [
     blurb:
       "Better odds in your next pack: uncommons and full-arts come up more often.",
   },
+  {
+    key: "boon_fresh_pack",
+    name: "Collector's Seal",
+    kind: "pack_boon",
+    tier: 2,
+    emoji: "🔖",
+    blurb:
+      "Your next pack holds no card you already own, as far as the pool allows.",
+  },
+  {
+    key: "boon_set_compass",
+    name: "Set Compass",
+    kind: "pack_boon",
+    tier: 1,
+    emoji: "🧭",
+    blurb:
+      "Your next set pack draws at a standard pack's odds, not a set pack's leaner ones. Waits for a set pack.",
+  },
+  ...LEAN_SERIES.map(
+    ([key, series, emoji]): ItemDefinition => ({
+      key: `boon_lean_${key}`,
+      name: `${series} Lure`,
+      kind: "pack_boon",
+      tier: 1,
+      emoji,
+      blurb: `Your next pack leans toward ${series}: about half its cards come from it, where there are any.`,
+      series,
+    }),
+  ),
 
   /* Dungeon boons: one chosen when entering a run. */
   {
@@ -219,6 +286,76 @@ export const ITEMS: ItemDefinition[] = [
     emoji: "🪨",
     blurb: "Every card gets +1 to its type stat for your whole next run.",
   },
+  {
+    key: "boon_loaded_dice",
+    name: "Pair of Loaded Dice",
+    kind: "dungeon_boon",
+    tier: 1,
+    emoji: "🎲",
+    blurb: "Start your next run with two loaded dice: each rerolls a failed event.",
+  },
+  {
+    key: "boon_thermos",
+    name: "Thermos",
+    kind: "dungeon_boon",
+    tier: 1,
+    emoji: "☕",
+    blurb: "Start your next run with two strong coffees: each wakes a resting card.",
+  },
+
+  /* A key: switched on beside a dungeon boon. */
+  {
+    key: "key_dungeon",
+    name: "Dungeon Key",
+    kind: "dungeon_key",
+    tier: 1,
+    emoji: "🗝️",
+    blurb: "Your next dungeon run is free to enter. Works beside a dungeon boon.",
+  },
+
+  /* Card boons: used on one copy of a card. */
+  {
+    key: "card_name_tag",
+    name: "Name Tag",
+    kind: "card_boon",
+    tier: 1,
+    emoji: "🏷️",
+    blurb: "Give one of your cards a name of your own. It replaces the card's name.",
+  },
+  {
+    key: "card_reroll",
+    name: "Reroll Token",
+    kind: "card_boon",
+    tier: 2,
+    emoji: "🔄",
+    blurb: "Rerolls one of your cards' abilities. It always lands on a new one.",
+  },
+  {
+    key: "card_scroll",
+    name: "Ability Scroll",
+    kind: "card_boon",
+    tier: 3,
+    emoji: "📜",
+    blurb: "Shows three new abilities for one of your cards, and you pick one.",
+  },
+  {
+    key: "card_foil_kit",
+    name: "Foil Kit",
+    kind: "card_boon",
+    tier: 3,
+    emoji: "🪞",
+    blurb: "Turns one of your cards foil.",
+  },
+
+  /* A box: opens into another item. */
+  {
+    key: "box_mystery",
+    name: "Mystery Box",
+    kind: "box",
+    tier: 2,
+    emoji: "🎁",
+    blurb: "Opens into a random item when you use it.",
+  },
 ];
 
 const BY_KEY = new Map(ITEMS.map((item) => [item.key, item]));
@@ -260,9 +397,12 @@ export const setProgress = (
 
 /** How likely each kind of item is, when one drops. Weights, not percent. */
 export const KIND_WEIGHTS: Record<ItemKind, number> = {
-  piece: 50,
-  pack_boon: 25,
-  dungeon_boon: 25,
+  piece: 45,
+  pack_boon: 20,
+  dungeon_boon: 15,
+  dungeon_key: 5,
+  card_boon: 10,
+  box: 5,
 };
 
 /**
@@ -315,12 +455,16 @@ export const rollItem = (
     const choices = open(kind, tier as ItemTier);
     if (choices.length) return choices[Math.floor(random() * choices.length)].key;
   }
-  // Every piece is spoken for: a boon of the rolled tier instead.
-  const boons = [
-    ...open("pack_boon", rolled),
-    ...open("dungeon_boon", rolled),
-  ];
-  return boons[Math.floor(random() * boons.length)].key;
+  // Every piece is spoken for - or no item of the kind and tier - so any
+  // other item of the rolled tier, or lower.
+  for (let tier = rolled; tier >= 1; tier--) {
+    const others = ITEMS.filter(
+      (item) => item.kind !== "piece" && item.tier === tier,
+    );
+    if (others.length)
+      return others[Math.floor(random() * others.length)].key;
+  }
+  return ITEMS.find((item) => item.kind !== "piece")!.key;
 };
 
 /** A boon of the same tier as `key`, for a piece that was taken before it could be granted. */

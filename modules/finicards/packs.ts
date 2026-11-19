@@ -251,6 +251,10 @@ export type OpenPackInput = {
   godPackChance?: number;
   /** At least one card uncommon or better: a pack boon (`boons.ts`). */
   uncommonFloor?: boolean;
+  /** Only cards the player doesn't own yet, where the pool has any: a pack boon. */
+  freshOnly?: boolean;
+  /** About half the cards from this series, where it has any: a pack boon. */
+  leanSeries?: string;
   random?: Random;
 };
 
@@ -336,6 +340,32 @@ export const openPack = async (
     legendarySlot = (legendarySlot + 1) % rarities.length;
   }
 
+  // A pack boon can narrow the draw, never past what the pool can pay: a card
+  // of the rolled rarity that fits, or the usual draw when there's none.
+  const drawn = new Set<string>();
+  const exact = (pool: V2CardDefinitionRecord[], rarity: CardRarity) => {
+    const open = availableOfRarity(pool, counts, rarity).filter(
+      (definition) => !drawn.has(definition.id ?? ""),
+    );
+    return open.length ? open[Math.floor(random() * open.length)] : null;
+  };
+  const boonedCard = (rarity: CardRarity): V2CardDefinitionRecord | null => {
+    if (input.leanSeries && random() < 0.5) {
+      const leaned = exact(
+        definitions.filter((d) => d.series === input.leanSeries),
+        rarity,
+      );
+      if (leaned) return leaned;
+    }
+    if (input.freshOnly) {
+      return exact(
+        definitions.filter((d) => !held.has(d.id ?? "")),
+        rarity,
+      );
+    }
+    return null;
+  };
+
   for (const [slot, rarity] of rarities.entries()) {
     const pickedLegendary =
       slot === legendarySlot && legendaryTier
@@ -346,7 +376,7 @@ export const openPack = async (
       ? pickedLegendary.definition
       : slot === secretSlot
         ? secretArts[Math.floor(random() * secretArts.length)]
-        : selectCard(definitions, counts, rarity, random);
+        : boonedCard(rarity) ?? selectCard(definitions, counts, rarity, random);
 
     if (!definition) {
       shortfall += 1;
@@ -354,6 +384,7 @@ export const openPack = async (
     }
 
     const definitionId = definition.id ?? "";
+    drawn.add(definitionId);
     // A Legendary takes none of its card's ordinary copies.
     if (!legendary)
       counts.set(definitionId, (counts.get(definitionId) ?? 0) + 1);

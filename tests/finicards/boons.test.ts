@@ -156,7 +156,7 @@ describe("/finicard use", () => {
       [row("boon_lucky", true), row("boon_foil")],
       {},
     );
-    expect(other.kind === "say" && other.text).toContain("One boon at a time");
+    expect(other.kind === "say" && other.text).toContain("One pack boon at a time");
     // A dungeon boon doesn't wait on a pack boon.
     expect(
       planUse("boon_purse", [row("boon_lucky", true), row("boon_purse")], {})
@@ -207,5 +207,117 @@ describe("the summoning message", () => {
     const notice = textOf(buildSummonNotice("exodia", "aya", "https://x"));
     expect(notice).toContain("summoned **Exodia**");
     expect(notice).toContain("https://x");
+  });
+});
+
+describe("the cheap additions", () => {
+  const start = () =>
+    createRun({
+      pool: [
+        {
+          instanceId: "e",
+          definitionId: "e",
+          name: "E",
+          series: "",
+          rarity: "common",
+          type: "power",
+          stats: { power: 5, wit: 5, heart: 5 },
+          keyword: "",
+          foil: false,
+          tags: [],
+          cost: 1,
+        },
+      ],
+      random: () => 0.5,
+    })!;
+
+  it("start a run with dice or coffee, and say a key let it in free", async () => {
+    const { withDungeonKey } = await import("../../modules/finicards/boons");
+    expect(withDungeonBoon(start(), "boon_loaded_dice").rerolls).toBe(2);
+    expect(withDungeonBoon(start(), "boon_thermos").coffee).toBe(2);
+    const both = withDungeonKey(withDungeonBoon(start(), "boon_purse"));
+    expect(both.recap?.lines).toHaveLength(2);
+    expect(both.recap?.lines[1]).toContain("free to enter");
+  });
+
+  it("give every series lure its series, and the compass a standard pack's odds", () => {
+    const lures = ITEMS.filter((item) => item.series);
+    expect(lures.length).toBeGreaterThanOrEqual(5);
+    for (const lure of lures)
+      expect(PACK_BOONS[lure.key].leanSeries).toBe(lure.series);
+    expect(PACK_BOONS.boon_set_compass.setPackOnly).toBe(true);
+    expect(PACK_BOONS.boon_set_compass.odds!(SET_PACK_ODDS)).toEqual(PACK_ODDS);
+    expect(PACK_BOONS.boon_fresh_pack.freshOnly).toBe(true);
+  });
+
+  it("let a key be on beside a dungeon boon, but not two keys", () => {
+    const key = row("key_dungeon");
+    expect(planUse("key_dungeon", [row("boon_purse", true), key], {}).kind).toBe(
+      "activate",
+    );
+    const second = planUse(
+      "Dungeon Key",
+      [row("key_dungeon", true, "k1"), row("key_dungeon", false, "k2")],
+      {},
+    );
+    expect(second.kind === "say" && second.text).toContain("already on");
+  });
+
+  it("send card boons to a card, and boxes to be opened", () => {
+    expect(planUse("Reroll Token", [row("card_reroll")], {}).kind).toBe("card");
+    expect(planUse("Mystery Box", [row("box_mystery")], {}).kind).toBe("open");
+  });
+});
+
+describe("card boons", () => {
+  it("clean a nickname of formatting and mentions, and keep it short", async () => {
+    const { cleanNickname, NICKNAME_MAX } = await import(
+      "../../modules/finicards/cardBoons"
+    );
+    expect(cleanNickname("  Big   **Guy** <@123> ")).toBe("Big Guy 123");
+    expect(cleanNickname("`@#`")).toBeNull();
+    expect(cleanNickname("x".repeat(80))!.length).toBe(NICKNAME_MAX);
+  });
+
+  it("reroll to a new ability, never blank or the same, and offer three different ones", async () => {
+    const { rerolledKeyword, scrollChoices } = await import(
+      "../../modules/finicards/cardBoons"
+    );
+    let seed = 3;
+    const random = () =>
+      ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    for (const rarity of ["common", "uncommon", "full_art", "summoned"] as const) {
+      for (let i = 0; i < 50; i++) {
+        const next = rerolledKeyword(rarity, "edge", random);
+        expect(next).not.toBe("");
+        expect(next).not.toBe("edge");
+      }
+      const three = scrollChoices(rarity, "edge", random);
+      expect(new Set(three).size).toBe(3);
+      expect(three).not.toContain("edge");
+    }
+  });
+
+  it("show a nicknamed copy by its nickname, keeping the card's name", async () => {
+    const { toBattleCard } = await import("../../modules/finicards/cardStore");
+    const card = toBattleCard({
+      id: "c1",
+      nickname: "Big Guy",
+      definition: { card_name: "Goku", rarity: "full_art" },
+    } as never);
+    expect(card.name).toBe("Big Guy");
+    expect(card.cardName).toBe("Goku");
+  });
+});
+
+describe("a piece found", () => {
+  it("is told with who found it and how much of the set is out", async () => {
+    const { pieceFoundLine } = await import(
+      "../../modules/finicards/pieceNotice"
+    );
+    expect(pieceFoundLine("aya", "dragon_ball_4", 3)).toBe(
+      "🟠 <@aya> found the **4-Star Dragon Ball** · 3 of 7 Dragon Balls found on this server",
+    );
+    expect(pieceFoundLine("aya", "boon_lucky", 1)).toBeNull();
   });
 });

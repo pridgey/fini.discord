@@ -167,14 +167,20 @@ export const openPackFor = async (
   let reimbursement = 0;
   let godPacks = 0;
 
-  // A pack boon the player switched on goes on the first pack, and is spent.
-  const boon = await activeBoon(interaction.user.id, serverId, "pack_boon");
+  // A pack boon the player switched on goes on the first pack, and is spent -
+  // unless it waits for a set pack and this isn't one.
+  const switched = await activeBoon(interaction.user.id, serverId, "pack_boon");
+  const waiting =
+    !!switched && !!PACK_BOONS[switched.item]?.setPackOnly && !set;
+  const boon = waiting ? null : switched;
   const boost = boon ? PACK_BOONS[boon.item] : undefined;
   const boosted = boost
     ? {
         ...(boost.size ? { size: boost.size } : {}),
         ...(boost.foilChance ? { foilChance: boost.foilChance } : {}),
         ...(boost.uncommonFloor ? { uncommonFloor: true } : {}),
+        ...(boost.freshOnly ? { freshOnly: true } : {}),
+        ...(boost.leanSeries ? { leanSeries: boost.leanSeries } : {}),
         ...(boost.odds
           ? { odds: boost.odds(set ? SET_PACK_ODDS : PACK_ODDS) }
           : {}),
@@ -265,7 +271,9 @@ export const openPackFor = async (
         : undefined;
   const boonNote = boon
     ? `${boonLabel(boon.item)} spent on ${packCount === 1 ? "this pack" : "the first pack"}`
-    : undefined;
+    : waiting && switched
+      ? `${boonLabel(switched.item)} is waiting for a set pack`
+      : undefined;
   const pack = {
     cards,
     opener:

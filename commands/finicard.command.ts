@@ -291,14 +291,28 @@ export const data = new SlashCommandBuilder()
     sub
       .setName("use")
       .setDescription(
-        "Switch a boon on for your next pack or run, or summon a completed set's card",
+        "Use a dungeon item: switch a boon on, open a box, change a card, or summon",
       )
       .addStringOption((option) =>
         option
           .setName("item")
-          .setDescription("A boon, or a set to summon from")
+          .setDescription("A boon, a key, a card boon, a box, or a set to summon from")
           .setRequired(true)
           .setAutocomplete(true),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("card")
+          .setDescription("For a card boon: which of your cards - type its name")
+          .setRequired(false)
+          .setAutocomplete(true),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("name")
+          .setDescription("For a Name Tag: the card's new name")
+          .setMaxLength(32)
+          .setRequired(false),
       ),
   )
   .addSubcommandGroup((group) =>
@@ -546,6 +560,12 @@ export const autocomplete = async (interaction: AutocompleteInteraction) => {
   const subcommand = interaction.options.getSubcommand(false);
   const focused = interaction.options.getFocused(true);
   const typed = String(focused.value ?? "");
+
+  if (subcommand === "use" && focused.name === "card") {
+    const copies = await getUserCollection(interaction.user.id, serverId);
+    await interaction.respond(cardSuggestions(copies, typed));
+    return;
+  }
 
   if (subcommand === "use") {
     const [items, holders] = await Promise.all([

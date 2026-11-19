@@ -13,7 +13,7 @@ import {
 } from "./keywords";
 import { CARD_EMOJI, RULES, TYPE_PRIORITY, type BattleRules } from "./rules";
 import type { BattleCard, RoundResult, Side } from "./types";
-import { itemByKey, rollItem, type ItemTier } from "./items";
+import { KIND_LABEL, itemByKey, rollItem, type ItemTier } from "./items";
 
 /**
  * Dungeons: one player, one room at a time, for as long as they can keep going.
@@ -1151,7 +1151,7 @@ const withShopItem = (
         blurb:
           item.kind === "piece"
             ? "Keep it only if you walk out"
-            : `${item.kind === "pack_boon" ? "Pack" : "Dungeon"} boon, kept if you walk out`,
+            : `${KIND_LABEL[item.kind][0].toUpperCase()}${KIND_LABEL[item.kind].slice(1)}, kept if you walk out`,
         price: shopPrice(config.items.price[item.tier], depth, config),
         effect: { kind: "item", item: key },
         sold: false,

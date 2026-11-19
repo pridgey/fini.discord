@@ -1,3 +1,4 @@
+import { activeBoon } from "../../modules/finicards/itemStore";
 import { ChatInputCommandInteraction } from "discord.js";
 import { DUNGEON } from "../../modules/finicards/dungeon";
 import {
@@ -59,7 +60,9 @@ export const enterDungeon = async (
     servername: serverName,
   };
 
-  if (!(await canAfford(party, DUNGEON.entryFee))) {
+  // A Dungeon Key switched on makes the entry free (`startRun` spends it).
+  const key = await activeBoon(interaction.user.id, serverId, "dungeon_key");
+  if (!key && !(await canAfford(party, DUNGEON.entryFee))) {
     await interaction.editReply(
       `A dungeon run costs ${DUNGEON.entryFee} fc and you can't cover that right now.`,
     );
@@ -79,7 +82,8 @@ export const enterDungeon = async (
     return;
   }
 
-  await payEntryFee(party, DUNGEON.entryFee);
+  if (started.run.entry_fee > 0)
+    await payEntryFee(party, started.run.entry_fee);
 
   await interaction.editReply(await buildRunMessage(started.run));
   return;

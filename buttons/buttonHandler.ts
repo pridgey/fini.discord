@@ -28,6 +28,8 @@ const COLLECTOR_BUTTONS = [
   /^v2trade-/,
   /^cancel-trade$/,
   /^purchase$/,
+  // An Ability Scroll's choice, in commands/finicard/use.ts.
+  /^v2scroll-/,
 ];
 
 export const isCollectorButton = (customId: string): boolean =>

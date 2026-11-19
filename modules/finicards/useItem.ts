@@ -2,10 +2,13 @@ import type { V2ItemRecord } from "../../types/PocketbaseTablesV2";
 import {
   COLLECTIONS,
   ITEMS,
+  KIND_LABEL,
   itemByKey,
   piecesOf,
   setProgress,
   type CollectionKey,
+  type ItemDefinition,
+  type SwitchedKind,
 } from "./items";
 
 /**
@@ -14,9 +17,12 @@ import {
  *
  *   - a pack boon is switched on, and the player's next pack spends it
  *   - a dungeon boon is switched on, and their next run starts with it
+ *   - a dungeon key is switched on beside it, and makes that run free
+ *   - a card boon is used on one of their cards, named in `card`
+ *   - a mystery box opens into another item
  *   - a collection set, once complete, summons its card - one per server
  *
- * One boon of each kind can be on at a time, so a second waits its turn.
+ * One of each switched-on kind at a time, so a second waits its turn.
  */
 
 const SUMMON = "summon:";
@@ -60,7 +66,7 @@ export const useChoices = (
       const on = rows.some((row) => row.active);
       return [
         {
-          name: `${item.emoji} ${item.name}${rows.length > 1 ? ` ×${rows.length}` : ""} · ${item.kind === "pack_boon" ? "pack boon" : "dungeon boon"}${on ? " (on)" : ""}`,
+          name: `${item.emoji} ${item.name}${rows.length > 1 ? ` ×${rows.length}` : ""} · ${KIND_LABEL[item.kind]}${on ? " (on)" : ""}`,
           value: item.key,
         },
       ];
@@ -79,7 +85,24 @@ export type UseOutcome =
   /** Switch this boon on. */
   | { kind: "activate"; row: V2ItemRecord; text: string }
   /** Summon this set's card, spending one of each piece. */
-  | { kind: "summon"; set: CollectionKey; rows: V2ItemRecord[] };
+  | { kind: "summon"; set: CollectionKey; rows: V2ItemRecord[] }
+  /** Use this card boon on the copy named in `card`. */
+  | { kind: "card"; row: V2ItemRecord; item: ItemDefinition }
+  /** Open this mystery box. */
+  | { kind: "open"; row: V2ItemRecord; item: ItemDefinition };
+
+/** What a switched-on kind waits for, and what it does when it gets there. */
+const NEXT: Record<SwitchedKind, { waits: string; does: string }> = {
+  pack_boon: { waits: "pack", does: "your next pack spends it." },
+  dungeon_boon: {
+    waits: "dungeon run",
+    does: "your next dungeon run starts with it.",
+  },
+  dungeon_key: {
+    waits: "dungeon run",
+    does: "your next dungeon run is free to enter.",
+  },
+};
 
 /** An item by its key, a set by `summon:<set>`, or either by what it's called. */
 const resolve = (
@@ -144,8 +167,11 @@ export const planUse = (
   if (rows.length === 0) {
     return { kind: "say", text: `You don't have a **${item.name}**.` };
   }
-  const kind = item.kind as "pack_boon" | "dungeon_boon";
-  const next = kind === "pack_boon" ? "pack" : "dungeon run";
+  if (item.kind === "card_boon") return { kind: "card", row: rows[0], item };
+  if (item.kind === "box") return { kind: "open", row: rows[0], item };
+
+  const kind = item.kind as SwitchedKind;
+  const { waits, does } = NEXT[kind];
   const on = items.find((row) => row.active && row.kind === kind);
   if (on) {
     const onName = itemByKey(on.item)?.name ?? on.item;
@@ -153,18 +179,14 @@ export const planUse = (
       kind: "say",
       text:
         on.item === item.key
-          ? `${item.emoji} **${item.name}** is already on: your next ${next} spends it.`
-          : `**${onName}** is already waiting for your next ${next}. One boon at a time - spend it first.`,
+          ? `${item.emoji} **${item.name}** is already on: ${does}`
+          : `**${onName}** is already waiting for your next ${waits}. One ${KIND_LABEL[kind]} at a time - spend it first.`,
     };
   }
   const row = rows.find((each) => !each.active)!;
   return {
     kind: "activate",
     row,
-    text: `${item.emoji} **${item.name}** is on: ${
-      kind === "pack_boon"
-        ? "your next pack spends it."
-        : "your next dungeon run starts with it."
-    }\n-# ${item.blurb}`,
+    text: `${item.emoji} **${item.name}** is on: ${does}\n-# ${item.blurb}`,
   };
 };

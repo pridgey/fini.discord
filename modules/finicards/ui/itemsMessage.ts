@@ -114,8 +114,12 @@ export const buildItemsMessage = ({
       ? [
           `${item.emoji} **${item.name}** · ${
             item.kind === "pack_boon"
-              ? "your next pack spends it"
-              : "your next dungeon run starts with it"
+              ? item.key === "boon_set_compass"
+                ? "your next set pack spends it"
+                : "your next pack spends it"
+              : item.kind === "dungeon_key"
+                ? "your next dungeon run is free to enter"
+                : "your next dungeon run starts with it"
           }`,
         ]
       : [];
@@ -162,8 +166,19 @@ export const buildItemsMessage = ({
           "",
           "### Dungeon boons",
           ...boonLines("dungeon_boon", known, active),
+          // The rarer kinds show only once there's one to show.
+          ...(
+            [
+              ["dungeon_key", "Keys"],
+              ["card_boon", "Card boons"],
+              ["box", "Mystery boxes"],
+            ] as const
+          ).flatMap(([kind, heading]) => {
+            const lines = boonLines(kind, known, active);
+            return lines[0] === "-# None yet." ? [] : ["", `### ${heading}`, ...lines];
+          }),
           "",
-          "-# Switch a boon on with `/finicard use`: your next pack or dungeon run spends it. One of each kind at a time.",
+          "-# Use an item with `/finicard use`: a boon or key is switched on for your next pack or run (one of each kind at a time), a card boon names its card in `card`, a box opens.",
           "-# Sell an item with `/finicard sell item:`, or trade it with `/finicard trade`.",
         ].join("\n"),
       ),

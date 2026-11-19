@@ -1,6 +1,6 @@
 import type { DungeonState } from "./dungeon";
-import { itemByKey } from "./items";
-import { FOIL_CHANCE, PACK_SIZE, type PackOdds } from "./packs";
+import { ITEMS, itemByKey } from "./items";
+import { FOIL_CHANCE, PACK_ODDS, PACK_SIZE, type PackOdds } from "./packs";
 
 /**
  * What a boon does when it's spent (issue #8). Pure: the pack and the
@@ -17,6 +17,10 @@ export type PackBoon = {
   foilChance?: number;
   size?: number;
   uncommonFloor?: boolean;
+  freshOnly?: boolean;
+  leanSeries?: string;
+  /** Only a set pack spends it: it draws at a standard pack's odds. */
+  setPackOnly?: boolean;
 };
 
 export const PACK_BOONS: Record<string, PackBoon> = {
@@ -34,6 +38,16 @@ export const PACK_BOONS: Record<string, PackBoon> = {
       full_art: base.full_art + 5,
     }),
   },
+  boon_fresh_pack: { freshOnly: true },
+  // A set pack at a standard pack's odds, in place of its leaner ones.
+  boon_set_compass: { setPackOnly: true, odds: () => PACK_ODDS },
+  // One per big series: about half the pack from it.
+  ...Object.fromEntries(
+    ITEMS.filter((item) => item.series).map((item) => [
+      item.key,
+      { leanSeries: item.series },
+    ]),
+  ),
 };
 
 /** "🍀 Four-Leaf Clover", for the pack's note. */
@@ -81,6 +95,14 @@ export const withDungeonBoon = (
       });
       line = "no fog will hide a door this run.";
       break;
+    case "boon_loaded_dice":
+      next.rerolls = (next.rerolls ?? 0) + 2;
+      line = "you start with two loaded dice.";
+      break;
+    case "boon_thermos":
+      next.coffee = (next.coffee ?? 0) + 2;
+      line = "you start with two strong coffees.";
+      break;
     case "boon_grindstone":
       next.buffs.push({
         name,
@@ -97,3 +119,15 @@ export const withDungeonBoon = (
   next.recap = { lines: [`🎒 Your **${name}** is spent on this run: ${line}`] };
   return next;
 };
+
+/** A run a Dungeon Key let in for free: it says so, after any boon's line. */
+export const withDungeonKey = (state: DungeonState): DungeonState => ({
+  ...state,
+  recap: {
+    ...(state.recap ?? {}),
+    lines: [
+      ...(state.recap?.lines ?? []),
+      "🗝️ Your **Dungeon Key** opened the door: this run was free to enter.",
+    ],
+  },
+});

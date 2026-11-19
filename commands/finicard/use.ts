@@ -1,18 +1,47 @@
-import type { ChatInputCommandInteraction } from "discord.js";
+import {
+  ActionRowBuilder,
+  AttachmentBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ComponentType,
+  type ChatInputCommandInteraction,
+} from "discord.js";
+import type { V2ItemRecord } from "../../types/PocketbaseTablesV2";
 import {
   getCardDefinitions,
   getPopulationCounts,
   grantCard,
   rollCopyKeyword,
   toBattleCard,
+  updateCopy,
 } from "../../modules/finicards/cardStore";
+import { findSellable } from "../../modules/finicards/market";
+import {
+  cleanNickname,
+  rerolledKeyword,
+  scrollChoices,
+} from "../../modules/finicards/cardBoons";
+import { findKeyword } from "../../modules/finicards/keywords";
+import { announcePiecesFound } from "../../modules/finicards/pieceNotice";
+import type { OwnedCard } from "../../modules/finicards/types";
 import {
   activateItem,
   getItems,
+  grantItems,
+  piecesTaken,
+  spendItem,
   spendPieces,
+  stillHoldsItem,
   summonedHolders,
 } from "../../modules/finicards/itemStore";
-import { COLLECTIONS, type CollectionKey } from "../../modules/finicards/items";
+import {
+  COLLECTIONS,
+  itemByKey,
+  rollItem,
+  standInFor,
+  type CollectionKey,
+  type ItemDefinition,
+} from "../../modules/finicards/items";
 import { planUse } from "../../modules/finicards/useItem";
 import {
   SUMMON_FILE,
@@ -55,7 +84,211 @@ export const useItem = async (
     await interaction.editReply(plan.text);
     return;
   }
+  if (plan.kind === "card") {
+    await useOnCard(interaction, plan.row, plan.item, serverId);
+    return;
+  }
+  if (plan.kind === "open") {
+    await openBox(interaction, plan.row, plan.item, serverId);
+    return;
+  }
   await summon(interaction, plan.set, plan.rows, serverId, identifier);
+};
+
+/* --------------------------------------------------------- card boons -- */
+
+/** How long an Ability Scroll's choice stays open. */
+const SCROLL_MS = 120_000;
+
+/** "**Edge** - Wins its round if the round would be a draw" */
+const keywordLine = (slug: string): string => {
+  const keyword = findKeyword(slug);
+  return keyword ? `**${keyword.name}** - ${keyword.description}` : "no ability";
+};
+
+/** A card's picture, after a card boon changed it. */
+const pictureOf = async (copy: OwnedCard) => {
+  const media = await renderCardMedia(toBattleCard(copy)).catch(() => null);
+  return media ? [new AttachmentBuilder(media.buffer, { name: media.name })] : [];
+};
+
+/**
+ * A card boon on the copy named in `card`: a nickname, a new keyword, three
+ * to choose from, or foil. The boon is spent only once the change is made.
+ */
+const useOnCard = async (
+  interaction: ChatInputCommandInteraction,
+  row: V2ItemRecord,
+  item: ItemDefinition,
+  serverId: string,
+): Promise<void> => {
+  const typed = interaction.options.getString("card");
+  if (!typed) {
+    await interaction.editReply(
+      `${item.emoji} Say which card the **${item.name}** is for, in \`card\` - type its name to find it.`,
+    );
+    return;
+  }
+  const copy = await findSellable(interaction.user.id, serverId, typed);
+  if (!copy?.id) {
+    await interaction.editReply(
+      `\`${typed}\` isn't one of your cards. Type its name in \`card\` to find it.`,
+    );
+    return;
+  }
+  const card = toBattleCard(copy);
+
+  if (item.key === "card_name_tag") {
+    const nickname = cleanNickname(interaction.options.getString("name") ?? "");
+    if (!nickname) {
+      await interaction.editReply(
+        "Give the name in `name` - up to 32 letters, numbers and spaces.",
+      );
+      return;
+    }
+    const updated = await updateCopy(copy.id, { nickname });
+    await spendItem(row.id ?? "");
+    await interaction.editReply({
+      content: `${item.emoji} Your **${copy.definition.card_name}** \`${copy.id}\` is now called **${nickname}**.`,
+      files: await pictureOf({ ...copy, ...updated }),
+    });
+    return;
+  }
+
+  if (item.key === "card_foil_kit") {
+    if (copy.foil) {
+      await interaction.editReply(
+        `Your **${card.name}** \`${copy.id}\` is already foil - the kit's still yours.`,
+      );
+      return;
+    }
+    const updated = await updateCopy(copy.id, { foil: true });
+    await spendItem(row.id ?? "");
+    await interaction.editReply({
+      content: `${item.emoji} Your **${card.name}** \`${copy.id}\` is foil now.`,
+      files: await pictureOf({ ...copy, ...updated }),
+    });
+    return;
+  }
+
+  if (item.key === "card_reroll") {
+    const keyword = rerolledKeyword(card.rarity, copy.keyword ?? "");
+    const updated = await updateCopy(copy.id, { keyword });
+    await spendItem(row.id ?? "");
+    await interaction.editReply({
+      content: [
+        `${item.emoji} Your **${card.name}** \`${copy.id}\` rerolled its ability.`,
+        `Was: ${keywordLine(copy.keyword ?? "")}`,
+        `Now: ${keywordLine(keyword)}`,
+      ].join("\n"),
+      files: await pictureOf({ ...copy, ...updated }),
+    });
+    return;
+  }
+
+  // The Ability Scroll: three to choose from, nothing spent until one is picked.
+  const choices = scrollChoices(card.rarity, copy.keyword ?? "");
+  const message = await interaction.editReply({
+    content: [
+      `${item.emoji} Pick a new ability for your **${card.name}** \`${copy.id}\`. It has ${keywordLine(copy.keyword ?? "")}.`,
+      ...choices.map((slug, index) => `**${index + 1}.** ${keywordLine(slug)}`),
+      "-# Nothing's spent until you pick. The choice closes in 2 minutes.",
+    ].join("\n"),
+    components: [
+      new ActionRowBuilder<ButtonBuilder>().addComponents(
+        ...choices.map((slug, index) =>
+          new ButtonBuilder()
+            .setCustomId(`v2scroll-${index}`)
+            .setLabel(`${index + 1}. ${findKeyword(slug)?.name ?? slug}`)
+            .setStyle(ButtonStyle.Primary),
+        ),
+      ),
+    ],
+  });
+
+  const press = await message
+    .awaitMessageComponent({
+      componentType: ComponentType.Button,
+      time: SCROLL_MS,
+      filter: (each) => each.user.id === interaction.user.id,
+    })
+    .catch(() => null);
+  if (!press) {
+    await interaction
+      .editReply({
+        content: "📜 The scroll rolled itself back up. Nothing was spent.",
+        components: [],
+      })
+      .catch(() => undefined);
+    return;
+  }
+
+  // Both may have gone elsewhere while the choice was open.
+  const keyword = choices[Number(press.customId.split("-")[1])] ?? choices[0];
+  const still = await findSellable(interaction.user.id, serverId, copy.id);
+  if (!still || !(await stillHoldsItem(interaction.user.id, row.id ?? ""))) {
+    await press.update({
+      content: "That card or the scroll is no longer yours, so nothing changed.",
+      components: [],
+    });
+    return;
+  }
+  const updated = await updateCopy(copy.id, { keyword });
+  await spendItem(row.id ?? "");
+  await press.update({
+    content: `${item.emoji} Your **${card.name}** \`${copy.id}\` now has ${keywordLine(keyword)}.`,
+    components: [],
+    files: await pictureOf({ ...copy, ...updated }),
+  });
+};
+
+/* ------------------------------------------------------------- boxes -- */
+
+/**
+ * Opens a Mystery Box into another item, as deep in the dungeon as items go -
+ * never a piece someone holds or carries, and never another box. A piece is
+ * news on the server.
+ */
+const openBox = async (
+  interaction: ChatInputCommandInteraction,
+  row: V2ItemRecord,
+  item: ItemDefinition,
+  serverId: string,
+): Promise<void> => {
+  const taken = await piecesTaken(serverId);
+  let key = rollItem(35, taken, Math.random);
+  for (let tries = 0; tries < 20 && itemByKey(key)?.kind === "box"; tries++)
+    key = rollItem(35, taken, Math.random);
+  if (itemByKey(key)?.kind === "box") key = standInFor(key, Math.random);
+
+  const { granted, taken: lost } = await grantItems(
+    interaction.user.id,
+    serverId,
+    [key],
+    { source: "box" },
+  );
+  // Claimed by someone else in the moment between: something of its tier.
+  const final = granted[0]?.item ??
+    (
+      await grantItems(
+        interaction.user.id,
+        serverId,
+        lost.map((each) => standInFor(each, Math.random)),
+        { source: "box" },
+      )
+    ).granted[0]?.item;
+  if (!final) {
+    await interaction.editReply("The box was empty. It's still yours to try again.");
+    return;
+  }
+  await spendItem(row.id ?? "");
+  const inside = itemByKey(final)!;
+  await interaction.editReply(
+    `${item.emoji} The **${item.name}** holds ${inside.emoji} **${inside.name}**!\n-# ${inside.blurb}`,
+  );
+  void announcePiecesFound(interaction.client, serverId, interaction.user.id, [
+    final,
+  ]);
 };
 
 const summon = async (

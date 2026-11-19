@@ -468,7 +468,7 @@ export const composeDungeonMessage = (
           ...(loot ? [loot] : []),
         ]
       : [
-          `${input.entryFee} fc entry`,
+          input.entryFee > 0 ? `${input.entryFee} fc entry` : "free entry",
           `${plural(progress.fightsWon, "fight")} won`,
         ];
 

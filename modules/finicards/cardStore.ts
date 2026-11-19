@@ -195,7 +195,9 @@ export const getOwnedCard = async (id: string): Promise<OwnedCard | null> => {
 export const toBattleCard = (owned: OwnedCard): BattleCard => ({
   instanceId: owned.id ?? "",
   definitionId: owned.definition.id ?? "",
-  name: owned.definition.card_name,
+  // A Name Tag's nickname, if the copy has one, in place of the card's name.
+  name: owned.nickname?.trim() || owned.definition.card_name,
+  cardName: owned.definition.card_name,
   series: owned.definition.series,
   rarity: owned.definition.rarity,
   type: owned.definition.card_type,
@@ -478,3 +480,13 @@ export const collectionComposition = (
   for (const card of cards) composition[card.definition.card_type] += 1;
   return composition;
 };
+
+/**
+ * Changes a copy as a card boon does: its keyword, foil, or nickname. Only
+ * what's given changes.
+ */
+export const updateCopy = (
+  id: string,
+  change: { keyword?: string; foil?: boolean; nickname?: string },
+): Promise<V2UserCardRecord> =>
+  pb.collection<V2UserCardRecord>(V2_USER_CARD).update(id, change);

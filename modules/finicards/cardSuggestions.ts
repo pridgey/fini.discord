@@ -21,7 +21,10 @@ const RANK: Record<string, number> = {
 export const copyLabel = (copy: OwnedCard): string => {
   const card = toBattleCard(copy);
   return [
-    card.name,
+    // A nicknamed copy shows both, so it can be found by either.
+    card.cardName && card.cardName !== card.name
+      ? `${card.name} (${card.cardName})`
+      : card.name,
     rarityLabel(card),
     findKeyword(card.keyword)?.name,
     card.foil ? "foil" : undefined,

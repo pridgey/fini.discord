@@ -5,7 +5,12 @@ import type {
 } from "../../types/PocketbaseTablesV2";
 import { pb } from "../../utilities/pocketbase";
 import { V2_CARD_DEFINITION, V2_USER_CARD } from "./cardStore";
-import { COLLECTIONS, itemByKey, type CollectionKey } from "./items";
+import {
+  COLLECTIONS,
+  itemByKey,
+  type CollectionKey,
+  type SwitchedKind,
+} from "./items";
 
 /**
  * Dungeon items in Pocketbase: `v2_item`, one row per item a player holds.
@@ -116,7 +121,7 @@ export const summonedHolders = async (
 export const activeBoon = (
   userId: string,
   serverId: string,
-  kind: "pack_boon" | "dungeon_boon",
+  kind: SwitchedKind,
 ): Promise<V2ItemRecord | null> =>
   pb
     .collection<V2ItemRecord>(V2_ITEM)
@@ -172,3 +177,25 @@ export const handOverItem = (
     source: "trade",
     active: false,
   });
+
+/**
+ * Every collection piece that can't turn up on a server right now: one of each
+ * exists there, so not one someone holds, nor one a live dungeon run is
+ * carrying. A piece carried by a run that falls is free again.
+ */
+export const piecesTaken = async (serverId: string): Promise<Set<string>> => {
+  const [held, live] = await Promise.all([
+    pieceHolders(serverId).catch(() => new Map<string, string>()),
+    pb
+      .collection("v2_dungeon_run")
+      .getFullList<{ progress: { items?: string[] } | null }>({
+        filter: pb.filter("server_id = {:serverId} && state = 'active'", {
+          serverId,
+        }),
+        fields: "progress",
+      })
+      .catch(() => []),
+  ]);
+  const carried = live.flatMap((run) => run.progress?.items ?? []);
+  return new Set([...held.keys(), ...carried]);
+};

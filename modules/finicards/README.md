@@ -1169,6 +1169,17 @@ one row each (`itemStore.ts`); the catalogue is `items.ts`.
   kind at a time: a pack boon is spent by the next pack (the first, on a bulk
   open), a dungeon boon by the next run, which starts with it. What each does
   is `boons.ts`; pack boons only move the common / uncommon / full-art odds.
+- **More kinds:** a **Dungeon Key** (a free run, switched on beside a dungeon
+  boon), **card boons** used on one copy with `/finicard use item: card:` - a
+  Name Tag (a nickname that replaces the card's name everywhere it's shown;
+  `cardName` keeps the real one), a Reroll Token (always a new ability), an
+  Ability Scroll (pick one of three) and a Foil Kit (`cardBoons.ts`) - and a
+  **Mystery Box** that opens into another item. Pack boons include a Collector's
+  Seal (no cards you own), a Set Compass (a set pack at standard odds; it waits
+  for one) and a Lure for each of the biggest series.
+- **A piece found is news:** walking out with one, or opening one from a box,
+  tells the bot channel who has it and how much of the set the server has
+  (`pieceNotice.ts`).
 - **Drops** (`dungeon.ts`, `DUNGEON.items`): nothing before room 15, full
   strength by room 35, higher tiers deeper. A boss may drop one beside its
   card, an event may offer one as its reward, a shop may stock one at a

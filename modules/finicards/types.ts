@@ -12,7 +12,14 @@ export type BattleCard = {
   /** The `v2_user_card` id, or a synthetic id for simulations. */
   instanceId: string;
   definitionId: string;
+  /** What the copy is called: its nickname if it has one, else the card's name. */
   name: string;
+  /**
+   * The card's own name, when a nickname is shown in its place. Anything that
+   * means the card rather than the copy - which Summoned card it is - reads
+   * this.
+   */
+  cardName?: string;
   series: string;
   rarity: CardRarity;
   type: CardType;

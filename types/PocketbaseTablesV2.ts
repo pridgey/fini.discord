@@ -100,7 +100,13 @@ export type V2ItemRecord = {
   /** Catalogue key from `modules/finicards/items.ts`. */
   item: string;
   /** The item's kind, copied from the catalogue. Pieces are one per server. */
-  kind: "piece" | "pack_boon" | "dungeon_boon";
+  kind:
+    | "piece"
+    | "pack_boon"
+    | "dungeon_boon"
+    | "dungeon_key"
+    | "card_boon"
+    | "box";
   /** Where it came from: "dungeon", "trade", "grant"... */
   source?: string;
   /** The dungeon run that found it, if one did. */
@@ -140,6 +146,8 @@ export type V2UserCardRecord = {
   favorite?: boolean;
   /** Marked on the site for a bulk sell. Never also `favorite`. */
   to_sell?: boolean;
+  /** A Name Tag's nickname: shown in place of the card's name. Empty for none. */
+  nickname?: string;
   created?: string;
   updated?: string;
   expand?: {
