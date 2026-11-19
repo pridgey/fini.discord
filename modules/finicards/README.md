@@ -238,10 +238,19 @@ Smelling Salts, Quick Hands, Lucky Coin, Deep Pockets, Ward Charm. Most shops
 (`DUNGEON.specialChance`, 60%) also sell a fourth, special ware: Fresh Shuffle
 (every resting card swapped, 10), Mulligan (the whole hand redealt, 14),
 Treasure Map (the next 3 door choices show their enemy, 8), Loaded Dice (the
-next failed event is rolled again, 10) or Strong Coffee (wake any resting card,
-any time, 8). They sit beside the regular shelf rather than on it, because on it
+next failed event is rolled again, 10), Strong Coffee (wake any resting card,
+any time, 8), Second Wind (the next lost fight is a stalemate instead, 16), Echo
+Stone (the next card played doesn't rest, 12), Double or Nothing (a coin flip
+for twice what it cost, 10 - the win is set from the price asked at that depth),
+Rally Banner (+1 to every stat, 2 rooms, 10), Glass Cannon (+4 type stat and −2
+the others, 3 rooms, 10 - a stat never goes below 0) or Bounty Poster (the next
+elite or boss pays double geld, 10). They sit beside the regular shelf rather
+than on it, because on it
 they crowded out the stat wares and cost runs about a fifth of their depth in
-the simulator.
+the simulator. The last six were tried on the regular shelf first and did the
+same - strong decks lost three or four rooms - so they joined the specials,
+where the simulator puts them within a room of before (2026-11-18). The bots
+skip coin flips and Glass Cannon, as a player with a strong deck would.
 
 Prices are listed for the first room and rise 10% of that per room
 (`DUNGEON.shopInflation`, `shopPrice`): twice the list price by room 11, seven
@@ -258,7 +267,11 @@ players noticed. After the boss the curve picks up where it would have been
 curve after the warm-up instead cut every later price too and lifted payouts by
 half (8-pack careful 23 fc to 37 fc), so only the warm-up is exempt.
 
-**Charges.** Loaded dice and coffees are held like wards and shown beside them.
+**Charges.** Loaded dice, coffees, second winds, bounties and echoes are held
+like wards and shown beside them. A second wind goes before a ward, so a lost
+fight keeps going rather than being given up; a bounty waits for an elite or a
+boss; an echo is spent on the next card played, fight or event. A fight's recap
+keeps its own result, since a second wind makes a lost round a stalemate.
 A loaded die is spent automatically on the first event roll that fails. A coffee
 is spent by the player: while they hold one, every resting card in hand gets a
 ☕ Wake button, in any room and at the doors.
@@ -1179,7 +1192,9 @@ one row each (`itemStore.ts`); the catalogue is `items.ts`.
   item isn't spent. Also a
   **Mystery Box** that opens into another item. Pack boons include a Collector's
   Seal (no cards you own), a Set Compass (a set pack at standard odds; it waits
-  for one) and a Lure for each of the biggest series.
+  for one) and a Lure for each of the biggest series. **Starter boons** bring a
+  shop ware into the run from the first room (`ware`, found with `wareNamed`):
+  Hex Doll, Lucky Coin, Deep Pockets, Second Wind, Echo Stone, Quick Hands.
 - **A piece found is news:** walking out with one, or opening one from a box,
   tells the bot channel who has it and how much of the set the server has
   (`pieceNotice.ts`).

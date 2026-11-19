@@ -276,7 +276,15 @@ export type Effect =
   /** A strong coffee: wakes one resting card, whenever the player likes. */
   | { kind: "coffee" }
   /** A dungeon item, carried and kept only on a walk-out (`items.ts`). */
-  | { kind: "item"; item: string };
+  | { kind: "item"; item: string }
+  /** Second Wind: the next lost fight is a stalemate instead. */
+  | { kind: "secondWind" }
+  /** A bounty: the next elite or boss beaten pays double geld. */
+  | { kind: "bounty" }
+  /** An echo: the next card played doesn't rest afterward. */
+  | { kind: "echo" }
+  /** Double or nothing: a coin flip, `win` geld or none. */
+  | { kind: "gamble"; win: number };
 
 export const modsOf = (state: Pick<DungeonState, "buffs">): Mods => {
   const total = { ...NO_MODS };
@@ -292,7 +300,11 @@ export const modsOf = (state: Pick<DungeonState, "buffs">): Mods => {
 export const buffedCard = (card: BattleCard, mods: Mods): BattleCard => {
   const stats = { ...card.stats };
   for (const type of TYPE_PRIORITY) {
-    stats[type] += mods[type] + (type === card.type ? mods.type : 0);
+    // A trade-off ware (Glass Cannon) can take stats down, never below nothing.
+    stats[type] = Math.max(
+      0,
+      stats[type] + mods[type] + (type === card.type ? mods.type : 0),
+    );
   }
   return { ...card, stats };
 };
@@ -381,6 +393,11 @@ export type RunStats = {
 export type Recap = {
   /** The clash, when the click was a card played into a fight. */
   round?: RoundResult;
+  /**
+   * How that fight went. Not always the round's winner: a second wind turns
+   * a loss into a stalemate. Absent on fights recorded before it was kept.
+   */
+  result?: FightResult;
   lines: string[];
 };
 
@@ -427,6 +444,12 @@ export type DungeonState = {
   rerolls?: number;
   /** Strong coffees held. Each one wakes a resting card. */
   coffee?: number;
+  /** Second Winds held. Each turns a lost fight into a stalemate. */
+  secondWinds?: number;
+  /** Bounties held. Each doubles the geld of the next elite or boss beaten. */
+  bounties?: number;
+  /** Echoes held. Each spares the next card played its rest. */
+  echoes?: number;
   /**
    * Dungeon items found on this run, by catalogue key. Carried, not banked:
    * granted on a walk-out and lost on a fall. Absent on older runs.
@@ -801,7 +824,7 @@ const WARES: Ware[] = [
         rooms: 4,
       },
     },
-  },
+  }
 ];
 
 /**
@@ -849,6 +872,60 @@ const SPECIALS: Ware[] = [
     price: 8,
     effect: { kind: "coffee" },
   },
+  {
+    name: "Second Wind",
+    blurb: "Your next lost fight is a stalemate instead: play another card",
+    price: 16,
+    effect: { kind: "secondWind" },
+  },
+  {
+    name: "Echo Stone",
+    blurb: "The next card you play doesn't rest afterward",
+    price: 12,
+    effect: { kind: "echo" },
+  },
+  {
+    name: "Double or Nothing",
+    blurb: "A coin flip: twice what you paid, or nothing",
+    price: 10,
+    // The win is set from the price actually asked, which rises with depth.
+    effect: { kind: "gamble", win: 20 },
+  },
+  {
+    name: "Rally Banner",
+    blurb: "+1 to every stat on all your cards for the next 2 rooms",
+    price: 10,
+    effect: {
+      kind: "buff",
+      buff: {
+        name: "Rally Banner",
+        note: "+1 to every stat",
+        mods: { power: 1, wit: 1, heart: 1 },
+        rooms: 3,
+      },
+    },
+  },
+  {
+    name: "Glass Cannon",
+    blurb: "+4 to each card's type stat, −2 to its others, for the next 3 rooms",
+    price: 10,
+    effect: {
+      kind: "buff",
+      buff: {
+        name: "Glass Cannon",
+        note: "+4 type stat, −2 others",
+        // +6 to the type stat and −2 to all three: +4 and −2 in the end.
+        mods: { type: 6, power: -2, wit: -2, heart: -2 },
+        rooms: 4,
+      },
+    },
+  },
+  {
+    name: "Bounty Poster",
+    blurb: "The next elite or boss you beat pays double geld",
+    price: 10,
+    effect: { kind: "bounty" },
+  }
 ];
 
 /** What a ware listed at `price` costs in a shop at `depth`. List price in the warm-up. */
@@ -860,6 +937,30 @@ export const shopPrice = (
   depth <= config.warmup.rooms
     ? price
     : Math.round(price * (1 + (depth - 1) * config.shopInflation));
+
+/**
+ * A shop ware by name, for a dungeon boon that starts a run with it in play
+ * (`boons.ts`): the boon carries the ware, so the two never drift apart.
+ */
+export const wareNamed = (
+  name: string,
+): Omit<Ware, "unique"> | undefined => {
+  const found = [...WARES, ...SPECIALS].find((ware) => ware.name === name);
+  if (!found) return undefined;
+  const { unique: _unique, ...ware } = found;
+  return ware;
+};
+
+/** A ware on the shelf at `price`. A coin flip pays twice what it cost. */
+const priced = (ware: Omit<Ware, "unique">, price: number): ShopOffer => ({
+  ...ware,
+  price,
+  effect:
+    ware.effect.kind === "gamble"
+      ? { kind: "gamble", win: price * 2 }
+      : ware.effect,
+  sold: false,
+});
 
 export const generateShop = (
   owned: Buff[],
@@ -878,20 +979,12 @@ export const generateShop = (
       Math.floor(random() * shelf.length),
     );
     const [{ unique: _unique, ...ware }] = shelf.splice(index, 1);
-    offers.push({
-      ...ware,
-      price: shopPrice(ware.price, depth, config),
-      sold: false,
-    });
+    offers.push(priced(ware, shopPrice(ware.price, depth, config)));
   }
 
   if (config.specialChance > 0 && random() < config.specialChance) {
     const { unique: _unique, ...special } = pick(SPECIALS, random);
-    offers.push({
-      ...special,
-      price: shopPrice(special.price, depth, config),
-      sold: false,
-    });
+    offers.push(priced(special, shopPrice(special.price, depth, config)));
   }
 
   return { kind: "shop", offers };
@@ -1404,7 +1497,7 @@ const redrawIds = (
 };
 
 /** Applies an effect. Returns any lines it has to add to the recap. */
-const applyEffect = (
+export const applyEffect = (
   state: DungeonState,
   effect: Effect,
   source: RoomSource = { pool: [] },
@@ -1448,6 +1541,24 @@ const applyEffect = (
       return [
         `🎒 **${itemByKey(effect.item)?.name ?? "An item"}** goes in your pack. It's yours if you walk out.`,
       ];
+    case "secondWind":
+      state.secondWinds = (state.secondWinds ?? 0) + 1;
+      return [];
+    case "bounty":
+      state.bounties = (state.bounties ?? 0) + 1;
+      return [];
+    case "echo":
+      state.echoes = (state.echoes ?? 0) + 1;
+      return [];
+    case "gamble": {
+      const random = source.random ?? Math.random;
+      if (random() < 0.5) {
+        state.geld += effect.win;
+        state.stats.geldEarned += effect.win;
+        return [`🪙 Heads! **+${effect.win} geld**.`];
+      }
+      return ["🪙 Tails. Nothing this time."];
+    }
   }
 };
 
@@ -1494,16 +1605,33 @@ export const describeEffect = (effect: Effect): string => {
       const item = itemByKey(effect.item);
       return item ? `${item.emoji} ${item.name}` : "a dungeon item";
     }
+    case "secondWind":
+      return "a second wind (your next lost fight is a stalemate instead)";
+    case "bounty":
+      return "a bounty (the next elite or boss you beat pays double geld)";
+    case "echo":
+      return "an echo (the next card you play doesn't rest)";
+    case "gamble":
+      return `a coin flip for ${effect.win} geld`;
   }
 };
 
+/**
+ * Puts a played card to rest - unless an echo is held, which is spent to keep
+ * it ready. Returns the line that says so, or null.
+ */
 const startCooldown = (
   state: DungeonState,
-  cardId: string,
+  card: Pick<BattleCard, "instanceId" | "name">,
   config: DungeonConfig,
-): void => {
+): string | null => {
+  if ((state.echoes ?? 0) > 0) {
+    state.echoes = (state.echoes ?? 0) - 1;
+    return `🔔 The Echo Stone rings: **${card.name}** is ready again straight away.`;
+  }
   const rooms = Math.max(0, config.cooldownRooms + modsOf(state).cooldown);
-  if (rooms > 0) state.readyAt[cardId] = state.depth + rooms + 1;
+  if (rooms > 0) state.readyAt[card.instanceId] = state.depth + rooms + 1;
+  return null;
 };
 
 const openDoors = (
@@ -1641,20 +1769,26 @@ export const playFight = (
 
   recordRound(round, states.challenger, states.defender);
   rounds.push(round);
-  startCooldown(next, card.instanceId, config);
+  const echoed = startCooldown(next, card, config);
 
   let result: FightResult;
   const lines: string[] = [];
 
   if (round.winner === PLAYER_SIDE) {
     result = "won";
-    const geld = Math.floor(next.room.geld * (1 + mods.geld / 100));
+    // A bounty doubles what an elite or a boss pays, and is spent on it.
+    const bounty =
+      (next.bounties ?? 0) > 0 && next.room.tier !== "normal" ? 2 : 1;
+    if (bounty > 1) next.bounties = (next.bounties ?? 0) - 1;
+    const geld = Math.floor(next.room.geld * (1 + mods.geld / 100)) * bounty;
     next.geld += geld;
     next.stats.geldEarned += geld;
     next.stats.cardWins[card.name] = (next.stats.cardWins[card.name] ?? 0) + 1;
     next.fightsWon += 1;
     mark(next, "won");
-    lines.push(`✅ **${next.room.enemy.name}** falls · **+${geld} geld**`);
+    lines.push(
+      `✅ **${next.room.enemy.name}** falls · **+${geld} geld**${bounty > 1 ? " · 📜 bounty claimed, double geld" : ""}`,
+    );
 
     if (next.room.tier === "boss") {
       next.bossesWon += 1;
@@ -1685,6 +1819,13 @@ export const playFight = (
     lines.push(
       `🤝 A stalemate: **${next.room.enemy.name}** is still standing. Play another card.`,
     );
+  } else if ((next.secondWinds ?? 0) > 0) {
+    // Before a ward: a second wind keeps the fight going rather than giving it up.
+    result = "stalemate";
+    next.secondWinds = (next.secondWinds ?? 0) - 1;
+    lines.push(
+      `💨 **${next.room.enemy.name}** wins the clash, but you catch your second wind. It's still standing - play another card.`,
+    );
   } else if (next.wards > 0) {
     result = "warded";
     next.wards -= 1;
@@ -1699,8 +1840,9 @@ export const playFight = (
     lines.push(`💀 **${next.room.enemy.name}** wins. The run ends here.`);
   }
 
+  if (echoed) lines.push(echoed);
   // A blank line sets the outcome apart from the clash above it.
-  next.recap = { round, lines: ["", ...lines] };
+  next.recap = { round, result, lines: ["", ...lines] };
   return { state: next, round, result };
 };
 
@@ -1738,7 +1880,7 @@ export const playEvent = (
   const total = stat + mods.roll + die;
   const passed = total >= room.target;
 
-  startCooldown(next, card.instanceId, config);
+  const echoed = startCooldown(next, card, config);
   const effect = passed ? room.reward : room.failEffect;
   const effectLines = effect ? applyEffect(next, effect, source) : [];
   if (passed) {
@@ -1762,6 +1904,7 @@ export const playEvent = (
         ? `✨ You gain ${describeEffect(room.reward)}.`
         : `💢 ${failCost(room)}`,
       ...effectLines,
+      ...(echoed ? [echoed] : []),
     ],
   };
 

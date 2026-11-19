@@ -306,6 +306,17 @@ const effectIcon = (effect: Effect, x: number, y: number): string => {
       return effectIcon({ kind: "recover" }, x, y);
     case "many":
       return effect.effects[0] ? effectIcon(effect.effects[0], x, y) : "";
+    case "secondWind":
+      // Three gusts.
+      return `<path d="M${x - 11} ${y - 6} h13 a4 4 0 1 0 -4 -4 M${x - 11} ${y} h18 a4 4 0 1 1 -4 4 M${x - 11} ${y + 6} h9" fill="none" stroke="${colour}" stroke-width="2.4" stroke-linecap="round"></path>`;
+    case "bounty":
+      // A pinned poster.
+      return `<rect x="${x - 9}" y="${y - 11}" width="18" height="22" rx="1.5" fill="#f1e2c4"></rect><circle cx="${x}" cy="${y - 11}" r="2" fill="#b5423a"></circle><path d="M${x - 5} ${y - 4} h10 M${x - 5} ${y + 1} h10 M${x - 5} ${y + 6} h6" stroke="#3a2a05" stroke-width="1.5"></path>`;
+    case "echo":
+      // A stone with rings spreading from it.
+      return `<circle cx="${x}" cy="${y}" r="4.5" fill="${colour}"></circle><circle cx="${x}" cy="${y}" r="8.5" fill="none" stroke="${colour}" stroke-width="1.6" stroke-opacity="0.75"></circle><circle cx="${x}" cy="${y}" r="12.5" fill="none" stroke="${colour}" stroke-width="1.2" stroke-opacity="0.4"></circle>`;
+    case "gamble":
+      return `${coin(x - 3, y + 2, 7)}<text x="${x + 6}" y="${y - 3}" font-size="9" font-weight="800" fill="${colour}">?</text>`;
     case "item":
       // A drawstring pouch, in the colour of something rare.
       return `<path d="M${x - 5} ${y - 9} q5 3 10 0 l-2 4 c7 2 10 7 9 12 a4 4 0 0 1 -4 4 h-16 a4 4 0 0 1 -4 -4 c-1 -5 2 -10 9 -12 z" fill="${EVENT_PURPLE}"></path><path d="M${x - 4} ${y - 5} q4 2 8 0" fill="none" stroke="#2a1840" stroke-width="1.4" stroke-linecap="round"></path><circle cx="${x}" cy="${y + 5}" r="2.2" fill="#ffffff" fill-opacity="0.7"></circle>`;

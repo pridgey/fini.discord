@@ -584,10 +584,17 @@ const gradeDungeon = () => {
           .map((offer, index) => ({ offer, index }))
           .filter(({ offer }) => !offer.sold && offer.price <= state.geld)
           // The bots never drink coffee, and see through every door anyway.
+          // Nor do they gamble, or trade defence for attack: a coin flip is
+          // even money, and Glass Cannon is a choice a player makes for a deck.
           .filter(
             ({ offer }) =>
               offer.effect.kind !== "coffee" &&
-              !(offer.effect.kind === "buff" && offer.effect.buff.mods.scout),
+              offer.effect.kind !== "gamble" &&
+              !(offer.effect.kind === "buff" && offer.effect.buff.mods.scout) &&
+              !(
+                offer.effect.kind === "buff" &&
+                Object.values(offer.effect.buff.mods).some((value) => value < 0)
+              ),
           )
           // A redraw only when it would bring back enough of a resting hand.
           .filter(({ offer }) => {

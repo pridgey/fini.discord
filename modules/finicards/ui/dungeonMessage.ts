@@ -170,7 +170,7 @@ const renderClash = async (
   const { room, depth } = input.progress;
   return renderDungeonClash({
     round,
-    result: fightResultOf(input, round.winner),
+    result: input.progress.recap?.result ?? fightResultOf(input, round.winner),
     depth,
     tier: room.kind === "fight" ? room.tier : "normal",
     playerName: input.playerName,
@@ -380,6 +380,15 @@ const chargeLine = (progress: DungeonState): string | null => {
       : []),
     ...((progress.coffee ?? 0) > 0
       ? [`☕ ${plural(progress.coffee ?? 0, "coffee")}`]
+      : []),
+    ...((progress.secondWinds ?? 0) > 0
+      ? [`💨 ${plural(progress.secondWinds ?? 0, "second wind")}`]
+      : []),
+    ...((progress.bounties ?? 0) > 0
+      ? [`📜 ${plural(progress.bounties ?? 0, "bounty", "bounties")}`]
+      : []),
+    ...((progress.echoes ?? 0) > 0
+      ? [`🔔 ${plural(progress.echoes ?? 0, "echo", "echoes")}`]
       : []),
   ];
   return charges.length > 0 ? charges.join(" · ") : null;

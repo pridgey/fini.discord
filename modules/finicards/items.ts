@@ -55,7 +55,30 @@ export type ItemDefinition = {
   short?: string;
   /** For a series boon: the series its pack leans toward, by `series`. */
   series?: string;
+  /**
+   * For a dungeon boon that starts a run with a shop ware in play: the
+   * ware's name (`wareNamed` in `dungeon.ts`).
+   */
+  ware?: string;
 };
+
+/** A dungeon boon that brings a shop ware into the run from the start. */
+const starter = (
+  key: string,
+  name: string,
+  ware: string,
+  tier: ItemTier,
+  emoji: string,
+  blurb: string,
+): ItemDefinition => ({
+  key,
+  name,
+  kind: "dungeon_boon",
+  tier,
+  emoji,
+  blurb: `Start your next run with ${ware} in play: ${blurb}.`,
+  ware,
+});
 
 /**
  * The biggest series in the pool, each with a boon that leans a pack toward
@@ -302,6 +325,14 @@ export const ITEMS: ItemDefinition[] = [
     emoji: "☕",
     blurb: "Start your next run with two strong coffees: each wakes a resting card.",
   },
+
+  /* Starters: a shop ware in play from the first room. */
+  starter("boon_start_hex", "Pocket Hex Doll", "Hex Doll", 1, "🪆", "enemies have −1 to every stat for the first 3 rooms"),
+  starter("boon_start_coin", "Old Lucky Coin", "Lucky Coin", 1, "🪙", "+1 to every event roll, for the run"),
+  starter("boon_start_pockets", "Tailored Coat", "Deep Pockets", 2, "🧥", "+25% geld from fights, for the run"),
+  starter("boon_start_wind", "Bottled Second Wind", "Second Wind", 2, "🌬️", "your first lost fight is a stalemate instead"),
+  starter("boon_start_echo", "Spare Echo Stone", "Echo Stone", 2, "🔔", "the first card you play doesn't rest"),
+  starter("boon_start_hands", "Featherweight Gloves", "Quick Hands", 3, "🧤", "cards cool down one room faster, for the run"),
 
   /* A key: switched on beside a dungeon boon. */
   {

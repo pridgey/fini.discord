@@ -1,4 +1,4 @@
-import type { DungeonState } from "./dungeon";
+import { applyEffect, wareNamed, type DungeonState } from "./dungeon";
 import { ITEMS, itemByKey } from "./items";
 import { FOIL_CHANCE, PACK_ODDS, PACK_SIZE, type PackOdds } from "./packs";
 
@@ -66,7 +66,8 @@ export const withDungeonBoon = (
   key: string,
 ): DungeonState => {
   const next = structuredClone(state);
-  const name = itemByKey(key)?.name ?? key;
+  const item = itemByKey(key);
+  const name = item?.name ?? key;
   let line: string;
   switch (key) {
     case "boon_spare_ward":
@@ -112,8 +113,14 @@ export const withDungeonBoon = (
       });
       line = "every card has +1 to its type stat this run.";
       break;
-    default:
-      return state;
+    default: {
+      // A starter: a shop ware in play from the first room.
+      const ware = item?.ware ? wareNamed(item.ware) : undefined;
+      if (!ware) return state;
+      applyEffect(next, ware.effect);
+      line = `you start with **${ware.name}**: ${ware.blurb[0].toLowerCase()}${ware.blurb.slice(1)}.`;
+      break;
+    }
   }
   next.boon = key;
   next.recap = { lines: [`🎒 Your **${name}** is spent on this run: ${line}`] };
