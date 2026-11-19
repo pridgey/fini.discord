@@ -5,13 +5,25 @@
  * completing a set of dungeon items (issue #8). One of each per server, so
  * they move to a population of 1.
  *
- * Their stats are left as they were. A Summoned card totals 18 rather than 15
- * (`RULES.statTotalByRarity`), and its spread is the card maker's call, so the
- * card manager flags them until they're respread there. They stay inactive:
- * nothing draws them, a completed set grants them directly.
+ * A Summoned card totals 18 rather than 15 (`RULES.statTotalByRarity`), so
+ * each is respread here, keeping its type and its shape: Shenron and Exodia
+ * stay spikes, Super Sonic stays an all-rounder. They stay inactive: nothing
+ * draws them, a completed set grants them directly.
  */
 
-const SUMMONED = ["Shenron", "Exodia", "Super Sonic"];
+/** Each card's spread as a Summoned card, and as the full-art it was. */
+const SPREADS = {
+  Shenron: { now: [2, 2, 14], was: [2, 1, 12] },
+  Exodia: { now: [14, 3, 1], was: [12, 2, 1] },
+  "Super Sonic": { now: [6, 7, 5], was: [5, 6, 4] },
+};
+const SUMMONED = Object.keys(SPREADS);
+
+const setStats = (record, [power, wit, heart]) => {
+  record.set("power", power);
+  record.set("wit", wit);
+  record.set("heart", heart);
+};
 
 const cardsNamed = (app, name) =>
   app.findRecordsByFilter(
@@ -34,6 +46,7 @@ migrate(
       for (const record of cardsNamed(app, name)) {
         record.set("rarity", "summoned");
         record.set("population", 1);
+        setStats(record, SPREADS[name].now);
         app.save(record);
       }
     }
@@ -43,6 +56,7 @@ migrate(
       for (const record of cardsNamed(app, name)) {
         record.set("rarity", "full_art");
         record.set("population", 0);
+        setStats(record, SPREADS[name].was);
         app.save(record);
       }
     }
