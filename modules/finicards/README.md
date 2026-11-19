@@ -1174,6 +1174,15 @@ one row each (`itemStore.ts`); the catalogue is `items.ts`.
   card, an event may offer one as its reward, a shop may stock one at a
   premium. Carried, not banked: granted on a walk-out, lost on a fall.
   `simulate.ts --dungeon` reports them by depth.
+- **Selling and trading** (`itemMarket.ts`): `/finicard sell item:` sells one
+  item the three usual ways - to anyone, to a player, or to Fini (pieces 10 /
+  20 / 40 fc by tier, boons 5 / 10 / 20; a piece sold to Fini goes back into
+  the dungeon). `/finicard trade` takes `give_items` and `want_items`, named
+  and comma-separated, up to seven a side, alongside cards and fc. Both
+  suggest from the right satchel as the player types; a traded boon arrives
+  switched off. Cards still go by id - two copies can differ - but `card`,
+  `give` and `want` suggest them too, by name, ability or rarity, each labelled
+  with what sets the copy apart (`cardSuggestions.ts`).
 - `/finicard items` is the satchel: what's switched on, each set's progress and
   who holds the pieces you're missing, and the boons in reserve. The bot admin
   can grant items with `/finicard grant item:<key>` or `item:set:<set>`.

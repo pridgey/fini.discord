@@ -18,6 +18,9 @@ import {
   stillOwns,
 } from "./market";
 import { rarityLabel } from "./ui/theme";
+import { getItems, handOverItem, spendItem, stillHoldsItem } from "./itemStore";
+import { itemBuybackPrice, itemTitle, pickRows } from "./itemMarket";
+import { itemByKey } from "./items";
 
 /**
  * `/finicard sell`: v1's `/sell-card`, for v2 cards.
@@ -30,7 +33,87 @@ import { rarityLabel } from "./ui/theme";
  *
  * The listing stays open for ten minutes. The card is checked again at the
  * moment of sale, since it may have gone elsewhere while the listing sat.
+ *
+ * A dungeon item sells the same three ways (`item` instead of `card`). Sold
+ * to Fini, a collection piece goes back into the dungeon for someone else to
+ * find - there's one of each per server.
  */
+
+/** What's being sold: a card or an item, and how it changes hands. */
+type Goods = {
+  title: string;
+  /** "card" or "item", for the wording. */
+  noun: string;
+  finiPrice: number;
+  files: AttachmentBuilder[];
+  stillOwned: () => Promise<boolean>;
+  handOver: (toUserId: string, toUsername: string) => Promise<void>;
+  sellToFini: () => Promise<void>;
+  /** What happens to it when Fini buys it. */
+  toFiniNote: string;
+  /** Something the seller may not mean to part with: a favourite, a boon that's on. */
+  warning?: string;
+};
+
+/** The seller's card or item, as goods, or why it can't be sold. */
+const findGoods = async (
+  interaction: ChatInputCommandInteraction,
+  sellerId: string,
+  serverId: string,
+  serverName: string,
+): Promise<Goods | string> => {
+  const typedCard = interaction.options.getString("card");
+  const typedItem = interaction.options.getString("item");
+  if (!typedCard === !typedItem) {
+    return "Name one thing to sell: a card's id in `card`, or a dungeon item in `item`.";
+  }
+
+  if (typedItem) {
+    const { rows } = pickRows(await getItems(sellerId, serverId), [typedItem]);
+    const row = rows[0];
+    const item = row ? itemByKey(row.item) : undefined;
+    if (!row || !item) {
+      return `You don't have **${typedItem.trim()}**. Your items are in \`/finicard items\`.`;
+    }
+    return {
+      title: itemTitle(item),
+      noun: "item",
+      finiPrice: itemBuybackPrice(item),
+      files: [],
+      stillOwned: () => stillHoldsItem(sellerId, row.id ?? ""),
+      handOver: async (toUserId) => void (await handOverItem(row, toUserId)),
+      sellToFini: async () => void (await spendItem(row.id ?? "")),
+      toFiniNote:
+        item.kind === "piece"
+          ? "It goes back into the dungeon for someone else to find."
+          : "It's gone for good.",
+      ...(row.active
+        ? { warning: "It's switched on for your next pack or run. Selling it switches it off." }
+        : {}),
+    };
+  }
+
+  const copy = await findSellable(sellerId, serverId, typedCard!);
+  if (!copy) {
+    return `\`${typedCard}\` isn't one of your cards. Card ids are listed in \`/finicard collection\`.`;
+  }
+  const card = toBattleCard(copy);
+  const media = await renderCardMedia(card);
+  return {
+    title: `**${card.name}** (${rarityLabel(card)}${card.foil ? ", foil" : ""})`,
+    noun: "card",
+    finiPrice: buybackPrice(card),
+    files: media
+      ? [new AttachmentBuilder(media.buffer, { name: media.name })]
+      : [],
+    stillOwned: () => stillOwns(sellerId, copy.id ?? ""),
+    handOver: (toUserId, toUsername) =>
+      handOver(copy, toUserId, `${toUsername}-${serverName}`),
+    sellToFini: () => sellToFini(copy),
+    toFiniNote: "The card is gone for good.",
+    ...(copy.favorite ? { warning: "It's one of your favourites." } : {}),
+  };
+};
 
 const LISTING_MS = 600_000;
 
@@ -40,7 +123,6 @@ export const runSell = async (
 ): Promise<void> => {
   const { serverId, serverName } = context;
   const seller = interaction.user;
-  const typed = interaction.options.getString("card", true);
   const asking = Math.max(0, interaction.options.getInteger("price") ?? 0);
   const buyer = interaction.options.getUser("who");
   const toFini = !!buyer && buyer.id === interaction.client.user.id;
@@ -52,18 +134,14 @@ export const runSell = async (
     return;
   }
 
-  const copy = await findSellable(seller.id, serverId, typed);
-  if (!copy) {
-    await interaction.editReply(
-      `\`${typed}\` isn't one of your cards. Card ids are listed in \`/finicard collection\`.`,
-    );
+  const goods = await findGoods(interaction, seller.id, serverId, serverName);
+  if (typeof goods === "string") {
+    await interaction.editReply(goods);
     return;
   }
 
-  const card = toBattleCard(copy);
-  const price = toFini ? buybackPrice(card) : asking;
-  const title = `**${card.name}** (${rarityLabel(card)}${card.foil ? ", foil" : ""})`;
-  const media = await renderCardMedia(card);
+  const price = toFini ? goods.finiPrice : asking;
+  const { title } = goods;
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
@@ -82,16 +160,15 @@ export const runSell = async (
       .setStyle(toFini ? ButtonStyle.Danger : ButtonStyle.Primary),
   );
 
+  const offer = toFini
+    ? `${seller}, sell your ${title} to Fini for ${price} fc? ${goods.toFiniNote}`
+    : buyer
+      ? `${seller} is offering their ${title} to ${buyer} for ${price} fc. ${buyer}, do you accept?`
+      : `${seller} is selling their ${title} for ${price} fc. Anyone can buy it.`;
   const message = await interaction.editReply({
-    content: toFini
-      ? `${seller}, sell your ${title} to Fini for ${price} fc? The card is gone for good.`
-      : buyer
-        ? `${seller} is offering their ${title} to ${buyer} for ${price} fc. ${buyer}, do you accept?`
-        : `${seller} is selling their ${title} for ${price} fc. Anyone can buy it.`,
+    content: goods.warning ? `${offer}\n⚠️ ${goods.warning}` : offer,
     components: [row],
-    files: media
-      ? [new AttachmentBuilder(media.buffer, { name: media.name })]
-      : [],
+    files: goods.files,
   });
 
   let closed = false;
@@ -143,14 +220,14 @@ export const runSell = async (
       if (!mayBuy) {
         return void (await press.reply({
           content: isSeller
-            ? "You can't buy your own card."
+            ? `You can't buy your own ${goods.noun}.`
             : "This offer isn't for you.",
           flags: [MessageFlags.Ephemeral],
         }));
       }
 
       // It may have been sold, traded or lost since the listing went up.
-      if (!(await stillOwns(seller.id, copy.id ?? ""))) {
+      if (!(await goods.stillOwned())) {
         return void (await close(
           done,
           `${seller} no longer has that ${title}, so the sale is off.`,
@@ -158,7 +235,7 @@ export const runSell = async (
       }
 
       if (toFini) {
-        await sellToFini(copy);
+        await goods.sellToFini();
         await addCoin(
           seller.id,
           serverId,
@@ -194,11 +271,7 @@ export const runSell = async (
           press.user.id,
         );
       }
-      await handOver(
-        copy,
-        press.user.id,
-        `${press.user.username}-${serverName}`,
-      );
+      await goods.handOver(press.user.id, press.user.username);
       await done(`${press.user} bought ${seller}'s ${title} for ${price} fc.`);
       collector.stop();
     } catch (error) {

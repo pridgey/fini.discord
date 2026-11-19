@@ -164,6 +164,7 @@ export const buildItemsMessage = ({
           ...boonLines("dungeon_boon", known, active),
           "",
           "-# Switch a boon on with `/finicard use`: your next pack or dungeon run spends it. One of each kind at a time.",
+          "-# Sell an item with `/finicard sell item:`, or trade it with `/finicard trade`.",
         ].join("\n"),
       ),
     );

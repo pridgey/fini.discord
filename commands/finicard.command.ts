@@ -38,6 +38,9 @@ import { showItems } from "./finicard/items";
 import { useItem } from "./finicard/use";
 import { getItems, summonedHolders } from "../modules/finicards/itemStore";
 import { useChoices } from "../modules/finicards/useItem";
+import { itemSuggestions } from "../modules/finicards/itemMarket";
+import { cardSuggestions } from "../modules/finicards/cardSuggestions";
+import { getUserCollection } from "../modules/finicards/cardStore";
 import { openPackFor } from "./finicard/pack";
 import { handleDeckSubcommand } from "./finicard/deck";
 
@@ -407,13 +410,14 @@ export const data = new SlashCommandBuilder()
     sub
       .setName("sell")
       .setDescription(
-        "Sell or trade one of your cards - to anyone, to a player, or to Fini",
+        "Sell one of your cards or dungeon items - to anyone, to a player, or to Fini",
       )
       .addStringOption((option) =>
         option
           .setName("card")
-          .setDescription("The card's id, from /finicard collection")
-          .setRequired(true),
+          .setDescription("The card's id - type its name to find it")
+          .setRequired(false)
+          .setAutocomplete(true),
       )
       .addIntegerOption((option) =>
         option
@@ -431,6 +435,13 @@ export const data = new SlashCommandBuilder()
             "Who to sell to: a player, or Fini. Leave blank to offer it to anyone",
           )
           .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("item")
+          .setDescription("A dungeon item instead of a card, from /finicard items")
+          .setRequired(false)
+          .setAutocomplete(true),
       ),
   )
   .addSubcommand((sub) =>
@@ -449,17 +460,19 @@ export const data = new SlashCommandBuilder()
         option
           .setName("give")
           .setDescription(
-            "Your card ids, separated by spaces (from /finicard collection)",
+            "Your card ids, separated by spaces - type a name to find one",
           )
-          .setRequired(false),
+          .setRequired(false)
+          .setAutocomplete(true),
       )
       .addStringOption((option) =>
         option
           .setName("want")
           .setDescription(
-            "Their card ids, separated by spaces (from /finicard collection)",
+            "Their card ids, separated by spaces - pick who first, then type a name",
           )
-          .setRequired(false),
+          .setRequired(false)
+          .setAutocomplete(true),
       )
       .addIntegerOption((option) =>
         option
@@ -474,6 +487,22 @@ export const data = new SlashCommandBuilder()
           .setDescription("Finicoin you ask them to add")
           .setMinValue(0)
           .setRequired(false),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("give_items")
+          .setDescription("Your dungeon items, separated by commas")
+          .setRequired(false)
+          .setAutocomplete(true),
+      )
+      .addStringOption((option) =>
+        option
+          .setName("want_items")
+          .setDescription(
+            "Their dungeon items, separated by commas (pick who first)",
+          )
+          .setRequired(false)
+          .setAutocomplete(true),
       ),
   )
   .addSubcommand((sub) =>
@@ -508,22 +537,67 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
- * Suggestions for `/finicard use`, from the player's own satchel: a set ready
- * to summon first, then their boons, then sets in progress.
+ * Suggestions from a satchel as a player types: for `/finicard use`, a set
+ * ready to summon, then boons, then sets in progress; for selling and trading,
+ * the items themselves - their own, or for `want_items` their partner's.
  */
 export const autocomplete = async (interaction: AutocompleteInteraction) => {
-  if (interaction.options.getSubcommand(false) !== "use") {
-    await interaction.respond([]);
+  const serverId = interaction.guildId ?? "unknown guild id";
+  const subcommand = interaction.options.getSubcommand(false);
+  const focused = interaction.options.getFocused(true);
+  const typed = String(focused.value ?? "");
+
+  if (subcommand === "use") {
+    const [items, holders] = await Promise.all([
+      getItems(interaction.user.id, serverId),
+      summonedHolders(serverId),
+    ]);
+    await interaction.respond(useChoices(items, holders, typed));
     return;
   }
-  const serverId = interaction.guildId ?? "unknown guild id";
-  const [items, holders] = await Promise.all([
-    getItems(interaction.user.id, serverId),
-    summonedHolders(serverId),
-  ]);
-  await interaction.respond(
-    useChoices(items, holders, String(interaction.options.getFocused() ?? "")),
-  );
+
+  // Card ids: the player's own cards, or for `want` their partner's.
+  if (
+    (subcommand === "sell" && focused.name === "card") ||
+    (subcommand === "trade" && (focused.name === "give" || focused.name === "want"))
+  ) {
+    const owner =
+      focused.name === "want"
+        ? (interaction.options.get("with")?.value as string | undefined)
+        : interaction.user.id;
+    if (!owner) {
+      await interaction.respond([]);
+      return;
+    }
+    const copies = await getUserCollection(owner, serverId);
+    await interaction.respond(
+      cardSuggestions(copies, typed, subcommand === "trade"),
+    );
+    return;
+  }
+
+  if (subcommand === "sell" && focused.name === "item") {
+    const items = await getItems(interaction.user.id, serverId);
+    await interaction.respond(itemSuggestions(items, typed));
+    return;
+  }
+
+  if (subcommand === "trade" && focused.name.endsWith("_items")) {
+    // Their items once the partner is picked; nothing to suggest before.
+    const owner =
+      focused.name === "want_items"
+        ? (interaction.options.get("with")?.value as string | undefined)
+        : interaction.user.id;
+    if (!owner) {
+      await interaction.respond([]);
+      return;
+    }
+    const items = await getItems(owner, serverId);
+    await interaction.respond(itemSuggestions(items, typed, true));
+    return;
+  }
+
+  await interaction.respond([]);
 };
 
 export const execute: SlashCommand["execute"] = async (

@@ -14,6 +14,10 @@ import { toBattleCard } from "./cardStore";
 import { findSellable, handOver, stillOwns } from "./market";
 import type { OwnedCard } from "./types";
 import { rarityLabel } from "./ui/theme";
+import type { V2ItemRecord } from "../../types/PocketbaseTablesV2";
+import { getItems, handOverItem, stillHoldsItem } from "./itemStore";
+import { findItem, itemTitle, parseItemList, pickRows } from "./itemMarket";
+import { itemByKey } from "./items";
 import { warnAndUse } from "../../utilities/fallback";
 
 /**
@@ -24,6 +28,10 @@ import { warnAndUse } from "../../utilities/fallback";
  * sold, traded or spent what was offered while the offer sat.
  *
  * The offer stays open for ten minutes, like a sale (`sellFlow.ts`).
+ *
+ * Dungeon items go in too (`give_items`, `want_items`), named rather than by
+ * id: a collection piece is one of a kind on the server, so a trade is how
+ * someone finishes a set.
  */
 
 const TRADE_MS = 600_000;
@@ -40,18 +48,54 @@ export const parseCardIds = (typed: string | null | undefined): string[] => [
   ),
 ];
 
+/** Items a side can put up: enough for a set's worth of swapping. */
+export const MAX_ITEMS_PER_SIDE = 7;
+
 /** One side of a trade: what one player puts up. */
-export type TradeSide = { user: User; cards: OwnedCard[]; fc: number };
+export type TradeSide = {
+  user: User;
+  cards: OwnedCard[];
+  /** Dungeon items. Absent puts none up. */
+  items?: V2ItemRecord[];
+  fc: number;
+};
+
+const itemLine = (row: V2ItemRecord): string => {
+  const item = itemByKey(row.item);
+  return `• ${item ? itemTitle(item) : row.item}${row.active ? " (switched on)" : ""}`;
+};
+
+/**
+ * What either player might not mean to part with: a card they've marked a
+ * favourite, or a boon they've switched on. Said in the offer, where both of
+ * them see it before anything is accepted.
+ */
+export const tradeWarnings = (sides: TradeSide[]): string[] =>
+  sides.flatMap((side) => [
+    ...side.cards
+      .filter((copy) => copy.favorite)
+      .map(
+        (copy) =>
+          `⚠️ **${toBattleCard(copy).name}** \`${copy.id}\` is one of ${side.user}'s favourites.`,
+      ),
+    ...(side.items ?? [])
+      .filter((row) => row.active)
+      .map(
+        (row) =>
+          `⚠️ ${side.user}'s **${itemByKey(row.item)?.name ?? row.item}** is switched on. Trading it switches it off.`,
+      ),
+  ]);
 
 const cardLine = (copy: OwnedCard): string => {
   const card = toBattleCard(copy);
-  return `• **${card.name}** (${rarityLabel(card)}${card.foil ? ", foil" : ""}) \`${copy.id}\``;
+  return `• **${card.name}** (${rarityLabel(card)}${card.foil ? ", foil" : ""}) \`${copy.id}\`${copy.favorite ? " ⭐" : ""}`;
 };
 
 /** What a side puts up, as lines, or a dash for nothing. */
 export const sideLines = (side: TradeSide): string[] => {
   const lines = [
     ...side.cards.map(cardLine),
+    ...(side.items ?? []).map(itemLine),
     ...(side.fc > 0 ? [`• 🪙 **${side.fc} fc**`] : []),
   ];
   return lines.length > 0 ? lines : ["• _nothing_"];
@@ -67,7 +111,10 @@ export const offerText = (from: TradeSide, to: TradeSide): string =>
     `**${to.user} gives:**`,
     ...sideLines(to),
     "",
-    `-# ${to.user} can accept or decline, and ${from.user} can cancel. Nothing changes hands until it's accepted, and traded cards leave any decks they're in. The offer expires in 10 minutes.`,
+    ...(tradeWarnings([from, to]).length
+      ? [...tradeWarnings([from, to]), ""]
+      : []),
+    `-# ${to.user} can accept or decline, and ${from.user} can cancel. Nothing changes hands until it's accepted, traded cards leave any decks they're in, and a traded boon arrives switched off. The offer expires in 10 minutes.`,
   ].join("\n");
 
 /** Finds each typed id among `owner`'s cards; the ids it couldn't place come back too. */
@@ -99,6 +146,11 @@ const stillGood = async (
     for (const copy of side.cards) {
       if (!(await stillOwns(side.user.id, copy.id ?? ""))) {
         return `${side.user} no longer has **${toBattleCard(copy).name}** \`${copy.id}\`, so the trade is off.`;
+      }
+    }
+    for (const row of side.items ?? []) {
+      if (!(await stillHoldsItem(side.user.id, row.id ?? ""))) {
+        return `${side.user} no longer has **${itemByKey(row.item)?.name ?? row.item}**, so the trade is off.`;
       }
     }
     if (side.fc > 0) {
@@ -146,8 +198,29 @@ export const completeTrade = async (
     await handOver(copy, to.user.id, `${to.user.username}-${serverName}`);
   for (const copy of to.cards)
     await handOver(copy, from.user.id, `${from.user.username}-${serverName}`);
+  for (const row of from.items ?? []) await handOverItem(row, to.user.id);
+  for (const row of to.items ?? []) await handOverItem(row, from.user.id);
   return null;
 };
+
+/**
+ * Why named items couldn't be put up: not held at all, or named more times
+ * than they're held - a collection piece is one of a kind.
+ */
+export const missingItems = (
+  missing: string[],
+  rows: V2ItemRecord[],
+  who: string,
+  verb: "have" | "has",
+): string[] =>
+  [...new Set(missing)].map((name) => {
+    const item = findItem(name);
+    const held = item ? rows.filter((row) => row.item === item.key).length : 0;
+    const label = item?.name ?? name.trim();
+    return held > 0
+      ? `${who} only ${verb} ${held} **${label}**, and it's named more times than that.`
+      : `${who} ${verb === "have" ? "don't" : "doesn't"} have **${label}**.`;
+  });
 
 export const runTrade = async (
   interaction: ChatInputCommandInteraction,
@@ -166,15 +239,28 @@ export const runTrade = async (
   const wantIds = parseCardIds(interaction.options.getString("want"));
   const giveFc = Math.max(0, interaction.options.getInteger("give_fc") ?? 0);
   const wantFc = Math.max(0, interaction.options.getInteger("want_fc") ?? 0);
+  const giveItems = parseItemList(interaction.options.getString("give_items"));
+  const wantItems = parseItemList(interaction.options.getString("want_items"));
 
   if (
     giveIds.length === 0 &&
     wantIds.length === 0 &&
+    giveItems.length === 0 &&
+    wantItems.length === 0 &&
     giveFc === 0 &&
     wantFc === 0
   ) {
     await interaction.editReply(
-      "Put something in the trade: card ids in `give` or `want`, or Finicoin in `give_fc` or `want_fc`. Card ids are listed in `/finicard collection`.",
+      "Put something in the trade: card ids in `give` or `want`, dungeon items in `give_items` or `want_items`, or Finicoin in `give_fc` or `want_fc`. Card ids are listed in `/finicard collection`, items in `/finicard items`.",
+    );
+    return;
+  }
+  if (
+    giveItems.length > MAX_ITEMS_PER_SIDE ||
+    wantItems.length > MAX_ITEMS_PER_SIDE
+  ) {
+    await interaction.editReply(
+      `A trade can hold up to ${MAX_ITEMS_PER_SIDE} items from each player.`,
     );
     return;
   }
@@ -188,13 +274,19 @@ export const runTrade = async (
     return;
   }
 
-  const [give, want] = await Promise.all([
+  const [give, want, mine, theirs] = await Promise.all([
     findCards(proposer, serverId, giveIds),
     findCards(partner, serverId, wantIds),
+    giveItems.length ? getItems(proposer.id, serverId) : Promise.resolve([]),
+    wantItems.length ? getItems(partner.id, serverId) : Promise.resolve([]),
   ]);
+  const giving = pickRows(mine, giveItems);
+  const wanting = pickRows(theirs, wantItems);
   const problems = [
     ...give.missing.map((id) => `\`${id}\` isn't one of your cards.`),
     ...want.missing.map((id) => `\`${id}\` isn't one of ${partner}'s cards.`),
+    ...missingItems(giving.missing, mine, "You", "have"),
+    ...missingItems(wanting.missing, theirs, `${partner}`, "has"),
   ];
   if (problems.length > 0) {
     await interaction.editReply(
@@ -205,8 +297,18 @@ export const runTrade = async (
     return;
   }
 
-  const from: TradeSide = { user: proposer, cards: give.cards, fc: giveFc };
-  const to: TradeSide = { user: partner, cards: want.cards, fc: wantFc };
+  const from: TradeSide = {
+    user: proposer,
+    cards: give.cards,
+    items: giving.rows,
+    fc: giveFc,
+  };
+  const to: TradeSide = {
+    user: partner,
+    cards: want.cards,
+    items: wanting.rows,
+    fc: wantFc,
+  };
 
   if (giveFc > 0) {
     const balance = (await getUserBalance(proposer.id, serverId)) || 0;

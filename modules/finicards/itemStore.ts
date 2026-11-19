@@ -149,3 +149,26 @@ export const spendPieces = async (
     if (row?.id) await spendItem(row.id);
   }
 };
+
+/** Whether a player still holds this item - it may have gone while a listing sat open. */
+export const stillHoldsItem = async (
+  userId: string,
+  id: string,
+): Promise<boolean> => {
+  const row = await pb
+    .collection<V2ItemRecord>(V2_ITEM)
+    .getOne(id)
+    .catch(() => null);
+  return !!row && row.user_id === userId;
+};
+
+/** Moves an item to another player. A boon arrives switched off. */
+export const handOverItem = (
+  row: V2ItemRecord,
+  toUserId: string,
+): Promise<V2ItemRecord> =>
+  pb.collection<V2ItemRecord>(V2_ITEM).update(row.id ?? "", {
+    user_id: toUserId,
+    source: "trade",
+    active: false,
+  });
