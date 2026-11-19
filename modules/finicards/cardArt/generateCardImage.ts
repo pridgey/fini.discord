@@ -189,6 +189,12 @@ export const coverCrop = async (
   options: {
     focus?: ArtAdjust["focus"];
     anchor?: TemplateLayout["artAnchor"];
+    /**
+     * Where in the crop the focus should land, as shares of its width and
+     * height: the middle by default. A board panel with text along its
+     * bottom puts it higher, in the part of the picture that shows.
+     */
+    focusAt?: { x: number; y: number };
   } = {},
 ): Promise<Buffer> => {
   const meta = await sharp(input).metadata();
@@ -200,13 +206,14 @@ export const coverCrop = async (
     const box = tooTall
       ? { w: full.w, h: Math.round((full.w * height) / width) }
       : { w: Math.round((full.h * width) / height), h: full.h };
-    const slide = (centre: number, size: number, limit: number) =>
-      Math.round(Math.min(Math.max(centre - size / 2, 0), limit - size));
+    const at = options.focusAt ?? { x: 0.5, y: 0.5 };
+    const slide = (point: number, size: number, limit: number, share: number) =>
+      Math.round(Math.min(Math.max(point - size * share, 0), limit - size));
 
     return sharp(input)
       .extract({
-        left: slide(options.focus.x * full.w, box.w, full.w),
-        top: slide(options.focus.y * full.h, box.h, full.h),
+        left: slide(options.focus.x * full.w, box.w, full.w, at.x),
+        top: slide(options.focus.y * full.h, box.h, full.h, at.y),
         width: Math.min(box.w, full.w),
         height: Math.min(box.h, full.h),
       })

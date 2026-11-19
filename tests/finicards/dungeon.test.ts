@@ -1207,7 +1207,8 @@ describe("finicards v2 dungeons", () => {
       const svg = buildDungeonSummarySvg({ progress, fell: true, coin: 4 });
 
       expect(svg).toContain("FELL IN ROOM 3");
-      expect(svg).toContain("MVP · GOKU · 2 WINS");
+      expect(svg).toContain(">Goku</text>");
+      expect(svg).toContain("2 FIGHTS WON");
       expect(svg).toContain(">31</text>");
       expect(svg).toContain("4 fc");
 
@@ -1799,5 +1800,38 @@ describe("finicards v2 dungeons", () => {
         expect(text).toContain("1 coffee");
       });
     });
+  });
+});
+
+describe("the fight in the run message", () => {
+  const base = {
+    runId: "run1",
+    userId: "u1",
+    playerName: "Fen",
+    entryFee: DUNGEON.entryFee,
+    state: "active" as const,
+    hand: [{ card: strong("a"), index: 0 }],
+  };
+  const fought = () =>
+    playFight(runIn(fightRoom(weak("e"))), strong("a"), source()).state;
+
+  it("shows the fight as its image, with the text round only as a fallback", () => {
+    const progress = fought();
+    const withImage = composeDungeonMessage(
+      { ...base, progress },
+      { scene: null, hand: null, clash: Buffer.from("png") },
+    );
+    expect(textOf(withImage)).toContain("attachment://dungeon-fight.png");
+    expect(textOf(withImage)).not.toContain("`R1`");
+    expect(
+      withImage.files.map((file) => (file as { name?: string }).name),
+    ).toContain("dungeon-fight.png");
+
+    const without = composeDungeonMessage(
+      { ...base, progress },
+      { scene: null, hand: null },
+    );
+    expect(textOf(without)).toContain("`R1`");
+    expect(textOf(without)).not.toContain("dungeon-fight.png");
   });
 });

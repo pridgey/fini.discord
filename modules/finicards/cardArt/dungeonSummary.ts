@@ -1,8 +1,10 @@
 import sharp from "sharp";
 import type { DungeonState, PathNode, RoomTag } from "../dungeon";
 import { EVENT_PURPLE, GOLD, crown, n, swords, text } from "./dungeonScene";
+import type { BattleCard } from "../types";
+import { panelArt } from "./battleBoard";
 import { TYPE_PALETTES } from "./palettes";
-import { truncateToWidth } from "./svgText";
+import { escapeXml, truncateToWidth } from "./svgText";
 
 /**
  * The end-of-run summary: the run's numbers, and the path it took.
@@ -10,13 +12,20 @@ import { truncateToWidth } from "./svgText";
  * The path is one node per room, left to right and wrapping, coloured the way
  * the doors were. Hanging off each step is a small dot for the door that was
  * not taken, which is what turns a list of rooms into a record of choices.
+ *
+ * The card that won the most fights stands beside the numbers as the run's
+ * MVP, its art framed in gold, cropped the way the battle board crops it.
  */
 
 const WIDTH = 380;
 const PER_ROW = 12;
 const MAX_ROWS = 4;
 const STEP = 29.5;
-const ROW = { top: 112, height: 44 };
+const ROW = { top: 176, height: 44 };
+/** The MVP's card, beside the numbers. */
+const MVP = { width: 112, height: 120, y: 32 };
+const MVP_X = WIDTH - 12 - MVP.width;
+const TILES = { top: 34, height: 37, gap: 5, rowGap: 5 };
 const FIRST_X = 27;
 const RED = "#ff6b5e";
 const INK = "#0b0c16";
@@ -69,20 +78,21 @@ const node = (entry: PathNode, x: number, y: number, room: number): string => {
 
 const tile = (
   x: number,
+  y: number,
   width: number,
   label: string,
   value: string,
   fill = "#ffffff",
 ): string =>
   [
-    `<rect x="${n(x)}" y="34" width="${n(width)}" height="36" rx="5" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.1"></rect>`,
-    text(x + 7, 46, label, {
+    `<rect x="${n(x)}" y="${n(y)}" width="${n(width)}" height="${TILES.height}" rx="5" fill="#ffffff" fill-opacity="0.06" stroke="#ffffff" stroke-opacity="0.1"></rect>`,
+    text(x + 7, y + 12, label, {
       size: 6,
       mono: true,
       spacing: 0.8,
       opacity: 0.55,
     }),
-    text(x + 7, 63.5, value, {
+    text(x + 7, y + 30, value, {
       size: value.length > 5 ? 11 : 14,
       weight: 800,
       fill,
@@ -94,22 +104,78 @@ export type DungeonSummaryInput = {
   fell: boolean;
   /** Finicoin the run paid. */
   coin: number;
+  /** The hand, to find the MVP's card - and its art - by name. */
+  hand?: BattleCard[];
+};
+
+/** The card that won the most fights, and how many. Null before any win. */
+export const mvpOf = (
+  progress: DungeonState,
+): { name: string; wins: number } | null => {
+  const [top] = Object.entries(progress.stats.cardWins).sort(
+    (a, b) => b[1] - a[1],
+  );
+  return top && top[1] > 0 ? { name: top[0], wins: top[1] } : null;
+};
+
+/** The MVP's card: its art, framed in gold, its name and wins over a fade. */
+const mvpPanel = (
+  mvp: { name: string; wins: number },
+  card: BattleCard | undefined,
+  art: string | null,
+): string => {
+  const { width, height, y } = MVP;
+  const x = MVP_X;
+  const palette = card ? TYPE_PALETTES[card.type] : null;
+  const name = truncateToWidth(mvp.name, width - 16, {
+    fontSize: 10,
+    bold: true,
+  });
+  return [
+    `<defs><clipPath id="mvp"><rect x="${x}" y="${y}" width="${width}" height="${height}" rx="7"></rect></clipPath>`,
+    `<linearGradient id="mvpfade" x1="0" y1="0" x2="0" y2="1"><stop offset="0.5" stop-color="${INK}" stop-opacity="0"></stop><stop offset="1" stop-color="${INK}" stop-opacity="0.92"></stop></linearGradient></defs>`,
+    `<g clip-path="url(#mvp)">`,
+    `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="${palette?.deep ?? "#252a44"}"></rect>`,
+    art
+      ? `<image x="${x}" y="${y}" width="${width}" height="${height}" preserveAspectRatio="xMidYMid slice" xlink:href="${art}"></image>`
+      : "",
+    `<rect x="${x}" y="${y}" width="${width}" height="${height}" fill="url(#mvpfade)"></rect>`,
+    `</g>`,
+    `<rect x="${x + 0.8}" y="${y + 0.8}" width="${width - 1.6}" height="${height - 1.6}" rx="6.5" fill="none" stroke="${GOLD}" stroke-width="1.6"></rect>`,
+    `<rect x="${x + 6}" y="${y + 6}" width="27" height="11" rx="5.5" fill="${GOLD}"></rect>`,
+    text(x + 19.5, y + 14.2, "MVP", {
+      size: 6.5,
+      weight: 800,
+      spacing: 0.8,
+      mono: true,
+      anchor: "middle",
+      fill: INK,
+    }),
+    `<text x="${x + 8}" y="${y + height - 17}" font-size="10" font-weight="800" fill="#ffffff">${escapeXml(name)}</text>`,
+    text(
+      x + 8,
+      y + height - 7,
+      `${mvp.wins} ${mvp.wins === 1 ? "FIGHT" : "FIGHTS"} WON`,
+      { size: 6, weight: 700, spacing: 0.8, mono: true, fill: GOLD },
+    ),
+  ].join("");
 };
 
 export const buildDungeonSummarySvg = ({
   progress,
   fell,
   coin: paid,
-}: DungeonSummaryInput): string => {
+  hand,
+  mvpArt = null,
+}: DungeonSummaryInput & { mvpArt?: string | null }): string => {
   const { path, stats } = progress;
   const shown = path.slice(-PER_ROW * MAX_ROWS);
   const offset = path.length - shown.length;
   const rows = Math.max(1, Math.ceil(shown.length / PER_ROW));
   const height = ROW.top + rows * ROW.height + 14;
 
-  const [mvp, mvpWins] = Object.entries(stats.cardWins).sort(
-    (a, b) => b[1] - a[1],
-  )[0] ?? ["", 0];
+  const mvp = mvpOf(progress);
+  const mvpCard = mvp ? hand?.find((card) => card.name === mvp.name) : undefined;
 
   const tiles: [string, string, string?][] = [
     ["ROOMS", String(progress.depth)],
@@ -119,8 +185,14 @@ export const buildDungeonSummarySvg = ({
     ["GELD MADE", String(stats.geldEarned), GOLD],
     ["PAID OUT", `${paid} fc`, GOLD],
   ];
-  const gap = 5;
-  const tileWidth = (WIDTH - 24 - gap * (tiles.length - 1)) / tiles.length;
+  // Three across, two down, beside the MVP's card when there is one.
+  const tilesRight = mvp ? MVP_X - 8 : WIDTH - 12;
+  const tileWidth = (tilesRight - 12 - TILES.gap * 2) / 3;
+  const tileAt = (index: number) => ({
+    x: 12 + (index % 3) * (tileWidth + TILES.gap),
+    y: TILES.top + Math.floor(index / 3) * (TILES.height + TILES.rowGap),
+  });
+  const legendY = TILES.top + 2 * TILES.height + TILES.rowGap + 16;
 
   const position = (index: number) => ({
     x: FIRST_X + (index % PER_ROW) * STEP,
@@ -175,25 +247,19 @@ export const buildDungeonSummarySvg = ({
       anchor: "end",
       fill: GOLD,
     }),
-    ...tiles.map(([label, value, fill], index) =>
-      tile(12 + index * (tileWidth + gap), tileWidth, label, value, fill),
-    ),
-    mvp
-      ? text(
-          12,
-          87,
-          `MVP · ${truncateToWidth(mvp, 190, { fontSize: 8, bold: true })} · ${mvpWins} ${mvpWins === 1 ? "WIN" : "WINS"}`.toUpperCase(),
-          { size: 7.5, weight: 700, spacing: 0.8, mono: true, opacity: 0.85 },
-        )
-      : "",
-    ...legend.map(([colour, label], index) => {
-      const x = WIDTH - 12 - (legend.length - index) * 40 + 6;
-      return `<circle cx="${n(x)}" cy="84.5" r="2.6" fill="${colour}"></circle>${text(x + 5, 87, label, { size: 5.6, mono: true, spacing: 0.5, opacity: 0.6 })}`;
+    ...tiles.map(([label, value, fill], index) => {
+      const { x, y } = tileAt(index);
+      return tile(x, y, tileWidth, label, value, fill);
     }),
-    `<path d="M12 97.5 H${WIDTH - 12}" stroke="#ffffff" stroke-opacity="0.1"></path>`,
+    mvp ? mvpPanel(mvp, mvpCard, mvpArt) : "",
+    ...legend.map(([colour, label], index) => {
+      const x = 15 + index * 40;
+      return `<circle cx="${n(x)}" cy="${legendY - 2.5}" r="2.6" fill="${colour}"></circle>${text(x + 5, legendY, label, { size: 5.6, mono: true, spacing: 0.5, opacity: 0.6 })}`;
+    }),
+    `<path d="M12 ${ROW.top - 15.5} H${WIDTH - 12}" stroke="#ffffff" stroke-opacity="0.1"></path>`,
     text(
       12,
-      108,
+      ROW.top - 4,
       offset > 0
         ? `THE LAST ${shown.length} ROOMS · SMALL DOTS ARE THE DOORS NOT TAKEN`
         : "THE PATH · SMALL DOTS ARE THE DOORS NOT TAKEN",
@@ -220,7 +286,21 @@ export const renderDungeonSummary = async (
   if (input.progress.path.length === 0) return null;
 
   try {
-    return await sharp(Buffer.from(buildDungeonSummarySvg(input)), {
+    // The MVP's art at the size it's drawn, from its own hand card.
+    const mvp = mvpOf(input.progress);
+    const card = mvp
+      ? input.hand?.find((entry) => entry.name === mvp.name)
+      : undefined;
+    const scale = DUNGEON_SUMMARY_WIDTH / WIDTH;
+    const mvpArt = card
+      ? await panelArt(
+          card,
+          Math.round(MVP.width * scale),
+          Math.round(MVP.height * scale),
+          false,
+        )
+      : null;
+    return await sharp(Buffer.from(buildDungeonSummarySvg({ ...input, mvpArt })), {
       density: 300,
     })
       .resize({ width: DUNGEON_SUMMARY_WIDTH })

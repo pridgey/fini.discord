@@ -30,6 +30,7 @@ export const buildTutorialMessage = async (
       progress: view.state,
       fell: false,
       coin: coinFor(view.state.geld),
+      hand: view.hand.map((entry) => entry.card),
     });
     const files = summary
       ? [new AttachmentBuilder(summary, { name: DUNGEON_SUMMARY_FILE })]

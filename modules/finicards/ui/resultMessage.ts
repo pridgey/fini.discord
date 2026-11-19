@@ -217,7 +217,7 @@ const typeNote = (round: RoundResult): string => {
 };
 
 /** Engine notes name the side; players know each other by name. */
-const namedNote = (note: string, names: Record<Side, string>): string =>
+export const namedNote = (note: string, names: Record<Side, string>): string =>
   note.replace(/\b(challenger|defender)\b/g, (side) => names[side as Side]);
 
 const keywordsOf = (result: MatchResult): KeywordDefinition[] => {

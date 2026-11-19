@@ -9,10 +9,12 @@ import {
 } from "discord.js";
 import type { V2DungeonRunState } from "../../../types/PocketbaseTablesV2";
 import {
+  DUNGEON_CLASH_FILE,
   DUNGEON_SCENE_FILE,
   DUNGEON_SUMMARY_FILE,
   cardImageName,
   renderCardImage,
+  renderDungeonClash,
   renderDungeonScene,
   renderDungeonSummary,
   renderHandStrip,
@@ -33,6 +35,7 @@ import {
   nextSlot,
   weakenedEnemy,
   type DungeonReward,
+  type FightResult,
   type Buff,
   type DungeonState,
   type Mods,
@@ -43,7 +46,7 @@ import { CARD_EMOJI, TYPE_EMOJI } from "../rules";
 import type { BattleCard, Side } from "../types";
 import { enemyAbilityLines } from "./enemyAbility";
 import { handAbilityLines } from "./handAbility";
-import { roundBlock } from "./resultMessage";
+import { namedNote, roundBlock } from "./resultMessage";
 import {
   DRAW_ACCENT,
   NEUTRAL_ACCENT,
@@ -100,6 +103,8 @@ export type BuiltDungeonMessage = {
 export type DungeonImages = {
   scene: Buffer | null;
   hand: Buffer | null;
+  /** The fight the last click played, art and all. Null shows it as text. */
+  clash?: Buffer | null;
   /** The run's numbers and path. Finished runs only. */
   summary?: Buffer | null;
   /** One per boss drop, in `reward.cards` order. Finished runs only. */
@@ -138,22 +143,62 @@ const handView = (input: DungeonMessageInput) => {
   }));
 };
 
+/**
+ * How the last click's fight went, read off where the run is now: a fall ends
+ * the run; otherwise a loss that left it going broke a ward.
+ */
+const fightResultOf = (
+  input: DungeonMessageInput,
+  winner: Side | "draw",
+): FightResult =>
+  input.state === "failed"
+    ? "fell"
+    : winner === PLAYER_SIDE
+      ? "won"
+      : winner === "draw"
+        ? "stalemate"
+        : "warded";
+
+/** The last click's fight as an image, when it was one and it's still news. */
+const renderClash = async (
+  input: DungeonMessageInput,
+): Promise<Buffer | null> => {
+  const round = input.progress.recap?.round;
+  // A walk out has nothing to explain, and the fight before it reads as live.
+  if (!round || input.state === "retreated") return null;
+  const { room, depth } = input.progress;
+  return renderDungeonClash({
+    round,
+    result: fightResultOf(input, round.winner),
+    depth,
+    tier: room.kind === "fight" ? room.tier : "normal",
+    playerName: input.playerName,
+    playerSide: PLAYER_SIDE,
+  });
+};
+
 /** Renders whatever images the run's current state shows. */
 export const buildDungeonMessage = async (
   input: DungeonMessageInput,
 ): Promise<BuiltDungeonMessage> => {
   if (input.state !== "active") {
-    const summary = await renderDungeonSummary({
-      progress: input.progress,
-      fell: input.state === "failed",
-      coin: input.reward?.kind === "coin" ? input.reward.amount : 0,
-    });
-    // A message carries ten attachments, the summary among them; a run that
-    // beat more bosses than that shows the first drops and lists the rest.
-    const shown = MAX_ATTACHMENTS - (summary ? 1 : 0);
+    const [summary, clash] = await Promise.all([
+      renderDungeonSummary({
+        progress: input.progress,
+        fell: input.state === "failed",
+        coin: input.reward?.kind === "coin" ? input.reward.amount : 0,
+        hand: input.hand.map((entry) => entry.card),
+      }),
+      renderClash(input),
+    ]);
+    // A message carries ten attachments, the summary and the last fight among
+    // them; a run that beat more bosses than that shows the first drops and
+    // lists the rest.
+    const shown = MAX_ATTACHMENTS - (summary ? 1 : 0) - (clash ? 1 : 0);
     return composeDungeonMessage(input, {
       scene: null,
       hand: null,
+      clash,
       summary,
       cards: await Promise.all(
         (input.reward?.cards ?? [])
@@ -164,7 +209,8 @@ export const buildDungeonMessage = async (
   }
 
   const hand = handView(input);
-  const [scene, strip] = await Promise.all([
+  const [clash, scene, strip] = await Promise.all([
+    renderClash(input),
     renderDungeonScene(input.progress),
     renderHandStrip(
       hand.map((entry) => entry.card),
@@ -177,7 +223,7 @@ export const buildDungeonMessage = async (
     ),
   ]);
 
-  return composeDungeonMessage(input, { scene, hand: strip });
+  return composeDungeonMessage(input, { scene, hand: strip, clash });
 };
 
 const lootLine = (progress: DungeonState): string | null => {
@@ -423,14 +469,37 @@ export const composeDungeonMessage = (
 
   // What the last click did. A fall keeps the fight that ended the run; a walk
   // out has nothing to explain, and a fight from before it reads as live.
+  // The fight is the image when there is one, with what keywords did under
+  // it; the text round is its fallback.
+  const clashFiles: AttachmentBuilder[] = [];
   if (progress.recap && state !== "retreated") {
     const { round, lines } = progress.recap;
-    header
-      .addSeparatorComponents((separator) => separator)
-      .addTextDisplayComponents((text) =>
-        text.setContent(
-          [...(round ? [roundBlock(round, names)] : []), ...lines].join("\n"),
+    if (round && images.clash)
+      clashFiles.push(
+        new AttachmentBuilder(images.clash, { name: DUNGEON_CLASH_FILE }),
+      );
+    header.addSeparatorComponents((separator) => separator);
+    if (round && images.clash) {
+      header.addMediaGalleryComponents((gallery) =>
+        gallery.addItems((item) =>
+          item
+            .setURL(`attachment://${DUNGEON_CLASH_FILE}`)
+            .setDescription(
+              `${round[PLAYER_SIDE].card.name} against ${round[DUNGEON_SIDE].card.name}`,
+            ),
         ),
+      );
+    }
+    const text = [
+      ...(round && !images.clash ? [roundBlock(round, names)] : []),
+      ...(round && images.clash
+        ? round.notes.map((note) => `-# ↳ ${namedNote(note, names)}`)
+        : []),
+      ...lines,
+    ];
+    if (text.length)
+      header.addTextDisplayComponents((display) =>
+        display.setContent(text.join("\n")),
       );
   }
 
@@ -450,7 +519,7 @@ export const composeDungeonMessage = (
         ),
       );
 
-    const files: AttachmentBuilder[] = [];
+    const files: AttachmentBuilder[] = [...clashFiles];
 
     if (images.summary) {
       files.push(
@@ -495,7 +564,7 @@ export const composeDungeonMessage = (
   }
 
   /* ------------------------------------------------------------ active ---- */
-  const files: AttachmentBuilder[] = [];
+  const files: AttachmentBuilder[] = [...clashFiles];
   const id = (action: string) =>
     input.controls?.id(action) ??
     `v2_dungeon:${runId}:${progress.step}:${action}`;

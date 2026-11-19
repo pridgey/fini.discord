@@ -983,7 +983,7 @@ decision and the reveal may be several messages up by then.
 one slot and are dead in another, so the picker names each card's keyword on its
 button, in its slot and on the opposing chips, with one legend line per keyword
 in play. The battle board then shows what happened: a bonus that landed is lit
-above the card's name (`VANGUARD +3`), a keyword that sat idle is dimmed.
+in the tag over the card's art (`VANGUARD +3`), a keyword that sat idle is dimmed.
 
 ### One constraint worth knowing
 
@@ -1131,7 +1131,21 @@ replaces an emoji with a new id, so pass only the ones that changed:
 **Where images appear:** `/finicard card` (with the text face as fallback),
 `/finicard pack` (one card at a time, then all five), the collection's
 binder, the battle **reveal** (both hands) and the match **result**
-(`cardArt/battleBoard.ts`, with the text result as its fallback).
+(`cardArt/battleBoard.ts`, with the text result as its fallback). On the
+board each card's art fills its panel, cropped with its focus point a third of
+the way down so the subject sits clear of the name and the one line of working
+along the bottom; the round's winner is framed in gold and the loser goes grey.
+A dungeon run's message shows the fight its last click played the same way,
+one round at a bigger size (`cardArt/dungeonClash.ts`), with the round's
+attack, defence and damage table drawn under the cards, keyword notes under
+the image and the text round as its fallback. A finished run's summary shows
+its MVP - the hand card with the most fights won - as a gold-framed card beside
+the numbers.
+
+**Looking at them without playing:** the bot admin can type `!test` in any
+channel for a sample battle board and two dungeon fights from random real
+cards (`battleSamples.ts`); `!test pvp` or `!test dungeon` for one kind.
+Nothing is played, stored or paid.
 
 ---
 

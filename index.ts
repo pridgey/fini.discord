@@ -11,6 +11,10 @@ import { rewardCoin } from "./modules/finicoin/reward";
 import { createLog } from "./modules/logger";
 import { runPollTasks } from "./modules/polling";
 import { runDailies } from "./modules/dailies/post";
+import {
+  isBattleSampleCommand,
+  postBattleSamples,
+} from "./modules/finicards/battleSamples";
 import { getCommandFiles } from "./utilities/interactionFiles/getInteractionFiles";
 import { splitBigString } from "./utilities/splitBigString";
 import { readFile, writeFile } from "fs/promises";
@@ -192,6 +196,14 @@ client.on("messageCreate", async (message: Message) => {
   // Lowercase makes comparisons way easier
   const messageText = message.content;
   const messageTextLower = messageText.toLowerCase();
+
+  // Sample fight images from random cards, bot admin only
+  if (isBattleSampleCommand(messageText, message.author.id)) {
+    await postBattleSamples(message).catch((err) =>
+      console.error("Error posting battle samples:", err),
+    );
+    return;
+  }
 
   // Good bot reaction
   if (messageTextLower === "good fini") {

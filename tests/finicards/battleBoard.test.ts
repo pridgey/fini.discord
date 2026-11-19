@@ -163,3 +163,109 @@ describe("finicards v2 battle board", () => {
     });
   });
 });
+
+describe("the dungeon fight image", () => {
+  const fight = () =>
+    resolveMatch({
+      challengerLineup: [card("Hero", "power", { power: 9, wit: 2, heart: 2 })],
+      defenderLineup: [card("Ogre", "wit")],
+    }).rounds[0];
+
+  it("renders every result, art or not", async () => {
+    const { renderDungeonClash } = await import(
+      "../../modules/finicards/cardArt/dungeonClash"
+    );
+    for (const result of ["won", "stalemate", "warded", "fell"] as const) {
+      const buffer = await renderDungeonClash({
+        round: fight(),
+        result,
+        depth: 12,
+        tier: "boss",
+        playerName: '<&"Aya">',
+        playerSide: "challenger",
+        geld: 20,
+      });
+      expect(buffer!.subarray(0, 4).toString("hex")).toBe("89504e47");
+    }
+  });
+
+  it("leaves the round label off a one-round fight", async () => {
+    const { centreColumn } = await import("../../modules/finicards/cardArt");
+    expect(centreColumn(fight(), 168)).toContain("ROUND 1");
+    expect(centreColumn(fight(), 168, null)).not.toContain("ROUND");
+  });
+});
+
+describe("!test", () => {
+  it("is the bot admin's, with an optional kind", async () => {
+    process.env.ADMIN_ID ??= "admin";
+    const { isBattleSampleCommand } = await import(
+      "../../modules/finicards/battleSamples"
+    );
+    const { ADMIN_ID } = await import("../../utilities/discord/isAdmin");
+    for (const text of ["!test", "  !TEST pvp ", "!test dungeon"])
+      expect(isBattleSampleCommand(text, ADMIN_ID)).toBe(!!ADMIN_ID);
+    expect(isBattleSampleCommand("!test", "someone-else")).toBe(false);
+    expect(isBattleSampleCommand("!test everything", ADMIN_ID)).toBe(false);
+  });
+});
+
+describe("the working in a fight image", () => {
+  it("writes the attack and the defence it hit as sums", async () => {
+    const { attackSum, defenceSum } = await import(
+      "../../modules/finicards/cardArt/battleBoard"
+    );
+    const combat = {
+      baseAttackStat: 7,
+      attackStat: 10,
+      multiplier: 1.5,
+      attackValue: 15,
+      printedType: "power",
+      defenseFaced: 6,
+      defense: { stat: "power", base: 5, bonus: 2, pierce: 1 },
+    } as never;
+    expect(attackSum(combat)).toBe("(7+3)×1.5 = 15");
+    expect(defenceSum(combat)).toBe("5+2−1 = 6");
+    const plain = {
+      baseAttackStat: 9,
+      attackStat: 9,
+      multiplier: 1,
+      printedType: "wit",
+      defenseFaced: 4,
+      defense: { stat: "heart", base: 4, bonus: 0, pierce: 0 },
+    } as never;
+    expect(attackSum(plain)).toBe("9");
+    // Feint moved it off the matching stat, so it's named.
+    expect(defenceSum(plain)).toBe("4 HEART");
+  });
+});
+
+describe("the run summary's MVP", () => {
+  it("is the card with the most fights won, or nobody before a win", async () => {
+    const { mvpOf, buildDungeonSummarySvg } = await import(
+      "../../modules/finicards/cardArt/dungeonSummary"
+    );
+    const progress = (cardWins: Record<string, number>) =>
+      ({
+        depth: 3,
+        fightsWon: 2,
+        bossesWon: 0,
+        geld: 10,
+        path: [],
+        stats: { geldEarned: 10, geldSpent: 0, eventsPassed: 0, cardWins },
+      }) as never;
+    expect(mvpOf(progress({}))).toBeNull();
+    expect(mvpOf(progress({ Ganondorf: 2, Nami: 1 }))).toEqual({
+      name: "Ganondorf",
+      wins: 2,
+    });
+    // No art to hand: the panel still names the card.
+    const svg = buildDungeonSummarySvg({
+      progress: progress({ "Gan<ondorf": 2 }),
+      fell: true,
+      coin: 3,
+    });
+    expect(svg).toContain("Gan&lt;ondorf");
+    expect(svg).toContain("2 FIGHTS WON");
+  });
+});
