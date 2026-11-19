@@ -15,6 +15,7 @@ type Round = { id: string; day: string; posts: Record<string, Post> };
 let geo: Round & Record<string, unknown>;
 let weave: Round & Record<string, unknown>;
 let reel: Round & Record<string, unknown>;
+let gist: Round & Record<string, unknown>;
 /** Each collection's round. Reel's is left out until a test adds it. */
 let rounds: Record<string, Round>;
 
@@ -48,6 +49,15 @@ beforeEach(() => {
     title: "Interstellar",
     year: "2014",
     frames: ["/1.jpg", "/2.jpg", "/3.jpg", "/4.jpg", "/5.jpg"],
+    posts: {},
+  };
+  gist = {
+    id: "gistround123456",
+    day,
+    category: "Saying",
+    text: "BETTER LATE THAN NEVER",
+    prices: { E: 10, T: 7 },
+    difficulty: 34,
     posts: {},
   };
   rounds = {
@@ -215,6 +225,75 @@ describe("posting the daily", () => {
     expect(geo.posts.serverA?.messageId).toBe("msg1");
 
     expect(await postDailies(client)).toBe(0);
+  });
+
+  it("puts Gist in the post, on the days it's there at noon", async () => {
+    rounds.daily_gist_round = gist;
+    const { client, sent } = fakeClient();
+
+    expect(await postDailies(client)).toBe(2);
+    expect(sent[0]).toContain("💡 **Gist**");
+    expect(gist.posts.serverA).toEqual({
+      channelId: "bots",
+      messageId: "msg1",
+      combined: true,
+    });
+  });
+
+  it("posts Gist and Reel on their own when both are late on the same day", async () => {
+    const { client, sent } = fakeClient();
+    await postDailies(client);
+    rounds.daily_reel_round = reel;
+    rounds.daily_gist_round = gist;
+
+    expect(await postDailies(client)).toBe(4);
+    expect(sent.slice(2)).toEqual([
+      expect.stringContaining("New daily: Reel"),
+      expect.stringContaining("New daily: Gist"),
+      expect.stringContaining("New daily: Reel"),
+      expect.stringContaining("New daily: Gist"),
+    ]);
+    expect(gist.posts.serverA).toEqual({
+      channelId: "bots",
+      messageId: "msg4",
+    });
+    expect(await postDailies(client)).toBe(0);
+  });
+
+  it("still edits the combined post when Gist has its own", async () => {
+    const { client, edited } = fakeClient();
+    await postDailies(client);
+    rounds.daily_gist_round = gist;
+    await postDailies(client);
+
+    await updateDailyPost(client, "serverA");
+
+    expect(edited).toEqual([
+      { id: "msg1", content: expect.stringContaining("Today's dailies") },
+    ]);
+    // Gist isn't in that post's Today card, so its live line isn't either.
+    expect(edited[0].content).not.toContain("💡 **Gist**");
+  });
+
+  it("links a Gist finish to Gist's own post on its first day", async () => {
+    const { client, sent } = fakeClient();
+    await postDailies(client);
+    rounds.daily_gist_round = gist;
+    await postDailies(client);
+
+    await announceFinish(client, "serverA", {
+      game: "gist",
+      name: "Aya",
+      fc: 48,
+      letters: 4,
+    });
+
+    const announcement = sent.at(-1)!;
+    expect(announcement).toContain("got the gist of today's **Gist**");
+    expect(announcement).toContain(
+      "https://discord.com/channels/serverA/bots/msg3",
+    );
+    expect(announcement).toContain("Play today's Gist");
   });
 
   it("links a Reel finish to Reel's own post on its first day", async () => {

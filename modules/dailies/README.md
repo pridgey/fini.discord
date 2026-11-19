@@ -10,25 +10,31 @@ however many games there are and however many people play. Servers without a
 bot channel are skipped. It's two cards:
 
 - **Yesterday:** each game's answer and its top three, with an empty line
-  between games, over **one image** of every game's solved state side by
-  side - the map of everyone's guesses, the solved Weave grid, Reel's last
-  frame - scaled to one short strip (`recapImage`) so the post doesn't grow
-  tall as games are added.
+  between games, over **one image** of every game's solved state - the map
+  of everyone's guesses, the solved Weave grid, Reel's last frame, Gist's
+  phrase - each fitted inside an equal cell, two side by side and from three
+  games two by two, a lone last one centred (`recapImage`, `recapLayout`), so
+  the post grows by a row at most as games are added.
 - **Today:** each game, what it pays, and a live line - "Played by 4 · 🏙️
   **Aya** found the city · closest 2 km", "Solved by **Aya** (7 guesses),
-  **Fen** (12) · 6 playing", "Solved by **Aya** (frame 2) · 5 playing" -
-  which the bot keeps current by editing the post a few seconds after someone
-  plays (plays close together share one edit). A button for each game opens it
+  **Fen** (12) · 6 playing", "Solved by **Aya** (frame 2) · 5 playing",
+  "Solved by **Aya** (61 fc), **Fen** (44) · 3 playing" - which the bot keeps
+  current by editing the post a few seconds after someone plays (plays close
+  together share one edit). A button for each game opens it
   privately.
 
 The post is rebuilt from what's stored each time; an edit sends only the cards,
 so the image it was posted with stays. It's recorded on every game's round as
 the server's post, marked `combined`; the live line only ever edits a post
 marked that way, never a game's own post from before. A new daily adds a
-recap paragraph, a picture in the strip, a today paragraph and a button.
+recap paragraph, a picture in the recap image, a today paragraph and a button.
+
+A game ready after the day's post is out - its first day, or a round that
+couldn't be had at noon - is posted on its own (`ownPost`) and joins the
+combined post from the next day. Reel and Gist both can be.
 
 **Finishing a game** - locking in a location guess, finding Weave's last
-word, or naming Reel's film - is also announced in a small card in the same channel, with a button
+word, naming Reel's film, or solving Gist - is also announced in a small card in the same channel, with a button
 linking back to the day's post (`announceFinish`). The game handlers report
 plays through `dailyPlayed`, which updates the live line and announces.
 
@@ -126,3 +132,46 @@ demand), and nothing is paid.
   shows the next frame.
 - **Pay.** 30, 25, 20, 10 or 5 fc for naming it on frames 1 to 5; nothing after
   five misses. The live line ranks solvers by the frame they got it on.
+
+## Gist (`gist/`)
+
+Fill in a hidden phrase by buying letters. Live since 2026-11-18. That day's
+post had already gone up, so Gist was posted on its own (`ownPost`), and joins
+the post from the next day. `GIST_LIVE` in `gist/daily.ts` puts it back on
+trial: left out of the post, only the bot admin can play it (`/daily gist`
+chooses the day's phrase on demand), and nothing is paid.
+
+- **The pot.** A board starts with 75 fc. Every letter costs fc from it, and
+  a solve keeps what's left, so the decision each turn is whether you've got
+  the gist yet. A wrong solve costs 15; a solve that can't fit the board -
+  wrong word lengths, a shown letter out of place, a called letter in a
+  blank - is refused for free. A board ends when it's solved, given up, or
+  the pot is empty; a pot with anything in it can still try a solve.
+- **Prices.** Set by how common a letter is in English (`currentPrices` in
+  `gist/game.ts`): E 10, T and A 7, down to 1 for B, V, K, J, X, Q and Z. A
+  round stores the prices it was played at, so changing them doesn't rewrite
+  history. No luck: everyone has the same phrase, prices and pot.
+- **Phrases.** `gist/phrases.ts`, about a thousand written for Gist across
+  eight categories (Saying, Food & Drink, Place, Thing, Activity, Event,
+  Person, Nature). Letters and spaces only; at least 12 letters, or 10 across
+  three or more words, so one can't be read off its blanks and category for
+  the full pot. The day's is one not used before and inside the difficulty
+  band (`DIFFICULTY_BAND`): what a player calling letters most-common-first
+  and solving at half shown would keep, 15 to 55 fc. Once all are used, the
+  one used longest ago comes back. The file is every answer - players
+  shouldn't read it.
+- **Playing.** `/daily gist` (or the post's Gist button) shows a player's
+  board, privately: the tiles as an image (`gist/render.ts`) - blank slate
+  for hidden letters, cream for shown, gold for the one just called, green
+  when solved and the missed letters in red when not - the pot, hits and
+  misses on lines of their own, and two dropdowns, "Call a consonant" and
+  "Buy a vowel", each letter with its price, leaving out ones called or
+  unaffordable. Dropdowns are routed like buttons, from
+  `selects/individualSelects/`.
+- **Pay.** What's left in the pot, on a solve: up to 75 fc. The live line
+  ranks solvers by what they kept, fewest letters breaking a tie.
+- **The log.** A play's `moves` record every letter with its price, hits and
+  the pot after, and every solve with what was typed and whether it was
+  right, wrong or didn't fit; each round records its prices and difficulty.
+  That's the data for tuning prices and the band later.
+

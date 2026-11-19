@@ -9,6 +9,7 @@ import {
   dailyPost,
   finishText,
   recapImage,
+  recapLayout,
   recapLines,
   todayLines,
 } from "../../modules/dailies/post";
@@ -21,6 +22,59 @@ import type {
   WeavePlayRecord,
   WeaveRoundRecord,
 } from "../../modules/dailies/weave/store";
+import type {
+  GistPlayRecord,
+  GistRoundRecord,
+} from "../../modules/dailies/gist/store";
+import { currentPrices } from "../../modules/dailies/gist/game";
+
+const gistRound: GistRoundRecord = {
+  id: "gistround123456",
+  day: "2026-10-18",
+  category: "Saying",
+  text: "BETTER LATE THAN NEVER",
+  prices: currentPrices(),
+  difficulty: 34,
+  posts: {},
+};
+
+/** A go at Gist that kept `pot` fc, after `letters` letters, solved or not. */
+const gistPlay = (
+  username: string,
+  letters: number,
+  pot: number,
+  solved: boolean,
+): GistPlayRecord => ({
+  id: `gist-${username}`,
+  round: gistRound.id,
+  server_id: "server",
+  user_id: username,
+  username,
+  moves: [
+    ...Array.from({ length: letters }, (_, i) => ({
+      kind: "letter" as const,
+      letter: "BCDFG"[i],
+      price: 1,
+      hits: 0,
+      pot,
+    })),
+    ...(solved
+      ? [
+          {
+            kind: "solve" as const,
+            guess: gistRound.text,
+            result: "correct" as const,
+            cost: 0,
+            pot,
+          },
+        ]
+      : []),
+  ],
+  pot,
+  paid: solved ? pot : 0,
+  solved,
+  finished: solved,
+});
 
 const seeded = (seed: number) => () => {
   seed = (seed * 1664525 + 1013904223) >>> 0;
@@ -339,14 +393,86 @@ describe("the daily post", () => {
 });
 
 describe("yesterday's image", () => {
-  it("is one short strip, whatever games it holds", async () => {
-    const image = await recapImage({
+  it("fits each game in a cell, two by two", async () => {
+    const one = await recapImage({
       geo: null,
       weave: { round: weaveRound, plays: [] },
     });
-    const { height } = await sharp(image!).metadata();
-    expect(height).toBe(360);
+    expect(await sharp(one!).metadata()).toMatchObject({
+      width: 640,
+      height: 360,
+    });
+    const two = await recapImage({
+      geo: null,
+      weave: { round: weaveRound, plays: [] },
+      gist: { round: gistRound, plays: [] },
+    });
+    expect(await sharp(two!).metadata()).toMatchObject({
+      width: 640 * 2 + 24,
+      height: 360,
+    });
     expect(await recapImage({ geo: null, weave: null })).toBeNull();
+  });
+
+  it("goes two by two from three games, a lone last one centred", () => {
+    const size = { width: 640, height: 360 };
+    const three = recapLayout([size, size, size]);
+    expect(three).toMatchObject({ width: 1304, height: 744 });
+    expect(three.cells).toEqual([
+      { left: 0, top: 0 },
+      { left: 664, top: 0 },
+      { left: 332, top: 384 },
+    ]);
+    expect(recapLayout([size, size, size, size]).cells[3]).toEqual({
+      left: 664,
+      top: 384,
+    });
+    // A picture smaller than its cell is centred in it.
+    expect(recapLayout([{ width: 360, height: 360 }]).cells[0]).toEqual({
+      left: 140,
+      top: 0,
+    });
+  });
+});
+
+describe("Gist in the post", () => {
+  const plays = [
+    gistPlay("Fen", 4, 40, true),
+    gistPlay("Aya", 2, 61, true),
+    gistPlay("Bo", 3, 50, false),
+  ];
+
+  it("recaps the phrase and the best pots kept", () => {
+    expect(
+      recapLines({ geo: null, weave: null, gist: { round: gistRound, plays } }),
+    ).toEqual([
+      "💡 Gist was **BETTER LATE THAN NEVER**.\n-# 🥇 **Aya** 61 fc · 🥈 **Fen** 40 fc",
+    ]);
+    expect(
+      recapLines({
+        geo: null,
+        weave: null,
+        gist: { round: gistRound, plays: [gistPlay("Bo", 3, 50, false)] },
+      })[0],
+    ).toContain("Nobody got it.");
+  });
+
+  it("ranks today's solvers by what they kept", () => {
+    expect(
+      todayLines({ geo: null, weave: null, gist: { round: gistRound, plays } }),
+    ).toEqual([
+      "💡 **Gist** · up to 75 fc\n-# Solved by **Aya** (61 fc), **Fen** (40) · 3 playing",
+    ]);
+  });
+
+  it("has a button that opens it", () => {
+    const post = dailyPost(
+      { geo: null, weave: null },
+      { geo: null, weave: null, gist: { round: gistRound, plays: [] } },
+    );
+    expect(JSON.stringify(post.components.at(-1)!.toJSON())).toContain(
+      "gist:gistround123456:open",
+    );
   });
 });
 
@@ -375,6 +501,9 @@ describe("finishing a game", () => {
     );
     expect(finishText({ game: "reel", name: "Fen", frame: 2, fc: 25 })).toBe(
       "🎬 **Fen** named today's **Reel** on frame 2 and won **25 fc**!",
+    );
+    expect(finishText({ game: "gist", name: "Bo", fc: 48, letters: 1 })).toBe(
+      "💡 **Bo** got the gist of today's **Gist** after 1 letter and kept **48 fc**!",
     );
   });
 });

@@ -21,6 +21,12 @@ import {
   openReel,
 } from "../modules/dailies/reel/daily";
 import { getReelRound } from "../modules/dailies/reel/store";
+import {
+  GIST_LIVE,
+  ensureTodaysGist,
+  openGist,
+} from "../modules/dailies/gist/daily";
+import { getGistRound } from "../modules/dailies/gist/store";
 import { weavePlayerOf } from "../modules/dailies/weave/player";
 import { getWeaveRound } from "../modules/dailies/weave/store";
 import { POST_TIME, currentDay } from "../modules/dailies/shared";
@@ -50,6 +56,13 @@ export const data = new SlashCommandBuilder()
     sub
       .setName("reel")
       .setDescription("Today's Reel: name the film from a few of its frames"),
+  )
+  .addSubcommand((sub) =>
+    sub
+      .setName("gist")
+      .setDescription(
+        "Today's Gist: buy letters to fill in a hidden phrase, and keep what's left",
+      ),
   )
   .addSubcommand((sub) =>
     sub
@@ -109,7 +122,36 @@ export const execute: SlashCommand["execute"] = async (
   )
     return;
 
+  if (
+    game === "gist" &&
+    !GIST_LIVE &&
+    !(await requireAdmin(interaction, "play Gist while it's on trial"))
+  )
+    return;
+
   await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
+  if (game === "gist") {
+    // On trial nothing posts it, so the day's phrase is chosen on demand.
+    const round = GIST_LIVE
+      ? await getGistRound(currentDay())
+      : await ensureTodaysGist().catch(() => null);
+    if (!round) {
+      await interaction.editReply(
+        GIST_LIVE
+          ? `There's no Gist up right now. The next one posts at ${POST_TIME}.`
+          : "Couldn't pick a phrase just now - try again in a minute.",
+      );
+      return;
+    }
+    await interaction.editReply(
+      await openGist(
+        round,
+        weavePlayerOf(interaction, interaction.member as GuildMember | null),
+      ),
+    );
+    return;
+  }
 
   if (game === "reel") {
     // On trial nothing posts it, so the day's film is chosen on demand.

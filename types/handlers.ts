@@ -3,13 +3,15 @@ import type {
   ButtonInteraction,
   ChatInputCommandInteraction,
   ModalSubmitInteraction,
+  StringSelectMenuInteraction,
   RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from "discord.js";
 
 /**
  * The shapes of the files Fini loads by folder: slash commands in
  * `commands/*.command.ts`, buttons in `buttons/individualButtons/*.button.ts`,
- * forms in `modals/individualModals/*.modal.ts`.
+ * forms in `modals/individualModals/*.modal.ts`, dropdowns in
+ * `selects/individualSelects/*.select.ts`.
  *
  * Each file types its `execute` with these, so a wrong signature fails to
  * compile; the loaders check each file's exports with the guards below, so a
@@ -49,6 +51,15 @@ export type ModalHandler = {
   ): Promise<unknown>;
 };
 
+/** A dropdown pick, routed the same way: `values` holds what was picked. */
+export type SelectHandler = {
+  namespace: string;
+  execute(
+    interaction: StringSelectMenuInteraction,
+    args: string[],
+  ): Promise<unknown>;
+};
+
 const isFunction = (value: unknown) => typeof value === "function";
 
 export const isSlashCommand = (file: unknown): file is SlashCommand => {
@@ -64,7 +75,9 @@ export const isSlashCommand = (file: unknown): file is SlashCommand => {
   );
 };
 
-const isRouted = (file: unknown): file is ButtonHandler | ModalHandler => {
+const isRouted = (
+  file: unknown,
+): file is ButtonHandler | ModalHandler | SelectHandler => {
   const { namespace, execute } = (file ?? {}) as Partial<
     Record<string, unknown>
   >;
@@ -76,4 +89,6 @@ const isRouted = (file: unknown): file is ButtonHandler | ModalHandler => {
 export const isButtonHandler = (file: unknown): file is ButtonHandler =>
   isRouted(file);
 export const isModalHandler = (file: unknown): file is ModalHandler =>
+  isRouted(file);
+export const isSelectHandler = (file: unknown): file is SelectHandler =>
   isRouted(file);

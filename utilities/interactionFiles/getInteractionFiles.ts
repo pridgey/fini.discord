@@ -3,9 +3,11 @@ import path from "path";
 import {
   isButtonHandler,
   isModalHandler,
+  isSelectHandler,
   isSlashCommand,
   type ButtonHandler,
   type ModalHandler,
+  type SelectHandler,
   type SlashCommand,
 } from "../../types/handlers";
 
@@ -70,4 +72,12 @@ export const getModalFiles = () =>
     "modals/individualModals/*.modal.ts",
     isModalHandler,
     "modal handler",
+  );
+
+/** Every dropdown handler. */
+export const getSelectFiles = () =>
+  loadFiles<SelectHandler>(
+    "selects/individualSelects/*.select.ts",
+    isSelectHandler,
+    "dropdown handler",
   );

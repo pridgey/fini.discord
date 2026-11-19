@@ -24,6 +24,10 @@ import {
   handleModalInteraction,
   loadModalHandlers,
 } from "./modals/modalHandler";
+import {
+  handleSelectInteraction,
+  loadSelectHandlers,
+} from "./selects/selectHandler";
 import { fileExists } from "./utilities/files/fileUtilities";
 import { resetShareDir, startShareServer } from "./modules/fileShare";
 import { startWebSync } from "./modules/finicards/webSync";
@@ -107,6 +111,8 @@ client.once("clientReady", async (cl) => {
   await loadButtonHandlers();
   // Load modal files for handling
   await loadModalHandlers();
+  // Load dropdown files for handling
+  await loadSelectHandlers();
 
   // Initialize connected guilds to ensure they have the proper bank records
   for (const guild of cl.guilds.cache.values()) {
@@ -366,6 +372,8 @@ client.on("interactionCreate", async (interaction) => {
   } else if (interaction.isModalSubmit()) {
     // Handle modal interactions
     await handleModalInteraction(interaction);
+  } else if (interaction.isStringSelectMenu()) {
+    await handleSelectInteraction(interaction);
   }
 });
 
