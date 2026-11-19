@@ -73,10 +73,15 @@ day's puzzle on demand), and boards pay nothing.
   in some order: the generator hands the thread's letters to the words at
   random, so the grid gives no hint of the order, and the thread is an anagram.
   The board shows which of its letters are showing, alphabetically, never where
-  they go. A letter shows when its word is found or hinted. A player gets one
-  guess, paying 50 fc with no letters showing, then 25, 20, 15 and 10 with one
-  to four - so hinting toward the thread costs as much as finding words does.
-  With all five showing it can't be guessed.
+  they go. A letter shows when its word is found or hinted. A right guess pays
+  50 fc with no letters showing, then 25, 20, 15 and 10 with one to four - so
+  hinting toward the thread costs as much as finding words does. It can be
+  guessed again after a miss, but each wrong guess halves that, rounded down
+  (50, 25, 12, 6, 3, 1), and once it's nothing the thread has closed. A guess
+  that can't be it - the wrong length, or missing a letter already showing -
+  and one already made are free. With all five letters showing it can't be
+  guessed. Until 2026-11-18 it was one guess only; a board from then reads its
+  one guess as its first miss.
 - **Playing.** `/daily weave` (or the post's "My board" button) shows a
   player's board, privately: the grid as an image (`render.ts`) with found
   words coloured along their paths and a hinted first letter ringed, the words

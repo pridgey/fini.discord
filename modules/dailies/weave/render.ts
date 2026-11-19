@@ -1,5 +1,10 @@
 import sharp from "sharp";
-import { canGuessThread, threadLetters, type WeaveProgress } from "./game";
+import {
+  canGuessThread,
+  threadLetters,
+  threadSolved,
+  type WeaveProgress,
+} from "./game";
 import { SIZE, colOf, rowOf, type WeavePuzzle } from "./puzzle";
 
 /**
@@ -94,10 +99,11 @@ export const weaveBoardSvg = ({
   // The thread: a box per letter. Until it's solved, the boxes hold the
   // letters found so far in alphabetical order - which letters, not where - in
   // one colour, so none can be matched to its word.
-  // Once the thread can't be guessed - guessed right or wrong, or every
-  // letter showing - the boxes spell it in order: green if the player got it,
-  // red if not. Until then its letters stay alphabetical, which isn't a word.
-  const solved = reveal || progress.threadGuess === puzzle.thread;
+  // Once the thread can't be guessed - found, every letter showing, or the
+  // prize halved to nothing - the boxes spell it in order: green if the player
+  // got it, red if not. Until then its letters stay alphabetical, which isn't
+  // a word.
+  const solved = reveal || threadSolved(puzzle, progress);
   const over = solved || !canGuessThread(puzzle, progress);
   const threadShown = over
     ? [...puzzle.thread]

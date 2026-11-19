@@ -12,6 +12,8 @@ import {
   guessThread,
   nextHint,
   takeHint,
+  threadPrizeNow,
+  threadSolved,
 } from "./game";
 import { generatePuzzle } from "./puzzle";
 import {
@@ -128,8 +130,7 @@ export const solvedMessage = (
   puzzle: ReturnType<typeof puzzleOf>,
 ): string => {
   const guesses = `${progress.guesses} ${progress.guesses === 1 ? "guess" : "guesses"}`;
-  const thread =
-    progress.threadGuess === puzzle.thread ? ", thread and all," : "";
+  const thread = threadSolved(puzzle, progress) ? ", thread and all," : "";
   return `🧵 **${player.displayName}** solved today's Weave${thread} in ${guesses} and won **${earned(puzzle, progress)} fc**!`;
 };
 
@@ -260,7 +261,7 @@ export const guessWeaveWords = async (
         ? {
             guesses: progress.guesses,
             fc: earned(puzzle, progress),
-            thread: progress.threadGuess === puzzle.thread,
+            thread: threadSolved(puzzle, progress),
           }
         : null;
     return { board: await boardFor(round, progress, lines.join("\n")), solve };
@@ -283,21 +284,47 @@ export const guessWeaveThread = async (
     return boardFor(
       round,
       before,
-      before.threadGuess !== null
-        ? "You've already made your guess at the thread."
-        : "Every word's found, so the thread is spelled out - the chance to guess it has passed.",
+      threadSolved(puzzle, before)
+        ? "You've already found the thread."
+        : allFound(puzzle, before)
+          ? "Every word's found, so the thread is spelled out - the chance to guess it has passed."
+          : "The thread has closed: there's nothing left to win for it.",
     );
   }
   saving.add(play.id);
   try {
+    const typed = guess.trim().toUpperCase();
     const result = guessThread(puzzle, before, guess);
-    await settle(round, play, player, result.progress, result.fc);
+    // A guess that couldn't be right, or one already made, changes nothing.
+    if (result.kind === "repeat")
+      return boardFor(
+        round,
+        before,
+        `🧵 You've already tried **${typed}**. That one's free - try another.`,
+      );
+    if (result.kind === "misfit")
+      return boardFor(
+        round,
+        before,
+        `🧵 **${typed}** can't be the thread: ${result.why}. That one's free.`,
+      );
+    if (result.kind === "closed") return boardFor(round, before);
+
+    const fc = result.kind === "right" ? result.fc : 0;
+    await settle(round, play, player, result.progress, fc);
+    if (result.kind === "right")
+      return boardFor(
+        round,
+        result.progress,
+        `🧵 **${puzzle.thread.toUpperCase()}** is the thread! +${fc} fc.`,
+      );
+    const now = threadPrizeNow(puzzle, result.progress);
     return boardFor(
       round,
       result.progress,
-      result.right
-        ? `🧵 **${puzzle.thread.toUpperCase()}** is the thread! +${result.fc} fc.`
-        : `🧵 **${guess.trim().toUpperCase()}** isn't the thread. The words still pay as you find them.`,
+      now > 0
+        ? `🧵 **${typed}** isn't the thread. A right guess now pays **${now} fc**.`
+        : `🧵 **${typed}** isn't the thread, and that halved the prize to nothing. The words still pay as you find them.`,
     );
   } finally {
     saving.delete(play.id);

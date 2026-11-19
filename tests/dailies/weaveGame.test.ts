@@ -73,7 +73,7 @@ describe("Weave's rules", () => {
   it("pays more for the thread the fewer of its letters are showing", () => {
     expect(THREAD_PRIZES).toEqual([50, 25, 20, 15, 10]);
     expect(guessThread(P, NO_PROGRESS, " PKSFM ")).toMatchObject({
-      right: true,
+      kind: "right",
       fc: 50,
     });
     let progress = NO_PROGRESS;
@@ -82,14 +82,49 @@ describe("Weave's rules", () => {
       expect(threadPrizeNow(P, progress)).toBe(prize);
     }
     const guess = guessThread(P, progress, "pksfm");
-    expect(guess.fc).toBe(10);
-    // The pay is fixed when guessed, and one guess is all there is.
+    expect(guess).toMatchObject({ kind: "right", fc: 10 });
+    // The pay is fixed when guessed, and once found it's closed.
     expect(earned(P, guess.progress)).toBe(4 * WORD_FC + 10);
-    expect(guessThread(P, guess.progress, "pksfm").fc).toBe(0);
-    expect(guessThread(P, NO_PROGRESS, "wrong")).toMatchObject({
-      right: false,
-      fc: 0,
+    expect(guessThread(P, guess.progress, "pksfm").kind).toBe("closed");
+  });
+
+  it("lets the thread be guessed again, each miss halving the prize", () => {
+    let progress = NO_PROGRESS;
+    const prizes: number[] = [];
+    for (const word of ["abcde", "fghij", "klmno", "pqrst", "uvwxy", "zabcd"]) {
+      prizes.push(threadPrizeNow(P, progress));
+      const guess = guessThread(P, progress, word);
+      expect(guess.kind).toBe("wrong");
+      progress = guess.progress;
+    }
+    expect(prizes).toEqual([50, 25, 12, 6, 3, 1]);
+    // Halved to nothing: closed.
+    expect(threadPrizeNow(P, progress)).toBe(0);
+    expect(canGuessThread(P, progress)).toBe(false);
+    expect(guessThread(P, progress, "pksfm").kind).toBe("closed");
+
+    // A right guess after two misses pays a quarter.
+    let twice = NO_PROGRESS;
+    for (const word of ["abcde", "fghij"])
+      twice = guessThread(P, twice, word).progress;
+    expect(guessThread(P, twice, "pksfm")).toMatchObject({ kind: "right", fc: 12 });
+  });
+
+  it("charges nothing for a guess that can't fit, or one already made", () => {
+    const tried = guessThread(P, NO_PROGRESS, "abcde").progress;
+    expect(guessThread(P, tried, " ABCDE ")).toMatchObject({ kind: "repeat" });
+    expect(guessThread(P, NO_PROGRESS, "abcd")).toMatchObject({
+      kind: "misfit",
+      why: "5 letters",
     });
+    expect(guessThread(P, NO_PROGRESS, "ab de").kind).toBe("misfit");
+    // With P showing, a guess without a P can't be it.
+    const showing = takeHint(P, NO_PROGRESS);
+    expect(guessThread(P, showing, "abcde")).toMatchObject({
+      kind: "misfit",
+      why: "it has to use P",
+    });
+    expect(guessThread(P, showing, "abcdp").kind).toBe("wrong");
   });
 
   it("counts a hinted letter as showing, so hints can't buy the thread cheaply", () => {
@@ -101,7 +136,7 @@ describe("Weave's rules", () => {
     // All five letters showing through hints: the thread has closed, words unfound or not.
     expect(threadLetters(P, progress)).toBe("fkmps");
     expect(canGuessThread(P, progress)).toBe(false);
-    expect(guessThread(P, progress, "pksfm").fc).toBe(0);
+    expect(guessThread(P, progress, "pksfm").kind).toBe("closed");
   });
 
   it("says how much is still possible, which hints and showing letters bring down", () => {
@@ -124,10 +159,7 @@ describe("Weave's rules", () => {
     progress = findWord(progress, 4).progress;
     expect(finished(P, progress)).toBe(true);
     expect(canGuessThread(P, progress)).toBe(false);
-    expect(guessThread(P, progress, "pksfm")).toMatchObject({
-      right: false,
-      fc: 0,
-    });
+    expect(guessThread(P, progress, "pksfm").kind).toBe("closed");
     expect(earned(P, progress)).toBe(5 * WORD_FC);
   });
 });

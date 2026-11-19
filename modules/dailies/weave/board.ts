@@ -12,6 +12,7 @@ import {
 } from "discord.js";
 import {
   THREAD_PRIZES,
+  threadSolved,
   allFound,
   canGuessThread,
   earned,
@@ -74,31 +75,41 @@ const threadLines = (
     letters.length > 0
       ? letters.map((letter) => `**${letter}**`).join(" · ")
       : "none yet";
-  if (progress.threadGuess === puzzle.thread) {
+  const missed = progress.threadGuesses.filter(
+    (guess) => guess !== puzzle.thread,
+  );
+  const missLine = missed.length
+    ? [`❌ ${missed.map((guess) => `~~${guess.toUpperCase()}~~`).join(" · ")}`]
+    : [];
+  if (threadSolved(puzzle, progress)) {
     return [
-      `✅ **${puzzle.thread.toUpperCase()}** · **+${progress.threadFc} fc**`,
-    ];
-  }
-  if (progress.threadGuess !== null) {
-    return [
-      // One guess, so the answer gives nothing away by now.
-      `❌ You guessed **${progress.threadGuess.toUpperCase()}**. It was **${puzzle.thread.toUpperCase()}**.`,
+      `✅ **${puzzle.thread.toUpperCase()}** · **+${progress.threadFc} fc**${
+        missed.length
+          ? ` after ${missed.length} wrong ${missed.length === 1 ? "guess" : "guesses"}`
+          : ""
+      }`,
     ];
   }
   if (allFound(puzzle, progress)) {
     return [
+      ...missLine,
       `It was **${puzzle.thread.toUpperCase()}**, spelled out before it was guessed.`,
     ];
   }
   if (!canGuessThread(puzzle, progress)) {
+    // Closed either way: every letter showing, or the prize halved to nothing.
     return [
-      `It was **${puzzle.thread.toUpperCase()}**. Every letter showed before it was guessed.`,
+      ...missLine,
+      threadLetters(puzzle, progress).length >= puzzle.words.length
+        ? `It was **${puzzle.thread.toUpperCase()}**. Every letter showed before it was guessed.`
+        : `It was **${puzzle.thread.toUpperCase()}**. The prize halved away to nothing.`,
     ];
   }
   return [
     `Letters showing: ${showing}`,
+    ...missLine,
     `A right guess now pays **${threadPrizeNow(puzzle, progress)} fc**.`,
-    `-# A ${puzzle.thread.length}-letter word made of the words' first letters, in some order. One guess. It's worth ${THREAD_PRIZES.join(", ")} fc with 0, 1, 2, 3 or 4 letters showing - a hint shows one too.`,
+    `-# A ${puzzle.thread.length}-letter word made of the words' first letters, in some order. It's worth ${THREAD_PRIZES.join(", ")} fc with 0, 1, 2, 3 or 4 letters showing - a hint shows one too - and each wrong guess halves that.`,
   ];
 };
 
@@ -208,7 +219,7 @@ export const wordsModal = (roundId: string) =>
         ),
     );
 
-/** The box the thread is guessed in. One guess, so it says so. */
+/** The box the thread is guessed in, saying what's at stake. */
 export const threadModal = (roundId: string) =>
   new ModalBuilder()
     .setCustomId(`${WEAVE_THREAD_MODAL}:${roundId}`)
@@ -217,7 +228,7 @@ export const threadModal = (roundId: string) =>
       new LabelBuilder()
         .setLabel("The thread word")
         .setDescription(
-          "You get one guess. The fewer of its letters are showing, the more it pays.",
+          "A wrong guess halves the prize. One that can't fit the letters is free.",
         )
         .setTextInputComponent(
           new TextInputBuilder()

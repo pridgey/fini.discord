@@ -26,7 +26,10 @@ export type WeavePlayRecord = {
   username: string;
   found: number[] | null;
   hinted: number[] | null;
+  /** The latest guess at the thread. */
   thread_guess: string;
+  /** Every guess at the thread, in order. Absent on boards from before repeat guesses. */
+  thread_guesses?: string[] | null;
   /** What the thread paid, fixed when it was guessed. */
   thread_fc: number;
   /** Words guessed, right or wrong. */
@@ -81,7 +84,9 @@ export const progressOf = (play: WeavePlayRecord | null): WeaveProgress =>
         found: play.found ?? [],
         hinted: play.hinted ?? [],
         guesses: play.guesses ?? 0,
-        threadGuess: play.thread_guess ? play.thread_guess : null,
+        // A board from before repeat guesses has only its one guess.
+        threadGuesses:
+          play.thread_guesses ?? (play.thread_guess ? [play.thread_guess] : []),
         threadFc: play.thread_fc ?? 0,
       }
     : NO_PROGRESS;
@@ -146,7 +151,8 @@ export const saveWeaveProgress = (
   pb.collection<WeavePlayRecord>(PLAYS).update(playId, {
     found: progress.found,
     hinted: progress.hinted,
-    thread_guess: progress.threadGuess ?? "",
+    thread_guess: progress.threadGuesses.at(-1) ?? "",
+    thread_guesses: progress.threadGuesses,
     thread_fc: progress.threadFc,
     guesses: progress.guesses,
     paid,

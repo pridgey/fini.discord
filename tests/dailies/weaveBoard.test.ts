@@ -52,7 +52,7 @@ describe("the Weave board", () => {
   });
 
   it("spells the thread in order once it can't be guessed, never its letters sorted into a non-word", () => {
-    const missed = { ...allFound(), threadGuess: "wrong" };
+    const missed = { ...allFound(), threadGuesses: ["wrong"] };
     const svg = weaveBoardSvg({ puzzle, progress: missed });
     const boxes = [...svg.matchAll(/font-size="36"[^>]*>([A-Z?])<\/text>/g)]
       .map((match) => match[1])
@@ -62,7 +62,7 @@ describe("the Weave board", () => {
     expect(
       boardText({ roundId: round.id, puzzle, progress: missed }),
     ).toContain(
-      `You guessed **WRONG**. It was **${puzzle.thread.toUpperCase()}**.`,
+      `❌ ~~WRONG~~\nIt was **${puzzle.thread.toUpperCase()}**, spelled out before it was guessed.`,
     );
   });
 
@@ -142,7 +142,7 @@ describe("the Weave board", () => {
     );
     const withThread = {
       ...progress,
-      threadGuess: puzzle.thread,
+      threadGuesses: [puzzle.thread],
       threadFc: 50,
     };
     expect(solvedMessage({ displayName: "Aya" }, withThread, puzzle)).toContain(
@@ -162,5 +162,45 @@ describe("the Weave board", () => {
   it("stops offering the thread once every word is found", () => {
     const text = boardText({ roundId: round.id, puzzle, progress: allFound() });
     expect(text).toContain(`It was **${puzzle.thread.toUpperCase()}**`);
+  });
+});
+
+describe("the thread on the board", () => {
+  const puzzle = generatePuzzle();
+
+  it("lists the wrong guesses and what a right one pays now", () => {
+    const text = boardText({
+      roundId: "r",
+      puzzle,
+      progress: { ...NO_PROGRESS, threadGuesses: ["aaaaa", "bbbbb"] },
+    });
+    expect(text).toContain("❌ ~~AAAAA~~ · ~~BBBBB~~");
+    expect(text).toContain("A right guess now pays **12 fc**.");
+    expect(text).toContain("each wrong guess halves that");
+  });
+
+  it("says when the prize has halved away", () => {
+    const text = boardText({
+      roundId: "r",
+      puzzle,
+      progress: {
+        ...NO_PROGRESS,
+        threadGuesses: ["aaaaa", "bbbbb", "ccccc", "ddddd", "eeeee", "fffff"],
+      },
+    });
+    expect(text).toContain("The prize halved away to nothing.");
+  });
+
+  it("names the misses beside a thread found after them", () => {
+    const text = boardText({
+      roundId: "r",
+      puzzle,
+      progress: {
+        ...NO_PROGRESS,
+        threadGuesses: ["aaaaa", puzzle.thread],
+        threadFc: 25,
+      },
+    });
+    expect(text).toContain("+25 fc** after 1 wrong guess");
   });
 });
