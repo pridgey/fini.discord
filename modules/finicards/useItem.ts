@@ -12,13 +12,13 @@ import {
 } from "./items";
 
 /**
- * `/finicard use`: what using an item means (issue #8). Pure - the command
+ * Using an item from the satchel: what it means (issue #8). Pure - the command
  * does the writing, the summoning and the talking.
  *
  *   - a pack boon is switched on, and the player's next pack spends it
  *   - a dungeon boon is switched on, and their next run starts with it
  *   - a dungeon key is switched on beside it, and makes that run free
- *   - a card boon is used on one of their cards, named in `card`
+ *   - a card boon is used on one of their cards, named in a form
  *   - a mystery box opens into another item
  *   - a collection set, once complete, summons its card - one per server
  *
@@ -27,56 +27,53 @@ import {
 
 const SUMMON = "summon:";
 
-export type UseChoice = { name: string; value: string };
+export type UseOption = {
+  label: string;
+  value: string;
+  description?: string;
+  emoji?: string;
+};
 
 /**
- * The suggestions as a player types: a set they can summon first, then their
- * boons (with how many, and which is already on), then their sets in
- * progress. Discord takes at most 25.
+ * The satchel's dropdown: a set the player can summon first, then each item
+ * they hold that can be used - not a boon whose every copy is already on, and
+ * not a set still missing pieces. Discord takes at most 25.
  */
-export const useChoices = (
+export const useOptions = (
   items: V2ItemRecord[],
   holders: Partial<Record<CollectionKey, string>>,
-  typed: string,
-): UseChoice[] => {
+): UseOption[] => {
   const held = items.map((item) => item.item);
-  const summonable: UseChoice[] = [];
-  const inProgress: UseChoice[] = [];
+  const summonable: UseOption[] = Object.values(COLLECTIONS).flatMap((set) =>
+    setProgress(set.key, held).complete && !holders[set.key]
+      ? [
+          {
+            label: `Summon ${set.summons}`,
+            value: `${SUMMON}${set.key}`,
+            description: `Spends one of each of the ${set.name}`,
+            emoji: "✨",
+          },
+        ]
+      : [],
+  );
 
-  for (const set of Object.values(COLLECTIONS)) {
-    const { have, complete } = setProgress(set.key, held);
-    if (have.length === 0) continue;
-    if (complete && !holders[set.key]) {
-      summonable.push({
-        name: `✨ Summon ${set.summons} - every one of the ${set.name}`,
-        value: `${SUMMON}${set.key}`,
-      });
-    } else {
-      inProgress.push({
-        name: `${set.emoji} ${set.name}: ${have.length} of ${piecesOf(set.key).length}`,
-        value: `${SUMMON}${set.key}`,
-      });
-    }
-  }
-
-  const boons = ITEMS.filter((item) => item.kind !== "piece").flatMap(
+  const usable = ITEMS.filter((item) => item.kind !== "piece").flatMap(
     (item) => {
       const rows = items.filter((row) => row.item === item.key);
-      if (rows.length === 0) return [];
-      const on = rows.some((row) => row.active);
+      const spare = rows.filter((row) => !row.active).length;
+      if (spare === 0) return [];
       return [
         {
-          name: `${item.emoji} ${item.name}${rows.length > 1 ? ` ×${rows.length}` : ""} · ${KIND_LABEL[item.kind]}${on ? " (on)" : ""}`,
+          label: `${item.name}${spare > 1 ? ` ×${spare}` : ""}`,
           value: item.key,
+          description: KIND_LABEL[item.kind].replace(/^./, (c) => c.toUpperCase()),
+          emoji: item.emoji,
         },
       ];
     },
   );
 
-  const needle = typed.trim().toLowerCase();
-  return [...summonable, ...boons, ...inProgress]
-    .filter((choice) => !needle || choice.name.toLowerCase().includes(needle))
-    .slice(0, 25);
+  return [...summonable, ...usable].slice(0, 25);
 };
 
 export type UseOutcome =

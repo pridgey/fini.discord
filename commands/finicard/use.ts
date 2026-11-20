@@ -4,18 +4,25 @@ import {
   ButtonBuilder,
   ButtonStyle,
   ComponentType,
-  type ChatInputCommandInteraction,
+  MessageFlags,
+  type InteractionEditReplyOptions,
+  type InteractionReplyOptions,
+  type Message,
+  type ModalSubmitInteraction,
+  type StringSelectMenuInteraction,
 } from "discord.js";
 import type { V2ItemRecord } from "../../types/PocketbaseTablesV2";
 import {
   getCardDefinitions,
   getPopulationCounts,
+  getUserCollection,
   grantCard,
   rollCopyKeyword,
   toBattleCard,
   updateCopy,
 } from "../../modules/finicards/cardStore";
 import { cardInPlay, findSellable } from "../../modules/finicards/market";
+import { cardSuggestions } from "../../modules/finicards/cardSuggestions";
 import {
   cleanNickname,
   rerolledKeyword,
@@ -55,44 +62,87 @@ import {
 } from "../../modules/finicards/ui/summonMessage";
 import { getBotChannelForServer } from "../../utilities/config/configUtils";
 import { sendTo } from "../../modules/dailies/shared";
-import type { FinicardContext } from "./context";
 
 /** How long the card rests at the end of the animation before the still takes over. */
 const REST_MS = 1500;
 
-/** `/finicard use` - switch a boon on, or summon a completed set's card. */
+/**
+ * Where a use from the satchel answers. The satchel's own message is left to
+ * be redrawn, so what happens is said beneath it: `say` posts it for the
+ * channel to see, and called again changes that same post; `whisper` tells
+ * only the player, for a use that went nowhere.
+ */
+export type UseScene = {
+  interaction: StringSelectMenuInteraction | ModalSubmitInteraction;
+  say(payload: string | InteractionEditReplyOptions): Promise<Message>;
+  whisper(text: string): Promise<unknown>;
+};
+
+/** A scene for an interaction already acknowledged with `deferUpdate`. */
+export const sceneFor = (
+  interaction: StringSelectMenuInteraction | ModalSubmitInteraction,
+): UseScene => {
+  let posted: Message | null = null;
+  return {
+    interaction,
+    say: async (payload) => {
+      const options = typeof payload === "string" ? { content: payload } : payload;
+      posted = posted
+        ? await interaction.editReply({ ...options, message: posted.id })
+        : await interaction.followUp(options as InteractionReplyOptions);
+      return posted;
+    },
+    whisper: (text) =>
+      interaction.followUp({
+        content: text,
+        flags: [MessageFlags.Ephemeral],
+        allowedMentions: { parse: [] },
+      }),
+  };
+};
+
+/**
+ * Uses what was picked from the satchel's dropdown - an item's key, or
+ * `summon:<set>` - or, for a card boon, what its form named.
+ */
 export const useItem = async (
-  interaction: ChatInputCommandInteraction,
-  { serverId, identifier }: FinicardContext,
+  scene: UseScene,
+  picked: string,
+  serverId: string,
+  form?: { card: string; name: string },
 ): Promise<void> => {
-  const typed = interaction.options.getString("item", true);
+  const { interaction } = scene;
   const [items, holders] = await Promise.all([
     getItems(interaction.user.id, serverId),
     summonedHolders(serverId),
   ]);
-  const plan = planUse(typed, items, holders);
+  const plan = planUse(picked, items, holders);
 
   if (plan.kind === "say") {
-    await interaction.editReply({
-      content: plan.text,
-      allowedMentions: { parse: [] },
-    });
+    await scene.whisper(plan.text);
     return;
   }
   if (plan.kind === "activate") {
     await activateItem(plan.row.id ?? "");
-    await interaction.editReply(plan.text);
+    await scene.whisper(plan.text);
     return;
   }
   if (plan.kind === "card") {
-    await useOnCard(interaction, plan.row, plan.item, serverId);
+    await useOnCard(scene, plan.row, plan.item, serverId, form);
     return;
   }
   if (plan.kind === "open") {
-    await openBox(interaction, plan.row, plan.item, serverId);
+    await openBox(scene, plan.row, plan.item, serverId);
     return;
   }
-  await summon(interaction, plan.set, plan.rows, serverId, identifier);
+  const serverName = interaction.guild?.name ?? "unknown guild name";
+  await summon(
+    scene,
+    plan.set,
+    plan.rows,
+    serverId,
+    `${interaction.user.username}-${serverName}`,
+  );
 };
 
 /* --------------------------------------------------------- card boons -- */
@@ -125,42 +175,82 @@ const pictureOf = async (copy: OwnedCard) => {
 };
 
 /**
- * A card boon on the copy named in `card`: a nickname, a new keyword, three
+ * The player's card a form named: by id, or by its name when only one of
+ * their cards answers to it. Otherwise the cards it could be, to say back.
+ */
+const findCard = async (
+  userId: string,
+  serverId: string,
+  typed: string,
+): Promise<{ copy: OwnedCard } | { maybe: string[] }> => {
+  const byId = await findSellable(userId, serverId, typed);
+  if (byId) return { copy: byId };
+  const copies = await getUserCollection(userId, serverId);
+  const needle = typed.trim().toLowerCase();
+  const matches = cardSuggestions(copies, typed);
+  // A name typed in full picks its card from among longer names.
+  const exact = matches.filter((match) => {
+    const copy = copies.find((each) => each.id === match.value);
+    if (!copy) return false;
+    const card = toBattleCard(copy);
+    return [card.name, card.cardName].some(
+      (name) => name?.toLowerCase() === needle,
+    );
+  });
+  const picked = exact.length === 1 ? exact : matches;
+  if (picked.length === 1) {
+    const copy = copies.find((each) => each.id === picked[0].value);
+    if (copy) return { copy };
+  }
+  return { maybe: (exact.length ? exact : matches).map((match) => match.name) };
+};
+
+/**
+ * A card boon on the copy named in its form: a nickname, a new keyword, three
  * to choose from, or foil. The boon is spent only once the change is made.
  */
 const useOnCard = async (
-  interaction: ChatInputCommandInteraction,
+  scene: UseScene,
   row: V2ItemRecord,
   item: ItemDefinition,
   serverId: string,
+  form?: { card: string; name: string },
 ): Promise<void> => {
-  const typed = interaction.options.getString("card");
+  const { interaction } = scene;
+  const typed = form?.card.trim();
   if (!typed) {
-    await interaction.editReply(
-      `${item.emoji} Say which card the **${item.name}** is for, in \`card\` - type its name to find it.`,
+    await scene.whisper(
+      `${item.emoji} Say which card the **${item.name}** is for - its name or id.`,
     );
     return;
   }
-  const copy = await findSellable(interaction.user.id, serverId, typed);
-  if (!copy?.id) {
-    await interaction.editReply(
-      `\`${typed}\` isn't one of your cards. Type its name in \`card\` to find it.`,
+  const found = await findCard(interaction.user.id, serverId, typed);
+  if ("maybe" in found) {
+    await scene.whisper(
+      found.maybe.length
+        ? [
+            `More than one of your cards answers to \`${typed}\`. Use the ${item.name} again with one of these ids:`,
+            ...found.maybe.slice(0, 10).map((label) => `- ${label}`),
+          ].join("\n")
+        : `\`${typed}\` isn't one of your cards. Give its name or id as \`/finicard collection\` shows it.`,
     );
     return;
   }
+  const copy = found.copy;
+  if (!copy.id) return;
   const card = toBattleCard(copy);
 
   if (item.key === "card_name_tag") {
-    const nickname = cleanNickname(interaction.options.getString("name") ?? "");
+    const nickname = cleanNickname(form?.name ?? "");
     if (!nickname) {
-      await interaction.editReply(
-        "Give the name in `name` - up to 32 letters, numbers and spaces.",
+      await scene.whisper(
+        "The new name can be up to 32 letters, numbers and spaces. The Name Tag is still yours.",
       );
       return;
     }
     const updated = await updateCopy(copy.id, { nickname });
     await spendItem(row.id ?? "");
-    await interaction.editReply({
+    await scene.say({
       content: `${item.emoji} Your **${copy.definition.card_name}** \`${copy.id}\` is now called **${nickname}**.`,
       files: await pictureOf({ ...copy, ...updated }),
     });
@@ -169,14 +259,14 @@ const useOnCard = async (
 
   if (item.key === "card_foil_kit") {
     if (copy.foil) {
-      await interaction.editReply(
+      await scene.whisper(
         `Your **${card.name}** \`${copy.id}\` is already foil - the kit's still yours.`,
       );
       return;
     }
     const updated = await updateCopy(copy.id, { foil: true });
     await spendItem(row.id ?? "");
-    await interaction.editReply({
+    await scene.say({
       content: `${item.emoji} Your **${card.name}** \`${copy.id}\` is foil now.`,
       files: await pictureOf({ ...copy, ...updated }),
     });
@@ -188,7 +278,7 @@ const useOnCard = async (
   if (item.key === "card_reroll" || item.key === "card_scroll") {
     const busy = await cardInPlay(interaction.user.id, serverId, copy.id);
     if (busy) {
-      await interaction.editReply(inPlayText(card.name, busy, item));
+      await scene.whisper(inPlayText(card.name, busy, item));
       return;
     }
   }
@@ -197,7 +287,7 @@ const useOnCard = async (
     const keyword = rerolledKeyword(card.rarity, copy.keyword ?? "");
     const updated = await updateCopy(copy.id, { keyword });
     await spendItem(row.id ?? "");
-    await interaction.editReply({
+    await scene.say({
       content: [
         `${item.emoji} Your **${card.name}** \`${copy.id}\` rerolled its ability.`,
         `Was: ${keywordLine(copy.keyword ?? "")}`,
@@ -210,7 +300,7 @@ const useOnCard = async (
 
   // The Ability Scroll: three to choose from, nothing spent until one is picked.
   const choices = scrollChoices(card.rarity, copy.keyword ?? "");
-  const message = await interaction.editReply({
+  const message = await scene.say({
     content: [
       `${item.emoji} Pick a new ability for your **${card.name}** \`${copy.id}\`. It has ${keywordLine(copy.keyword ?? "")}.`,
       ...choices.map((slug, index) => `**${index + 1}.** ${keywordLine(slug)}`),
@@ -236,8 +326,8 @@ const useOnCard = async (
     })
     .catch(() => null);
   if (!press) {
-    await interaction
-      .editReply({
+    await scene
+      .say({
         content: "📜 The scroll rolled itself back up. Nothing was spent.",
         components: [],
       })
@@ -281,11 +371,12 @@ const useOnCard = async (
  * news on the server.
  */
 const openBox = async (
-  interaction: ChatInputCommandInteraction,
+  scene: UseScene,
   row: V2ItemRecord,
   item: ItemDefinition,
   serverId: string,
 ): Promise<void> => {
+  const { interaction } = scene;
   const taken = await piecesTaken(serverId);
   let key = rollItem(35, taken, Math.random);
   for (let tries = 0; tries < 20 && itemByKey(key)?.kind === "box"; tries++)
@@ -309,12 +400,12 @@ const openBox = async (
       )
     ).granted[0]?.item;
   if (!final) {
-    await interaction.editReply("The box was empty. It's still yours to try again.");
+    await scene.whisper("The box was empty. It's still yours to try again.");
     return;
   }
   await spendItem(row.id ?? "");
   const inside = itemByKey(final)!;
-  await interaction.editReply(
+  await scene.say(
     `${item.emoji} The **${item.name}** holds ${inside.emoji} **${inside.name}**!\n-# ${inside.blurb}`,
   );
   void announcePiecesFound(interaction.client, serverId, interaction.user.id, [
@@ -323,19 +414,20 @@ const openBox = async (
 };
 
 const summon = async (
-  interaction: ChatInputCommandInteraction,
+  scene: UseScene,
   set: CollectionKey,
   /** One of each of the set's pieces, as the player holds them. */
   pieces: Awaited<ReturnType<typeof getItems>>,
   serverId: string,
   identifier: string,
 ): Promise<void> => {
+  const { interaction } = scene;
   const { summons } = COLLECTIONS[set];
   const definition = (await getCardDefinitions({ includeInactive: true })).find(
     (each) => each.card_name === summons && each.rarity === "summoned",
   );
   if (!definition?.id) {
-    await interaction.editReply(
+    await scene.whisper(
       `**${summons}** isn't ready to be summoned yet. Your pieces are safe.`,
     );
     return;
@@ -343,7 +435,7 @@ const summon = async (
   // One per server, checked again at the last moment.
   const counts = await getPopulationCounts(serverId);
   if ((counts.get(definition.id) ?? 0) > 0) {
-    await interaction.editReply(
+    await scene.whisper(
       `**${summons}** has already been summoned on this server. Your pieces are safe.`,
     );
     return;
@@ -366,7 +458,7 @@ const summon = async (
 
   const card = toBattleCard({ ...record, definition });
   const gif = await renderSummonGif(set, card);
-  const message = await interaction.editReply(
+  const message = await scene.say(
     buildSummonMessage({
       set,
       card,
@@ -389,8 +481,8 @@ const summon = async (
   if (!gif) return;
   await new Promise((resolve) => setTimeout(resolve, SUMMON_MS + REST_MS));
   const still = await renderCardMedia(card);
-  await interaction
-    .editReply({
+  await scene
+    .say({
       ...buildSummonMessage({
         set,
         card,

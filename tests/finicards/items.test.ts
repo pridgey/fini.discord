@@ -71,11 +71,54 @@ describe("the satchel", () => {
     userId: "me",
   };
 
-  it("shows every set, and none-yet for empty boon shelves", () => {
+  it("hides sets with nothing in them, and says more are out there", () => {
     const text = textOf(buildItemsMessage({ ...base, held: [] }));
-    expect(text).toContain("Dragon Balls");
-    expect(text).toContain("0 of 5");
+    expect(text).not.toContain("Dragon Balls");
+    expect(text).toContain("3 collections are hidden in the deep");
     expect(text).toContain("None yet.");
+
+    const started = textOf(buildItemsMessage({ ...base, held: ["exodia_head"] }));
+    expect(started).toContain("Exodia** · 1 of 5");
+    expect(started).not.toContain("Chaos Emeralds");
+    expect(started).toContain("2 more collections are hidden");
+  });
+
+  it("keeps who a set summons secret until it's complete", () => {
+    const partial = textOf(buildItemsMessage({ ...base, held: ["dragon_ball_1"] }));
+    expect(partial).not.toContain("Shenron");
+    expect(partial).toContain("summons **???**");
+
+    const whole = textOf(
+      buildItemsMessage({
+        ...base,
+        held: piecesOf("dragon_balls").map((piece) => piece.key),
+      }),
+    );
+    expect(whole).toContain("summons **Shenron**");
+  });
+
+  it("turns pages when the satchel is long, and offers a dropdown to use items", () => {
+    const held = [
+      "dragon_ball_1",
+      "exodia_head",
+      "chaos_emerald_green",
+      ...ITEMS.filter((item) => item.kind !== "piece").map((item) => item.key),
+    ];
+    const first = textOf(
+      buildItemsMessage({
+        ...base,
+        held,
+        options: [{ label: "Four-Leaf Clover", value: "boon_lucky" }],
+      }),
+    );
+    expect(first).toContain("Page 1 of");
+    expect(first).toContain("v2_items_page:1:me");
+    expect(first).toContain("v2_items_use:0:me");
+    expect(first).toContain("Use an item");
+
+    const last = textOf(buildItemsMessage({ ...base, held, page: 99 }));
+    expect(last).not.toContain("Page 1 of");
+    expect(last).toContain("Mystery boxes");
   });
 
   it("points at whoever holds a missing piece", () => {

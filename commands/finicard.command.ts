@@ -35,9 +35,7 @@ import { showPending, startBattle, startPractice } from "./finicard/battle";
 import { enterDungeon, showDungeonTutorial } from "./finicard/dungeon";
 import { grantCards } from "./finicard/grant";
 import { showItems } from "./finicard/items";
-import { useItem } from "./finicard/use";
-import { getItems, summonedHolders } from "../modules/finicards/itemStore";
-import { useChoices } from "../modules/finicards/useItem";
+import { getItems } from "../modules/finicards/itemStore";
 import { itemSuggestions } from "../modules/finicards/itemMarket";
 import { cardSuggestions } from "../modules/finicards/cardSuggestions";
 import { getUserCollection } from "../modules/finicards/cardStore";
@@ -287,34 +285,6 @@ export const data = new SlashCommandBuilder()
         "Your satchel: collection pieces and boons found deep in the dungeon",
       ),
   )
-  .addSubcommand((sub) =>
-    sub
-      .setName("use")
-      .setDescription(
-        "Use a dungeon item: switch a boon on, open a box, change a card, or summon",
-      )
-      .addStringOption((option) =>
-        option
-          .setName("item")
-          .setDescription("A boon, a key, a card boon, a box, or a set to summon from")
-          .setRequired(true)
-          .setAutocomplete(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName("card")
-          .setDescription("For a card boon: which of your cards - type its name")
-          .setRequired(false)
-          .setAutocomplete(true),
-      )
-      .addStringOption((option) =>
-        option
-          .setName("name")
-          .setDescription("For a Name Tag: the card's new name")
-          .setMaxLength(32)
-          .setRequired(false),
-      ),
-  )
   .addSubcommandGroup((group) =>
     group
       .setName("deck")
@@ -551,30 +521,14 @@ export const data = new SlashCommandBuilder()
   );
 
 /**
- * Suggestions from a satchel as a player types: for `/finicard use`, a set
- * ready to summon, then boons, then sets in progress; for selling and trading,
- * the items themselves - their own, or for `want_items` their partner's.
+ * Suggestions as a player types: cards and dungeon items to sell or trade -
+ * their own, or for `want`/`want_items` their partner's.
  */
 export const autocomplete = async (interaction: AutocompleteInteraction) => {
   const serverId = interaction.guildId ?? "unknown guild id";
   const subcommand = interaction.options.getSubcommand(false);
   const focused = interaction.options.getFocused(true);
   const typed = String(focused.value ?? "");
-
-  if (subcommand === "use" && focused.name === "card") {
-    const copies = await getUserCollection(interaction.user.id, serverId);
-    await interaction.respond(cardSuggestions(copies, typed));
-    return;
-  }
-
-  if (subcommand === "use") {
-    const [items, holders] = await Promise.all([
-      getItems(interaction.user.id, serverId),
-      summonedHolders(serverId),
-    ]);
-    await interaction.respond(useChoices(items, holders, typed));
-    return;
-  }
 
   // Card ids: the player's own cards, or for `want` their partner's.
   if (
@@ -674,8 +628,6 @@ export const execute: SlashCommand["execute"] = async (
         return await showRecord(interaction, context);
       case "items":
         return await showItems(interaction, context);
-      case "use":
-        return await useItem(interaction, context);
       case "abilities":
         await interaction.editReply(buildAbilitiesMessage());
         return;

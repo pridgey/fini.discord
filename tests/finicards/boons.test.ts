@@ -14,7 +14,7 @@ import {
   SET_PACK_ODDS,
   withUncommonFloor,
 } from "../../modules/finicards/packs";
-import { planUse, useChoices } from "../../modules/finicards/useItem";
+import { planUse, useOptions } from "../../modules/finicards/useItem";
 import {
   buildSummonMessage,
   buildSummonNotice,
@@ -107,22 +107,29 @@ describe("dungeon boons", () => {
   });
 });
 
-describe("/finicard use", () => {
+describe("using an item from the satchel", () => {
   const dragonBalls = piecesOf("dragon_balls").map((piece) => row(piece.key));
 
-  it("suggests a set ready to summon first, then boons, then sets in progress", () => {
-    const choices = useChoices(
+  it("offers a set ready to summon first, then what can be used, never a set in progress", () => {
+    const options = useOptions(
       [...dragonBalls, row("boon_lucky"), row("boon_lucky", false, "b2"), row("exodia_head")],
       {},
-      "",
     );
-    expect(choices[0]).toEqual({
-      name: "✨ Summon Shenron - every one of the Dragon Balls",
+    expect(options[0]).toMatchObject({
+      label: "Summon Shenron",
       value: "summon:dragon_balls",
     });
-    expect(choices[1].name).toContain("Four-Leaf Clover ×2 · pack boon");
-    expect(choices.at(-1)!.name).toContain("Exodia: 1 of 5");
-    expect(useChoices([row("boon_lucky")], {}, "purse")).toEqual([]);
+    expect(options[1]).toMatchObject({
+      label: "Four-Leaf Clover ×2",
+      value: "boon_lucky",
+      description: "Pack boon",
+    });
+    expect(options).toHaveLength(2);
+  });
+
+  it("leaves out a boon whose every copy is already on, and a set summoned elsewhere", () => {
+    expect(useOptions([row("boon_lucky", true)], {})).toEqual([]);
+    expect(useOptions(dragonBalls, { dragon_balls: "fen" })).toEqual([]);
   });
 
   it("summons a complete set, one of each piece", () => {
